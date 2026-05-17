@@ -150,12 +150,22 @@ const TrialBooking = () => {
     const insertedBooking = { id: bookingId, booking_date: bookingDate };
 
     try {
+      // tenant_id is required by RLS. Prefer URL param; fall back to the
+      // currently-loaded tenant (set above). If neither is set, this is an
+      // invalid trial link — abort.
+      const insertTenantId = tenantId || tenant?.id;
+      if (!insertTenantId) {
+        toast.error("予約リンクが無効です。ジムの担当者にお問い合わせください。");
+        setSubmitting(false);
+        return;
+      }
       const { error } = await supabase.from("trial_bookings").insert({
         id: bookingId,
         guest_name: guestName.trim(),
         guest_contact: guestEmail.trim(),
         booking_date: bookingDate,
-      });
+        tenant_id: insertTenantId,
+      } as any);
 
       if (error) {
         console.error("Trial booking failed:", {

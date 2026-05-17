@@ -57,9 +57,11 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
         .eq("id", existingId);
       if (error) { toast.error("保存に失敗しました"); setSaving(false); return; }
     } else {
+      const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+      const tenantId = await fetchMyTenantId();
       const { error, data } = await supabase
         .from("monthly_reports" as any)
-        .insert({ user_id: clientId, month: selectedMonth, trainer_comment: comment } as any)
+        .insert(withTenant({ user_id: clientId, month: selectedMonth, trainer_comment: comment }, tenantId) as any)
         .select()
         .single();
       if (error) { toast.error("保存に失敗しました"); setSaving(false); return; }

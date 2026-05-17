@@ -470,9 +470,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     }
     setSaving(true);
 
+    const { fetchMyTenantId } = await import("@/lib/tenantHelper");
+    const tenantId = await fetchMyTenantId();
+    if (!tenantId) { toast.error("テナントが見つかりません"); setSaving(false); return; }
+
     const rows = validEntries.map(ex => ({
       user_id: clientId,
       exercise_id: ex.exerciseId,
+      tenant_id: tenantId,
       weight: parseFloat(ex.sets[0].weight) || null,
       reps: parseInt(ex.sets[0].reps, 10) || null,
       sets: ex.sets.filter(s => s.weight && s.reps).map((s, i) => ({

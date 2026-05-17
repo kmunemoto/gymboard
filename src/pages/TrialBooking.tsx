@@ -42,15 +42,19 @@ const TrialBooking = () => {
   const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string } | null>(null);
   const [existingBookings, setExistingBookings] = useState<TrialSlotBooking[]>([]);
 
-  // Fetch tenant info when a tenantId is present in the URL
+  // Fetch tenant info: use the URL :tenantId, or fall back to the oldest
+  // active tenant for the legacy `/trial` link.
   useEffect(() => {
-    if (!tenantId) return;
     (async () => {
-      const { data, error } = await supabase.rpc("get_tenant_public", { p_id: tenantId });
-      if (error) {
-        console.error("Failed to load tenant:", error);
+      if (tenantId) {
+        const { data, error } = await supabase.rpc("get_tenant_public", { p_id: tenantId });
+        if (error) { console.error("Failed to load tenant:", error); return; }
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) setTenant(row as PublicTenant);
         return;
       }
+      // No URL param — pick the default tenant (legacy single-gym mode)
+      const { data } = await supabase.rpc("get_default_tenant_public" as any);
       const row = Array.isArray(data) ? data[0] : data;
       if (row) setTenant(row as PublicTenant);
     })();
@@ -150,12 +154,22 @@ const TrialBooking = () => {
     const insertedBooking = { id: bookingId, booking_date: bookingDate };
 
     try {
+      // tenant_id is required by RLS. Prefer URL param; fall back to the
+      // currently-loaded tenant (set above). If neither is set, this is an
+      // invalid trial link — abort.
+      const insertTenantId = tenantId || tenant?.id;
+      if (!insertTenantId) {
+        toast.error("予約リンクが無効です。ジムの担当者にお問い合わせください。");
+        setSubmitting(false);
+        return;
+      }
       const { error } = await supabase.from("trial_bookings").insert({
         id: bookingId,
         guest_name: guestName.trim(),
         guest_contact: guestEmail.trim(),
         booking_date: bookingDate,
-      });
+        tenant_id: insertTenantId,
+      } as any);
 
       if (error) {
         console.error("Trial booking failed:", {

@@ -126,9 +126,11 @@ const TrainerAnnouncementManager = () => {
       published_at: scheduleMode === "later" ? new Date(publishedAt).toISOString() : new Date().toISOString(),
     };
 
+    const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+    const tenantId = await fetchMyTenantId();
     const { error } = editing
       ? await supabase.from("announcements").update(payload).eq("id", editing.id)
-      : await supabase.from("announcements").insert({ ...payload, created_by: user.id });
+      : await supabase.from("announcements").insert(withTenant({ ...payload, created_by: user.id }, tenantId) as any);
 
     setSubmitting(false);
     if (error) { toast.error("保存に失敗しました: " + error.message); return; }

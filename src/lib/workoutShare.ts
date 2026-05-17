@@ -300,9 +300,9 @@ export async function renderShareCanvas(
     }
   }
 
-  // Compute footer total width — single-color "ジムボード" title
+  // Compute footer total width — single-color gym brand title
   ctx.font = `700 26px ${FONT_FAMILY}`;
-  const title = "ジムボード";
+  const title = (settings as any)?.gym_name || "ジムボード";
   const titleW = ctx.measureText(title).width;
 
   const logoSize = 48;

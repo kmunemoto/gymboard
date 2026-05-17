@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { useGymSettings } from "@/hooks/useGymSettings";
+import { useTenant } from "@/hooks/useTenant";
 import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";
 import { ACHIEVEMENTS } from "@/lib/avatarSystem";
 import { getAchievementIconComponent } from "./BadgeIcon";
@@ -17,6 +18,8 @@ interface Props {
 const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
   ({ session, theme, featuredBadges }, ref) => {
     const { settings } = useGymSettings();
+    const { tenant } = useTenant();
+    const gymBrand = tenant?.gym_name || "ジムボード";
 
     const isLight = theme === "light";
     const isTransparent = theme === "transparent";
@@ -203,7 +206,7 @@ const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
                 letterSpacing: "0.02em",
               }}
             >
-              <span style={{ color: accent }}>ジムボード</span>
+              <span style={{ color: accent }}>{gymBrand}</span>
             </div>
             <div
               style={{

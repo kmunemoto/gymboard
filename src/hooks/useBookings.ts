@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toJSTDate, formatJST } from "@/lib/timezone";
+import { getGymNameForUser } from "@/lib/tenantLookup";
 
 export interface BookingRow {
   id: string;

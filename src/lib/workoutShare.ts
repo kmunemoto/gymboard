@@ -300,12 +300,10 @@ export async function renderShareCanvas(
     }
   }
 
-  // Compute footer total width
+  // Compute footer total width — single-color "ジムボード" title
   ctx.font = `700 26px ${FONT_FAMILY}`;
-  const saluteW = ctx.measureText("Salute").width;
-  const nameGap = 8;
-  const goshoW = ctx.measureText("御所南").width;
-  const titleW = saluteW + nameGap + goshoW;
+  const title = "ジムボード";
+  const titleW = ctx.measureText(title).width;
 
   const logoSize = 48;
   const logoGap = 16;
@@ -320,9 +318,7 @@ export async function renderShareCanvas(
   ctx.textAlign = "left";
   ctx.fillStyle = accent;
   ctx.font = `700 26px ${FONT_FAMILY}`;
-  ctx.fillText("Salute", fx, footerY);
-  ctx.fillStyle = nameColor;
-  ctx.fillText("御所南", fx + saluteW + nameGap, footerY);
+  ctx.fillText(title, fx, footerY);
 
   // Subtitle
   ctx.fillStyle = subtleColor;

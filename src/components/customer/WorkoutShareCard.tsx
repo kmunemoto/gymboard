@@ -203,8 +203,7 @@ const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
                 letterSpacing: "0.02em",
               }}
             >
-              <span style={{ color: accent }}>Salute</span>
-              <span style={{ color: nameColor, marginLeft: 8 }}>御所南</span>
+              <span style={{ color: accent }}>ジムボード</span>
             </div>
             <div
               style={{

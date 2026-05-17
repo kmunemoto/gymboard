@@ -10,18 +10,6 @@ import { useMeasurements } from "@/hooks/useMeasurements";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStreak } from "@/hooks/useStreak";
 import StreakCard from "./StreakCard";
-import AvatarCard from "./AvatarCard";
-import WeightJourneyMapCard from "./WeightJourneyMapCard";
-import AvatarGenderSetupDialog from "./AvatarGenderSetupDialog";
-import DailyMissionCard from "./DailyMissionCard";
-import RaidBossCard from "./RaidBossCard";
-import GachaCard from "./GachaCard";
-import SeasonEventCard from "./SeasonEventCard";
-import QuestCard from "./QuestCard";
-import DungeonCard from "./DungeonCard";
-import LuminasChronicleCard from "./LuminasChronicleCard";
-import { useNextMilestone } from "@/hooks/useNextMilestone";
-import { Trophy } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getJSTNow, formatJST } from "@/lib/timezone";
@@ -50,38 +38,6 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const [latestDate, setLatestDate] = useState<string | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
-  const [needsGender, setNeedsGender] = useState(false);
-  const nextMilestone = useNextMilestone();
-
-  const gameMode = profile?.game_mode_enabled ?? true;
-
-
-  // Check if user has selected a gender for their avatar
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    (async () => {
-      // ensure row exists (ignore conflict)
-      try {
-        await supabase.from("user_avatars").insert({ user_id: user.id });
-      } catch {}
-      const { data } = await supabase
-        .from("user_avatars")
-        .select("gender")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!cancelled) setNeedsGender(!data?.gender);
-    })();
-    return () => { cancelled = true; };
-  }, [user]);
-
-  const handleSelectGender = async (gender: "male" | "female") => {
-    if (!user) return;
-    await supabase.from("user_avatars").update({ gender } as any).eq("user_id", user.id);
-    setNeedsGender(false);
-    // Trigger AvatarCard refresh via custom event
-    window.dispatchEvent(new CustomEvent("avatar-gender-updated"));
-  };
 
   // Fetch all workouts (for PR + latest session) and total sessions count
   useEffect(() => {
@@ -178,7 +134,6 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
 
       let message = "";
       if (hitMilestone) {
-        const months = Math.floor(hitMilestone / 4);
         if (hitMilestone === 4) message = `4週連続来店達成！1ヶ月間継続できています。この調子で頑張りましょう！`;
         else if (hitMilestone === 8) message = `8週連続来店達成！2ヶ月間の継続、素晴らしいです！`;
         else if (hitMilestone === 12) message = `12週連続来店達成！3ヶ月間の継続は本当にすごいことです！`;
@@ -286,10 +241,6 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
 
   return (
     <div className="px-4 py-4 space-y-5 slide-up">
-      {gameMode && <AvatarGenderSetupDialog open={needsGender} onSelect={handleSelectGender} />}
-
-      {/* ===== 基本機能エリア ===== */}
-
       {/* 1. Greeting */}
       {greetingHeader}
 
@@ -495,42 +446,6 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           姿勢チェック（AI）
         </Button>
       </section>
-
-      {/* ===== ゲームモードエリア ===== */}
-
-      {/* Avatar */}
-      {gameMode && <AvatarCard />}
-
-      {/* Weight Journey Map */}
-      {gameMode && <WeightJourneyMapCard />}
-
-      {/* Milestone */}
-      {gameMode && nextMilestone && nextMilestone.nextSessionCount && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
-          <Trophy className="w-3.5 h-3.5 text-primary shrink-0" />
-          <p className="text-[11px] text-muted-foreground break-all">
-            次のマイルストーン：<span className="font-bold text-foreground">{nextMilestone.milestoneName}</span>まであと <span className="font-bold text-primary">{nextMilestone.remaining}</span> セッション
-          </p>
-        </div>
-      )}
-
-      {/* Daily Mission */}
-      {gameMode && <DailyMissionCard />}
-
-      {/* Season Event */}
-      {gameMode && <SeasonEventCard />}
-
-      {/* Raid Boss */}
-      {gameMode && <RaidBossCard />}
-
-      {/* Dungeon */}
-      {gameMode && <DungeonCard onOpen={() => onNavigate?.("dungeon")} />}
-
-      {/* Luminas Chronicle */}
-      {gameMode && <LuminasChronicleCard onOpen={() => onNavigate?.("chronicle")} />}
-
-      {/* Gacha */}
-      {gameMode && <GachaCard />}
 
       <WorkoutShareModal
         open={shareOpen}

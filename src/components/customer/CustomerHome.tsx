@@ -1,0 +1,546 @@
+import { useEffect, useRef, useState } from "react";
+import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2 } from "lucide-react";
+import ProgressCharts from "./ProgressCharts";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import type { CustomerTab } from "./CustomerView";
+import { useProfile } from "@/hooks/useProfile";
+import { useMyBookings } from "@/hooks/useBookings";
+import { useMeasurements } from "@/hooks/useMeasurements";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStreak } from "@/hooks/useStreak";
+import StreakCard from "./StreakCard";
+import AvatarCard from "./AvatarCard";
+import WeightJourneyMapCard from "./WeightJourneyMapCard";
+import AvatarGenderSetupDialog from "./AvatarGenderSetupDialog";
+import DailyMissionCard from "./DailyMissionCard";
+import RaidBossCard from "./RaidBossCard";
+import GachaCard from "./GachaCard";
+import SeasonEventCard from "./SeasonEventCard";
+import QuestCard from "./QuestCard";
+import DungeonCard from "./DungeonCard";
+import LuminasChronicleCard from "./LuminasChronicleCard";
+import { useNextMilestone } from "@/hooks/useNextMilestone";
+import { Trophy } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { getJSTNow, formatJST } from "@/lib/timezone";
+import { ja } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { getCycleWindow } from "@/lib/courseProgress";
+import WorkoutShareModal from "./WorkoutShareModal";
+import { buildSession, type RawWorkout } from "@/lib/workoutShare";
+import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
+
+const planMaxSessions: Record<string, number> = {
+  '月4回': 4,
+  '月6回': 6,
+  '月8回': 8,
+  '通い放題': 15,
+};
+
+const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void }) => {
+  const { user } = useAuth();
+  const { profile, loading } = useProfile();
+  const { bookings, loading: bookingsLoading } = useMyBookings();
+  const { chartData, latest, loading: metricsLoading } = useMeasurements(user?.id);
+  const { currentStreak, bestStreak, loading: streakLoading, hasFutureBookingThisWeek } = useStreak(user?.id);
+  const streakNotifiedRef = useRef(false);
+  const [latestWorkouts, setLatestWorkouts] = useState<RawWorkout[]>([]);
+  const [latestDate, setLatestDate] = useState<string | null>(null);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [needsGender, setNeedsGender] = useState(false);
+  const nextMilestone = useNextMilestone();
+
+  const gameMode = profile?.game_mode_enabled ?? true;
+
+
+  // Check if user has selected a gender for their avatar
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      // ensure row exists (ignore conflict)
+      try {
+        await supabase.from("user_avatars").insert({ user_id: user.id });
+      } catch {}
+      const { data } = await supabase
+        .from("user_avatars")
+        .select("gender")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!cancelled) setNeedsGender(!data?.gender);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const handleSelectGender = async (gender: "male" | "female") => {
+    if (!user) return;
+    await supabase.from("user_avatars").update({ gender } as any).eq("user_id", user.id);
+    setNeedsGender(false);
+    // Trigger AvatarCard refresh via custom event
+    window.dispatchEvent(new CustomEvent("avatar-gender-updated"));
+  };
+
+  // Fetch all workouts (for PR + latest session) and total sessions count
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("workouts")
+      .select("id, workout_date, weight, reps, sets, exercise_id, exercises(name)")
+      .eq("user_id", user.id)
+      .order("workout_date", { ascending: false })
+      .limit(500)
+      .then(({ data }) => {
+        if (!data) return;
+        const rows: RawWorkout[] = data.map((w: any) => ({
+          id: w.id,
+          workout_date: w.workout_date,
+          weight: w.weight,
+          reps: w.reps,
+          sets: w.sets,
+          exercise_id: w.exercise_id,
+          exercise_name: w.exercises?.name || "不明",
+        }));
+        setLatestWorkouts(rows);
+        setLatestDate(rows.length > 0 ? rows[0].workout_date : null);
+      });
+
+    const nowIso = new Date().toISOString();
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .neq("status", "キャンセル済み")
+      .lt("booking_date", nowIso)
+      .then(({ count }) => setTotalSessions(count || 0));
+  }, [user]);
+
+  const latestSession = latestDate ? buildSession(latestWorkouts, latestDate) : null;
+
+  const displayName = profile?.display_name || "ゲスト";
+  const currentPlan = profile?.plan;
+  const hasPlan = !!currentPlan && currentPlan !== '初回無料体験';
+
+  // Filter future bookings only — based on JST wall clock
+  const now = getJSTNow();
+  const todayStr = formatJST(new Date(), "yyyy-MM-dd");
+  const nowTimeStr = formatJST(new Date(), "HH:mm");
+
+  const futureBookings = bookings.filter((b) => {
+    if (b.status === "キャンセル済み") return false;
+    if (b.date > todayStr) return true;
+    if (b.date === todayStr && b.startTime > nowTimeStr) return true;
+    return false;
+  });
+
+  const nextBooking = futureBookings.length > 0 ? futureBookings[0] : null;
+
+  // Compute cycle-based session count for nextBooking
+  const maxSessions = hasPlan ? (planMaxSessions[currentPlan] || 4) : 0;
+
+  const nextBookingCycle = nextBooking ? getCycleWindow(profile?.cycle_start_date, parseISO(nextBooking.date)) : null;
+
+  const cycleBookings = (() => {
+    if (!nextBookingCycle) return [];
+    return bookings
+      .filter((b) => {
+        if (b.status === "キャンセル済み") return false;
+        const d = parseISO(b.date);
+        return d >= nextBookingCycle.start && d < nextBookingCycle.end;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+  })();
+
+  const rawOrdinal = nextBooking
+    ? cycleBookings.findIndex((b) => b.id === nextBooking.id) + 1
+    : 0;
+  const nextBookingOrdinal = (rawOrdinal > 0 && maxSessions > 0)
+    ? ((rawOrdinal - 1) % maxSessions) + 1
+    : rawOrdinal;
+
+  // Streak LINE notification
+  useEffect(() => {
+    if (!user || streakLoading || streakNotifiedRef.current || currentStreak < 4) return;
+    const checkAndNotify = async () => {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("last_streak_notified, line_user_id")
+        .eq("user_id", user.id)
+        .single();
+      if (!prof?.line_user_id) return;
+
+      const lastNotified = (prof as any).last_streak_notified || 0;
+      const milestones = [4, 8, 12];
+      const hitMilestone = milestones.find(m => currentStreak >= m && lastNotified < m);
+      const isBestRecord = currentStreak > lastNotified && currentStreak > (profile?.best_streak || 0);
+
+      let message = "";
+      if (hitMilestone) {
+        const months = Math.floor(hitMilestone / 4);
+        if (hitMilestone === 4) message = `4週連続来店達成！1ヶ月間継続できています。この調子で頑張りましょう！`;
+        else if (hitMilestone === 8) message = `8週連続来店達成！2ヶ月間の継続、素晴らしいです！`;
+        else if (hitMilestone === 12) message = `12週連続来店達成！3ヶ月間の継続は本当にすごいことです！`;
+      } else if (isBestRecord) {
+        message = `自己ベスト更新！${currentStreak}週連続来店を達成しました！`;
+      }
+
+      if (message && currentStreak > lastNotified) {
+        streakNotifiedRef.current = true;
+        try {
+          await supabase.functions.invoke("send-line-message", {
+            body: { userId: prof.line_user_id, message },
+          });
+          await supabase
+            .from("profiles")
+            .update({ last_streak_notified: currentStreak } as any)
+            .eq("user_id", user.id);
+        } catch (e) {
+          // fire-and-forget
+        }
+      }
+    };
+    checkAndNotify();
+  }, [user, currentStreak, streakLoading]);
+
+  if (loading || bookingsLoading || metricsLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  // Format next booking date for display
+  const formatBookingDate = (b: typeof nextBooking) => {
+    if (!b) return "";
+    const d = parseISO(b.date);
+    return `${format(d, "M月d日（E）", { locale: ja })} ${b.startTime} - ${b.endTime}`;
+  };
+
+  // Compute weight/fat changes from first to latest
+  const first = chartData.length > 0 ? chartData[0] : null;
+  const weightChange = latest && first && latest.weight != null && first.weight != null
+    ? (latest.weight - first.weight).toFixed(1) : null;
+  const fatChange = latest && first && latest.body_fat != null && first.bodyFat != null
+    ? (latest.body_fat - (first.bodyFat as number)).toFixed(1) : null;
+
+  const greetingHeader = (
+    <div className="gym-gradient rounded-2xl p-5 text-primary-foreground relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-accent/10 -translate-y-8 translate-x-8" />
+        <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full bg-accent/5 translate-y-6 -translate-x-4" />
+        <div className="relative">
+          <p className="text-sm opacity-75 flex items-center gap-1">Good Morning <Flame className="w-3.5 h-3.5" /></p>
+          <h1 className="text-xl font-bold mt-1">{displayName}さん</h1>
+          <div className="flex items-center gap-4 mt-4">
+            <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
+              <Target className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">{bookings.length}回達成</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
+              <Flame className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">{currentStreak > 0 ? `${currentStreak}週連続` : '継続中'}</span>
+            </div>
+          </div>
+        </div>
+    </div>
+  );
+
+  const nextBookingSection = (
+    <section>
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <CalendarDays className="w-3.5 h-3.5" />
+          次回の予約
+        </h2>
+        {nextBooking ? (
+          <Card className="card-hover border-l-4 border-l-accent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-base">{formatBookingDate(nextBooking)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {nextBooking.booking_type === "初回無料体験" ? "初回無料体験" : "トレーニング"}
+                  </p>
+                  {hasPlan && maxSessions > 0 && (
+                    <p className="text-xs font-semibold text-accent mt-1.5">
+                      今回 {nextBookingOrdinal > 0 ? nextBookingOrdinal : "?"}/{maxSessions}回目
+                    </p>
+                  )}
+                </div>
+                <div className="w-12 h-12 rounded-xl accent-gradient flex items-center justify-center pulse-glow">
+                  <CalendarDays className="w-5 h-5 text-accent-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-4 text-center text-sm text-muted-foreground">
+              予約はありません
+            </CardContent>
+          </Card>
+        )}
+    </section>
+  );
+
+  return (
+    <div className="px-4 py-4 space-y-5 slide-up">
+      {gameMode && <AvatarGenderSetupDialog open={needsGender} onSelect={handleSelectGender} />}
+
+      {/* ===== 基本機能エリア ===== */}
+
+      {/* 1. Greeting */}
+      {greetingHeader}
+
+      {/* 2. Next Booking */}
+      {nextBookingSection}
+
+      {/* 3. Streak */}
+      {!streakLoading && (
+        <StreakCard
+          currentStreak={currentStreak}
+          bestStreak={bestStreak}
+          hasFutureBookingThisWeek={hasFutureBookingThisWeek}
+        />
+      )}
+
+      {/* 4. Weight / Body Fat Cards */}
+      {latest && (latest.weight != null || latest.body_fat != null) && (
+        <div className="grid grid-cols-2 gap-3">
+          {latest.weight != null && (
+            <Card className="card-hover">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-extrabold">{latest.weight}<span className="text-sm font-medium text-muted-foreground">kg</span></p>
+                <p className="text-xs text-muted-foreground mt-1">現在の体重</p>
+                {weightChange && (
+                  <div className="flex items-center justify-center gap-1 mt-1.5">
+                    {parseFloat(weightChange) <= 0 ? (
+                      <TrendingDown className="w-3 h-3 text-success" />
+                    ) : (
+                      <TrendingUp className="w-3 h-3 text-destructive" />
+                    )}
+                    <span className={`text-xs font-bold ${parseFloat(weightChange) <= 0 ? 'text-success' : 'text-destructive'}`}>{weightChange}kg</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {latest.body_fat != null && (
+            <Card className="card-hover">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-extrabold">{latest.body_fat}<span className="text-sm font-medium text-muted-foreground">%</span></p>
+                <p className="text-xs text-muted-foreground mt-1">体脂肪率</p>
+                {fatChange && (
+                  <div className="flex items-center justify-center gap-1 mt-1.5">
+                    {parseFloat(fatChange) <= 0 ? (
+                      <TrendingDown className="w-3 h-3 text-success" />
+                    ) : (
+                      <TrendingUp className="w-3 h-3 text-destructive" />
+                    )}
+                    <span className="text-xs font-bold" style={{ color: "#FF8C42" }}>{fatChange}%</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* 5. Progress Charts */}
+      <ProgressCharts />
+
+      {/* 6. Latest Workout */}
+      {latestSession && latestSession.exerciseCount > 0 && (
+        <section>
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <Dumbbell className="w-3.5 h-3.5" />
+            最新のトレーニング
+          </h2>
+          <div
+            onClick={() => onNavigate?.("training")}
+            className="rounded-2xl p-6 cursor-pointer transition active:scale-[0.99]"
+            style={{ backgroundColor: "#1A1A1A" }}
+          >
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-white font-bold text-lg">
+                  {formatJST(latestSession.date, "M月d日（E）", { locale: ja })}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "#999" }}>
+                  {summarizeMuscleGroups(latestSession.exercises.map((e) => e.exercise_name))}
+                </p>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShareOpen(true);
+                }}
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition hover:opacity-80"
+                style={{ backgroundColor: "rgba(10, 186, 181, 0.15)", color: "#0ABAB5" }}
+                aria-label="シェア"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Stats row */}
+            <div className="flex items-end justify-between mb-5">
+              <div className="flex-1 text-center">
+                <p className="text-white font-extrabold text-2xl leading-none">
+                  {latestSession.exerciseCount}
+                </p>
+                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>種目</p>
+              </div>
+              <div className="w-px h-10 self-center" style={{ backgroundColor: "#333" }} />
+              <div className="flex-1 text-center">
+                <p className="text-white font-extrabold text-2xl leading-none">
+                  {latestSession.totalSets}
+                </p>
+                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>セット</p>
+              </div>
+              <div className="w-px h-10 self-center" style={{ backgroundColor: "#333" }} />
+              <div className="flex-1 text-center">
+                <p className="font-extrabold text-2xl leading-none" style={{ color: "#0ABAB5" }}>
+                  {latestSession.totalVolume.toLocaleString()}
+                  <span className="text-xs font-medium ml-0.5" style={{ color: "#888" }}>kg</span>
+                </p>
+                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>総挙上量</p>
+              </div>
+            </div>
+
+            {/* Exercise list */}
+            <div className="pt-4 space-y-2" style={{ borderTop: "1px solid #333" }}>
+              {latestSession.exercises.slice(0, 3).map((ex) => {
+                const topSet = ex.sets.reduce((a, b) => (b.weight > a.weight ? b : a), ex.sets[0]);
+                return (
+                  <div key={ex.exercise_id} className="flex items-center justify-between text-xs">
+                    <span className="text-white truncate pr-2 flex items-center gap-1.5 min-w-0">
+                      <span className="truncate">{ex.exercise_name}</span>
+                      <span
+                        style={{
+                          backgroundColor: "rgba(10, 186, 181, 0.15)",
+                          color: "#0ABAB5",
+                          fontSize: "10px",
+                          fontWeight: 600,
+                          padding: "1px 6px",
+                          borderRadius: "4px",
+                          lineHeight: 1.4,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {getMuscleGroup(ex.exercise_name)}
+                      </span>
+                    </span>
+                    <span style={{ color: "#888" }} className="shrink-0">
+                      {topSet.weight}kg × {topSet.reps}
+                    </span>
+                  </div>
+                );
+              })}
+              {latestSession.exercises.length > 3 && (
+                <p className="text-xs text-center pt-1" style={{ color: "#888" }}>
+                  他{latestSession.exercises.length - 3}種目
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 7. Cycle Report Card */}
+      <section>
+        <Card className="card-hover border-l-4 border-l-accent cursor-pointer" onClick={() => onNavigate?.("report")}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl accent-gradient flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm flex items-center gap-1.5"><BarChart3 className="w-4 h-4" />今回のレポート</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {(() => {
+                       const currentCycle = getCycleWindow(profile?.cycle_start_date, now);
+                      if (!currentCycle) return "データを確認する";
+                      const cycleVisited = bookings.filter(b => {
+                        if (b.status === "キャンセル済み") return false;
+                        const d = parseISO(b.date);
+                        const bTime = new Date(`${b.date}T${b.endTime || "00:00"}`);
+                        return d >= currentCycle.start && d < currentCycle.end && bTime < now;
+                      }).length;
+                      const parts: string[] = [];
+                      if (cycleVisited > 0) parts.push(`来店${cycleVisited}回`);
+                      if (latest && latest.weight != null && weightChange) parts.push(`体重${parseFloat(weightChange) <= 0 ? '' : '+'}${weightChange}kg`);
+                      return parts.length > 0 ? parts.join(" / ") : "データを確認する";
+                    })()}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* 8. Posture Check CTA */}
+      <section>
+        <Button
+          variant="outline"
+          className="w-full h-14 text-base font-bold gap-2"
+          onClick={() => onNavigate?.("posture")}
+        >
+          <ScanLine className="w-5 h-5" />
+          姿勢チェック（AI）
+        </Button>
+      </section>
+
+      {/* ===== ゲームモードエリア ===== */}
+
+      {/* Avatar */}
+      {gameMode && <AvatarCard />}
+
+      {/* Weight Journey Map */}
+      {gameMode && <WeightJourneyMapCard />}
+
+      {/* Milestone */}
+      {gameMode && nextMilestone && nextMilestone.nextSessionCount && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
+          <Trophy className="w-3.5 h-3.5 text-primary shrink-0" />
+          <p className="text-[11px] text-muted-foreground break-all">
+            次のマイルストーン：<span className="font-bold text-foreground">{nextMilestone.milestoneName}</span>まであと <span className="font-bold text-primary">{nextMilestone.remaining}</span> セッション
+          </p>
+        </div>
+      )}
+
+      {/* Daily Mission */}
+      {gameMode && <DailyMissionCard />}
+
+      {/* Season Event */}
+      {gameMode && <SeasonEventCard />}
+
+      {/* Raid Boss */}
+      {gameMode && <RaidBossCard />}
+
+      {/* Dungeon */}
+      {gameMode && <DungeonCard onOpen={() => onNavigate?.("dungeon")} />}
+
+      {/* Luminas Chronicle */}
+      {gameMode && <LuminasChronicleCard onOpen={() => onNavigate?.("chronicle")} />}
+
+      {/* Gacha */}
+      {gameMode && <GachaCard />}
+
+      <WorkoutShareModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        session={latestSession}
+        streakWeeks={currentStreak}
+        totalSessions={totalSessions}
+      />
+    </div>
+  );
+};
+
+export default CustomerHome;

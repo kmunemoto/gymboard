@@ -1,0 +1,1 @@
+ALTER TABLE public.counseling_responses ADD COLUMN IF NOT EXISTS ward text;

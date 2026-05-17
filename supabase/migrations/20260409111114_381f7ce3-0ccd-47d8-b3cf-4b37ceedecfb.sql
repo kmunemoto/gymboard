@@ -1,0 +1,1 @@
+UPDATE public.gym_settings SET logo_url = NULL, updated_at = now() WHERE id = 'a0fefcb8-3bba-427f-885e-290ac6303126';

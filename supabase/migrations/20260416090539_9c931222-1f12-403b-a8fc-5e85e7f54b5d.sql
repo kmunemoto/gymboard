@@ -1,0 +1,1 @@
+ALTER TABLE public.counseling_responses ADD COLUMN trainer_memo text;

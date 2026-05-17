@@ -1,0 +1,1 @@
+ALTER FUNCTION public.get_quest_progress(uuid) VOLATILE;

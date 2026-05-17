@@ -1,0 +1,1 @@
+UPDATE public.announcements SET body = body || E'\n\n今後もSalute御所南をよろしくお願いいたします。' WHERE title = 'ガチャチケット10枚プレゼント！';

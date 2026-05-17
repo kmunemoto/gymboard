@@ -1,0 +1,1 @@
+ALTER TABLE public.trial_bookings ADD COLUMN google_event_id text;

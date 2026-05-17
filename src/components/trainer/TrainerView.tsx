@@ -18,6 +18,7 @@ import GymLogo from "@/components/GymLogo";
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/hooks/useTenant";
 
 export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "gym-settings";
 
@@ -28,6 +29,13 @@ const TrainerView = () => {
   const { user } = useAuth();
   const { count: unreadMessages, refetch: refetchUnread } = useUnreadCount();
   const { unreadCount: unreadCounseling } = useCounselingResponses();
+  const { tenant } = useTenant();
+
+  useEffect(() => {
+    if (tenant?.primary_color) {
+      document.documentElement.style.setProperty("--tenant-color", tenant.primary_color);
+    }
+  }, [tenant?.primary_color]);
 
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
@@ -84,8 +92,12 @@ const TrainerView = () => {
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="flex items-center justify-between px-3 sm:px-4 py-2">
           <div className="flex items-center gap-2 min-w-0">
-            <GymLogo size="sm" />
-            <span className="text-xs sm:text-sm font-bold truncate">ジムボード <span className="hidden sm:inline">管理画面</span></span>
+            {tenant?.logo_url ? (
+              <img src={tenant.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
+            ) : (
+              <GymLogo size="sm" />
+            )}
+            <span className="text-xs sm:text-sm font-bold truncate">{tenant?.gym_name || "ジムボード"} <span className="hidden sm:inline">管理画面</span></span>
           </div>
           <button
             onClick={() => { setTab("messages"); setSelectedClientId(null); }}

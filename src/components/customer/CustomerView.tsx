@@ -17,6 +17,7 @@ import GymLogo from "@/components/GymLogo";
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
 import AnnouncementsDialog from "./AnnouncementsDialog";
+import { useTenant } from "@/hooks/useTenant";
 
 export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report";
 
@@ -25,6 +26,13 @@ const CustomerView = () => {
   const { count: unreadChat, refetch: refetchUnread } = useUnreadCount();
   const { count: unreadAnnouncements, refetch: refetchAnnouncements } = useAnnouncementUnreadCount();
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const { tenant } = useTenant();
+
+  useEffect(() => {
+    if (tenant?.primary_color) {
+      document.documentElement.style.setProperty("--tenant-color", tenant.primary_color);
+    }
+  }, [tenant?.primary_color]);
 
   // Refetch unread when leaving chat
   useEffect(() => {
@@ -47,9 +55,13 @@ const CustomerView = () => {
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="max-w-md mx-auto flex items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-2">
-            <GymLogo size="sm" />
-            <span className="text-sm font-bold">ジムボード</span>
+          <div className="flex items-center gap-2 min-w-0">
+            {tenant?.logo_url ? (
+              <img src={tenant.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
+            ) : (
+              <GymLogo size="sm" />
+            )}
+            <span className="text-sm font-bold truncate">{tenant?.gym_name_short || tenant?.gym_name || "ジムボード"}</span>
           </div>
           <div className="flex items-center gap-1">
             <Button

@@ -93,17 +93,19 @@ const generateShareImage = async (key: string, name: string, rarity: string, gym
 
 const BadgeUnlockShareModal = ({ achievementKey, onClose }: Props) => {
   const [busy, setBusy] = useState(false);
+  const { tenant } = useTenant();
+  const gymBrand = tenant?.gym_name || "ジムボード";
   const a = ACHIEVEMENTS.find((x) => x.key === achievementKey);
   if (!achievementKey || !a) return null;
 
   const Icon = getAchievementIconComponent(a.key);
   const color = getRarityColor(a.rarity);
-  const text = `バッジ「${a.name}」を獲得しました！ #ジムボード #パーソナルジム`;
+  const text = `バッジ「${a.name}」を獲得しました！ #${gymBrand} #パーソナルジム`;
 
   const handleShare = async () => {
     setBusy(true);
     try {
-      const blob = await generateShareImage(a.key, a.name, a.rarity);
+      const blob = await generateShareImage(a.key, a.name, a.rarity, gymBrand);
       if (blob && navigator.share && (navigator as any).canShare?.({ files: [new File([blob], "badge.png", { type: "image/png" })] })) {
         const file = new File([blob], "badge.png", { type: "image/png" });
         await navigator.share({ files: [file], text });

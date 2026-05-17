@@ -18,6 +18,7 @@ import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow } from "@/lib/courseProgress";
+import { useTenant } from "@/hooks/useTenant";
 
 const PLAN_LABELS: Record<string, string> = {
   "初回無料体験": "初回無料体験",
@@ -40,6 +41,17 @@ const CustomerBooking = () => {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();
+  const { tenant } = useTenant();
+
+  // Tenant operating hours and slot duration (with sensible fallbacks)
+  const parseHour = (t?: string) => {
+    if (!t) return null;
+    const [h] = t.split(":").map(Number);
+    return Number.isFinite(h) ? h : null;
+  };
+  const openHour = parseHour(tenant?.operating_hours?.start) ?? 10;
+  const closeHour = parseHour(tenant?.operating_hours?.end) ?? 21;
+  const slotMinutes = tenant?.slot_duration_minutes ?? 60;
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -144,7 +156,10 @@ const CustomerBooking = () => {
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean }[] = [];
-    for (let totalMin = 600; totalMin <= 1260; totalMin += 15) {
+    const startMin = openHour * 60;
+    // last bookable slot starts so the session ends by closing time
+    const lastStart = closeHour * 60 - slotMinutes;
+    for (let totalMin = startMin; totalMin <= lastStart; totalMin += 15) {
       const h = Math.floor(totalMin / 60);
       const m = totalMin % 60;
       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;

@@ -199,7 +199,7 @@ const CustomerBooking = () => {
     }
 
     const [h, m] = slot.time.split(":").map(Number);
-    const endMin = h * 60 + m + 60;
+    const endMin = h * 60 + m + slotMinutes;
     const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
     const newBooking: BookingWithTime = {

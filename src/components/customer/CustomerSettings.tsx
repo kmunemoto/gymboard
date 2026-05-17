@@ -226,36 +226,6 @@ const CustomerSettings = () => {
         </Card>
       </section>
 
-      {/* アバター */}
-      {/* ゲームモード */}
-      <section>
-        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-          <Gamepad2 className="w-3.5 h-3.5" />
-          ゲームモード
-        </h2>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold">アバター・ダンジョン・ガチャ等</p>
-                <p className="text-xs text-muted-foreground break-all">OFFにするとホーム画面がシンプルになります</p>
-              </div>
-              <Switch
-                checked={profile?.game_mode_enabled ?? true}
-                onCheckedChange={async (checked) => {
-                  const res = await updateGameMode(checked);
-                  if (res?.error) {
-                    toast.error("更新に失敗しました");
-                  } else {
-                    toast.success(checked ? "ゲームモードをONにしました" : "ゲームモードをOFFにしました");
-                  }
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
       {/* LINE連携 */}
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">

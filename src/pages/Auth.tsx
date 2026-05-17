@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 type AuthMode = "login" | "signup";
 type LoginTarget = "customer" | "trainer";
 
-const EMAIL_CALLBACK_URL = "https://app.kyoto-salute.com/auth/callback";
+const EMAIL_CALLBACK_URL = `${window.location.origin}/auth/callback`;
 const TRAINER_LOGIN_EMAIL = "munekan2989@gmail.com";
 
 const Auth = () => {
@@ -149,10 +149,9 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex flex-col justify-start px-4 py-8 overflow-y-auto">
       <div className="w-full max-w-md space-y-6 slide-up mx-auto my-auto">
         {/* Logo & Title */}
-        {/* ⚠️ DO NOT change app name. Keep exactly: "パーソナルジムSalute御所南" */}
         <div className="text-center flex flex-col items-center gap-2">
           <GymLogo size="lg" />
-          <h1 className="text-2xl font-black tracking-tight">パーソナルジムSalute御所南</h1>
+          <h1 className="text-2xl font-black tracking-tight">ジムボード</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "login" ? "アカウントにログイン" : "新規アカウント作成"}
           </p>

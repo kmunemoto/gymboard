@@ -5,7 +5,7 @@ export async function buildCompareImage(
   beforeDate: string,
   afterDate: string,
   daysBetween: number,
-  watermark = "Salute 御所南",
+  watermark = "ジムボード",
 ): Promise<Blob> {
   const [beforeImg, afterImg] = await Promise.all([loadImage(beforeUrl), loadImage(afterUrl)]);
 

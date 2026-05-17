@@ -14,7 +14,7 @@ interface BookingCompleteDialogProps {
   planName: string;
 }
 
-const LOCATION = "京都市中京区毘沙門町533-1 プラザ御所南2階";
+const LOCATION = "（ジム設定に依存）";
 
 function buildCalendarUrl(date: string, startTime: string, endTime: string) {
   const dateClean = date.replace(/-/g, "");
@@ -22,7 +22,7 @@ function buildCalendarUrl(date: string, startTime: string, endTime: string) {
   const endClean = endTime.replace(":", "") + "00";
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: "Salute御所南トレーニング",
+    text: "ジムボードトレーニング",
     dates: `${dateClean}T${startClean}/${dateClean}T${endClean}`,
     ctz: "Asia/Tokyo",
     location: LOCATION,

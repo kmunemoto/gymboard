@@ -9,11 +9,8 @@ import TrainerSchedule from "./TrainerSchedule";
 import TrainerMessages from "./TrainerMessages";
 import TrainerExerciseManager from "./TrainerExerciseManager";
 import TrainerGymSettings from "./TrainerGymSettings";
-import TrainerRaidManager from "./TrainerRaidManager";
-import TrainerEventManager from "./TrainerEventManager";
-import TrainerRivalBattleManager from "./TrainerRivalBattleManager";
-import TrainerQuestManager from "./TrainerQuestManager";
 import TrainerAnnouncementManager from "./TrainerAnnouncementManager";
+import TrainerNotificationSettings from "./TrainerNotificationSettings";
 import CounselingResponseList from "./CounselingResponseList";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -22,7 +19,7 @@ import { useUnreadCount } from "@/hooks/useMessages";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
 
-export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "raid" | "events" | "rival" | "quest" | "announcements" | "gym-settings";
+export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "gym-settings";
 
 const TrainerView = () => {
   const [tab, setTab] = useState<TrainerTab>("dashboard");
@@ -83,12 +80,12 @@ const TrainerView = () => {
 
   return (
     <div className="min-h-screen bg-background fade-in overflow-x-hidden">
-      {/* Header — アプリ名は「パーソナルジムSalute御所南」で固定。絶対にカタカナに変更しないこと！ */}
+      {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="flex items-center justify-between px-3 sm:px-4 py-2">
           <div className="flex items-center gap-2 min-w-0">
             <GymLogo size="sm" />
-            <span className="text-xs sm:text-sm font-bold truncate">パーソナルジムSalute御所南 <span className="hidden sm:inline">管理画面</span></span>
+            <span className="text-xs sm:text-sm font-bold truncate">ジムボード <span className="hidden sm:inline">管理画面</span></span>
           </div>
           <button
             onClick={() => { setTab("messages"); setSelectedClientId(null); }}
@@ -120,11 +117,8 @@ const TrainerView = () => {
               {tab === "messages" && <TrainerMessages />}
               {tab === "exercises" && <TrainerExerciseManager />}
               {tab === "counseling" && <CounselingResponseList />}
-              {tab === "raid" && <TrainerRaidManager />}
-              {tab === "events" && <TrainerEventManager />}
-              {tab === "rival" && <TrainerRivalBattleManager />}
-              {tab === "quest" && <TrainerQuestManager />}
               {tab === "announcements" && <TrainerAnnouncementManager />}
+              {tab === "notifications" && <TrainerNotificationSettings />}
               {tab === "gym-settings" && <TrainerGymSettings onSignOut={signOut} />}
             </main>
         </div>

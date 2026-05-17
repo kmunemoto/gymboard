@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Sword, PartyPopper, Megaphone, Castle } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Megaphone, Bell } from "lucide-react";
 import type { TrainerTab } from "./TrainerView";
 
 interface TrainerSidebarProps {
@@ -11,28 +11,22 @@ interface TrainerSidebarProps {
 const desktopTabs: { id: TrainerTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   { id: "clients", label: "顧客一覧", icon: Users },
-  { id: "schedule", label: "予約管理", icon: CalendarDays },
+  { id: "schedule", label: "スケジュール", icon: CalendarDays },
   { id: "messages", label: "メッセージ", icon: MessageCircle },
-  { id: "exercises", label: "種目設定", icon: Dumbbell },
+  { id: "exercises", label: "種目管理", icon: Dumbbell },
   { id: "counseling", label: "カウンセリング", icon: ClipboardList },
-  { id: "raid", label: "レイド管理", icon: Sword },
-  { id: "events", label: "イベント管理", icon: PartyPopper },
-  { id: "quest", label: "クエスト管理", icon: Castle },
-  { id: "announcements", label: "お知らせ", icon: Megaphone },
+  { id: "announcements", label: "お知らせ管理", icon: Megaphone },
+  { id: "notifications", label: "通知設定", icon: Bell },
   { id: "gym-settings", label: "ジム設定", icon: Settings2 },
 ];
 
 const mobileTabs: { id: TrainerTab; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: "dashboard", label: "ダッシュボード", icon: LayoutDashboard },
-  { id: "clients", label: "顧客一覧", icon: Users },
-  { id: "schedule", label: "予約管理", icon: CalendarDays },
-  { id: "exercises", label: "種目管理", icon: Dumbbell },
-  { id: "counseling", label: "カウンセリング", icon: ClipboardList },
-  { id: "raid", label: "レイド", icon: Sword },
-  { id: "events", label: "イベント", icon: PartyPopper },
-  { id: "quest", label: "クエスト", icon: Castle },
+  { id: "dashboard", label: "ホーム", icon: LayoutDashboard },
+  { id: "clients", label: "顧客", icon: Users },
+  { id: "schedule", label: "予約", icon: CalendarDays },
+  { id: "exercises", label: "種目", icon: Dumbbell },
   { id: "announcements", label: "お知らせ", icon: Megaphone },
-  { id: "gym-settings", label: "ジム設定", icon: Settings2 },
+  { id: "gym-settings", label: "設定", icon: Settings2 },
 ];
 
 const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCounseling = 0 }: TrainerSidebarProps) => {

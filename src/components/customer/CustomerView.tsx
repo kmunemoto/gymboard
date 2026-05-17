@@ -11,34 +11,20 @@ import CustomerTraining from "./CustomerTraining";
 import CustomerSettings from "./CustomerSettings";
 import CustomerPosture from "./CustomerPosture";
 import CustomerMonthlyReport from "./CustomerMonthlyReport";
-import CustomerQuest from "./CustomerQuest";
-import LuminasChronicle from "./luminas/LuminasChronicle";
-import CustomerDungeon from "./CustomerDungeon";
-import QuestBattleResultDialog from "./QuestBattleResultDialog";
 import PwaInstallBanner from "./PwaInstallBanner";
 import { Button } from "@/components/ui/button";
 import GymLogo from "@/components/GymLogo";
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
-import { useProfile } from "@/hooks/useProfile";
 import AnnouncementsDialog from "./AnnouncementsDialog";
 
-export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report" | "quest" | "dungeon" | "chronicle";
+export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report";
 
 const CustomerView = () => {
   const [tab, setTab] = useState<CustomerTab>("home");
   const { count: unreadChat, refetch: refetchUnread } = useUnreadCount();
   const { count: unreadAnnouncements, refetch: refetchAnnouncements } = useAnnouncementUnreadCount();
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
-  const { profile } = useProfile();
-  const gameMode = profile?.game_mode_enabled ?? true;
-
-  // Bounce away from gamification tabs if game mode is OFF
-  useEffect(() => {
-    if (!gameMode && (tab === "quest" || tab === "dungeon" || tab === "chronicle")) {
-      setTab("home");
-    }
-  }, [gameMode, tab]);
 
   // Refetch unread when leaving chat
   useEffect(() => {
@@ -51,7 +37,7 @@ const CustomerView = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success" && params.get("session_id")) {
-      toast.success("購入が完了しました！コインが反映されるまで数秒お待ちください");
+      toast.success("購入が完了しました！");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -63,8 +49,7 @@ const CustomerView = () => {
         <div className="max-w-md mx-auto flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-2">
             <GymLogo size="sm" />
-            {/* ⚠️ DO NOT change this app name. Keep exactly as-is: "パーソナルジムSalute御所南" — never convert "Salute" to katakana */}
-            <span className="text-sm font-bold">パーソナルジムSalute御所南</span>
+            <span className="text-sm font-bold">ジムボード</span>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -101,13 +86,9 @@ const CustomerView = () => {
         {tab === "settings" && <CustomerSettings />}
         {tab === "posture" && <CustomerPosture />}
         {tab === "report" && <CustomerMonthlyReport onBack={() => setTab("home")} />}
-        {gameMode && tab === "quest" && <CustomerQuest onBack={() => setTab("home")} />}
-        {gameMode && tab === "dungeon" && <CustomerDungeon onBack={() => setTab("home")} />}
-        {gameMode && tab === "chronicle" && <LuminasChronicle onBack={() => setTab("home")} />}
       </div>
       <BottomNav activeTab={tab} onTabChange={setTab} unreadChat={unreadChat} />
       <PwaInstallBanner />
-      <QuestBattleResultDialog />
       <AnnouncementsDialog
         open={announcementsOpen}
         onClose={() => {

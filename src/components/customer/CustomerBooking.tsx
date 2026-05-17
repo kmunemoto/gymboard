@@ -217,7 +217,7 @@ const CustomerBooking = () => {
       supabase.functions.invoke("send-line-message", {
         body: {
           user_id: user.id,
-          message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\nパーソナルジムSalute御所南`,
+          message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\nジムボード`,
         },
       }).catch((e) => console.error("LINE message failed:", e));
     }

@@ -81,7 +81,7 @@ const generateShareImage = async (key: string, name: string, rarity: string): Pr
 
   // Footer brand
   ctx.font = "700 56px 'Noto Sans JP', sans-serif";
-  ctx.fillText("Salute 御所南", W / 2, H - 240);
+  ctx.fillText("ジムボード", W / 2, H - 240);
   ctx.font = "300 28px 'Noto Sans JP', sans-serif";
   ctx.fillText("PERSONAL GYM", W / 2, H - 180);
 
@@ -97,7 +97,7 @@ const BadgeUnlockShareModal = ({ achievementKey, onClose }: Props) => {
 
   const Icon = getAchievementIconComponent(a.key);
   const color = getRarityColor(a.rarity);
-  const text = `バッジ「${a.name}」を獲得しました！ #Salute御所南 #パーソナルジム`;
+  const text = `バッジ「${a.name}」を獲得しました！ #ジムボード #パーソナルジム`;
 
   const handleShare = async () => {
     setBusy(true);

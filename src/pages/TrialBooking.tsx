@@ -210,7 +210,7 @@ const TrialBooking = () => {
         const trainerId = trainerRoles?.[0]?.user_id;
         if (!trainerId) return;
 
-        const message = `【Salute御所南】🎉 新規の体験予約が入りました！\n\n・お名前：${guestName.trim()} 様\n・日時：${formattedDate} ${slot.time}〜${endTime}\n\nアプリの予約管理画面から詳細を確認してください。`;
+        const message = `【ジムボード】🎉 新規の体験予約が入りました！\n\n・お名前：${guestName.trim()} 様\n・日時：${formattedDate} ${slot.time}〜${endTime}\n\nアプリの予約管理画面から詳細を確認してください。`;
 
         await supabase.functions.invoke("send-line-message", {
           body: { user_id: trainerId, message },
@@ -255,11 +255,11 @@ const TrialBooking = () => {
       const endClean = completedInfo.rawEndTime.replace(":", "") + "00";
       const params = new URLSearchParams({
         action: "TEMPLATE",
-        text: "【初回無料体験】パーソナルジムSalute御所南",
+        text: "【初回無料体験】ジムボード",
         dates: `${dateClean}T${startClean}/${dateClean}T${endClean}`,
         ctz: "Asia/Tokyo",
         details: "初回無料体験（カウンセリング＋トレーニング）。\n当日は動きやすい服装でお越しください。\nご不明な点がございましたらお気軽にお問い合わせください。",
-        location: "パーソナルジムSalute御所南",
+        location: "ジムボード",
       });
       return `https://calendar.google.com/calendar/render?${params.toString()}`;
     })();
@@ -272,7 +272,7 @@ const TrialBooking = () => {
       const ics = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Salute Goshominami//Trial Booking//JA",
+        "PRODID:-//GymBoard//Trial Booking//JA",
         "CALSCALE:GREGORIAN",
         "BEGIN:VTIMEZONE",
         "TZID:Asia/Tokyo",
@@ -284,12 +284,12 @@ const TrialBooking = () => {
         "END:STANDARD",
         "END:VTIMEZONE",
         "BEGIN:VEVENT",
-        `UID:trial-${completedInfo.rawDate}-${completedInfo.rawStartTime}@kyoto-salute.com`,
+        `UID:trial-${completedInfo.rawDate}-${completedInfo.rawStartTime}@gymboard.app`,
         `DTSTAMP:${dtstamp}`,
         `DTSTART;TZID=Asia/Tokyo:${dateClean}T${startClean}`,
         `DTEND;TZID=Asia/Tokyo:${dateClean}T${endClean}`,
-        "SUMMARY:【Salute御所南】初回無料体験",
-        "LOCATION:京都市中京区毘沙門町533-1 プラザ御所南2階",
+        "SUMMARY:【ジムボード】初回無料体験",
+        "LOCATION:（ジム設定に依存）",
         "DESCRIPTION:カウンセリング＋トレーニング体験（計60分）\\n動きやすい服装でお越しください。",
         "END:VEVENT",
         "END:VCALENDAR",
@@ -346,7 +346,7 @@ const TrialBooking = () => {
             </div>
             <div className="flex justify-center pt-2">
               <GymLogo size="sm" />
-              <span className="ml-2 text-sm font-bold text-muted-foreground">パーソナルジムSalute御所南</span>
+              <span className="ml-2 text-sm font-bold text-muted-foreground">ジムボード</span>
             </div>
           </CardContent>
         </Card>

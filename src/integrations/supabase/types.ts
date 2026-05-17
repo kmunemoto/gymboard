@@ -3211,6 +3211,17 @@ export type Database = {
           status: string
         }[]
       }
+      get_default_tenant_public: {
+        Args: never
+        Returns: {
+          address: string
+          gym_name: string
+          gym_name_short: string
+          id: string
+          logo_url: string
+          primary_color: string
+        }[]
+      }
       get_login_bonus_status: { Args: { p_user_id: string }; Returns: Json }
       get_my_tenant_id: { Args: never; Returns: string }
       get_player_combat_stats: { Args: { p_user_id: string }; Returns: Json }

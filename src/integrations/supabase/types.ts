@@ -3128,6 +3128,16 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      lookup_tenant_by_invite_code: {
+        Args: { p_code: string }
+        Returns: {
+          address: string
+          gym_name: string
+          id: string
+          logo_url: string
+          primary_color: string
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string

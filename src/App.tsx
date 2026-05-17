@@ -12,6 +12,7 @@ import TrialBooking from "./pages/TrialBooking.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Terms from "./pages/Terms.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
+import JoinGym from "./pages/JoinGym.tsx";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,8 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/join" element={<JoinGym />} />
+            <Route path="/join/:code" element={<JoinGym />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

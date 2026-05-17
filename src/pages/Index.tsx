@@ -6,29 +6,41 @@ import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+type Status = "checking" | "has" | "missing-trainer" | "missing-customer";
+
 const Index = () => {
   const { user, role, loading } = useAuth();
-  const [tenantCheck, setTenantCheck] = useState<"checking" | "has" | "missing">("checking");
+  const [status, setStatus] = useState<Status>("checking");
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      setTenantCheck("missing");
+      setStatus("checking");
       return;
     }
-    setTenantCheck("checking");
-    supabase
-      .from("tenant_members")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        setTenantCheck(data ? "has" : "missing");
-      });
+    setStatus("checking");
+    (async () => {
+      const { data: member } = await supabase
+        .from("tenant_members")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (member) {
+        setStatus("has");
+        return;
+      }
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "trainer")
+        .maybeSingle();
+      setStatus(roleRow ? "missing-trainer" : "missing-customer");
+    })();
   }, [user, loading]);
 
-  if (loading || (user && tenantCheck === "checking")) {
+  if (loading || (user && status === "checking")) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
@@ -40,8 +52,11 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  if (tenantCheck === "missing") {
+  if (status === "missing-trainer") {
     return <Navigate to="/onboarding" replace />;
+  }
+  if (status === "missing-customer") {
+    return <Navigate to="/join" replace />;
   }
 
   if (role === "trainer") {

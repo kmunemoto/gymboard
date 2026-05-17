@@ -586,11 +586,11 @@ const CustomerBooking = () => {
                           const t = slots.find((s) => s.id === selectedSlot)?.time;
                           if (!t) return "";
                           const [h, m] = t.split(":").map(Number);
-                          const end = h * 60 + m + 60;
+                          const end = h * 60 + m + slotMinutes;
                           return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
                         })()}
                       </span>
-                      （60分）
+                      （{slotMinutes}分）
                     </p>
                     <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting}>
                       {submitting ? (

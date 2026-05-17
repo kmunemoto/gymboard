@@ -6,6 +6,7 @@ import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 
 interface Props {
   open: boolean;
@@ -19,6 +20,8 @@ type PhotoLayout = "center" | "grid" | "bottom";
 
 const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions }: Props) => {
   const { user } = useAuth();
+  const { tenant } = useTenant();
+  const gymBrand = tenant?.gym_name || "ジムボード";
   const [featuredBadges, setFeaturedBadges] = useState<string[]>([]);
   useEffect(() => {
     if (!open || !user) return;
@@ -215,9 +218,9 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         ctx.fillText(text, cx, cy);
       };
 
-      // Draw "ジムボード" — single color (accent / Tiffany blue)
+      // Draw gym brand name — single color (accent / Tiffany blue)
       const drawSaluteTitle = (cx: number, cy: number) => {
-        const text = "ジムボード";
+        const text = gymBrand;
         const prevFill = ctx.fillStyle;
         ctx.fillStyle = "#0ABAB5";
         ctx.fillText(text, cx, cy);

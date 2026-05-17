@@ -12,20 +12,19 @@ interface BookingCompleteDialogProps {
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   planName: string;
+  gymName?: string;
 }
 
-const LOCATION = "（ジム設定に依存）";
-
-function buildCalendarUrl(date: string, startTime: string, endTime: string) {
+function buildCalendarUrl(date: string, startTime: string, endTime: string, gymName: string) {
   const dateClean = date.replace(/-/g, "");
   const startClean = startTime.replace(":", "") + "00";
   const endClean = endTime.replace(":", "") + "00";
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: "ジムボードトレーニング",
+    text: `${gymName}トレーニング`,
     dates: `${dateClean}T${startClean}/${dateClean}T${endClean}`,
     ctz: "Asia/Tokyo",
-    location: LOCATION,
+    location: gymName,
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
@@ -45,10 +44,12 @@ const BookingCompleteDialog = ({
   startTime,
   endTime,
   planName,
+  gymName,
 }: BookingCompleteDialogProps) => {
+  const resolvedGym = gymName || "ジムボード";
   // Always render in JST regardless of viewer timezone.
   const formattedDate = date ? formatJST(`${date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }) : "";
-  const calendarUrl = date ? buildCalendarUrl(date, startTime, endTime) : "#";
+  const calendarUrl = date ? buildCalendarUrl(date, startTime, endTime, resolvedGym) : "#";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>

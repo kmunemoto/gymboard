@@ -3,6 +3,7 @@ import { Share2, X, Copy } from "lucide-react";
 import { ACHIEVEMENTS, getRarityColor } from "@/lib/avatarSystem";
 import BadgeIcon, { getAchievementIconComponent } from "./BadgeIcon";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/useTenant";
 
 interface Props {
   achievementKey: string | null;
@@ -16,7 +17,7 @@ const RARITY_GRADIENT_BG: Record<string, string> = {
 };
 const RARITY_LABEL: Record<string, string> = { normal: "ノーマル", rare: "レア", epic: "エピック" };
 
-const generateShareImage = async (key: string, name: string, rarity: string): Promise<Blob | null> => {
+const generateShareImage = async (key: string, name: string, rarity: string, gymBrand: string): Promise<Blob | null> => {
   const W = 1080;
   const H = 1920;
   const canvas = document.createElement("canvas");
@@ -81,7 +82,7 @@ const generateShareImage = async (key: string, name: string, rarity: string): Pr
 
   // Footer brand
   ctx.font = "700 56px 'Noto Sans JP', sans-serif";
-  ctx.fillText("ジムボード", W / 2, H - 240);
+  ctx.fillText(gymBrand, W / 2, H - 240);
   ctx.font = "300 28px 'Noto Sans JP', sans-serif";
   ctx.fillText("PERSONAL GYM", W / 2, H - 180);
 
@@ -92,17 +93,19 @@ const generateShareImage = async (key: string, name: string, rarity: string): Pr
 
 const BadgeUnlockShareModal = ({ achievementKey, onClose }: Props) => {
   const [busy, setBusy] = useState(false);
+  const { tenant } = useTenant();
+  const gymBrand = tenant?.gym_name || "ジムボード";
   const a = ACHIEVEMENTS.find((x) => x.key === achievementKey);
   if (!achievementKey || !a) return null;
 
   const Icon = getAchievementIconComponent(a.key);
   const color = getRarityColor(a.rarity);
-  const text = `バッジ「${a.name}」を獲得しました！ #ジムボード #パーソナルジム`;
+  const text = `バッジ「${a.name}」を獲得しました！ #${gymBrand} #パーソナルジム`;
 
   const handleShare = async () => {
     setBusy(true);
     try {
-      const blob = await generateShareImage(a.key, a.name, a.rarity);
+      const blob = await generateShareImage(a.key, a.name, a.rarity, gymBrand);
       if (blob && navigator.share && (navigator as any).canShare?.({ files: [new File([blob], "badge.png", { type: "image/png" })] })) {
         const file = new File([blob], "badge.png", { type: "image/png" });
         await navigator.share({ files: [file], text });

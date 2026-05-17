@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toJSTDate, formatJST } from "@/lib/timezone";
+import { getGymNameForUser } from "@/lib/tenantLookup";
 
 export interface BookingRow {
   id: string;
@@ -285,11 +286,12 @@ async function sendBookingConfirmationToCustomer(
   const hm = formatJST(`${date}T${startTime}:00+09:00`, "HH:mm", { locale: ja });
 
   const proxyNote = isProxyBooking ? "\n※トレーナーが代理で予約を登録しました。" : "";
+  const gymName = await getGymNameForUser(userId);
 
   await supabase.functions.invoke("send-line-message", {
     body: {
       user_id: userId,
-      message: `✅ 予約確定\n\n${md}（${dow}）${hm}\n\n${name}様、トレーニングのご予約が完了しました。${proxyNote}\n\nプラン：${bookingType}\n\nジムボード`,
+      message: `✅ 予約確定\n\n${md}（${dow}）${hm}\n\n${name}様、トレーニングのご予約が完了しました。${proxyNote}\n\nプラン：${bookingType}\n\n${gymName}`,
     },
   });
 }
@@ -312,11 +314,12 @@ async function sendNewBookingLineToTrainer(
   if (!trainerId) return;
 
   const dateStr = formatJST(`${date}T${startTime}:00+09:00`, "M月d日（E） HH:mm", { locale: ja });
+  const gymName = await getGymNameForUser(userId);
 
   await supabase.functions.invoke("send-line-message", {
     body: {
       user_id: trainerId,
-      message: `📅 新規予約通知\n\n${dateStr}\n\n${customerName}様から予約が入りました。\n\nプラン：${bookingType}\n\nジムボード`,
+      message: `📅 新規予約通知\n\n${dateStr}\n\n${customerName}様から予約が入りました。\n\nプラン：${bookingType}\n\n${gymName}`,
     },
   });
 }
@@ -404,6 +407,7 @@ async function sendCancelLineNotification(
   ]);
   const customerName = profile?.display_name || "顧客";
   const trainerId = trainerIds?.[0]?.user_id;
+  const gymName = await getGymNameForUser(booking.user_id);
 
   if (cancelledByTrainer) {
     // Notify customer (gated by feature flag)
@@ -412,7 +416,7 @@ async function sendCancelLineNotification(
       const custRes = await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: booking.user_id,
-          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\nジムボード`,
+          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
         },
       });
       console.log("LINE送信結果(顧客):", custRes);
@@ -424,7 +428,7 @@ async function sendCancelLineNotification(
       const trRes = await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: trainerId,
-          message: `✅ キャンセル処理完了\n\n${dateStr}\n\n${customerName}様の予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\nジムボード`,
+          message: `✅ キャンセル処理完了\n\n${dateStr}\n\n${customerName}様の予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
         },
       });
       console.log("LINE送信結果(トレーナー):", trRes);
@@ -436,7 +440,7 @@ async function sendCancelLineNotification(
       await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: trainerId,
-          message: `❌ 予約キャンセル通知\n\n${dateStr}\n\n${customerName}様がキャンセルしました。\n\nプラン：${booking.booking_type}\n\nジムボード`,
+          message: `❌ 予約キャンセル通知\n\n${dateStr}\n\n${customerName}様がキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
         },
       });
     }
@@ -447,7 +451,7 @@ async function sendCancelLineNotification(
       await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: booking.user_id,
-          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\nジムボード`,
+          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
         },
       });
     }

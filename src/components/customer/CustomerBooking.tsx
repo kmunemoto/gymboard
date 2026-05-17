@@ -232,7 +232,7 @@ const CustomerBooking = () => {
       supabase.functions.invoke("send-line-message", {
         body: {
           user_id: user.id,
-          message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\nジムボード`,
+          message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\n${tenant?.gym_name || "ジムボード"}`,
         },
       }).catch((e) => console.error("LINE message failed:", e));
     }
@@ -394,7 +394,7 @@ const CustomerBooking = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            window.open(buildGoogleCalendarUrl(b.date, b.startTime, b.endTime, planLabel(b.booking_type)), "_blank");
+                            window.open(buildGoogleCalendarUrl(b.date, b.startTime, b.endTime, planLabel(b.booking_type), tenant?.gym_name), "_blank");
                           }}
                           className="text-muted-foreground hover:text-accent transition-colors p-2"
                           title="Googleカレンダーに追加"
@@ -636,6 +636,7 @@ const CustomerBooking = () => {
         startTime={lastBooked?.startTime || ""}
         endTime={lastBooked?.endTime || ""}
         planName={lastBooked ? planLabel(lastBooked.booking_type) : ""}
+        gymName={tenant?.gym_name}
       />
 
       <BookingCancelledDialog

@@ -147,6 +147,7 @@ export async function renderShareCanvas(
   session: WorkoutSession,
   theme: ShareCanvasTheme,
   logoUrl?: string | null,
+  gymName?: string,
 ): Promise<HTMLCanvasElement> {
   const W = 1080;
   const H = 1920;
@@ -300,9 +301,9 @@ export async function renderShareCanvas(
     }
   }
 
-  // Compute footer total width — single-color "ジムボード" title
+  // Compute footer total width — single-color gym brand title
   ctx.font = `700 26px ${FONT_FAMILY}`;
-  const title = "ジムボード";
+  const title = gymName || "ジムボード";
   const titleW = ctx.measureText(title).width;
 
   const logoSize = 48;

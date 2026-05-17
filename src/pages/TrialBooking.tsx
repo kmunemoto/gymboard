@@ -42,17 +42,26 @@ const TrialBooking = () => {
   const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string } | null>(null);
   const [existingBookings, setExistingBookings] = useState<TrialSlotBooking[]>([]);
 
-  // Fetch tenant info when a tenantId is present in the URL
+  // Fetch tenant info: use the URL :tenantId, or fall back to the oldest
+  // active tenant for the legacy `/trial` link.
   useEffect(() => {
-    if (!tenantId) return;
     (async () => {
-      const { data, error } = await supabase.rpc("get_tenant_public", { p_id: tenantId });
-      if (error) {
-        console.error("Failed to load tenant:", error);
+      if (tenantId) {
+        const { data, error } = await supabase.rpc("get_tenant_public", { p_id: tenantId });
+        if (error) { console.error("Failed to load tenant:", error); return; }
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) setTenant(row as PublicTenant);
         return;
       }
-      const row = Array.isArray(data) ? data[0] : data;
-      if (row) setTenant(row as PublicTenant);
+      // No URL param — pick the first tenant (legacy single-gym mode)
+      const { data } = await supabase
+        .from("tenants")
+        .select("id, gym_name, gym_name_short, address, logo_url, primary_color")
+        .in("status", ["active", "trial"])
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (data) setTenant(data as unknown as PublicTenant);
     })();
   }, [tenantId]);
 

@@ -1,54 +1,88 @@
-# ログインボーナス + シーズンパスシステム実装計画
+# ジムボード変換プラン
 
-## Phase 1: データベース（マイグレーション）
+このプロジェクトを「パーソナルジムSalute御所南」から汎用パーソナルジム向けSaaS「ジムボード」に変換します。作業は **3フェーズ** に分けて進めます。
 
-### Part 1: ログインボーナス
-- `daily_login_bonuses` テーブル作成（user_id, login_date, day_number, reward_type, reward_amount, claimed_at）
-- RLS: 自分のみSELECT/INSERT、トレーナーは全件閲覧
-- RPC `claim_daily_login_bonus(p_user_id)`：JST今日判定、昨日連続チェック、Day 1〜7サイクル、報酬付与（coins/exp/gacha_ticket）。プレミアムなら +5コイン上乗せ
-- RPC `get_login_bonus_status(p_user_id)`：今日取得済みフラグ、現在連続日数、7日カレンダー進捗、次の報酬
+---
 
-### Part 2: シーズンパス
-- `season_pass_config`（month UNIQUE, name, start/end_date, premium_cost_coins, premium_exp_multiplier, premium_daily_coins）
-- `season_pass_levels`（config_id, level, required_points, free_/premium_ reward_type/key/amount）
-- `user_season_pass`（user_id, config_id, is_premium, current_points, current_level）
-- `user_season_pass_claims`（user_id, config_id, level, track）
-- RLS：ユーザーは自分のみ、masterテーブルは全認証ユーザーがSELECT、トレーナーが書込
-- RPC `add_season_pass_points(p_user_id, p_points, p_action)`：当月config取得、user_season_pass UPSERT、レベル再計算
-- RPC `claim_season_pass_reward(p_user_id, p_level, p_track)`：プレミアム判定、重複チェック、報酬付与
-- RPC `purchase_premium_pass(p_user_id)`：コイン消費、is_premium = true
-- 初期データ：5月パスconfig + 30レベル分
+## フェーズ1: ゲーミフィケーション機能の削除
 
-### 既存処理への組み込み
-- `claim_daily_login_bonus` 内末尾に `add_season_pass_points(..., 10, 'login_bonus')`
-- 既存のセッション保存・ミッション達成・ライバルバトル・クエストバトルRPCに同様に追加（既存RPC調査の上）
-- avatar_exp_logs INSERT時にプレミアム1.5倍：トリガーで実装（is_premium判定）
+### 顧客画面（CustomerHome.tsx）
+以下のカード/import/関連state/hooksを全削除:
+- AvatarCard, AvatarGenderSetupDialog
+- LoginBonusBanner, LoginBonusDialog, useLoginBonus
+- DailyMissionCard, RaidBossCard, GachaCard
+- SeasonEventCard, DungeonCard, LuminasChronicleCard
+- WeightJourneyMapCard
+- useNextMilestone とマイルストーンバナーJSX
 
-## Phase 2: フロントエンド（フック）
+**残すもの**: StreakCard, ProgressCharts, WorkoutShareModal, 次回予約, 統計カード, サイクルレポート, 体重・体脂肪率カード
 
-- `src/hooks/useLoginBonus.ts`：status取得、claim実行、未取得判定
-- `src/hooks/useSeasonPass.ts`：当月パス、レベル一覧、claim/purchase
+### CustomerView.tsx
+- `CustomerTab` 型から `"quest" | "dungeon" | "chronicle"` を削除
+- 対応するタブレンダリングと import を削除
 
-## Phase 3: フロントエンド（UI）
+### CustomerTraining.tsx
+- 「ランキング」タブを削除（タブは「トレーニング」「写真」の2つに）
 
-### ログインボーナス
-- `src/components/customer/LoginBonusDialog.tsx`：7日カレンダー、Day 7特別デザイン、受取ボタン、報酬演出
-- `CustomerHome` または `CustomerView` に自動表示ロジック（0.5秒遅延、未取得のみ）
-- `CustomerHome` 上部にバナー（未取得時のみ）
+### CustomerSettings.tsx
+- `game_mode_enabled` トグルがあれば削除
 
-### シーズンパス
-- `src/pages/SeasonPass.tsx` 新規ページ + `App.tsx` にルート `/season-pass` 追加
-- ヘッダー（パス名、残り日数、ポイントバー、プレミアム購入ボタン）
-- 30レベル縦スクロール、無料/プレミアム2トラック横並び
-- 受取ボタン、ロック、チェック表示
-- `CustomerHome` にシーズンパスカード（未受取で赤ドット）
+### トレーナー管理画面
+- TrainerRaidManager / TrainerQuestManager / TrainerRivalBattleManager / TrainerClientAvatarTab を削除
+- TrainerEventManager のゲーム関連部分を削除（お知らせ管理は残す）
+- TrainerSidebar からゲーム系メニューを削除
 
-## Phase 4: 検証
+**残すメニュー**: ダッシュボード / 顧客一覧 / スケジュール / 種目管理 / お知らせ管理 / 通知設定 / ジム設定
 
-- ビルド確認、コンソールログ確認
+---
+
+## フェーズ2: ブランディング変更
+
+### 文字列置換ルール
+| 変更前 | 変更後 |
+|---|---|
+| パーソナルジムSalute御所南 / Salute御所南 / Salute 御所南 / Salute | ジムボード |
+| 御所南（ジム名一部） | 削除 |
+| kyoto-salute | gymboard |
+| 京都市中京区毘沙門町533-1 プラザ御所南2階 | 削除（または「（ジム設定に依存）」） |
+| k.munemoto@kyoto-salute.com | info@gymboard.app |
+| https://app.kyoto-salute.com/auth/callback | デプロイURL + /auth/callback |
+
+### 対象ファイル（一覧記載のもの全て）
+index.html, public/manifest.json, src/pages/Auth.tsx, Privacy.tsx, Terms.tsx, TrialBooking.tsx, CustomerView.tsx, CustomerBooking.tsx, BookingCompleteDialog.tsx, WorkoutShareCard.tsx, WorkoutShareModal.tsx, TrainerView.tsx, useMessages.ts, useBookings.ts, workoutShare.ts, googleCalendar.ts, progressPhotoShare.ts
+
+### Canvas描画簡略化
+- `WorkoutShareModal.tsx` の `drawSaluteTitle` を「ジムボード」1色描画にリネーム/簡略化
+- `workoutShare.ts` フッターの2色描画も1色化
+
+### コメント削除
+「⚠️ DO NOT change this app name」等のSalute固定指示コメントを全削除
+
+---
+
+## フェーズ3: 検証
+
+- ビルドエラーなし（未使用import / 削除コンポーネント参照なし）
+- ホーム画面に削除カードが表示されない、残すカードは正常表示
+- BottomNav 5タブ正常動作
+- 記録画面タブが2つのみ
+- トレーナーサイドバーにゲーム系メニューなし
+- 各画面ヘッダー/通知/規約に「ジムボード」表示
+
+---
 
 ## 技術メモ
 
-- JST：`get_jst_today()` SQL関数 or `(now() AT TIME ZONE 'Asia/Tokyo')::date`
-- 既存RPC名は調査が必要（execute_quest_battle, enter_rival_battle, evaluate_daily_missions等）
-- マイグレーションは1ファイルにまとめて承認 → コード実装
+- 削除対象コンポーネントファイル自体（src/components/customer/Avatar*.tsx 等）はimport元から外すのみとし、ファイル削除は最終段でビルドエラーがないことを確認してから実施
+- `EMAIL_CALLBACK_URL` は実際のデプロイ先URLが必要。**現在のLovableプレビューURL** (`https://id-preview--69ac2641-45d8-44e0-b60d-4e002a4f9c1c.lovable.app/auth/callback`) を仮で設定し、公開ドメイン確定後に差し替える方針で問題ないか確認します
+- メモリ（mem://branding/app-identity 等）も「ジムボード」へ更新
+
+---
+
+## 確認事項
+
+1. **EMAIL_CALLBACK_URL**: 現時点のプレビューURLで仮設定してよいか？ それとも別の公開ドメイン予定がありますか？
+2. **メールアドレス info@gymboard.app**: このドメインはまだ存在しない可能性がありますが、文字列としてそのまま入れる想定でOKですか？
+3. 削除するコンポーネントの **物理ファイル削除**(rm)まで行いますか？（importを外すだけでも動作はします）
+
+承認いただければ実装に入ります。

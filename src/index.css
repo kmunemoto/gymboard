@@ -44,6 +44,9 @@ html, body {
     --accent: 174 65% 50%;
     --accent-foreground: 0 0% 100%;
 
+    /* Per-tenant brand color (hex, set by useTenant) */
+    --tenant-color: #3FB6AC;
+
     --destructive: 0 45% 58%;
     --destructive-foreground: 0 0% 100%;
 

@@ -19,8 +19,10 @@ import { getCycleWindow } from "@/lib/courseProgress";
 import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
+import { useTenant } from "@/hooks/useTenant";
 
-const planMaxSessions: Record<string, number> = {
+// Fallback for legacy Salute plans when tenant_plans has no match
+const fallbackPlanMaxSessions: Record<string, number> = {
   '月4回': 4,
   '月6回': 6,
   '月8回': 8,
@@ -30,6 +32,7 @@ const planMaxSessions: Record<string, number> = {
 const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void }) => {
   const { user } = useAuth();
   const { profile, loading } = useProfile();
+  const { plans: tenantPlans } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
   const { chartData, latest, loading: metricsLoading } = useMeasurements(user?.id);
   const { currentStreak, bestStreak, loading: streakLoading, hasFutureBookingThisWeek } = useStreak(user?.id);
@@ -94,7 +97,13 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const nextBooking = futureBookings.length > 0 ? futureBookings[0] : null;
 
   // Compute cycle-based session count for nextBooking
-  const maxSessions = hasPlan ? (planMaxSessions[currentPlan] || 4) : 0;
+  const tenantPlanMatch = currentPlan ? tenantPlans.find((p) => p.plan_name === currentPlan) : null;
+  const tenantMax = tenantPlanMatch?.max_sessions;
+  // null max_sessions on tenant plan = unlimited (default to 15 like legacy 通い放題)
+  const resolvedMax = tenantPlanMatch
+    ? (tenantMax == null ? 15 : tenantMax)
+    : (currentPlan ? (fallbackPlanMaxSessions[currentPlan] || 4) : 0);
+  const maxSessions = hasPlan ? resolvedMax : 0;
 
   const nextBookingCycle = nextBooking ? getCycleWindow(profile?.cycle_start_date, parseISO(nextBooking.date)) : null;
 

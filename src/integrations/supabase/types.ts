@@ -1971,6 +1971,200 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_members: {
+        Row: {
+          cycle_start_date: string | null
+          display_name: string | null
+          id: string
+          joined_at: string
+          plan_id: string | null
+          plan_start_date: string | null
+          role: string
+          status: string | null
+          tenant_id: string
+          ticket_expires_at: string | null
+          ticket_remaining: number | null
+          user_id: string
+        }
+        Insert: {
+          cycle_start_date?: string | null
+          display_name?: string | null
+          id?: string
+          joined_at?: string
+          plan_id?: string | null
+          plan_start_date?: string | null
+          role?: string
+          status?: string | null
+          tenant_id: string
+          ticket_expires_at?: string | null
+          ticket_remaining?: number | null
+          user_id: string
+        }
+        Update: {
+          cycle_start_date?: string | null
+          display_name?: string | null
+          id?: string
+          joined_at?: string
+          plan_id?: string | null
+          plan_start_date?: string | null
+          role?: string
+          status?: string | null
+          tenant_id?: string
+          ticket_expires_at?: string | null
+          ticket_remaining?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_members_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_members_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_plans: {
+        Row: {
+          allow_overflow: boolean | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          max_sessions: number | null
+          plan_name: string
+          plan_type: string
+          price: number
+          sort_order: number | null
+          tenant_id: string
+          validity_days: number | null
+        }
+        Insert: {
+          allow_overflow?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          max_sessions?: number | null
+          plan_name: string
+          plan_type?: string
+          price?: number
+          sort_order?: number | null
+          tenant_id: string
+          validity_days?: number | null
+        }
+        Update: {
+          allow_overflow?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          max_sessions?: number | null
+          plan_name?: string
+          plan_type?: string
+          price?: number
+          sort_order?: number | null
+          tenant_id?: string
+          validity_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          address: string | null
+          booking_cutoff_hours: number | null
+          booking_cutoff_type: string | null
+          business_type: string
+          created_at: string
+          email: string | null
+          gamification_enabled: boolean | null
+          gym_name: string
+          gym_name_short: string | null
+          gymboard_plan: string | null
+          id: string
+          invite_code: string | null
+          logo_url: string | null
+          max_customers: number | null
+          operating_hours: Json | null
+          owner_user_id: string | null
+          phone: string | null
+          primary_color: string | null
+          slot_duration_minutes: number | null
+          status: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          address?: string | null
+          booking_cutoff_hours?: number | null
+          booking_cutoff_type?: string | null
+          business_type?: string
+          created_at?: string
+          email?: string | null
+          gamification_enabled?: boolean | null
+          gym_name: string
+          gym_name_short?: string | null
+          gymboard_plan?: string | null
+          id?: string
+          invite_code?: string | null
+          logo_url?: string | null
+          max_customers?: number | null
+          operating_hours?: Json | null
+          owner_user_id?: string | null
+          phone?: string | null
+          primary_color?: string | null
+          slot_duration_minutes?: number | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          address?: string | null
+          booking_cutoff_hours?: number | null
+          booking_cutoff_type?: string | null
+          business_type?: string
+          created_at?: string
+          email?: string | null
+          gamification_enabled?: boolean | null
+          gym_name?: string
+          gym_name_short?: string | null
+          gymboard_plan?: string | null
+          id?: string
+          invite_code?: string | null
+          logo_url?: string | null
+          max_customers?: number | null
+          operating_hours?: Json | null
+          owner_user_id?: string | null
+          phone?: string | null
+          primary_color?: string | null
+          slot_duration_minutes?: number | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       training_milestones: {
         Row: {
           created_at: string
@@ -2915,6 +3109,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_tenant_role: {
+        Args: { _roles: string[]; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       hatch_companion_egg: {
         Args: { p_egg_key: string; p_user_id: string }
         Returns: Json
@@ -2925,6 +3123,10 @@ export type Database = {
       initialize_starter_equipment_for_user: {
         Args: { p_user_id: string }
         Returns: Json
+      }
+      is_tenant_member: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
       }
       move_to_dlq: {
         Args: {

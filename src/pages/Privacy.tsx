@@ -22,7 +22,7 @@ const Privacy = () => {
         <header className="mb-10">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">プライバシーポリシー</h1>
           <p className="text-sm text-muted-foreground mt-2">
-            パーソナルジムSalute御所南 / kyoto-saluteアプリ
+            ジムボード / gymboardアプリ
           </p>
         </header>
 
@@ -30,7 +30,7 @@ const Privacy = () => {
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3">1. はじめに</h2>
             <p>
-              パーソナルジムSalute 御所南（以下「当ジム」）が提供するkyoto-saluteアプリ（以下「本アプリ」）は、お客様の個人情報を適切に保護することを重要な責務と考えています。
+              ジムボード（以下「当ジム」）が提供するgymboardアプリ（以下「本アプリ」）は、お客様の個人情報を適切に保護することを重要な責務と考えています。
             </p>
           </section>
 
@@ -124,12 +124,12 @@ const Privacy = () => {
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3">11. お問い合わせ</h2>
             <div className="bg-card border rounded-xl p-4 space-y-1">
-              <p className="font-bold">パーソナルジムSalute 御所南</p>
-              <p className="text-sm">所在地：〒604-0862 京都府京都市中京区毘沙門町533-1 プラザ御所南2階</p>
+              <p className="font-bold">ジムボード</p>
+              <p className="text-sm">所在地：（ジム設定に依存）</p>
               <p className="text-sm">
                 メール：
-                <a href="mailto:k.munemoto@kyoto-salute.com" className="text-accent underline hover:text-accent/80">
-                  k.munemoto@kyoto-salute.com
+                <a href="mailto:info@gymboard.app" className="text-accent underline hover:text-accent/80">
+                  info@gymboard.app
                 </a>
               </p>
             </div>

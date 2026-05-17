@@ -5,11 +5,11 @@ export function buildGoogleCalendarUrl(date: string, startTime: string, endTime:
 
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: "パーソナルジムSalute御所南 トレーニング",
+    text: "ジムボード トレーニング",
     dates: `${dateClean}T${startClean}/${dateClean}T${endClean}`,
     ctz: "Asia/Tokyo",
     details: `予約プラン：${planName || "パーソナルトレーニング"}\nお着替え等の準備のため、開始5分前にお越しください。`,
-    location: "パーソナルジムSalute御所南",
+    location: "ジムボード",
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;

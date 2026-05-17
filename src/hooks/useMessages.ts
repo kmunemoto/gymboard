@@ -78,7 +78,7 @@ export const useMessages = (otherUserId: string | null) => {
 
         const senderName = senderProfile?.display_name || "不明";
         const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
-        const message = `【Salute御所南】新着メッセージが届きました！💬\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
+        const message = `【ジムボード】新着メッセージが届きました！💬\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
 
         await supabase.functions.invoke("send-line-message", {
           body: { user_id: receiverId, message },

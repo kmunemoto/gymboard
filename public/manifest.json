@@ -1,6 +1,6 @@
 {
-  "name": "パーソナルジムSalute御所南",
-  "short_name": "Salute御所南",
+  "name": "ジムボード",
+  "short_name": "ジムボード",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

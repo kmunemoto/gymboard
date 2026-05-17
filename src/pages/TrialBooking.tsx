@@ -53,15 +53,10 @@ const TrialBooking = () => {
         if (row) setTenant(row as PublicTenant);
         return;
       }
-      // No URL param — pick the first tenant (legacy single-gym mode)
-      const { data } = await supabase
-        .from("tenants")
-        .select("id, gym_name, gym_name_short, address, logo_url, primary_color")
-        .in("status", ["active", "trial"])
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (data) setTenant(data as unknown as PublicTenant);
+      // No URL param — pick the default tenant (legacy single-gym mode)
+      const { data } = await supabase.rpc("get_default_tenant_public" as any);
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) setTenant(row as PublicTenant);
     })();
   }, [tenantId]);
 

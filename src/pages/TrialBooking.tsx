@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Clock, Check, Loader2, User, CalendarPlus, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +19,19 @@ interface TrialSlotBooking {
   endTime: string;
 }
 
+interface PublicTenant {
+  id: string;
+  gym_name: string;
+  gym_name_short: string | null;
+  address: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
+}
+
 const TrialBooking = () => {
+  const { tenantId } = useParams<{ tenantId?: string }>();
+  const [tenant, setTenant] = useState<PublicTenant | null>(null);
+  const gymName = tenant?.gym_name || "ジムボード";
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -28,6 +41,20 @@ const TrialBooking = () => {
   const [completed, setCompleted] = useState(false);
   const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string } | null>(null);
   const [existingBookings, setExistingBookings] = useState<TrialSlotBooking[]>([]);
+
+  // Fetch tenant info when a tenantId is present in the URL
+  useEffect(() => {
+    if (!tenantId) return;
+    (async () => {
+      const { data, error } = await supabase.rpc("get_tenant_public", { p_id: tenantId });
+      if (error) {
+        console.error("Failed to load tenant:", error);
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) setTenant(row as PublicTenant);
+    })();
+  }, [tenantId]);
 
   // Fetch all existing bookings via secure RPC (no PII exposed)
   const fetchExistingSlots = useCallback(async () => {

@@ -27,6 +27,7 @@ const App = () => (
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/trial" element={<TrialBooking />} />
+            <Route path="/trial/:tenantId" element={<TrialBooking />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/onboarding" element={<Onboarding />} />

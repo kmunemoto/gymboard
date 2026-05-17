@@ -60,11 +60,13 @@ export const useMessages = (otherUserId: string | null) => {
 
   const sendMessage = async (content: string, receiverId: string) => {
     if (!user) return;
-    await supabase.from("messages").insert({
+    const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+    const tenantId = await fetchMyTenantId();
+    await supabase.from("messages").insert(withTenant({
       sender_id: user.id,
       receiver_id: receiverId,
       content,
-    });
+    }, tenantId) as any);
 
     // Fire-and-forget: send LINE notification to receiver
     (async () => {

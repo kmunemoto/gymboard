@@ -211,6 +211,8 @@ const TrainerSchedule = () => {
     }
 
     setSubmitting(true);
+    const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+    const tenantId = await fetchMyTenantId();
     const row = {
       blocked_date: `${dateStr}T${blockStartTime}:00+09:00`,
       end_blocked_date: `${dateStr}T${blockEndTime}:00+09:00`,
@@ -218,7 +220,7 @@ const TrainerSchedule = () => {
       reason: `ブロック（${blockStartTime}〜${blockEndTime}）`,
     };
 
-    const { error } = await supabase.from("blocked_slots").insert(row);
+    const { error } = await supabase.from("blocked_slots").insert(withTenant(row, tenantId) as any);
 
     if (error) {
       toast.error("ブロックに失敗しました");

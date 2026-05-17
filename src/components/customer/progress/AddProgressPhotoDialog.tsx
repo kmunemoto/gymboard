@@ -60,13 +60,15 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
         .from("progress-photos")
         .upload(path, blob, { contentType: "image/jpeg", upsert: false });
       if (upErr) throw upErr;
-      const { error: insErr } = await supabase.from("progress_photos").insert({
+      const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+      const tenantId = await fetchMyTenantId();
+      const { error: insErr } = await supabase.from("progress_photos").insert(withTenant({
         user_id: user.id,
         photo_url: path,
         photo_type: photoType,
         taken_date: date,
         notes: notes.trim() || null,
-      });
+      }, tenantId) as any);
       if (insErr) throw insErr;
       toast.success("写真を追加しました");
       reset();

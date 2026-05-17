@@ -231,9 +231,11 @@ export const createBooking = async (
   isProxyBooking = false,
 ) => {
   const bookingDate = `${date}T${startTime}:00+09:00`;
+  const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+  const tenantId = await fetchMyTenantId();
   const { data, error } = await supabase
     .from("bookings")
-    .insert({ user_id: userId, booking_date: bookingDate, booking_type: bookingType })
+    .insert(withTenant({ user_id: userId, booking_date: bookingDate, booking_type: bookingType }, tenantId) as any)
     .select()
     .single();
 

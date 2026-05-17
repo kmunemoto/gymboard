@@ -51,9 +51,11 @@ export function useMeasurements(userId: string | undefined) {
           return false;
         }
       } else {
+        const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+        const tenantId = await fetchMyTenantId();
         const { error } = await supabase
           .from("user_measurements")
-          .insert({ user_id: userId, measured_date: date, weight, body_fat: bodyFat });
+          .insert(withTenant({ user_id: userId, measured_date: date, weight, body_fat: bodyFat }, tenantId) as any);
         if (error) {
           toast.error("保存に失敗しました");
           return false;

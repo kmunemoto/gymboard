@@ -161,9 +161,11 @@ const CustomerMeals = () => {
         .upload(storagePath, convertedFile);
       if (uploadError) throw uploadError;
 
+      const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+      const tenantId = await fetchMyTenantId();
       const { data: mealData, error: insertError } = await supabase
         .from("meals")
-        .insert({ image_url: storagePath, user_id: user?.id })
+        .insert(withTenant({ image_url: storagePath, user_id: user?.id }, tenantId) as any)
         .select()
         .single();
       if (insertError) throw insertError;

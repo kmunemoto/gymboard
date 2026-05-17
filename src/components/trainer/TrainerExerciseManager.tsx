@@ -134,7 +134,9 @@ const TrainerExerciseManager = () => {
       }
       toast.success("種目を更新しました");
     } else {
-      const { error } = await supabase.from("exercises").insert(payload as any);
+      const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
+      const tenantId = await fetchMyTenantId();
+      const { error } = await supabase.from("exercises").insert(withTenant(payload, tenantId) as any);
       if (error) {
         toast.error("追加に失敗しました");
         setSaving(false);

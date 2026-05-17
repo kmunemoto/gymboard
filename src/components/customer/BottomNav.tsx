@@ -17,7 +17,10 @@ const tabs: { id: CustomerTab; label: string; icon: typeof Home; center?: boolea
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-border">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-border"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
       <div className="max-w-md mx-auto flex items-end">
         {tabs.map((t) => {
           const active = activeTab === t.id;

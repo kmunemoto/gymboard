@@ -102,7 +102,7 @@ const Auth = () => {
         });
 
         toast.success("アカウントを作成しました。");
-        navigate("/");
+        navigate(redirectTo);
       } else {
         if (isTrainerTarget() && email.trim().toLowerCase() !== TRAINER_LOGIN_EMAIL) {
           toast.error("トレーナーとしてログインできるのは指定されたアカウントのみです。");
@@ -116,7 +116,7 @@ const Auth = () => {
         });
         if (error) throw error;
         // Login success — navigate silently
-        navigate("/");
+        navigate(redirectTo);
       }
     } catch (err: any) {
       const msg = err.message || "";

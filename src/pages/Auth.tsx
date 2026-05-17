@@ -11,7 +11,9 @@ import { useAuth } from "@/contexts/AuthContext";
 type AuthMode = "login" | "signup";
 type LoginTarget = "customer" | "trainer";
 
-const EMAIL_CALLBACK_URL = `${window.location.origin}/auth/callback`;
+import { getAuthCallbackUrl } from "@/lib/nativeBridge";
+
+const EMAIL_CALLBACK_URL = getAuthCallbackUrl();
 const TRAINER_LOGIN_EMAIL = "munekan2989@gmail.com";
 
 const Auth = () => {

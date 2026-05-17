@@ -1,6 +1,24 @@
 import { createRoot } from "react-dom/client";
+import { Capacitor } from "@capacitor/core";
+import { StatusBar, Style } from "@capacitor/status-bar";
+import { Keyboard, KeyboardResize } from "@capacitor/keyboard";
+import { App as CapApp } from "@capacitor/app";
 import App from "./App.tsx";
 import "./index.css";
+
+// Initialize native (Capacitor) integrations — no-op on web
+if (Capacitor.isNativePlatform()) {
+  StatusBar.setStyle({ style: Style.Light }).catch(() => {});
+  StatusBar.setBackgroundColor({ color: "#FFFFFF" }).catch(() => {});
+  Keyboard.setResizeMode({ mode: KeyboardResize.Body }).catch(() => {});
+  CapApp.addListener("backButton", ({ canGoBack }) => {
+    if (!canGoBack) {
+      CapApp.exitApp();
+    } else {
+      window.history.back();
+    }
+  });
+}
 
 const showAppUpdateBanner = () => {
   if (document.getElementById("app-update-banner")) return;
@@ -40,7 +58,7 @@ const isPreviewHost =
   window.location.hostname.includes("id-preview--") ||
   window.location.hostname.includes("lovableproject.com");
 
-if ("serviceWorker" in navigator && !isInIframe && !isPreviewHost) {
+if ("serviceWorker" in navigator && !isInIframe && !isPreviewHost && !Capacitor.isNativePlatform()) {
   navigator.serviceWorker.register("/sw.js").then((registration) => {
     let refreshing = false;
 

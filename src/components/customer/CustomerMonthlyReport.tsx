@@ -13,10 +13,7 @@ import { ja } from "date-fns/locale";
 import { getJSTNow, toJSTDate, formatJST } from "@/lib/timezone";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
 import MuscleGroupBadge from "./MuscleGroupBadge";
-
-const planMaxSessions: Record<string, number> = {
-  '月4回': 4, '月6回': 6, '月8回': 8, '通い放題': 15,
-};
+import { useTenant } from "@/hooks/useTenant";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
 

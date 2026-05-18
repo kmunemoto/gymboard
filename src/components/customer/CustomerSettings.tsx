@@ -490,11 +490,12 @@ const CustomerSettings = () => {
       <DiagnosisHistorySection userId={user?.id} />
 
       {/* Logout */}
-      <section className="pt-2">
+      <section className="pt-2 space-y-3">
         <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/10" onClick={signOut}>
           <LogOut className="w-4 h-4 mr-2" />
           ログアウト
         </Button>
+        <DeleteAccountButton />
       </section>
 
       {/* 規約・ポリシー（控えめなフッターリンク） */}

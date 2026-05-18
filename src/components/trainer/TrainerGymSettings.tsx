@@ -339,7 +339,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
 
       {/* === ログアウト === */}
-      <section>
+      <section className="space-y-3">
         <Button
           variant="outline"
           className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive font-bold"
@@ -348,6 +348,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           <LogOut className="w-4 h-4 mr-2" />
           ログアウト
         </Button>
+        <DeleteAccountButton />
       </section>
     </div>
   );

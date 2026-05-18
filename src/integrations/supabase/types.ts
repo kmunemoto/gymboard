@@ -3173,6 +3173,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      delete_my_account: { Args: never; Returns: undefined }
       distribute_raid_rewards: {
         Args: { p_raid_boss_id: string }
         Returns: Json

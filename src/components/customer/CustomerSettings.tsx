@@ -22,6 +22,17 @@ const CustomerSettings = () => {
   const { profile, loading, updateDisplayName, updateGameMode, refetch } = useProfile();
   const { user, signOut } = useAuth();
   const { bookings: myBookings, loading: bookingsLoading } = useMyBookings();
+  const { plans: tenantPlans } = useTenant();
+  const planLabelMap = useMemo(() => {
+    const m: Record<string, string> = { "初回無料体験": "初回無料体験", "通常": "通常" };
+    tenantPlans?.forEach((p) => { m[p.plan_name] = p.plan_name; });
+    return m;
+  }, [tenantPlans]);
+  const planMaxMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    tenantPlans?.forEach((p) => { if (p.max_sessions != null) m[p.plan_name] = p.max_sessions; });
+    return m;
+  }, [tenantPlans]);
   
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -400,8 +411,7 @@ const CustomerSettings = () => {
               }).length
             : pastBookings.length;
 
-          const planMax: Record<string, number> = { "月4回": 4, "月6回": 6, "月8回": 8 };
-          const maxSessions = profile?.plan ? planMax[profile.plan] : null;
+          const maxSessions = profile?.plan ? (planMaxMap[profile.plan] ?? null) : null;
           const isUnlimited = profile?.plan === "通い放題";
 
           return (
@@ -445,7 +455,7 @@ const CustomerSettings = () => {
                   {pastBookings.map((b) => {
                     const dt = new Date(`${b.date}T${b.startTime}:00+09:00`);
                     const dateLabel = format(dt, "M月d日（E）", { locale: ja });
-                    const planLabel = PLAN_LABELS[b.booking_type] || b.booking_type;
+                    const planLabel = planLabelMap[b.booking_type] || b.booking_type;
                     return (
                       <Card key={b.id} className="opacity-75">
                         <CardContent className="p-3 flex items-center gap-3">

@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Dumbbell, Users, Mail, Lock, User, Shield, Loader2 } from "lucide-react";
-import GymLogo from "@/components/GymLogo";
+import { Dumbbell, Mail, Lock, User, Shield, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 type AuthMode = "login" | "signup";
@@ -14,7 +13,6 @@ type LoginTarget = "customer" | "trainer";
 import { getAuthCallbackUrl } from "@/lib/nativeBridge";
 
 const EMAIL_CALLBACK_URL = getAuthCallbackUrl();
-const TRAINER_LOGIN_EMAIL = "munekan2989@gmail.com";
 
 const Auth = () => {
   const { user, loading: authLoading } = useAuth();
@@ -27,9 +25,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/";
+  const redirectParam = searchParams.get("redirect");
 
-  // Already authenticated → redirect to home
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -38,18 +35,15 @@ const Auth = () => {
     );
   }
   if (user) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={redirectParam || "/"} replace />;
   }
 
-  const passwordMismatch = mode === "signup" && !isTrainerTarget() && passwordConfirm.length > 0 && password !== passwordConfirm;
-
-  function isTrainerTarget() {
-    return loginTarget === "trainer";
-  }
+  const isTrainer = loginTarget === "trainer";
+  const passwordMismatch = mode === "signup" && passwordConfirm.length > 0 && password !== passwordConfirm;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "signup" && !isTrainerTarget()) {
+    if (mode === "signup") {
       if (password.length < 6) {
         toast.error("パスワードは6文字以上にしてください");
         return;
@@ -63,17 +57,14 @@ const Auth = () => {
 
     try {
       if (mode === "signup") {
-        if (isTrainerTarget()) {
-          toast.error("トレーナーアカウントは事前に登録済みです。ログインしてください。");
-          setLoading(false);
-          return;
-        }
+        const role = isTrainer ? "trainer" : "customer";
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               display_name: displayName || email,
+              role,
             },
             emailRedirectTo: EMAIL_CALLBACK_URL,
           },
@@ -85,45 +76,25 @@ const Auth = () => {
             email,
             password,
           });
-
           if (signInError) throw signInError;
         }
 
-        // Fire-and-forget: notify trainer via LINE about new signup
-        const { formatJST } = await import("@/lib/timezone");
-        const formattedDate = formatJST(new Date(), "yyyy/MM/dd HH:mm");
-        const nameForNotification = displayName?.trim() || email;
-        const lineMessage = `【新規会員登録】\n新しいお客様がアカウントを登録しました。\n\nお名前：${nameForNotification}\n登録日時：${formattedDate}\n\n顧客一覧からご確認ください。`;
-
-        supabase.rpc("get_trainer_ids").then(({ data: trainerIds }) => {
-          trainerIds?.forEach((t) => {
-            supabase.functions.invoke("send-line-message", {
-              body: { user_id: t.user_id, message: lineMessage },
-            });
-          });
-        });
-
         toast.success("アカウントを作成しました。");
-        navigate(redirectTo);
+        // Trainer → /onboarding, Customer → /join
+        // Index.tsx also auto-routes, but be explicit here.
+        navigate(redirectParam || (isTrainer ? "/onboarding" : "/join"));
       } else {
-        if (isTrainerTarget() && email.trim().toLowerCase() !== TRAINER_LOGIN_EMAIL) {
-          toast.error("トレーナーとしてログインできるのは指定されたアカウントのみです。");
-          setLoading(false);
-          return;
-        }
-
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        // Login success — navigate silently
-        navigate(redirectTo);
+        navigate(redirectParam || "/");
       }
     } catch (err: any) {
       const msg = err.message || "";
       console.error("Auth error:", msg);
-      const jaMessage = 
+      const jaMessage =
         msg.includes("Invalid login credentials")
           ? "メールアドレスまたはパスワードが正しくありません。入力内容をご確認ください。"
         : msg.includes("Email not confirmed")
@@ -147,16 +118,15 @@ const Auth = () => {
     }
   };
 
-  const isTrainer = loginTarget === "trainer";
-
   return (
     <div className="min-h-screen bg-background flex flex-col justify-start px-4 py-8 overflow-y-auto">
       <div className="w-full max-w-md space-y-6 slide-up mx-auto my-auto">
         {/* Logo & Title */}
-        <div className="text-center flex flex-col items-center gap-2">
-          <GymLogo size="lg" />
-          <h1 className="text-2xl font-black tracking-tight">ジムボード</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+        <div className="text-center flex flex-col items-center gap-1">
+          <Dumbbell className="w-10 h-10 text-accent" />
+          <h1 className="text-2xl font-bold tracking-tight mt-1">ジムボード</h1>
+          <p className="text-xs text-muted-foreground">パーソナルジム・ピラティス予約管理</p>
+          <p className="text-sm text-muted-foreground mt-2">
             {mode === "login" ? "アカウントにログイン" : "新規アカウント作成"}
           </p>
         </div>
@@ -181,24 +151,14 @@ const Auth = () => {
             }`}
           >
             <Shield className="w-4 h-4" />
-            トレーナー
+            ジムオーナー
           </button>
         </div>
 
-        <Card className={isTrainer ? "border-primary/30" : ""}>
+        <Card>
           <CardContent className="p-6">
-            {isTrainer && (
-              <div className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/20 text-center">
-                <p className="text-xs text-muted-foreground">
-                  <Shield className="w-3.5 h-3.5 inline mr-1" />
-                  管理者専用ログイン
-                </p>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Display name for customer signup */}
-              {mode === "signup" && !isTrainer && (
+              {mode === "signup" && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold">お名前</label>
                   <div className="relative">
@@ -232,24 +192,23 @@ const Auth = () => {
               <div className="space-y-1.5">
                 <label className="text-sm font-bold">パスワード</label>
                 <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="6文字以上"
-                      minLength={6}
-                      className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
-                    />
-                  </div>
-                  {mode === "signup" && !isTrainer && (
-                    <p className="text-xs text-muted-foreground mt-1">※パスワードは6文字以上で、推測されにくいものを設定してください</p>
-                  )}
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="6文字以上"
+                    minLength={6}
+                    className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
+                  />
                 </div>
+                {mode === "signup" && (
+                  <p className="text-xs text-muted-foreground mt-1">※パスワードは6文字以上で、推測されにくいものを設定してください</p>
+                )}
+              </div>
 
-              {/* Password confirmation for signup */}
-              {mode === "signup" && !isTrainer && (
+              {mode === "signup" && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold">パスワード（確認用）</label>
                   <div className="relative">
@@ -272,41 +231,45 @@ const Auth = () => {
                 </div>
               )}
 
-              <Button type="submit" variant={isTrainer ? "default" : "accent"} className="w-full" disabled={loading || passwordMismatch}>
+              <Button type="submit" variant="accent" className="w-full" disabled={loading || passwordMismatch}>
                 {loading ? "処理中..." : mode === "login" ? "ログイン" : "アカウント作成"}
               </Button>
             </form>
 
-            {/* Only customers can sign up */}
-            {!isTrainer && (
-              <div className="mt-4 text-center">
+            <div className="mt-4 text-center">
+              {isTrainer ? (
+                <button
+                  type="button"
+                  onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                  className="text-sm text-accent hover:underline transition-colors font-medium"
+                >
+                  {mode === "login"
+                    ? "ジムオーナーの方はこちらから新規登録"
+                    : "すでにアカウントをお持ちの方はこちら"}
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={() => setMode(mode === "login" ? "signup" : "login")}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {mode === "login" ? "アカウントをお持ちでない方はこちら" : "すでにアカウントをお持ちの方はこちら"}
+                  {mode === "login"
+                    ? "アカウントをお持ちでない方はこちら"
+                    : "すでにアカウントをお持ちの方はこちら"}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Legal links */}
         <div className="text-center text-xs text-muted-foreground">
-          {mode === "signup" && !isTrainer && (
-            <p className="mb-2">
-              アカウント作成により、以下に同意したものとみなされます。
-            </p>
+          {mode === "signup" && (
+            <p className="mb-2">アカウント作成により、以下に同意したものとみなされます。</p>
           )}
           <div className="flex items-center justify-center gap-3">
-            <Link to="/terms" className="hover:text-accent underline transition-colors">
-              利用規約
-            </Link>
+            <Link to="/terms" className="hover:text-accent underline transition-colors">利用規約</Link>
             <span>·</span>
-            <Link to="/privacy" className="hover:text-accent underline transition-colors">
-              プライバシーポリシー
-            </Link>
+            <Link to="/privacy" className="hover:text-accent underline transition-colors">プライバシーポリシー</Link>
           </div>
         </div>
       </div>

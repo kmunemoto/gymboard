@@ -37,6 +37,12 @@ const getCycleWindow = (cycleStartDate: string, targetDate: Date) => {
 const CustomerMonthlyReport = ({ onBack }: Props) => {
   const { user } = useAuth();
   const { profile } = useProfile();
+  const { plans: tenantPlans } = useTenant();
+  const planMaxMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    tenantPlans?.forEach((p) => { if (p.max_sessions != null) m[p.plan_name] = p.max_sessions; });
+    return m;
+  }, [tenantPlans]);
   const { currentStreak, bestStreak } = useStreak(user?.id);
   const [cycleOffset, setCycleOffset] = useState(0); // 0 = current cycle, -1 = previous, etc.
   const [bookings, setBookings] = useState<any[]>([]);
@@ -127,7 +133,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
 
   const currentPlan = profile?.plan;
   const hasPlan = !!currentPlan && currentPlan !== '初回無料体験';
-  const maxSessions = hasPlan ? (planMaxSessions[currentPlan] || 4) : 0;
+  const maxSessions = hasPlan ? (planMaxMap[currentPlan] || 4) : 0;
   const nowInstant = Date.now();
   const visitedBookings = bookings.filter(b => new Date(b.booking_date).getTime() < nowInstant);
   const scheduledBookings = bookings.filter(b => new Date(b.booking_date).getTime() >= nowInstant);

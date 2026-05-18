@@ -13,7 +13,7 @@ import CustomerPosture from "./CustomerPosture";
 import CustomerMonthlyReport from "./CustomerMonthlyReport";
 import PwaInstallBanner from "./PwaInstallBanner";
 import { Button } from "@/components/ui/button";
-import GymLogo from "@/components/GymLogo";
+
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
 import AnnouncementsDialog from "./AnnouncementsDialog";
@@ -56,10 +56,8 @@ const CustomerView = () => {
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="max-w-md mx-auto flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-2 min-w-0">
-            {tenant?.logo_url ? (
+            {tenant?.logo_url && (
               <img src={tenant.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
-            ) : (
-              <GymLogo size="sm" />
             )}
             <span className="text-sm font-bold truncate">{tenant?.gym_name_short || tenant?.gym_name || "ジムボード"}</span>
           </div>

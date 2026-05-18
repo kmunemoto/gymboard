@@ -79,6 +79,20 @@ const Auth = () => {
           if (signInError) throw signInError;
         }
 
+        // Ensure trainer role is recorded so Index routes to /onboarding
+        if (isTrainer) {
+          const { data: sess } = await supabase.auth.getSession();
+          const uid = sess.session?.user.id;
+          if (uid) {
+            const { error: roleError } = await supabase
+              .from("user_roles")
+              .insert({ user_id: uid, role: "trainer" });
+            if (roleError && !roleError.message.includes("duplicate")) {
+              console.warn("Failed to insert trainer role:", roleError.message);
+            }
+          }
+        }
+
         toast.success("アカウントを作成しました。");
         // Trainer → /onboarding, Customer → /join
         // Index.tsx also auto-routes, but be explicit here.

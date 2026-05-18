@@ -81,12 +81,9 @@ const Auth = () => {
 
         // Ensure trainer role is recorded so Index routes to /onboarding
         if (isTrainer && authData.user) {
-          const { error: roleError } = await supabase
-            .from("user_roles")
-            .upsert(
-              { user_id: authData.user.id, role: "trainer" },
-              { onConflict: "user_id,role" }
-            );
+          const { error: roleError } = await supabase.rpc("assign_trainer_role", {
+            p_user_id: authData.user.id,
+          });
           if (roleError) {
             throw roleError;
           }

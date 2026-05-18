@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, Loader2, RefreshCw, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import InviteCodeCard from "./InviteCodeCard";
+import DeleteAccountButton from "@/components/DeleteAccountButton";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;

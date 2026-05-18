@@ -34,7 +34,7 @@ const Auth = () => {
       </div>
     );
   }
-  if (user) {
+  if (user && !loading) {
     return <Navigate to={redirectParam || "/"} replace />;
   }
 

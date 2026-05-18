@@ -339,7 +339,7 @@ const TrialBooking = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `salute-trial-${completedInfo.rawDate}.ics`;
+      a.download = `gymboard-trial-${completedInfo.rawDate}.ics`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

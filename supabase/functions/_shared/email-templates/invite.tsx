@@ -26,12 +26,12 @@ export const InviteEmail = ({
 }: InviteEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>パーソナルジムSalute御所南への招待</Preview>
+    <Preview>ジムボードへの招待</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>パーソナルジムSalute御所南への招待</Heading>
+        <Heading style={h1}>ジムボードへの招待</Heading>
         <Text style={text}>
-          パーソナルジムSalute御所南にご招待されました。以下のボタンをクリックして、アカウントを作成してください。
+          ジムボードにご招待されました。以下のボタンをクリックして、アカウントを作成してください。
         </Text>
         <Button style={button} href={confirmationUrl}>
           招待を承認する

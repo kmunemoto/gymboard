@@ -46,8 +46,8 @@ Deno.serve(async (req) => {
     return new Response("Error fetching bookings", { status: 500 });
   }
 
-  const calName = "Salute 御所南 予約";
-  const eventTitle = "パーソナルジムSalute 御所南";
+  const calName = "ジムボード 予約";
+  const eventTitle = "ジムボード";
 
   const events = (bookings || []).map((b) => {
     const start = new Date(b.booking_date);
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
   const ical = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Salute Goshonan//Calendar//JP",
+    "PRODID:-//Gymboard//Calendar//JP",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeIcal(calName)}`,

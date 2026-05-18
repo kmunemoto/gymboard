@@ -29,12 +29,12 @@ export const EmailChangeEmail = ({
 }: EmailChangeEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>パーソナルジムSalute御所南 - メールアドレス変更の確認</Preview>
+    <Preview>ジムボード - メールアドレス変更の確認</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>メールアドレス変更の確認</Heading>
         <Text style={text}>
-          パーソナルジムSalute御所南のメールアドレスを{' '}
+          ジムボードのメールアドレスを{' '}
           <Link href={`mailto:${email}`} style={link}>{email}</Link> から{' '}
           <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link> へ変更するリクエストを受け付けました。
         </Text>

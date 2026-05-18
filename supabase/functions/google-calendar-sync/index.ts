@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
       const event = {
         summary: `🏋️ ${client_name || "顧客"} - ${booking_type || "トレーニング"}`,
-        description: `プラン: ${booking_type}\nお客様: ${client_name}\n\nパーソナルジムSalute御所南`,
+        description: `プラン: ${booking_type}\nお客様: ${client_name}\n\nジムボード`,
         start: { dateTime: startDt.toISOString(), timeZone: "Asia/Tokyo" },
         end: { dateTime: endDt.toISOString(), timeZone: "Asia/Tokyo" },
         reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 60 }] },
@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
 
         const event = {
           summary: `${label} ${cName} - ${item.booking_type || "トレーニング"}`,
-          description: `プラン: ${item.booking_type}\nお客様: ${cName}\n\nパーソナルジムSalute御所南`,
+          description: `プラン: ${item.booking_type}\nお客様: ${cName}\n\nジムボード`,
           start: { dateTime: startDt.toISOString(), timeZone: "Asia/Tokyo" },
           end: { dateTime: endDt.toISOString(), timeZone: "Asia/Tokyo" },
           reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 60 }] },

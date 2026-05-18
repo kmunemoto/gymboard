@@ -13,10 +13,7 @@ import { ja } from "date-fns/locale";
 import { getJSTNow, toJSTDate, formatJST } from "@/lib/timezone";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
 import MuscleGroupBadge from "./MuscleGroupBadge";
-
-const planMaxSessions: Record<string, number> = {
-  '月4回': 4, '月6回': 6, '月8回': 8, '通い放題': 15,
-};
+import { useTenant } from "@/hooks/useTenant";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
 
@@ -40,6 +37,12 @@ const getCycleWindow = (cycleStartDate: string, targetDate: Date) => {
 const CustomerMonthlyReport = ({ onBack }: Props) => {
   const { user } = useAuth();
   const { profile } = useProfile();
+  const { plans: tenantPlans } = useTenant();
+  const planMaxMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    tenantPlans?.forEach((p) => { if (p.max_sessions != null) m[p.plan_name] = p.max_sessions; });
+    return m;
+  }, [tenantPlans]);
   const { currentStreak, bestStreak } = useStreak(user?.id);
   const [cycleOffset, setCycleOffset] = useState(0); // 0 = current cycle, -1 = previous, etc.
   const [bookings, setBookings] = useState<any[]>([]);
@@ -130,7 +133,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
 
   const currentPlan = profile?.plan;
   const hasPlan = !!currentPlan && currentPlan !== '初回無料体験';
-  const maxSessions = hasPlan ? (planMaxSessions[currentPlan] || 4) : 0;
+  const maxSessions = hasPlan ? (planMaxMap[currentPlan] || 4) : 0;
   const nowInstant = Date.now();
   const visitedBookings = bookings.filter(b => new Date(b.booking_date).getTime() < nowInstant);
   const scheduledBookings = bookings.filter(b => new Date(b.booking_date).getTime() >= nowInstant);

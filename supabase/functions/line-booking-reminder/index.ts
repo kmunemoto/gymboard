@@ -72,7 +72,7 @@ Deno.serve(async (_req) => {
       const dow = dowChars[jstBooking.getUTCDay()];
       const planName = (profile as any).plan || booking.booking_type;
 
-      const message = `🔔 明日 ${month}/${day}（${dow}）${hours}:${mins}〜 トレーニング予約\n\n${profile.display_name || "お客"}様、ご予約のリマインドです。\n\nプラン：${planName}\n\nお気をつけてお越しください！\n\nパーソナルジムSalute御所南`;
+      const message = `🔔 明日 ${month}/${day}（${dow}）${hours}:${mins}〜 トレーニング予約\n\n${profile.display_name || "お客"}様、ご予約のリマインドです。\n\nプラン：${planName}\n\nお気をつけてお越しください！\n\nジムボード`;
 
       const res = await fetch(LINE_API, {
         method: "POST",

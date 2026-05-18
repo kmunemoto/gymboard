@@ -4,8 +4,8 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "パーソナルジムSalute御所南"
-const SITE_URL = "https://kyoto-salute.com"
+const SITE_NAME = "ジムボード"
+const SITE_URL = "https://gymboard.app"
 const ADDRESS_LINE_1 = '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A\u6BD8\u6C99\u9580\u753A533-1'
 const ADDRESS_LINE_2 = '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357' + '2' + '\u968E'
 
@@ -36,7 +36,7 @@ const TrialBookingConfirmationEmail = ({
         <Hr style={hr} />
         <Text style={greeting}>{customerName} 様</Text>
         <Text style={text}>
-          この度はパーソナルジム{SITE_NAME}の初回無料体験にご予約いただき、誠にありがとうございます。
+          この度は{SITE_NAME}の初回無料体験にご予約いただき、誠にありがとうございます。
         </Text>
 
         <Section style={detailSection}>
@@ -63,14 +63,14 @@ const TrialBookingConfirmationEmail = ({
             前日までに下記メールへご連絡ください。
           </Text>
           <Text style={text}>
-            <Link href="mailto:k.munemoto@kyoto-salute.com" style={inlineLink}>k.munemoto@kyoto-salute.com</Link>
+            <Link href="mailto:k.munemoto@gymboard.app" style={inlineLink}>k.munemoto@gymboard.app</Link>
           </Text>
         </Section>
 
         <Hr style={hr} />
         <Text style={text}>お会いできることを楽しみにしております！</Text>
         <Hr style={hr} />
-        <Text style={footer}>パーソナルジム {SITE_NAME}</Text>
+        <Text style={footer}>{SITE_NAME}</Text>
         <Text style={footer}>〒604-0862</Text>
         <AddressLine style={footer} />
         <Text style={footer}>{ADDRESS_LINE_2}</Text>
@@ -82,7 +82,7 @@ const TrialBookingConfirmationEmail = ({
 
 export const template = {
   component: TrialBookingConfirmationEmail,
-  subject: '【パーソナルジムSalute御所南】初回無料体験のご予約を承りました',
+  subject: '【ジムボード】初回無料体験のご予約を承りました',
   displayName: '初回無料体験 予約確認（顧客向け）',
   previewData: {
     customerName: '山田 太郎',

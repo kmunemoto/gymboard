@@ -148,32 +148,30 @@ export const useAllCustomerProfiles = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfiles = useCallback(async () => {
-    // 1. Get all customer user_ids from roles
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "customer");
-
-    // 2. Get all user_ids that have bookings (union for self-healing)
-    const { data: bookingUsers } = await supabase
-      .from("bookings")
-      .select("user_id");
-
-    const allUserIds = new Set<string>();
-    roles?.forEach((r) => allUserIds.add(r.user_id));
-    bookingUsers?.forEach((b) => allUserIds.add(b.user_id));
-
-    // Remove trainer ids (using secure RPC to avoid exposing user_roles)
-    const { data: trainerRoles } = await supabase.rpc("get_trainer_ids");
-    trainerRoles?.forEach((t) => allUserIds.delete(t.user_id));
-
-    if (allUserIds.size === 0) {
+    // 1. Resolve current trainer's tenant
+    const { fetchMyTenantId } = await import("@/lib/tenantHelper");
+    const tenantId = await fetchMyTenantId();
+    if (!tenantId) {
       setProfiles([]);
       setLoading(false);
       return;
     }
 
-    const customerIds = [...allUserIds];
+    // 2. Get customers belonging to the same tenant
+    const { data: members } = await supabase
+      .from("tenant_members")
+      .select("user_id")
+      .eq("tenant_id", tenantId)
+      .eq("role", "customer")
+      .eq("status", "active");
+
+    if (!members || members.length === 0) {
+      setProfiles([]);
+      setLoading(false);
+      return;
+    }
+
+    const customerIds = members.map((m: any) => m.user_id);
 
     // 3. Fetch profiles
     const { data: profileData } = await supabase

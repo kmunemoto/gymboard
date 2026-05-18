@@ -108,7 +108,7 @@ serve(async (req) => {
   <text x="540" y="490" font-family="${FF}" font-size="84" font-weight="500" fill="${textColor}" text-anchor="middle">${duration}<tspan font-size="40" font-weight="300" fill="${subColor}" dx="10">分</tspan></text>
   ${exerciseSvg}
   <text x="540" y="${dateY}" font-family="${FF}" font-size="28" font-weight="300" fill="${subColor}" text-anchor="middle" letter-spacing="6">${escapeXml(date)}</text>
-  <text x="540" y="1780" font-family="${FF}" font-size="40" font-weight="700" fill="${accentColor}" text-anchor="middle">Salute <tspan fill="${textColor}">御所南</tspan></text>
+  <text x="540" y="1780" font-family="${FF}" font-size="40" font-weight="700" fill="${accentColor}" text-anchor="middle">ジムボード</text>
   <text x="540" y="1820" font-family="${FF}" font-size="22" font-weight="300" fill="${subColor}" text-anchor="middle" letter-spacing="8">PERSONAL GYM</text>
 </svg>`;
 

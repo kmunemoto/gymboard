@@ -20,28 +20,25 @@ import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow } from "@/lib/courseProgress";
 import { useTenant } from "@/hooks/useTenant";
 
-const PLAN_LABELS: Record<string, string> = {
-  "初回無料体験": "初回無料体験",
-  "月4回": "月4回プラン",
-  "月6回": "月6回プラン",
-  "月8回": "月8回プラン",
-  "通い放題": "通い放題プラン",
-};
-
-const PLAN_MAX_SESSIONS: Record<string, number> = {
-  "月4回": 4,
-  "月6回": 6,
-  "月8回": 8,
-  "通い放題": 15,
-};
-
 const BOOKING_BUFFER_MINUTES = 15;
 
 const CustomerBooking = () => {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();
-  const { tenant } = useTenant();
+  const { tenant, plans: tenantPlans } = useTenant();
+
+  // Build plan name → label / max sessions maps from tenant_plans
+  const planLabelMap = useMemo(() => {
+    const m: Record<string, string> = { "初回無料体験": "初回無料体験" };
+    tenantPlans?.forEach((p) => { m[p.plan_name] = p.plan_name; });
+    return m;
+  }, [tenantPlans]);
+  const planMaxMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    tenantPlans?.forEach((p) => { if (p.max_sessions != null) m[p.plan_name] = p.max_sessions; });
+    return m;
+  }, [tenantPlans]);
 
   // Tenant operating hours and slot duration (with sensible fallbacks)
   const parseHour = (t?: string) => {
@@ -292,7 +289,7 @@ const CustomerBooking = () => {
     );
   }
 
-  const planLabel = (type: string) => PLAN_LABELS[type] || type;
+  const planLabel = (type: string) => planLabelMap[type] || type;
 
   // Current cycle / plan summary (mirrors home screen logic)
   const currentPlan = profile?.plan;
@@ -309,7 +306,7 @@ const CustomerBooking = () => {
         return d >= currentCycle.start && d < currentCycle.end;
       }).length
     : 0;
-  const maxSessions = hasPlan ? (PLAN_MAX_SESSIONS[currentPlan!] || 0) : 0;
+  const maxSessions = hasPlan ? (planMaxMap[currentPlan!] || 0) : 0;
   const isExpired = remainingDays !== null && remainingDays < 0;
   const isExpiringSoon = remainingDays !== null && remainingDays >= 0 && remainingDays <= 3;
 

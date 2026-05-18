@@ -33,12 +33,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .maybeSingle()
       .then(({ data, error }) => {
+        const roles = data?.map((row) => row.role) ?? [];
+        const resolvedRole = roles.includes("trainer") ? "trainer" : "customer";
         if (error) {
           console.warn("Failed to fetch role, defaulting to customer:", error.message);
         }
-        setRole((data?.role as AppRole) ?? "customer");
+        setRole(resolvedRole);
         setLoading(false);
       });
   };

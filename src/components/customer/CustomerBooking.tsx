@@ -26,7 +26,19 @@ const CustomerBooking = () => {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();
-  const { tenant } = useTenant();
+  const { tenant, plans: tenantPlans } = useTenant();
+
+  // Build plan name → label / max sessions maps from tenant_plans
+  const planLabelMap = useMemo(() => {
+    const m: Record<string, string> = { "初回無料体験": "初回無料体験" };
+    tenantPlans?.forEach((p) => { m[p.plan_name] = p.plan_name; });
+    return m;
+  }, [tenantPlans]);
+  const planMaxMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    tenantPlans?.forEach((p) => { if (p.max_sessions != null) m[p.plan_name] = p.max_sessions; });
+    return m;
+  }, [tenantPlans]);
 
   // Tenant operating hours and slot duration (with sensible fallbacks)
   const parseHour = (t?: string) => {

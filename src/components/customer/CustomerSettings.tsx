@@ -16,14 +16,7 @@ import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
 
-const PLAN_LABELS: Record<string, string> = {
-  "初回無料体験": "初回無料体験",
-  "月4回": "月4回プラン",
-  "月6回": "月6回プラン",
-  "月8回": "月8回プラン",
-  "通い放題": "通い放題プラン",
-  "通常": "通常",
-};
+import { useTenant } from "@/hooks/useTenant";
 
 const CustomerSettings = () => {
   const { profile, loading, updateDisplayName, updateGameMode, refetch } = useProfile();

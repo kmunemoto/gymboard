@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   }
 
   const calName = "ジムボード 予約";
-  const eventTitle = "パーソナルジムジムボード";
+  const eventTitle = "ジムボード";
 
   const events = (bookings || []).map((b) => {
     const start = new Date(b.booking_date);

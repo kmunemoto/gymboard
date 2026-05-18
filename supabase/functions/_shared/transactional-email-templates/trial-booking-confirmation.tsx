@@ -36,7 +36,7 @@ const TrialBookingConfirmationEmail = ({
         <Hr style={hr} />
         <Text style={greeting}>{customerName} 様</Text>
         <Text style={text}>
-          この度はパーソナルジム{SITE_NAME}の初回無料体験にご予約いただき、誠にありがとうございます。
+          この度は{SITE_NAME}の初回無料体験にご予約いただき、誠にありがとうございます。
         </Text>
 
         <Section style={detailSection}>
@@ -70,7 +70,7 @@ const TrialBookingConfirmationEmail = ({
         <Hr style={hr} />
         <Text style={text}>お会いできることを楽しみにしております！</Text>
         <Hr style={hr} />
-        <Text style={footer}>パーソナルジム {SITE_NAME}</Text>
+        <Text style={footer}>{SITE_NAME}</Text>
         <Text style={footer}>〒604-0862</Text>
         <AddressLine style={footer} />
         <Text style={footer}>{ADDRESS_LINE_2}</Text>

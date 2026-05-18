@@ -43,7 +43,6 @@ const BookingConfirmationEmail = ({
         </Section>
         <Hr style={hr} />
         <Text style={footer}>ジムボード</Text>
-        <Text style={footer}>〒604-0862 京都市中京区毘沙門町533-1 プラザ御所南2階</Text>
         <Link href={SITE_URL} style={footerLink}>🌐 {SITE_URL}</Link>
       </Container>
     </Body>

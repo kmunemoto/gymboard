@@ -289,7 +289,7 @@ const CustomerBooking = () => {
     );
   }
 
-  const planLabel = (type: string) => PLAN_LABELS[type] || type;
+  const planLabel = (type: string) => planLabelMap[type] || type;
 
   // Current cycle / plan summary (mirrors home screen logic)
   const currentPlan = profile?.plan;
@@ -306,7 +306,7 @@ const CustomerBooking = () => {
         return d >= currentCycle.start && d < currentCycle.end;
       }).length
     : 0;
-  const maxSessions = hasPlan ? (PLAN_MAX_SESSIONS[currentPlan!] || 0) : 0;
+  const maxSessions = hasPlan ? (planMaxMap[currentPlan!] || 0) : 0;
   const isExpired = remainingDays !== null && remainingDays < 0;
   const isExpiringSoon = remainingDays !== null && remainingDays >= 0 && remainingDays <= 3;
 

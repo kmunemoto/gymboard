@@ -58,7 +58,7 @@ const Auth = () => {
     try {
       if (mode === "signup") {
         const role = isTrainer ? "trainer" : "customer";
-        const { data, error } = await supabase.auth.signUp({
+        const { data: authData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -71,7 +71,7 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        if (!data.session) {
+        if (!authData.session) {
           const { error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -80,16 +80,15 @@ const Auth = () => {
         }
 
         // Ensure trainer role is recorded so Index routes to /onboarding
-        if (isTrainer) {
-          const { data: sess } = await supabase.auth.getSession();
-          const uid = sess.session?.user.id;
-          if (uid) {
-            const { error: roleError } = await supabase
-              .from("user_roles")
-              .insert({ user_id: uid, role: "trainer" });
-            if (roleError && !roleError.message.includes("duplicate")) {
-              console.warn("Failed to insert trainer role:", roleError.message);
-            }
+        if (isTrainer && authData.user) {
+          const { error: roleError } = await supabase
+            .from("user_roles")
+            .upsert(
+              { user_id: authData.user.id, role: "trainer" },
+              { onConflict: "user_id,role" }
+            );
+          if (roleError) {
+            throw roleError;
           }
         }
 

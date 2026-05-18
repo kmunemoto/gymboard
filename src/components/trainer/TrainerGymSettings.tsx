@@ -191,6 +191,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         ジム設定
       </h2>
 
+      {/* === 招待コード === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">お客様の招待</h3>
+        <InviteCodeCard />
+      </section>
+
+      <Separator />
+
       {/* === プロフィール === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プロフィール</h3>

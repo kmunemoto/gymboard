@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, Loader2, RefreshCw, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import InviteCodeCard from "./InviteCodeCard";
+import DeleteAccountButton from "@/components/DeleteAccountButton";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -189,6 +191,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         ジム設定
       </h2>
 
+      {/* === 招待コード === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">お客様の招待</h3>
+        <InviteCodeCard />
+      </section>
+
+      <Separator />
+
       {/* === プロフィール === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プロフィール</h3>
@@ -329,7 +339,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
 
       {/* === ログアウト === */}
-      <section>
+      <section className="space-y-3">
         <Button
           variant="outline"
           className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive font-bold"
@@ -338,6 +348,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           <LogOut className="w-4 h-4 mr-2" />
           ログアウト
         </Button>
+        <DeleteAccountButton />
       </section>
     </div>
   );

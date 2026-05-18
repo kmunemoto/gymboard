@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
+import DeleteAccountButton from "@/components/DeleteAccountButton";
 
 import { useTenant } from "@/hooks/useTenant";
 

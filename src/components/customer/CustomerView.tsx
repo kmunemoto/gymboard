@@ -13,7 +13,7 @@ import CustomerPosture from "./CustomerPosture";
 import CustomerMonthlyReport from "./CustomerMonthlyReport";
 import PwaInstallBanner from "./PwaInstallBanner";
 import { Button } from "@/components/ui/button";
-import GymLogo from "@/components/GymLogo";
+
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
 import AnnouncementsDialog from "./AnnouncementsDialog";

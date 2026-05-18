@@ -24,12 +24,12 @@ export const RecoveryEmail = ({
 }: RecoveryEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>パーソナルジムSalute御所南 - パスワードの再設定</Preview>
+    <Preview>ジムボード - パスワードの再設定</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>パスワードの再設定</Heading>
         <Text style={text}>
-          パーソナルジムSalute御所南のパスワード再設定のリクエストを受け付けました。
+          ジムボードのパスワード再設定のリクエストを受け付けました。
         </Text>
         <Text style={text}>
           以下のボタンをクリックして、新しいパスワードを設定してください。

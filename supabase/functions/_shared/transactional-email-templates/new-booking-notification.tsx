@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "パーソナルジムSalute御所南"
+const SITE_NAME = "ジムボード"
 
 interface NewBookingNotificationProps {
   customerName?: string
@@ -54,14 +54,14 @@ const NewBookingNotificationEmail = ({
 
 export const template = {
   component: NewBookingNotificationEmail,
-  subject: '【パーソナルジムSalute御所南】新しい予約が入りました',
+  subject: '【ジムボード】新しい予約が入りました',
   displayName: '新規予約通知（トレーナー向け）',
   previewData: {
     customerName: '山田 太郎',
     bookingDate: '4月15日（火）',
     bookingTime: '14:00〜15:00',
     planName: '月4回プラン',
-    dashboardUrl: 'https://app.kyoto-salute.com',
+    dashboardUrl: 'https://app.gymboard.app',
   },
 } satisfies TemplateEntry
 

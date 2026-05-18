@@ -24,12 +24,12 @@ export const MagicLinkEmail = ({
 }: MagicLinkEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>パーソナルジムSalute御所南 - ログインリンク</Preview>
+    <Preview>ジムボード - ログインリンク</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>ログインリンク</Heading>
         <Text style={text}>
-          以下のボタンをクリックして、パーソナルジムSalute御所南にログインしてください。このリンクの有効期限は短時間です。
+          以下のボタンをクリックして、ジムボードにログインしてください。このリンクの有効期限は短時間です。
         </Text>
         <Button style={button} href={confirmationUrl}>
           ログインする

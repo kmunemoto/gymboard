@@ -4,9 +4,9 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "パーソナルジムSalute御所南"
-const APP_URL = "https://app.kyoto-salute.com"
-const SITE_URL = "https://kyoto-salute.com"
+const SITE_NAME = "ジムボード"
+const APP_URL = "https://app.gymboard.app"
+const SITE_URL = "https://gymboard.app"
 const NEW_BOOKING_GUIDANCE = "新しいご予約\u306Fアプリから承っております。"
 
 interface BookingCancellationProps {
@@ -74,7 +74,7 @@ const BookingCancellationEmail = ({
           <Hr style={hr} />
           {recipientRole === 'customer' ? (
             <>
-              <Text style={footer}>パーソナルジムSalute御所南</Text>
+              <Text style={footer}>ジムボード</Text>
               <Text style={footer}>〒604-0862 京都市中京区毘沙門町533-1 プラザ御所南2階</Text>
               <Link href={SITE_URL} style={footerLink}>🌐 {SITE_URL}</Link>
             </>
@@ -93,10 +93,10 @@ export const template = {
   component: BookingCancellationEmail,
   subject: (data: Record<string, any>) =>
     data?.recipientRole === 'customer'
-      ? '【パーソナルジムSalute御所南】キャンセルを受け付けました'
+      ? '【ジムボード】キャンセルを受け付けました'
       : (data?.isTrial
-          ? '【パーソナルジムSalute御所南】初回無料体験の予約がキャンセルされました'
-          : '【パーソナルジムSalute御所南】予約がキャンセルされました'),
+          ? '【ジムボード】初回無料体験の予約がキャンセルされました'
+          : '【ジムボード】予約がキャンセルされました'),
   displayName: '予約キャンセル通知',
   previewData: {
     customerName: '山田 太郎',

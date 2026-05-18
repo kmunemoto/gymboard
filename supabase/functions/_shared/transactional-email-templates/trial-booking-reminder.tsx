@@ -4,8 +4,8 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "パーソナルジムSalute御所南"
-const SITE_URL = "https://kyoto-salute.com"
+const SITE_NAME = "ジムボード"
+const SITE_URL = "https://gymboard.app"
 const ADDRESS_LINE_1 = '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A\u6BD8\u6C99\u9580\u753A533-1'
 const ADDRESS_LINE_2 = '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357' + '2' + '\u968E'
 
@@ -56,7 +56,7 @@ const TrialBookingReminderEmail = ({
           <Text style={sectionTitle}>キャンセル・変更</Text>
           <Text style={text}>下記メールへご連絡ください。</Text>
           <Text style={text}>
-            <Link href="mailto:k.munemoto@kyoto-salute.com" style={inlineLink}>k.munemoto@kyoto-salute.com</Link>
+            <Link href="mailto:k.munemoto@gymboard.app" style={inlineLink}>k.munemoto@gymboard.app</Link>
           </Text>
         </Section>
 

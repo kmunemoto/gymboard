@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "パーソナルジムSalute御所南"
+const SITE_NAME = "ジムボード"
 
 interface NewAccountNotificationProps {
   customerEmail?: string
@@ -52,7 +52,7 @@ const NewAccountNotificationEmail = ({
 
 export const template = {
   component: NewAccountNotificationEmail,
-  subject: '【パーソナルジムSalute御所南】新しいアカウントが登録されました',
+  subject: '【ジムボード】新しいアカウントが登録されました',
   to: 'munekan2989@gmail.com',
   displayName: '新規アカウント登録通知（トレーナー向け）',
   previewData: {

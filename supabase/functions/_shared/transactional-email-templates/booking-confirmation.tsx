@@ -4,8 +4,8 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const APP_URL = "https://app.kyoto-salute.com"
-const SITE_URL = "https://kyoto-salute.com"
+const APP_URL = "https://app.gymboard.app"
+const SITE_URL = "https://gymboard.app"
 
 interface BookingConfirmationProps {
   customerName?: string
@@ -22,7 +22,7 @@ const BookingConfirmationEmail = ({
 }: BookingConfirmationProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>ご予約を承りました — パーソナルジムSalute御所南</Preview>
+    <Preview>ご予約を承りました — ジムボード</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>ご予約を承りました</Heading>
@@ -42,7 +42,7 @@ const BookingConfirmationEmail = ({
           <Button href={APP_URL} style={button}>▼ アプリを開く</Button>
         </Section>
         <Hr style={hr} />
-        <Text style={footer}>パーソナルジムSalute御所南</Text>
+        <Text style={footer}>ジムボード</Text>
         <Text style={footer}>〒604-0862 京都市中京区毘沙門町533-1 プラザ御所南2階</Text>
         <Link href={SITE_URL} style={footerLink}>🌐 {SITE_URL}</Link>
       </Container>
@@ -52,7 +52,7 @@ const BookingConfirmationEmail = ({
 
 export const template = {
   component: BookingConfirmationEmail,
-  subject: '【パーソナルジムSalute御所南】ご予約を承りました',
+  subject: '【ジムボード】ご予約を承りました',
   displayName: 'ご予約を承りました（顧客向け）',
   previewData: {
     customerName: '山田 太郎',

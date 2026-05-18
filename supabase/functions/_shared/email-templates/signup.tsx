@@ -28,12 +28,12 @@ export const SignupEmail = ({
 }: SignupEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>パーソナルジムSalute御所南 - メールアドレスの確認</Preview>
+    <Preview>ジムボード - メールアドレスの確認</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>メールアドレスの確認</Heading>
         <Text style={text}>
-          パーソナルジムSalute御所南へのご登録ありがとうございます！
+          ジムボードへのご登録ありがとうございます！
         </Text>
         <Text style={text}>
           以下のボタンをクリックして、メールアドレス（{recipient}）の確認を完了してください。

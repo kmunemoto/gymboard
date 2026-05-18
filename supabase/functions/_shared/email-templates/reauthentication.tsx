@@ -19,7 +19,7 @@ interface ReauthenticationEmailProps {
 export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>パーソナルジムSalute御所南 - 認証コード</Preview>
+    <Preview>ジムボード - 認証コード</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>本人確認</Heading>

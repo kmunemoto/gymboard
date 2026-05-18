@@ -20,21 +20,6 @@ import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow } from "@/lib/courseProgress";
 import { useTenant } from "@/hooks/useTenant";
 
-const PLAN_LABELS: Record<string, string> = {
-  "初回無料体験": "初回無料体験",
-  "月4回": "月4回プラン",
-  "月6回": "月6回プラン",
-  "月8回": "月8回プラン",
-  "通い放題": "通い放題プラン",
-};
-
-const PLAN_MAX_SESSIONS: Record<string, number> = {
-  "月4回": 4,
-  "月6回": 6,
-  "月8回": 8,
-  "通い放題": 15,
-};
-
 const BOOKING_BUFFER_MINUTES = 15;
 
 const CustomerBooking = () => {

@@ -31,12 +31,18 @@ jobs:
       - name: Fix Podfile for CI signing
         run: |
           sed -i '' "s/platform :ios, '.*'/platform :ios, '16.0'/" ios/App/Podfile
-          sed -i '' '/assertDeploymentTarget/a\
-              installer.pods_project.targets.each do |target|\
-                target.build_configurations.each do |config|\
-                  config.build_settings["CODE_SIGNING_ALLOWED"] = "NO"\
-                end\
-              end' ios/App/Podfile
+          python3 -c "
+          content = open('ios/App/Podfile').read()
+          fix = '''
+              installer.pods_project.targets.each do |target|
+                target.build_configurations.each do |config|
+                  config.build_settings[\"CODE_SIGNING_ALLOWED\"] = \"NO\"
+                end
+              end
+          '''
+          content = content.replace('assertDeploymentTarget(installer)', 'assertDeploymentTarget(installer)' + fix)
+          open('ios/App/Podfile', 'w').write(content)
+          "
 
       - name: Sync Capacitor
         run: npx cap sync ios

@@ -5,8 +5,17 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
+      - name: List available Xcode versions
+        run: ls /Applications/ | grep Xcode
+
+      - name: Select latest Xcode
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$LATEST_XCODE"
+          xcodebuild -version
+
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -126,5 +135,4 @@ jobs:
         run: |
           mkdir -p private_keys
           echo "$API_KEY" > private_keys/AuthKey_$API_KEY_ID.p8
-          xcrun notarytool submit $RUNNER_TEMP/output/*.ipa --key private_keys/AuthKey_$API_KEY_ID.p8 --key-id $API_KEY_ID --issuer $ISSUER_ID || true
-          xcrun altool --upload-app -f $RUNNER_TEMP/output/*.ipa -t ios --apiKey $API_KEY_ID --apiIssuer $ISSUER_ID
+          xcrun altool --upload-app -f $RUNNER_TEMP/output/App.ipa -t ios --apiKey $API_KEY_ID --apiIssuer $ISSUER_ID

@@ -28,10 +28,17 @@ jobs:
       - name: Add iOS platform
         run: npx cap add ios || true
 
-      - name: Set iOS deployment target and signing
+      - name: sed -i '' "s/platform :ios, '.*'/platform :ios, '16.0'/" ios/App/Podfile
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        run: cd ios/App && pod install
+
+      - name: Disable code signing for Pods
         run: |
-          sed -i '' "s/platform :ios, '.*'/platform :ios, '16.0'/" ios/App/Podfile
-          cat >> ios/App/Podfile << 'EOF'
+          sed -i '' 's/CODE_SIGNING_ALLOWED = YES/CODE_SIGNING_ALLOWED = NO/g' ios/App/Pods/Pods.xcodeproj/project.pbxproj
 
           post_install do |installer|
             installer.pods_project.targets.each do |target|

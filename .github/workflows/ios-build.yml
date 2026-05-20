@@ -28,9 +28,15 @@ jobs:
       - name: Add iOS platform
         run: npx cap add ios || true
 
-      - name: Set iOS deployment target
+      - name: Fix Podfile for CI signing
         run: |
           sed -i '' "s/platform :ios, '.*'/platform :ios, '16.0'/" ios/App/Podfile
+          sed -i '' '/assertDeploymentTarget/a\
+              installer.pods_project.targets.each do |target|\
+                target.build_configurations.each do |config|\
+                  config.build_settings["CODE_SIGNING_ALLOWED"] = "NO"\
+                end\
+              end' ios/App/Podfile
 
       - name: Sync Capacitor
         run: npx cap sync ios
@@ -38,9 +44,11 @@ jobs:
       - name: Install CocoaPods
         run: cd ios/App && pod install
 
-      - name: Disable code signing for Pods
+      - name: Configure App signing
         run: |
-          sed -i '' 's/CODE_SIGNING_ALLOWED = YES/CODE_SIGNING_ALLOWED = NO/g' ios/App/Pods/Pods.xcodeproj/project.pbxproj
+          cd ios/App
+          sed -i '' 's/ProvisioningStyle = Automatic/ProvisioningStyle = Manual/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' App.xcodeproj/project.pbxproj
 
       - name: Import certificate and profile
         env:
@@ -92,7 +100,8 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            PROVISIONING_PROFILE_SPECIFIER="GymBoard App Store"
+            PROVISIONING_PROFILE_SPECIFIER="GymBoard App Store" \
+            -destination "generic/platform=iOS"
 
       - name: Export IPA
         run: |

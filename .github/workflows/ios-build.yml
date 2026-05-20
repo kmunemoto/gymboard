@@ -18,7 +18,7 @@ jobs:
         run: npm install
 
       - name: Install Capacitor iOS
-        run: npm install @capacitor/ios
+        run: npm install @capacitor/ios --legacy-peer-deps
 
       - name: Build web
         run: npm run build

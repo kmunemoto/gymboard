@@ -15,7 +15,9 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install @mediapipe/pose --legacy-peer-deps
 
       - name: Install Capacitor iOS
         run: npm install @capacitor/ios --legacy-peer-deps

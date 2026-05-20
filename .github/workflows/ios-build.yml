@@ -28,6 +28,10 @@ jobs:
       - name: Add iOS platform
         run: npx cap add ios || true
 
+      - name: Set iOS deployment target
+        run: |
+          sed -i '' "s/platform :ios, '.*'/platform :ios, '16.0'/" ios/App/Podfile
+
       - name: Sync Capacitor
         run: npx cap sync ios
 

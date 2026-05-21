@@ -234,6 +234,11 @@ const CustomerSettings = () => {
         </Card>
       </section>
 
+      {/* Language */}
+      <LanguageSwitcher variant="customer" />
+
+
+
       {/* LINE連携 */}
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">

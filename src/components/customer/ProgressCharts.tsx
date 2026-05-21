@@ -193,7 +193,7 @@ const ProgressCharts = () => {
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            {p.label}
+            {t(p.labelKey)}
           </button>
         ))}
       </div>
@@ -202,7 +202,7 @@ const ProgressCharts = () => {
       {hasWeightData && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
-            体重・体脂肪率
+            {t("charts.weightBodyFat")}
           </h2>
 
           {/* Summary chips */}

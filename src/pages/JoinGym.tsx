@@ -95,15 +95,32 @@ const JoinGym = () => {
     }
     setSubmitting(true);
     try {
-      const { error: mErr } = await supabase.from("tenant_members").insert({
-        tenant_id: tenant.id,
-        user_id: user.id,
-        role: "customer",
-        display_name: displayName.trim(),
-        status: "active",
-      });
+      const name = displayName.trim();
+
+      // 1. プロフィールの表示名を先に保存（upsert: 行が無くても作成）
+      const { error: pErr } = await supabase
+        .from("profiles")
+        .upsert(
+          { user_id: user.id, display_name: name },
+          { onConflict: "user_id" }
+        );
+      if (pErr) throw pErr;
+
+      // 2. テナントメンバー登録（upsert: 再参加でも重複エラーにならない）
+      const { error: mErr } = await supabase
+        .from("tenant_members")
+        .upsert(
+          {
+            tenant_id: tenant.id,
+            user_id: user.id,
+            role: "customer",
+            display_name: name,
+            status: "active",
+          },
+          { onConflict: "tenant_id,user_id" }
+        );
       if (mErr) throw mErr;
-      await supabase.from("profiles").update({ display_name: displayName.trim() }).eq("user_id", user.id);
+
       toast({ title: `${tenant.gym_name}に参加しました！` });
       navigate("/", { replace: true });
     } catch (err: any) {

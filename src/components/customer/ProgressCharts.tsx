@@ -341,18 +341,18 @@ const ProgressCharts = () => {
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
                 {weightChartData[0].weight != null && (
-                  <p>体重: <span className="font-bold text-foreground">{weightChartData[0].weight}kg</span></p>
+                  <p>{t("charts.weight")}: <span className="font-bold text-foreground">{weightChartData[0].weight}kg</span></p>
                 )}
                 {weightChartData[0].bodyFat != null && (
-                  <p>体脂肪率: <span className="font-bold text-foreground">{weightChartData[0].bodyFat}%</span></p>
+                  <p>{t("charts.bodyFat")}: <span className="font-bold text-foreground">{weightChartData[0].bodyFat}%</span></p>
                 )}
-                <p className="text-xs mt-1">2件以上のデータでグラフが表示されます</p>
+                <p className="text-xs mt-1">{t("charts.minDataNote")}</p>
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                この期間のデータはありません。別の期間を選択してください。
+                {t("charts.noPeriodData")}
               </CardContent>
             </Card>
           )}

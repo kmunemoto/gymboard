@@ -47,7 +47,7 @@ export function useTenant() {
   const [plans, setPlans] = useState<TenantPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchMembership = async () => {
     if (!user) {
       setMembership(null);
       setPlans([]);
@@ -86,6 +86,11 @@ export function useTenant() {
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
+  };
+
+  useEffect(() => {
+    const cleanup = fetchMembership();
+    return () => { cleanup?.(); };
   }, [user]);
 
   return {

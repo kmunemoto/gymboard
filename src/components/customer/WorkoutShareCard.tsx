@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 import { useTenant } from "@/hooks/useTenant";
-import { useTenant } from "@/hooks/useTenant";
 import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";
 import { ACHIEVEMENTS } from "@/lib/avatarSystem";
 import { getAchievementIconComponent } from "./BadgeIcon";

@@ -835,7 +835,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <TabsTrigger value="meals" className="text-[10px] sm:text-xs px-1">食事</TabsTrigger>
           <TabsTrigger value="bookings" className="text-[10px] sm:text-xs px-1">予約</TabsTrigger>
           <TabsTrigger value="skeletal" className="text-[10px] sm:text-xs px-1">骨格</TabsTrigger>
-          <TabsTrigger value="report" className="text-[10px] sm:text-xs px-1">月報</TabsTrigger>
+          {MONTHLY_REPORT_ENABLED && (
+            <TabsTrigger value="report" className="text-[10px] sm:text-xs px-1">月報</TabsTrigger>
+          )}
           <TabsTrigger value="chat" className="text-[10px] sm:text-xs px-1">チャット</TabsTrigger>
         </TabsList>
 

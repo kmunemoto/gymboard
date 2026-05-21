@@ -189,7 +189,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
       setDiagnoses((prev) => prev.filter((x) => x.id !== d.id));
       setCompareIds((prev) => prev.filter((x) => x !== d.id));
       if (expandedId === d.id) setExpandedId(null);
-      toast({ title: "削除しました", description: "骨格診断を削除しました" });
+      toast({ title: "削除しました", description: "骨格分析を削除しました" });
     } catch (e: any) {
       console.error("[skeletal_diagnoses] delete error:", e);
       toast({ title: "削除に失敗しました", description: e?.message ?? "もう一度お試しください", variant: "destructive" });

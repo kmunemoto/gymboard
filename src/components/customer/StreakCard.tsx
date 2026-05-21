@@ -18,6 +18,7 @@ const getStreakMessageKey = (streak: number): string => {
 };
 
 const StreakCard = ({ currentStreak, bestStreak, hasFutureBookingThisWeek }: StreakCardProps) => {
+  const { t } = useTranslation();
   const isActive = currentStreak > 0;
 
   return (
@@ -32,23 +33,26 @@ const StreakCard = ({ currentStreak, bestStreak, hasFutureBookingThisWeek }: Str
               <>
                 <p className="text-lg font-extrabold flex items-center gap-1.5">
                   <Flame className="w-5 h-5 text-orange-500" />
-                  {currentStreak}週連続トレーニング{hasFutureBookingThisWeek && currentStreak > 0 ? '継続中' : '中'}！
+                  {t(
+                    hasFutureBookingThisWeek && currentStreak > 0 ? 'streak.weeksActive' : 'streak.weeksOngoing',
+                    { count: currentStreak } as any
+                  ) as string}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {getStreakMessage(currentStreak)}
+                  {t(getStreakMessageKey(currentStreak))}
                 </p>
               </>
             ) : (
               <>
                 <p className="text-sm font-bold text-muted-foreground">
-                  {getStreakMessage(0)}
+                  {t(getStreakMessageKey(0))}
                 </p>
               </>
             )}
             {bestStreak > 0 && (
               <div className="flex items-center gap-1 mt-1">
                 <Trophy className="w-3 h-3 text-accent" />
-                <span className="text-xs text-muted-foreground">自己ベスト：{bestStreak}週</span>
+                <span className="text-xs text-muted-foreground">{t('streak.bestRecord', { count: bestStreak } as any) as string}</span>
               </div>
             )}
           </div>

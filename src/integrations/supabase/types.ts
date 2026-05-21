@@ -3325,6 +3325,7 @@ export type Database = {
       }
       recover_stamina: { Args: { p_user_id: string }; Returns: Json }
       run_rival_matching: { Args: { p_week_start: string }; Returns: Json }
+      seed_demo_data: { Args: { p_tenant_id: string }; Returns: Json }
       set_active_companion: {
         Args: { p_companion_key: string; p_user_id: string }
         Returns: Json

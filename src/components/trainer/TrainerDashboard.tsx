@@ -113,6 +113,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
   //  今期は profiles.cycle_start_date、過去月は予約履歴から「次サイクル開始日の1ヶ月前以降で最初の予約」を逆算する。
   //  未来の1回目トレーニング日は、当日になるまで売上に含めない。
   const revenueByMonth = useMemo(() => {
+    const now = new Date();
     const map = new Map<string, number>();
     profiles.forEach((p) => {
       if (!p.plan || !p.cycle_start_date) return;
@@ -120,7 +121,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
       const price = matched?.price || 0;
       if (!price) return;
 
-      const cycleStarts = getRevenueCycleStartDates(p, bookingsByUser.get(p.user_id) || [], today);
+      const cycleStarts = getRevenueCycleStartDates(p, bookingsByUser.get(p.user_id) || [], today, now);
       cycleStarts.forEach((dateKey) => {
         const monthKey = dateKey.slice(0, 7);
         map.set(monthKey, (map.get(monthKey) || 0) + price);

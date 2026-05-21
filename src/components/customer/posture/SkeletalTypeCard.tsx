@@ -39,7 +39,7 @@ const SkeletalTypeCard = ({ diagnosis }: Props) => {
         {/* Header */}
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-accent" />
-          <span className="text-sm font-bold">AI骨格タイプ診断</span>
+          <span className="text-sm font-bold">AI骨格タイプ分析</span>
         </div>
 
         {/* Result badge */}

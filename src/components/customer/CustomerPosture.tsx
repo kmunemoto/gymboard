@@ -359,11 +359,11 @@ const CustomerPosture = () => {
       });
       if (error) throw error;
       setSaved(true);
-      toast.success("診断結果を保存しました");
+      toast.success("分析結果を保存しました");
     } catch (e: any) {
       console.error("Save diagnosis error:", e);
       const msg = e?.message || e?.error_description || "不明なエラー";
-      toast.error(`診断結果の保存に失敗しました: ${msg}`);
+      toast.error(`分析結果の保存に失敗しました: ${msg}`);
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -381,9 +381,12 @@ const CustomerPosture = () => {
 
   return (
     <div className="px-4 py-4 space-y-4 slide-up">
-      <h2 className="text-lg font-bold">姿勢チェック・骨格診断（AI）</h2>
+      <h2 className="text-lg font-bold">姿勢チェック・骨格分析（AI）</h2>
       <p className="text-xs text-muted-foreground">
-        全身が映った写真をアップロードすると、AIが33箇所の関節ポイントを解析し、姿勢チェックと骨格タイプ診断を行います。
+        全身が映った写真をアップロードすると、AIが33箇所の関節ポイントを解析し、姿勢チェックと骨格タイプの分析を行います。
+      </p>
+      <p className="text-[11px] text-muted-foreground">
+        ※本機能はAIによる姿勢・骨格の分析であり、医療的な診断ではありません。
       </p>
 
       {!imageUrl ? (
@@ -412,7 +415,7 @@ const CustomerPosture = () => {
             </div>
             <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>全身が映った正面の写真が最適です。骨格タイプ診断には肩・腰・足首が見える写真が必要です。</span>
+              <span>全身が映った正面の写真が最適です。骨格タイプの分析には肩・腰・足首が見える写真が必要です。</span>
             </div>
           </CardContent>
         </Card>

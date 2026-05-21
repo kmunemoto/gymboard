@@ -189,7 +189,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
       setDiagnoses((prev) => prev.filter((x) => x.id !== d.id));
       setCompareIds((prev) => prev.filter((x) => x !== d.id));
       if (expandedId === d.id) setExpandedId(null);
-      toast({ title: "削除しました", description: "骨格診断を削除しました" });
+      toast({ title: "削除しました", description: "骨格分析を削除しました" });
     } catch (e: any) {
       console.error("[skeletal_diagnoses] delete error:", e);
       toast({ title: "削除に失敗しました", description: e?.message ?? "もう一度お試しください", variant: "destructive" });
@@ -254,7 +254,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
     <section>
       <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
         <Bone className="w-3.5 h-3.5" />
-        骨格診断履歴
+        骨格分析履歴
       </h2>
 
       {loading ? (
@@ -264,7 +264,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
       ) : diagnoses.length === 0 ? (
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground">まだ診断履歴はありません</p>
+            <p className="text-sm text-muted-foreground">まだ分析履歴はありません</p>
           </CardContent>
         </Card>
       ) : (
@@ -289,7 +289,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
 
           {compareMode && (
             <p className="text-[11px] text-muted-foreground text-center">
-              比較したい2つの診断を選んでください（{compareIds.length}/2 選択中）
+              比較したい2つの分析を選んでください（{compareIds.length}/2 選択中）
             </p>
           )}
 
@@ -504,14 +504,14 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                                 ) : (
                                   <Trash2 className="w-3.5 h-3.5 mr-1" />
                                 )}
-                                この診断を削除
+                                この分析を削除
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>骨格診断を削除しますか？</AlertDialogTitle>
+                                <AlertDialogTitle>骨格分析を削除しますか？</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  {format(dt, "yyyy年M月d日 HH:mm", { locale: ja })}の診断結果と画像が完全に削除されます。この操作は取り消せません。
+                                  {format(dt, "yyyy年M月d日 HH:mm", { locale: ja })}の分析結果と画像が完全に削除されます。この操作は取り消せません。
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

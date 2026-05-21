@@ -48,6 +48,7 @@ interface WorkoutWithExercise {
 }
 
 const CustomerTraining = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { avatar } = useAvatar();
   const gender: "male" | "female" = avatar?.gender === "female" ? "female" : "male";

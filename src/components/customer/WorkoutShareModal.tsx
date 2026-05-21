@@ -506,11 +506,11 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         className="flex items-center justify-between px-4 py-3 shrink-0"
         style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", paddingTop: "max(env(safe-area-inset-top), 12px)" }}
       >
-        <span className="text-white text-sm font-bold">トレーニング シェア</span>
+        <span className="text-white text-sm font-bold">{t("workoutShare.title")}</span>
         <button
           onClick={handleCloseAll}
           className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white hover:bg-white/25"
-          aria-label="閉じる"
+          aria-label={t("workoutShare.close")}
         >
           <X className="w-5 h-5" />
         </button>

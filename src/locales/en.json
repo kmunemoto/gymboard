@@ -134,5 +134,21 @@
     "completeTitle": "Your booking is complete!",
     "completeDescription": "Confirmation of booking details",
     "shareText": "{{gym}} Training"
+  },
+  "training": {
+    "title": "Records",
+    "tabWorkouts": "Training",
+    "tabPhotos": "Photos",
+    "noRecordsYet": "No training records yet",
+    "noRecordsHelp": "Records will appear here once your trainer enters them",
+    "progressGraph": "Progress Graph",
+    "selectExercise": "Select an exercise",
+    "minDataNote": "The chart appears with 2 or more data points",
+    "weightSeries": "Weight (kg)",
+    "repsSeries": "Reps",
+    "history": "Training History",
+    "exerciseCount": "{{count}} exercises",
+    "createShareImage": "Create share image",
+    "repsSuffix": " reps"
   }
 }

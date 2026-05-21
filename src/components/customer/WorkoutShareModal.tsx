@@ -618,9 +618,9 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       {photoCompositeSrc && (
         <div className="flex items-center justify-center gap-4 px-4 pb-3 shrink-0">
           {([
-            { k: "center" as const, label: "中央" },
-            { k: "grid" as const, label: "グリッド" },
-            { k: "bottom" as const, label: "下部" },
+            { k: "center" as const, label: t("workoutShare.layoutCenter") },
+            { k: "grid" as const, label: t("workoutShare.layoutGrid") },
+            { k: "bottom" as const, label: t("workoutShare.layoutBottom") },
           ]).map(({ k, label }) => {
             const active = photoLayout === k;
             return (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,11 +18,11 @@ import { subMonths, subYears, format } from "date-fns";
 import { getJSTNow } from "@/lib/timezone";
 
 const PERIODS = [
-  { label: "1ヶ月", value: "1m" },
-  { label: "3ヶ月", value: "3m" },
-  { label: "6ヶ月", value: "6m" },
-  { label: "1年", value: "1y" },
-  { label: "全期間", value: "all" },
+  { labelKey: "charts.period1m", value: "1m" },
+  { labelKey: "charts.period3m", value: "3m" },
+  { labelKey: "charts.period6m", value: "6m" },
+  { labelKey: "charts.period1y", value: "1y" },
+  { labelKey: "charts.periodAll", value: "all" },
 ] as const;
 
 type PeriodValue = (typeof PERIODS)[number]["value"];

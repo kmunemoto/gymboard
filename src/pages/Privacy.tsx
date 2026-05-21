@@ -160,7 +160,7 @@ const Privacy = () => {
 
         <footer className="mt-12 pt-6 border-t text-sm text-muted-foreground space-y-2">
           <p>制定日：2026年4月20日</p>
-          <p>最終更新日：2026年4月20日</p>
+          <p>最終更新日：2026年5月21日</p>
           <div className="pt-4 flex flex-wrap gap-4">
             <BackLink />
             <Link to="/terms" className="text-sm text-accent hover:text-accent/80 transition-colors font-bold">

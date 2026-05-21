@@ -177,13 +177,13 @@ const CustomerBooking = () => {
     if (!slot) return;
 
     if (isBookingDayClosed(dateKey)) {
-      toast.error("予約は前日までにお願いします");
+      toast.error(t("booking.errorAdvance"));
       setSelectedSlot(null);
       return;
     }
 
     if (isSlotBlocked(dateKey, slot.time)) {
-      toast.error("この時間帯はすでに予約が入っています");
+      toast.error(t("booking.errorSlotTaken"));
       setSelectedSlot(null);
       return;
     }
@@ -192,7 +192,7 @@ const CustomerBooking = () => {
     const { data, error } = await createBooking(user.id, dateKey, slot.time, selectedPlan);
 
     if (error) {
-      toast.error("予約に失敗しました");
+      toast.error(t("booking.errorBookingFailed"));
       setSubmitting(false);
       return;
     }
@@ -207,7 +207,7 @@ const CustomerBooking = () => {
       date: dateKey,
       startTime: slot.time,
       endTime,
-      clientName: profile?.display_name || "自分",
+      clientName: profile?.display_name || t("common.me"),
       status: "予約済み",
       booking_type: selectedPlan,
     };
@@ -260,7 +260,7 @@ const CustomerBooking = () => {
     try {
       const { error } = await cancelBooking(cancelTarget.id);
       if (error) {
-        toast.error("キャンセルに失敗しました");
+        toast.error(t("booking.errorCancelFailed"));
         return;
       }
       const cancelled = cancelTarget;
@@ -281,7 +281,7 @@ const CustomerBooking = () => {
 
   const cancelDescription = cancelTarget
     ? `${formatJST(`${cancelTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja })} ${cancelTarget.startTime}〜${cancelTarget.endTime} の予約をキャンセルします。`
-    : "予約をキャンセルします。";
+    : t("booking.cancelDescDefault");
 
   if (profileLoading || bookingsLoading) {
     return (

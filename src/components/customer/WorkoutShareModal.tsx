@@ -411,7 +411,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       setPhotoCompositeSrc(url);
     } catch (err) {
       console.error("[share] photo composite failed", err);
-      toast({ title: "写真の読み込みに失敗しました", variant: "destructive" });
+      toast({ title: t("workoutShare.photoLoadFailed"), variant: "destructive" });
     } finally {
       setBusy(false);
     }

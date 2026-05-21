@@ -94,5 +94,6 @@ export function useTenant() {
     role: membership?.role ?? null,
     plans,
     loading,
+    refetch: fetchMembership,
   };
 }

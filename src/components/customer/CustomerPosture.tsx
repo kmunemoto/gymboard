@@ -381,9 +381,12 @@ const CustomerPosture = () => {
 
   return (
     <div className="px-4 py-4 space-y-4 slide-up">
-      <h2 className="text-lg font-bold">姿勢チェック・骨格診断（AI）</h2>
+      <h2 className="text-lg font-bold">姿勢チェック・骨格分析（AI）</h2>
       <p className="text-xs text-muted-foreground">
-        全身が映った写真をアップロードすると、AIが33箇所の関節ポイントを解析し、姿勢チェックと骨格タイプ診断を行います。
+        全身が映った写真をアップロードすると、AIが33箇所の関節ポイントを解析し、姿勢チェックと骨格タイプの分析を行います。
+      </p>
+      <p className="text-[11px] text-muted-foreground">
+        ※本機能はAIによる姿勢・骨格の分析であり、医療的な診断ではありません。
       </p>
 
       {!imageUrl ? (

@@ -5,7 +5,10 @@
     "close": "閉じる",
     "delete": "削除",
     "edit": "編集",
-    "loading": "読み込み中..."
+    "loading": "読み込み中...",
+    "guest": "ゲスト",
+    "share": "シェア",
+    "unknown": "不明"
   },
   "settings": {
     "title": "設定",
@@ -22,5 +25,29 @@
     "logout": "ログアウト",
     "terms": "利用規約",
     "privacy": "プライバシーポリシー"
+  },
+  "home": {
+    "greeting": "Good Morning",
+    "greetingName": "{{name}}さん",
+    "sessionsAchieved": "{{count}}回達成",
+    "weeksStreak": "{{count}}週連続",
+    "keepingUp": "継続中",
+    "nextBooking": "次回の予約",
+    "freeTrial": "初回無料体験",
+    "training": "トレーニング",
+    "sessionOrdinal": "今回 {{ordinal}}/{{max}}回目",
+    "noBookings": "予約はありません",
+    "currentWeight": "現在の体重",
+    "bodyFat": "体脂肪率",
+    "latestWorkout": "最新のトレーニング",
+    "exercisesUnit": "種目",
+    "setsUnit": "セット",
+    "totalVolume": "総挙上量",
+    "moreExercises": "他{{count}}種目",
+    "thisReport": "今回のレポート",
+    "checkData": "データを確認する",
+    "visitsCount": "来店{{count}}回",
+    "weightChange": "体重{{change}}kg",
+    "postureCheck": "姿勢チェック（AI）"
   }
 }

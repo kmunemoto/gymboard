@@ -5,7 +5,10 @@
     "close": "Close",
     "delete": "Delete",
     "edit": "Edit",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "guest": "Guest",
+    "share": "Share",
+    "unknown": "Unknown"
   },
   "settings": {
     "title": "Settings",
@@ -22,5 +25,29 @@
     "logout": "Log out",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy"
+  },
+  "home": {
+    "greeting": "Good Morning",
+    "greetingName": "{{name}}",
+    "sessionsAchieved": "{{count}} sessions",
+    "weeksStreak": "{{count}}-week streak",
+    "keepingUp": "Keeping it up",
+    "nextBooking": "Next Booking",
+    "freeTrial": "Free Trial",
+    "training": "Training",
+    "sessionOrdinal": "Session {{ordinal}} of {{max}}",
+    "noBookings": "No bookings",
+    "currentWeight": "Current Weight",
+    "bodyFat": "Body Fat",
+    "latestWorkout": "Latest Workout",
+    "exercisesUnit": "exercises",
+    "setsUnit": "Sets",
+    "totalVolume": "Total Volume",
+    "moreExercises": "{{count}} more",
+    "thisReport": "Current Report",
+    "checkData": "View your data",
+    "visitsCount": "{{count}} visits",
+    "weightChange": "Weight {{change}}kg",
+    "postureCheck": "Posture Check (AI)"
   }
 }

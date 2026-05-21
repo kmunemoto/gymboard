@@ -239,7 +239,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       if (data) {
         setProfile(data);
         setHasProfile(true);
-        setClientPlan(data.plan || '初回無料体験');
+        // Resolve current plan: prefer tenant_members.plan_id mapping, fallback to profiles.plan
+        const { data: mem } = await supabase
+          .from("tenant_members")
+          .select("plan_id, tenant_plans:plan_id(plan_name)")
+          .eq("user_id", clientId)
+          .maybeSingle();
+        const linkedName = (mem as any)?.tenant_plans?.plan_name as string | undefined;
+        setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
         setShowUsagePeriod(data.show_usage_period ?? true);
       } else {

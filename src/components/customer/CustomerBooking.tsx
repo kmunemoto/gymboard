@@ -365,7 +365,7 @@ const CustomerBooking = () => {
         {activeBookings.length > 0 && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
-              予約済み（{activeBookings.length}件）
+              {t("booking.bookedCount", { count: activeBookings.length })}
             </h2>
             <div className="space-y-2">
               {[...activeBookings]

@@ -457,7 +457,7 @@ const CustomerBooking = () => {
                         const times = existing
                           .map((b) => `${b.startTime}〜${b.endTime}`)
                           .join("、");
-                        toast.info(`この日は ${times} に予約済みです`);
+                        toast.info(t("booking.alreadyBookedThisDay", { times }));
                       }
                     }
                     setSelectedDate(d);

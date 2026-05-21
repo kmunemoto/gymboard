@@ -473,7 +473,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       );
       if (!response.ok) {
         const errText = await response.text().catch(() => "");
-        throw new Error(errText || "画像生成に失敗しました");
+        throw new Error(errText || t("workoutShare.imageGenFailed"));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);

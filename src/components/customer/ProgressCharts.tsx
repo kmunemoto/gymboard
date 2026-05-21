@@ -247,12 +247,12 @@ const ProgressCharts = () => {
                 <div className="flex items-center justify-center gap-6 mb-2">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#3FB6AC" }} />
-                    <span className="text-xs font-bold" style={{ color: "#3FB6AC" }}>体重</span>
+                    <span className="text-xs font-bold" style={{ color: "#3FB6AC" }}>{t("charts.weight")}</span>
                   </div>
                   {weightChartData.some((d) => d.bodyFat != null) && (
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#FF8C42" }} />
-                      <span className="text-xs font-bold" style={{ color: "#FF8C42" }}>体脂肪率</span>
+                      <span className="text-xs font-bold" style={{ color: "#FF8C42" }}>{t("charts.bodyFat")}</span>
                     </div>
                   )}
                 </div>

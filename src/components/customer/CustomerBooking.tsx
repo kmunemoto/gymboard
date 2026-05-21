@@ -318,12 +318,12 @@ const CustomerBooking = () => {
         <div>
           <h1 className="text-lg font-bold flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-accent" />
-            予約する
+            {t("booking.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            ご希望の日時を選択してください
+            {t("booking.selectDateTimePrompt")}
           </p>
-          <p className="text-xs text-muted-foreground/70 mt-1">※ご予約は24時間前までにお願いいたします</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">{t("booking.advanceNotice")}</p>
         </div>
 
         {hasPlan && (

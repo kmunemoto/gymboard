@@ -540,7 +540,7 @@ const CustomerBooking = () => {
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  {format(selectedDate, "M月d日（E）", { locale: ja })} の空き枠
+                  {t("booking.availableSlots", { date: format(selectedDate, "M月d日（E）", { locale: ja }) })}
                 </h3>
                 <div className="grid grid-cols-4 gap-1.5">
                   {slots.map((slot) => (

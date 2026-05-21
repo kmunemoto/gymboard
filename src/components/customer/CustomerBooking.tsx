@@ -339,11 +339,11 @@ const CustomerBooking = () => {
                 <div className="flex items-center gap-2">
                   <Clock className={`w-4 h-4 shrink-0 ${isExpired ? "text-destructive" : isExpiringSoon ? "text-warning" : "text-accent"}`} />
                   <span className="text-xs text-muted-foreground">
-                    利用期間：{format(currentCycle.start, "M/d", { locale: ja })}〜{format(currentCycle.end, "M/d", { locale: ja })}
+                    {t("booking.usagePeriod", { start: format(currentCycle.start, "M/d", { locale: ja }), end: format(currentCycle.end, "M/d", { locale: ja }) })}
                     {isExpired ? (
-                      <span className="font-bold text-destructive ml-1">（期限切れ）</span>
+                      <span className="font-bold text-destructive ml-1">{t("booking.expired")}</span>
                     ) : (
-                      <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>（残り{remainingDays}日）</span>
+                      <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>{t("booking.daysLeft", { count: remainingDays })}</span>
                     )}
                   </span>
                 </div>

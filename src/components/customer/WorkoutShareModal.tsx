@@ -525,7 +525,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         {photoCompositeSrc ? (
           <img
             src={photoCompositeSrc}
-            alt="プレビュー"
+            alt={t("workoutShare.preview")}
             style={{
               maxWidth: "100%",
               maxHeight: "100%",

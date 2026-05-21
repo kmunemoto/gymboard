@@ -18,9 +18,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  planOptions, planPrices, PlanType,
-} from "@/lib/dummyData";
+import { useTenant } from "@/hooks/useTenant";
+import { fetchMyTenantId } from "@/lib/tenantHelper";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import { useMessages } from "@/hooks/useMessages";
 import { Switch } from "@/components/ui/switch";

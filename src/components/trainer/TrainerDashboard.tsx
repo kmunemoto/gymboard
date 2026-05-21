@@ -1,7 +1,6 @@
 import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { planPrices, PlanType } from "@/lib/dummyData";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { useAllCustomerProfiles, useProfile } from "@/hooks/useProfile";
 import { useAllBookings } from "@/hooks/useBookings";
@@ -11,6 +10,7 @@ import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
 import { useMemo } from "react";
+import { useTenant } from "@/hooks/useTenant";
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;

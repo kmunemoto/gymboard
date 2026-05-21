@@ -689,7 +689,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           disabled={busy}
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          画像を保存
+          {t("workoutShare.saveImage")}
         </Button>
       </div>
 

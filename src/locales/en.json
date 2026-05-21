@@ -1,0 +1,26 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading..."
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "name": "Name",
+    "plan": "Plan",
+    "language": "Language",
+    "languageDescription": "Switch the app display language",
+    "languageJa": "Japanese",
+    "languageEn": "English",
+    "lineLink": "LINE Integration",
+    "appleCalendar": "Apple Calendar",
+    "history": "Past Sessions",
+    "logout": "Log out",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  }
+}

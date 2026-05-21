@@ -128,6 +128,11 @@
     "errorAdvance": "Bookings must be made by the day before",
     "errorSlotTaken": "This time slot is already booked",
     "errorBookingFailed": "Booking failed",
-    "errorCancelFailed": "Cancellation failed"
+    "errorCancelFailed": "Cancellation failed",
+    "cancelledTitle": "Your cancellation has been received",
+    "cancelledDescription": "Confirmation of cancellation details",
+    "completeTitle": "Your booking is complete!",
+    "completeDescription": "Confirmation of booking details",
+    "shareText": "{{gym}} Training"
   }
 }

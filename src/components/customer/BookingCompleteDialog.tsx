@@ -1,7 +1,7 @@
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Check, CalendarDays, Clock } from "lucide-react";
-import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatJST } from "@/lib/timezone";
 
@@ -15,13 +15,13 @@ interface BookingCompleteDialogProps {
   gymName?: string;
 }
 
-function buildCalendarUrl(date: string, startTime: string, endTime: string, gymName: string) {
+function buildCalendarUrl(date: string, startTime: string, endTime: string, eventTitle: string, gymName: string) {
   const dateClean = date.replace(/-/g, "");
   const startClean = startTime.replace(":", "") + "00";
   const endClean = endTime.replace(":", "") + "00";
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: `${gymName}トレーニング`,
+    text: eventTitle,
     dates: `${dateClean}T${startClean}/${dateClean}T${endClean}`,
     ctz: "Asia/Tokyo",
     location: gymName,
@@ -46,10 +46,12 @@ const BookingCompleteDialog = ({
   planName,
   gymName,
 }: BookingCompleteDialogProps) => {
-  const resolvedGym = gymName || "ジムボード";
+  const { t } = useTranslation();
+  const resolvedGym = gymName || t("workoutShare.brandFallback");
   // Always render in JST regardless of viewer timezone.
   const formattedDate = date ? formatJST(`${date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }) : "";
-  const calendarUrl = date ? buildCalendarUrl(date, startTime, endTime, resolvedGym) : "#";
+  const eventTitle = t("booking.shareText", { gym: resolvedGym });
+  const calendarUrl = date ? buildCalendarUrl(date, startTime, endTime, eventTitle, resolvedGym) : "#";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -59,8 +61,8 @@ const BookingCompleteDialog = ({
             <Check className="w-9 h-9 text-accent-foreground" strokeWidth={3} />
           </div>
 
-          <DialogTitle className="text-xl font-bold">予約が完了しました！</DialogTitle>
-          <DialogDescription className="sr-only">予約内容のご確認</DialogDescription>
+          <DialogTitle className="text-xl font-bold">{t("booking.completeTitle")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("booking.completeDescription")}</DialogDescription>
 
           <div className="w-full bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-center gap-2 text-sm">
@@ -83,14 +85,14 @@ const BookingCompleteDialog = ({
             className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-xl text-sm font-semibold border-2 border-accent text-accent bg-background hover:bg-accent/5 transition-all duration-200"
           >
             <GoogleCalendarIcon className="w-5 h-5" />
-            Googleカレンダーに追加
+            {t("booking.addToGoogleCalendar")}
           </a>
 
           <Button
             onClick={onClose}
             className="w-full h-12 rounded-xl text-base font-bold bg-accent text-accent-foreground hover:bg-accent/90"
           >
-            OK
+            {t("common.close")}
           </Button>
         </div>
       </DialogContent>

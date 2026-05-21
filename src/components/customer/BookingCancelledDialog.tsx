@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, CalendarDays, Clock } from "lucide-react";
@@ -25,6 +26,7 @@ const BookingCancelledDialog = ({
   startTime,
   endTime,
 }: BookingCancelledDialogProps) => {
+  const { t } = useTranslation();
   const formattedDate = date ? formatJST(`${date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }) : "";
 
   return (
@@ -38,8 +40,8 @@ const BookingCancelledDialog = ({
             <X className="w-9 h-9 text-white" strokeWidth={3} />
           </div>
 
-          <DialogTitle className="text-xl font-bold">キャンセルを受け付けました</DialogTitle>
-          <DialogDescription className="sr-only">予約キャンセル内容のご確認</DialogDescription>
+          <DialogTitle className="text-xl font-bold">{t("booking.cancelledTitle")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("booking.cancelledDescription")}</DialogDescription>
 
           <div
             className="w-full rounded-xl p-4 space-y-2 border"
@@ -60,7 +62,7 @@ const BookingCancelledDialog = ({
             className="w-full h-12 rounded-xl text-base font-bold text-white hover:opacity-90"
             style={{ backgroundColor: CANCEL_GREY }}
           >
-            新しい予約を取る
+            {t("booking.newBooking")}
           </Button>
 
           <Button
@@ -68,7 +70,7 @@ const BookingCancelledDialog = ({
             onClick={onClose}
             className="w-full h-11 rounded-xl text-sm font-semibold"
           >
-            閉じる
+            {t("common.close")}
           </Button>
         </div>
       </DialogContent>

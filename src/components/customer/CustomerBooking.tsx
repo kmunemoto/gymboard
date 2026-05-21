@@ -419,9 +419,9 @@ const CustomerBooking = () => {
         {!selectedPlan && (
           <Card className="border-l-4 border-l-destructive bg-destructive/5 slide-up">
             <CardContent className="p-4 space-y-2">
-              <p className="font-bold text-sm text-destructive">プランが設定されていません</p>
+              <p className="font-bold text-sm text-destructive">{t("booking.noPlanSet")}</p>
               <p className="text-xs text-muted-foreground">
-                トレーナーにお問い合わせの上、プランを設定してもらってください。
+                {t("booking.noPlanHelp")}
               </p>
             </CardContent>
           </Card>

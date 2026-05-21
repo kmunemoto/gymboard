@@ -39,9 +39,9 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
     return c.gender === genderTab;
   });
 
-  const formatPrice = (plan: string) => {
-    const p = planPrices[plan as PlanType];
-    return p !== undefined ? `¥${p.toLocaleString()}` : "";
+  const formatPrice = (planName: string) => {
+    const match = tenantPlans.find((p) => p.plan_name === planName);
+    return match ? `¥${match.price.toLocaleString()}` : "";
   };
 
   const formatNextBooking = (profile: ProfileWithBooking) => {

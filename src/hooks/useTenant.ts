@@ -89,8 +89,9 @@ export function useTenant() {
   };
 
   useEffect(() => {
-    const cleanup = fetchMembership();
-    return () => { cleanup?.(); };
+    let cleanupFn: (() => void) | undefined;
+    fetchMembership().then((fn) => { cleanupFn = fn; });
+    return () => { cleanupFn?.(); };
   }, [user]);
 
   return {

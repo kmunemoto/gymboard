@@ -70,6 +70,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
   const { bookings, loading: bookingsLoading } = useAllBookings();
   const { unreadCount: counselingUnread } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
+  const { plans: tenantPlans } = useTenant();
   const trainerName = trainerProfile?.display_name || "トレーナー";
 
   const today = formatJST(new Date(), "yyyy-MM-dd");

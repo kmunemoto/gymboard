@@ -733,11 +733,11 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           }}
         >
           <p style={{ color: "#aaa", fontSize: 14, marginBottom: 16, textAlign: "center" }}>
-            ↓ 画像を長押しして「写真に追加」で保存
+            {t("workoutShare.saveHint")}
           </p>
           <img
             src={fullScreenImageSrc}
-            alt="トレーニングシェア"
+            alt={t("workoutShare.shareImageAlt")}
             style={{
               maxWidth: "100%",
               maxHeight: "70vh",

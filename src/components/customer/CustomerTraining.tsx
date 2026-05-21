@@ -178,7 +178,7 @@ const CustomerTraining = () => {
         <div className="w-9 h-9 rounded-xl accent-gradient flex items-center justify-center">
           <Dumbbell className="w-4.5 h-4.5 text-accent-foreground" />
         </div>
-        <h1 className="text-lg font-bold">記録</h1>
+        <h1 className="text-lg font-bold">{t('training.title')}</h1>
       </div>
 
       {/* Sub tabs */}
@@ -190,7 +190,7 @@ const CustomerTraining = () => {
           }`}
         >
           <Dumbbell className="w-3.5 h-3.5" />
-          トレーニング
+          {t('training.tabWorkouts')}
         </button>
         <button
           onClick={() => setSubTab("photos")}
@@ -199,7 +199,7 @@ const CustomerTraining = () => {
           }`}
         >
           <Camera className="w-3.5 h-3.5" />
-          写真
+          {t('training.tabPhotos')}
         </button>
       </div>
 
@@ -212,8 +212,8 @@ const CustomerTraining = () => {
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             <Dumbbell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">まだトレーニング記録がありません</p>
-            <p className="text-xs mt-1">トレーナーが記録を入力すると、ここに表示されます</p>
+            <p className="text-sm">{t('training.noRecordsYet')}</p>
+            <p className="text-xs mt-1">{t('training.noRecordsHelp')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -222,13 +222,13 @@ const CustomerTraining = () => {
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5" />
-              成長グラフ
+              {t('training.progressGraph')}
             </h2>
             <Card>
               <CardContent className="p-4 space-y-3">
                 <Select value={selectedExercise} onValueChange={setSelectedExercise}>
                   <SelectTrigger className="w-full h-11 text-sm font-medium">
-                    <SelectValue placeholder="種目を選択" />
+                    <SelectValue placeholder={t('training.selectExercise')} />
                   </SelectTrigger>
                   <SelectContent>
                     {exerciseNames.map((name) => (
@@ -246,16 +246,16 @@ const CustomerTraining = () => {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                         <YAxis yAxisId="w" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} unit="kg" domain={["dataMin - 5", "dataMax + 5"]} width={45} />
-                        <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} unit="回" width={40} />
+                        <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} unit={t('training.repsSuffix')} width={40} />
                         <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "12px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: "12px" }} />
-                        <Line key={`${selectedExercise}-weight`} yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" strokeWidth={2.5} isAnimationActive={false} dot={{ r: 5, fill: "hsl(174, 65%, 50%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} activeDot={{ r: 7 }} name="重量(kg)" />
-                        <Line key={`${selectedExercise}-reps`} yAxisId="r" type="monotone" dataKey="reps" stroke="hsl(210, 40%, 58%)" strokeWidth={2} strokeDasharray="5 5" isAnimationActive={false} dot={{ r: 4, fill: "hsl(210, 40%, 58%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} name="回数" />
+                        <Line key={`${selectedExercise}-weight`} yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" strokeWidth={2.5} isAnimationActive={false} dot={{ r: 5, fill: "hsl(174, 65%, 50%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} activeDot={{ r: 7 }} name={t('training.weightSeries')} />
+                        <Line key={`${selectedExercise}-reps`} yAxisId="r" type="monotone" dataKey="reps" stroke="hsl(210, 40%, 58%)" strokeWidth={2} strokeDasharray="5 5" isAnimationActive={false} dot={{ r: 4, fill: "hsl(210, 40%, 58%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} name={t('training.repsSeries')} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
                   <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">
-                    データが2件以上あるとグラフが表示されます
+                    {t('training.minDataNote')}
                   </div>
                 )}
 
@@ -263,11 +263,11 @@ const CustomerTraining = () => {
                   <div className="flex justify-center gap-6 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 h-0.5 rounded bg-[hsl(174,65%,50%)]" />
-                      重量(kg)
+                      {t('training.weightSeries')}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 h-0.5 rounded bg-[hsl(210,80%,55%)] border-dashed" style={{ borderTop: "2px dashed hsl(210,80%,55%)", height: 0 }} />
-                      回数
+                      {t('training.repsSeries')}
                     </div>
                   </div>
                 )}
@@ -279,7 +279,7 @@ const CustomerTraining = () => {
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" />
-              トレーニング履歴
+              {t('training.history')}
             </h2>
             <div className="space-y-3">
               {groupedByDate.map(([date, records]) => {
@@ -296,12 +296,12 @@ const CustomerTraining = () => {
                         </div>
                         <span className="font-bold text-sm">{dateStr}</span>
                         <span className="text-xs text-muted-foreground ml-auto">
-                          {records.length}種目
+                          {t('training.exerciseCount', { count: records.length })}
                         </span>
                         <button
                           onClick={() => setShareDate(date)}
                           className="w-8 h-8 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent flex items-center justify-center transition"
-                          aria-label="シェア画像を作成"
+                          aria-label={t('training.createShareImage')}
                         >
                           <Share2 className="w-4 h-4" />
                         </button>
@@ -328,7 +328,7 @@ const CustomerTraining = () => {
                                       <span>{circleNumbers[si] || `(${si + 1})`}</span>
                                       <span className="ml-1.5">
                                         <span className="font-bold text-foreground">{s.weight}</span>kg ×{" "}
-                                        <span className="font-bold text-foreground">{s.reps}</span>回
+                                        <span className="font-bold text-foreground">{s.reps}</span>{t('training.repsSuffix')}
                                       </span>
                                     </div>
                                   ))}

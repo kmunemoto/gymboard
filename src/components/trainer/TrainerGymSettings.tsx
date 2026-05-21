@@ -27,6 +27,43 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [confirmDesc, setConfirmDesc] = useState("");
+
+  const runSeed = async () => {
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
+    setSeeding(true);
+    try {
+      const { data, error } = await supabase.rpc("seed_demo_data" as any, { p_tenant_id: tenant.id });
+      if (error) throw error;
+      const r = (data as any) || {};
+      toast.success(`デモデータを追加しました（顧客${r.customers ?? 3}名、予約${r.bookings ?? 3}件、種目${r.exercises ?? 5}件）`);
+      setTimeout(() => window.location.reload(), 800);
+    } catch (e: any) {
+      toast.error(e.message || "デモデータの追加に失敗しました");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleSeedClick = async () => {
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
+    const { count } = await supabase
+      .from("tenant_members")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id)
+      .eq("role", "customer");
+    if ((count ?? 0) > 0) {
+      setConfirmTitle("既にデータがあります");
+      setConfirmDesc(`現在 ${count} 名の顧客が登録されています。さらに追加しますか？`);
+    } else {
+      setConfirmTitle("デモデータを投入");
+      setConfirmDesc("サンプルの顧客・予約データを追加します。よろしいですか？");
+    }
+    setConfirmOpen(true);
+  };
 
 
 

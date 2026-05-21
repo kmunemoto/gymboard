@@ -434,7 +434,7 @@ const CustomerBooking = () => {
               <div className="flex-1">
                 <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  日時を選択
+                  {t("booking.selectDateTime")}
                 </h2>
               </div>
               <Badge variant="outline" className="text-xs shrink-0">

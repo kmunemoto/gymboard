@@ -415,7 +415,7 @@ const CustomerPosture = () => {
             </div>
             <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>全身が映った正面の写真が最適です。骨格タイプ診断には肩・腰・足首が見える写真が必要です。</span>
+              <span>全身が映った正面の写真が最適です。骨格タイプの分析には肩・腰・足首が見える写真が必要です。</span>
             </div>
           </CardContent>
         </Card>

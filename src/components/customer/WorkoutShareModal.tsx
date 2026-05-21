@@ -22,7 +22,8 @@ type PhotoLayout = "center" | "grid" | "bottom";
 const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions }: Props) => {
   const { user } = useAuth();
   const { tenant } = useTenant();
-  const gymBrand = tenant?.gym_name || "ジムボード";
+  const { t } = useTranslation();
+  const gymBrand = tenant?.gym_name || t("workoutShare.brandFallback");
   const [featuredBadges, setFeaturedBadges] = useState<string[]>([]);
   useEffect(() => {
     if (!open || !user) return;

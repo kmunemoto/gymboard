@@ -621,7 +621,7 @@ const CustomerBooking = () => {
                 disabled={cancelling}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {cancelling ? "キャンセル中..." : "キャンセルする"}
+                {cancelling ? t("booking.cancelling") : t("booking.cancel")}
               </Button>
             </div>
           </div>

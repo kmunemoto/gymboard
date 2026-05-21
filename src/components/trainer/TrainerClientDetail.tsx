@@ -577,11 +577,22 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setSaving(false);
   };
 
-  const handlePlanChange = async (v: string) => {
-    const { error } = await supabase.from("profiles").update({ plan: v }).eq("user_id", clientId);
+  const handlePlanChange = async (planName: string) => {
+    const selected = tenantPlans.find((p) => p.plan_name === planName);
+    if (selected) {
+      const tenantId = await fetchMyTenantId();
+      if (tenantId) {
+        await supabase
+          .from("tenant_members")
+          .update({ plan_id: selected.id })
+          .eq("tenant_id", tenantId)
+          .eq("user_id", clientId);
+      }
+    }
+    const { error } = await supabase.from("profiles").update({ plan: planName }).eq("user_id", clientId);
     if (error) { toast.error("プラン変更に失敗しました"); return; }
-    setClientPlan(v as PlanType);
-    toast.success(`${displayName}さんのプランを「${v}」に変更しました`);
+    setClientPlan(planName);
+    toast.success(`${displayName}さんのプランを「${planName}」に変更しました`);
   };
 
   const handleCycleStartDateChange = async (newDate: string) => {

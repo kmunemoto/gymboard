@@ -23,6 +23,7 @@ interface TrainerClientListProps {
 
 const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
   const { profiles, loading, setProfiles } = useAllCustomerProfiles();
+  const { plans: tenantPlans } = useTenant();
   const [search, setSearch] = useState("");
   const [genderTab, setGenderTab] = useState<"all" | "male" | "female">("all");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);

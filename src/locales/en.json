@@ -49,5 +49,31 @@
     "visitsCount": "{{count}} visits",
     "weightChange": "Weight {{change}}kg",
     "postureCheck": "Posture Check (AI)"
+  },
+  "streak": {
+    "msg13": "Incredible consistency — your trainer is impressed!",
+    "msg9": "Almost 3 months strong — you're a pro!",
+    "msg5": "Amazing consistency!",
+    "msg3": "It's becoming a habit!",
+    "msg1": "Great start!",
+    "msg0": "Visit this week to start your streak!",
+    "weeksActive": "{{count}}-week training streak going!",
+    "weeksOngoing": "{{count}}-week training streak!",
+    "bestRecord": "Best: {{count}} weeks"
+  },
+  "charts": {
+    "period1m": "1 Month",
+    "period3m": "3 Months",
+    "period6m": "6 Months",
+    "period1y": "1 Year",
+    "periodAll": "All Time",
+    "weightBodyFat": "Weight & Body Fat",
+    "weight": "Weight",
+    "bodyFat": "Body Fat",
+    "weightSeries": "Weight (kg)",
+    "bodyFatSeries": "Body Fat (%)",
+    "minDataNote": "The chart appears once there are 2 or more data points",
+    "noPeriodData": "No data for this period. Please select another period.",
+    "trainingWeight": "Training Weight"
   }
 }

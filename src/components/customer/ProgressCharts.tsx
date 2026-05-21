@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,11 +18,11 @@ import { subMonths, subYears, format } from "date-fns";
 import { getJSTNow } from "@/lib/timezone";
 
 const PERIODS = [
-  { label: "1ヶ月", value: "1m" },
-  { label: "3ヶ月", value: "3m" },
-  { label: "6ヶ月", value: "6m" },
-  { label: "1年", value: "1y" },
-  { label: "全期間", value: "all" },
+  { labelKey: "charts.period1m", value: "1m" },
+  { labelKey: "charts.period3m", value: "3m" },
+  { labelKey: "charts.period6m", value: "6m" },
+  { labelKey: "charts.period1y", value: "1y" },
+  { labelKey: "charts.periodAll", value: "all" },
 ] as const;
 
 type PeriodValue = (typeof PERIODS)[number]["value"];
@@ -71,6 +72,7 @@ const Sparkline = ({ values, width = 60, height = 24 }: { values: number[]; widt
 };
 
 const ProgressCharts = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { measurements } = useMeasurements(user?.id);
   const [period, setPeriod] = useState<PeriodValue>("3m");
@@ -93,12 +95,12 @@ const ProgressCharts = () => {
             weight: w.weight,
             reps: w.reps,
             sets: w.sets || (w.weight != null ? [{ set: 1, weight: w.weight, reps: w.reps }] : null),
-            exercise_name: w.exercises?.name || "不明",
+            exercise_name: w.exercises?.name || t("common.unknown"),
           }))
         );
       }
     })();
-  }, [user]);
+  }, [user, t]);
 
   const periodStart = getPeriodStart(period);
 
@@ -191,7 +193,7 @@ const ProgressCharts = () => {
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            {p.label}
+            {t(p.labelKey)}
           </button>
         ))}
       </div>
@@ -200,7 +202,7 @@ const ProgressCharts = () => {
       {hasWeightData && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
-            体重・体脂肪率
+            {t("charts.weightBodyFat")}
           </h2>
 
           {/* Summary chips */}
@@ -245,12 +247,12 @@ const ProgressCharts = () => {
                 <div className="flex items-center justify-center gap-6 mb-2">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#3FB6AC" }} />
-                    <span className="text-xs font-bold" style={{ color: "#3FB6AC" }}>体重</span>
+                    <span className="text-xs font-bold" style={{ color: "#3FB6AC" }}>{t("charts.weight")}</span>
                   </div>
                   {weightChartData.some((d) => d.bodyFat != null) && (
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#FF8C42" }} />
-                      <span className="text-xs font-bold" style={{ color: "#FF8C42" }}>体脂肪率</span>
+                      <span className="text-xs font-bold" style={{ color: "#FF8C42" }}>{t("charts.bodyFat")}</span>
                     </div>
                   )}
                 </div>
@@ -313,7 +315,7 @@ const ProgressCharts = () => {
                         fill="url(#pgWeightGrad)"
                         isAnimationActive={false}
                         dot={{ r: 4, fill: "#3FB6AC", strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                        name="体重(kg)"
+                        name={t("charts.weightSeries") as string}
                         connectNulls
                       />
                       {weightChartData.some((d) => d.bodyFat != null) && (
@@ -326,7 +328,7 @@ const ProgressCharts = () => {
                           fill="url(#pgFatGrad)"
                           isAnimationActive={false}
                           dot={{ r: 3, fill: "#FF8C42", strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                          name="体脂肪率(%)"
+                          name={t("charts.bodyFatSeries") as string}
                           connectNulls
                         />
                       )}
@@ -339,18 +341,18 @@ const ProgressCharts = () => {
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
                 {weightChartData[0].weight != null && (
-                  <p>体重: <span className="font-bold text-foreground">{weightChartData[0].weight}kg</span></p>
+                  <p>{t("charts.weight")}: <span className="font-bold text-foreground">{weightChartData[0].weight}kg</span></p>
                 )}
                 {weightChartData[0].bodyFat != null && (
-                  <p>体脂肪率: <span className="font-bold text-foreground">{weightChartData[0].bodyFat}%</span></p>
+                  <p>{t("charts.bodyFat")}: <span className="font-bold text-foreground">{weightChartData[0].bodyFat}%</span></p>
                 )}
-                <p className="text-xs mt-1">2件以上のデータでグラフが表示されます</p>
+                <p className="text-xs mt-1">{t("charts.minDataNote")}</p>
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                この期間のデータはありません。別の期間を選択してください。
+                {t("charts.noPeriodData")}
               </CardContent>
             </Card>
           )}
@@ -362,7 +364,7 @@ const ProgressCharts = () => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Dumbbell className="w-3.5 h-3.5" />
-            トレーニング重量
+            {t("charts.trainingWeight")}
           </h2>
 
           {exerciseSummaries.length > 0 ? (
@@ -423,7 +425,7 @@ const ProgressCharts = () => {
           ) : (
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                この期間のデータはありません。別の期間を選択してください。
+                {t("charts.noPeriodData")}
               </CardContent>
             </Card>
           )}

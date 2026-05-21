@@ -19,6 +19,7 @@ import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow } from "@/lib/courseProgress";
 import { useTenant } from "@/hooks/useTenant";
+import { useTranslation } from "react-i18next";
 
 const BOOKING_BUFFER_MINUTES = 15;
 

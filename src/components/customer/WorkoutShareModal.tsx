@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
+import { STREAK_ENABLED } from "@/lib/featureFlags";
 
 interface Props {
   open: boolean;
@@ -560,7 +561,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
             <WorkoutShareCard
               session={session}
               theme={theme}
-              streakWeeks={streakWeeks}
+              streakWeeks={STREAK_ENABLED ? streakWeeks : 0}
               totalSessions={totalSessions}
               featuredBadges={featuredBadges}
             />

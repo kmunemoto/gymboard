@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { MONTHLY_REPORT_ENABLED } from "@/lib/featureFlags";
 import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Loader2, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon } from "lucide-react";
 import { exerciseCategories } from "@/lib/dummyData";
 import { Card, CardContent } from "@/components/ui/card";
@@ -834,7 +835,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <TabsTrigger value="meals" className="text-[10px] sm:text-xs px-1">食事</TabsTrigger>
           <TabsTrigger value="bookings" className="text-[10px] sm:text-xs px-1">予約</TabsTrigger>
           <TabsTrigger value="skeletal" className="text-[10px] sm:text-xs px-1">骨格</TabsTrigger>
-          <TabsTrigger value="report" className="text-[10px] sm:text-xs px-1">月報</TabsTrigger>
+          {MONTHLY_REPORT_ENABLED && (
+            <TabsTrigger value="report" className="text-[10px] sm:text-xs px-1">月報</TabsTrigger>
+          )}
           <TabsTrigger value="chat" className="text-[10px] sm:text-xs px-1">チャット</TabsTrigger>
         </TabsList>
 

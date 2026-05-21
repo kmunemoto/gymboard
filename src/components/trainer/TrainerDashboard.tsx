@@ -40,10 +40,14 @@ const getRevenueCycleStartDates = (
   profile: RevenueProfile,
   userBookings: BookingForProgress[],
   todayKey: string,
+  now: Date,
 ) => {
   const starts = new Set<string>();
   const bookingDates = userBookings
-    .filter((b) => b.status !== "キャンセル済み")
+    .filter((b) => {
+      if (b.status === "キャンセル済み") return false;
+      return new Date(b.booking_date) <= now;
+    })
     .map((b) => b.booking_date.slice(0, 10))
     .sort();
 

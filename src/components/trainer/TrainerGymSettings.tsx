@@ -391,6 +391,15 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <Button
           variant="outline"
+          className="w-full h-12 font-bold"
+          onClick={handleSeedClick}
+          disabled={seeding}
+        >
+          {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Database className="w-4 h-4 mr-2" />}
+          デモデータを投入
+        </Button>
+        <Button
+          variant="outline"
           className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive font-bold"
           onClick={onSignOut}
         >
@@ -399,6 +408,19 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </Button>
         <DeleteAccountButton />
       </section>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDesc}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction onClick={runSeed} disabled={seeding}>追加する</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -128,6 +128,11 @@
     "errorAdvance": "予約は前日までにお願いします",
     "errorSlotTaken": "この時間帯はすでに予約が入っています",
     "errorBookingFailed": "予約に失敗しました",
-    "errorCancelFailed": "キャンセルに失敗しました"
+    "errorCancelFailed": "キャンセルに失敗しました",
+    "cancelledTitle": "キャンセルを受け付けました",
+    "cancelledDescription": "予約キャンセル内容のご確認",
+    "completeTitle": "予約が完了しました！",
+    "completeDescription": "予約内容のご確認",
+    "shareText": "{{gym}}トレーニング"
   }
 }

@@ -250,8 +250,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 shrink-0">
-                {settings?.logo_url ? (
-                  <img src={settings.logo_url} alt="ジムロゴ" className="w-full h-full object-contain" />
+                {tenant?.logo_url ? (
+                  <img src={tenant.logo_url} alt="ジムロゴ" className="w-full h-full object-contain" />
                 ) : (
                   <span className="text-[10px] text-muted-foreground">未設定</span>
                 )}
@@ -260,9 +260,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
                 <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm" className="flex-1">
                   <Upload className="w-4 h-4 mr-1" />
-                  {uploading ? "処理中..." : settings?.logo_url ? "変更" : "アップロード"}
+                  {uploading ? "処理中..." : tenant?.logo_url ? "変更" : "アップロード"}
                 </Button>
-                {settings?.logo_url && (
+                {tenant?.logo_url && (
                   <Button variant="destructive" onClick={handleDelete} disabled={uploading} size="sm">
                     <Trash2 className="w-4 h-4" />
                   </Button>

@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, Loader2, RefreshCw, Settings } from "lucide-react";
+import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, Loader2, RefreshCw, Settings, Database } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerPlanManager from "./TrainerPlanManager";
@@ -26,6 +27,43 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [confirmDesc, setConfirmDesc] = useState("");
+
+  const runSeed = async () => {
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
+    setSeeding(true);
+    try {
+      const { data, error } = await supabase.rpc("seed_demo_data" as any, { p_tenant_id: tenant.id });
+      if (error) throw error;
+      const r = (data as any) || {};
+      toast.success(`デモデータを追加しました（顧客${r.customers ?? 3}名、予約${r.bookings ?? 3}件、種目${r.exercises ?? 5}件）`);
+      setTimeout(() => window.location.reload(), 800);
+    } catch (e: any) {
+      toast.error(e.message || "デモデータの追加に失敗しました");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleSeedClick = async () => {
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
+    const { count } = await supabase
+      .from("tenant_members")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id)
+      .eq("role", "customer");
+    if ((count ?? 0) > 0) {
+      setConfirmTitle("既にデータがあります");
+      setConfirmDesc(`現在 ${count} 名の顧客が登録されています。さらに追加しますか？`);
+    } else {
+      setConfirmTitle("デモデータを投入");
+      setConfirmDesc("サンプルの顧客・予約データを追加します。よろしいですか？");
+    }
+    setConfirmOpen(true);
+  };
 
 
 
@@ -353,6 +391,15 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <Button
           variant="outline"
+          className="w-full h-12 font-bold"
+          onClick={handleSeedClick}
+          disabled={seeding}
+        >
+          {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Database className="w-4 h-4 mr-2" />}
+          デモデータを投入
+        </Button>
+        <Button
+          variant="outline"
           className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive font-bold"
           onClick={onSignOut}
         >
@@ -361,6 +408,19 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </Button>
         <DeleteAccountButton />
       </section>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDesc}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction onClick={runSeed} disabled={seeding}>追加する</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

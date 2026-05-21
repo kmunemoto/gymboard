@@ -30,7 +30,7 @@ const Privacy = () => {
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3">1. はじめに</h2>
             <p>
-              ジムボード（以下「当ジム」）が提供するgymboardアプリ（以下「本アプリ」）は、お客様の個人情報を適切に保護することを重要な責務と考えています。
+              ジムボード（以下「当社」）が提供するgymboardアプリ（以下「本アプリ」）は、お客様の個人情報を適切に保護することを重要な責務と考えています。
             </p>
           </section>
 

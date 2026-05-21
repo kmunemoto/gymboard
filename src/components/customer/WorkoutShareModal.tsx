@@ -574,7 +574,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         {([
           { k: "dark" as const, icon: Moon, label: "Dark" },
           { k: "light" as const, icon: Sun, label: "Light" },
-          { k: "transparent" as const, icon: ImageIcon, label: "透過" },
+          { k: "transparent" as const, icon: ImageIcon, label: t("workoutShare.bgTransparent") },
         ]).map(({ k, icon: Icon, label }) => (
           <button
             key={k}

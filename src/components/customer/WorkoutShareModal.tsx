@@ -610,7 +610,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           }`}
         >
           <Camera className="w-3.5 h-3.5" />
-          {photoCompositeSrc ? "写真を変更" : "写真と合成"}
+          {photoCompositeSrc ? t("workoutShare.changePhoto") : t("workoutShare.addPhoto")}
         </button>
       </div>
 

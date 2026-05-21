@@ -561,7 +561,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
             <WorkoutShareCard
               session={session}
               theme={theme}
-              streakWeeks={streakWeeks}
+              streakWeeks={STREAK_ENABLED ? streakWeeks : 0}
               totalSessions={totalSessions}
               featuredBadges={featuredBadges}
             />

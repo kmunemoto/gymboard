@@ -134,5 +134,21 @@
     "completeTitle": "予約が完了しました！",
     "completeDescription": "予約内容のご確認",
     "shareText": "{{gym}}トレーニング"
+  },
+  "training": {
+    "title": "記録",
+    "tabWorkouts": "トレーニング",
+    "tabPhotos": "写真",
+    "noRecordsYet": "まだトレーニング記録がありません",
+    "noRecordsHelp": "トレーナーが記録を入力すると、ここに表示されます",
+    "progressGraph": "成長グラフ",
+    "selectExercise": "種目を選択",
+    "minDataNote": "データが2件以上あるとグラフが表示されます",
+    "weightSeries": "重量(kg)",
+    "repsSeries": "回数",
+    "history": "トレーニング履歴",
+    "exerciseCount": "{{count}}種目",
+    "createShareImage": "シェア画像を作成",
+    "repsSuffix": "回"
   }
 }

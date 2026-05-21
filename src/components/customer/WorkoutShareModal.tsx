@@ -758,7 +758,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
               fontWeight: 600,
             }}
           >
-            閉じる
+            {t("workoutShare.close")}
           </button>
         </div>
       )}

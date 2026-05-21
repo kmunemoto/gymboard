@@ -332,7 +332,7 @@ const CustomerBooking = () => {
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-accent shrink-0" />
                 <span className="text-sm font-bold">
-                  現在のプラン：{planLabel(currentPlan!)}
+                  {t("booking.currentPlan", { plan: planLabel(currentPlan!) })}
                 </span>
               </div>
               {currentCycle && (

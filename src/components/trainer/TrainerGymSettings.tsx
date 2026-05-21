@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -209,6 +210,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       </section>
 
       <Separator />
+
+      {/* === 言語 / Language === */}
+      <LanguageSwitcher variant="trainer" />
+
+      <Separator />
+
+
 
       {/* === プロフィール === */}
       <section className="space-y-3">

@@ -16,10 +16,13 @@ import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 
 import { useTenant } from "@/hooks/useTenant";
 
 const CustomerSettings = () => {
+  const { t } = useTranslation();
   const { profile, loading, updateDisplayName, updateGameMode, refetch } = useProfile();
   const { user, signOut } = useAuth();
   const { bookings: myBookings, loading: bookingsLoading } = useMyBookings();
@@ -186,14 +189,14 @@ const CustomerSettings = () => {
     <div className="px-4 py-4 space-y-5 slide-up">
       <h1 className="text-lg font-bold flex items-center gap-2">
         <Settings className="w-5 h-5" />
-        設定
+        {t("settings.title")}
       </h1>
 
       {/* Profile */}
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <User className="w-3.5 h-3.5" />
-          プロフィール
+          {t("settings.profile")}
         </h2>
         <Card>
           <CardContent className="p-4 space-y-3">
@@ -230,6 +233,11 @@ const CustomerSettings = () => {
           </CardContent>
         </Card>
       </section>
+
+      {/* Language */}
+      <LanguageSwitcher variant="customer" />
+
+
 
       {/* LINE連携 */}
       <section>

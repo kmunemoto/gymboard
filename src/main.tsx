@@ -5,6 +5,7 @@ import { Keyboard, KeyboardResize } from "@capacitor/keyboard";
 import { App as CapApp } from "@capacitor/app";
 import App from "./App.tsx";
 import "./index.css";
+import "./lib/i18n";
 
 // Initialize native (Capacitor) integrations — no-op on web
 if (Capacitor.isNativePlatform()) {

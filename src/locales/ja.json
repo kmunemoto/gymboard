@@ -1,0 +1,26 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "delete": "削除",
+    "edit": "編集",
+    "loading": "読み込み中..."
+  },
+  "settings": {
+    "title": "設定",
+    "profile": "プロフィール",
+    "name": "名前",
+    "plan": "プラン",
+    "language": "言語",
+    "languageDescription": "アプリの表示言語を切り替えます",
+    "languageJa": "日本語",
+    "languageEn": "英語",
+    "lineLink": "LINE連携",
+    "appleCalendar": "Appleカレンダー連携",
+    "history": "過去の受講履歴",
+    "logout": "ログアウト",
+    "terms": "利用規約",
+    "privacy": "プライバシーポリシー"
+  }
+}

@@ -189,14 +189,14 @@ const CustomerSettings = () => {
     <div className="px-4 py-4 space-y-5 slide-up">
       <h1 className="text-lg font-bold flex items-center gap-2">
         <Settings className="w-5 h-5" />
-        設定
+        {t("settings.title")}
       </h1>
 
       {/* Profile */}
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <User className="w-3.5 h-3.5" />
-          プロフィール
+          {t("settings.profile")}
         </h2>
         <Card>
           <CardContent className="p-4 space-y-3">

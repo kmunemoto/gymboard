@@ -315,7 +315,7 @@ const ProgressCharts = () => {
                         fill="url(#pgWeightGrad)"
                         isAnimationActive={false}
                         dot={{ r: 4, fill: "#3FB6AC", strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                        name="体重(kg)"
+                        name={t("charts.weightSeries") as string}
                         connectNulls
                       />
                       {weightChartData.some((d) => d.bodyFat != null) && (
@@ -328,7 +328,7 @@ const ProgressCharts = () => {
                           fill="url(#pgFatGrad)"
                           isAnimationActive={false}
                           dot={{ r: 3, fill: "#FF8C42", strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                          name="体脂肪率(%)"
+                          name={t("charts.bodyFatSeries") as string}
                           connectNulls
                         />
                       )}

@@ -188,11 +188,12 @@ const TrainingGrowthChart = ({ workoutRecords, loadingRecords }: { workoutRecord
 };
 
 const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => {
+  const { plans: tenantPlans } = useTenant();
   const [profile, setProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
   const [showUsagePeriod, setShowUsagePeriod] = useState(true);
-  const [clientPlan, setClientPlan] = useState<string>('初回無料体験');
+  const [clientPlan, setClientPlan] = useState<string>('');
   const [bodyWeight, setBodyWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
   const [savingMeasurement, setSavingMeasurement] = useState(false);

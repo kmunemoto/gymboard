@@ -303,12 +303,12 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         };
 
         // Row 1
-        drawCell("種目数", `${session.exercises.length}`, colLeftX, top);
-        drawCell("トレーニング時間", `${session.durationMin}分`, colRightX, top);
+        drawCell(t("workoutShare.exerciseCount"), `${session.exercises.length}`, colLeftX, top);
+        drawCell(t("workoutShare.trainingTime"), t("workoutShare.minutes", { count: session.durationMin }), colRightX, top);
         // Row 2
         const r2 = top + rowGap;
         drawCell(
-          "総セット",
+          t("workoutShare.totalSets"),
           `${session.exercises.reduce((a, e) => a + (e.setsCount ?? 1), 0)}`,
           colLeftX,
           r2,
@@ -316,7 +316,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         if (top1) {
           // Top exercise: smaller value (name can be long)
           ctx.font = `300 24px ${FONT}`;
-          drawCenter("トップ種目", colRightX, r2);
+          drawCenter(t("workoutShare.topExercise"), colRightX, r2);
           ctx.font = `700 36px ${FONT}`;
           drawCenter(top1.exercise_name, colRightX, r2 + 24 + 16 + 36 - 8);
           ctx.font = `400 28px ${FONT}`;

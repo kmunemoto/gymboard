@@ -289,7 +289,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
 
           {compareMode && (
             <p className="text-[11px] text-muted-foreground text-center">
-              比較したい2つの診断を選んでください（{compareIds.length}/2 選択中）
+              比較したい2つの分析を選んでください（{compareIds.length}/2 選択中）
             </p>
           )}
 

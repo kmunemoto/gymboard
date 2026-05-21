@@ -344,56 +344,61 @@ const CustomerSettings = () => {
         </section>
       )}
 
-      {/* Appleカレンダー連携 */}
-      <section>
-        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-          <Smartphone className="w-3.5 h-3.5" />
-          Appleカレンダー連携
-        </h2>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 bg-muted">
-                <Smartphone className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold">Appleカレンダー連携</p>
-                <p className="text-[11px] text-muted-foreground mb-2">
-                  一度連携すると、今後の予約がiPhoneの純正カレンダーに自動反映されます
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    try {
-                      if (!profile?.calendar_token) {
-                        toast.error("カレンダートークンが見つかりません。ページを再読み込みしてください。");
-                        return;
-                      }
-                      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                      if (!supabaseUrl) {
+      {/*
+        App Store審査のため一時的に非表示。外部カレンダー連携設定が整い次第、false を true に戻して再有効化する。
+        連携済みユーザーのデータ・通知ロジックには影響しない。
+      */}
+      {false && (
+        <section>
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <Smartphone className="w-3.5 h-3.5" />
+            Appleカレンダー連携
+          </h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 bg-muted">
+                  <Smartphone className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold">Appleカレンダー連携</p>
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    一度連携すると、今後の予約がiPhoneの純正カレンダーに自動反映されます
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        if (!profile?.calendar_token) {
+                          toast.error("カレンダートークンが見つかりません。ページを再読み込みしてください。");
+                          return;
+                        }
+                        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                        if (!supabaseUrl) {
+                          toast.error("カレンダー連携に失敗しました");
+                          return;
+                        }
+                        const httpsUrl = `${supabaseUrl}/functions/v1/calendar-feed?token=${profile.calendar_token}`;
+                        const webcalUrl = httpsUrl.replace(/^https:\/\//, "webcal://");
+                        window.location.href = webcalUrl;
+                        toast.success("カレンダー購読画面が表示されます");
+                      } catch (err) {
+                        console.error("Calendar link error:", err);
                         toast.error("カレンダー連携に失敗しました");
-                        return;
                       }
-                      const httpsUrl = `${supabaseUrl}/functions/v1/calendar-feed?token=${profile.calendar_token}`;
-                      const webcalUrl = httpsUrl.replace(/^https:\/\//, "webcal://");
-                      window.location.href = webcalUrl;
-                      toast.success("カレンダー購読画面が表示されます");
-                    } catch (err) {
-                      console.error("Calendar link error:", err);
-                      toast.error("カレンダー連携に失敗しました");
-                    }
-                  }}
-                  className="text-xs"
-                  variant="outline"
-                >
-                  <Smartphone className="w-3.5 h-3.5 mr-1" />
-                  Appleカレンダーと連携する
-                </Button>
+                    }}
+                    className="text-xs"
+                    variant="outline"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 mr-1" />
+                    Appleカレンダーと連携する
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">

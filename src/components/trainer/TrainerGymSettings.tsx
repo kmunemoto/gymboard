@@ -98,6 +98,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("画像ファイルを選択してください"); return; }
     if (file.size > 2 * 1024 * 1024) { toast.error("ファイルサイズは2MB以下にしてください"); return; }
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
@@ -107,10 +108,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("gym-assets").getPublicUrl(filePath);
       const url = `${urlData.publicUrl}?t=${Date.now()}`;
-      const err = await updateLogoUrl(url);
-      if (err) throw err;
+      const { error: updateError } = await supabase.from("tenants").update({ logo_url: url }).eq("id", tenant.id);
+      if (updateError) throw updateError;
       toast.success("ロゴを更新しました");
-      refetch();
+      refetchTenant();
     } catch (err: any) {
       toast.error(err.message || "アップロードに失敗しました");
     } finally {
@@ -120,6 +121,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   };
 
   const handleDelete = async () => {
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
     setUploading(true);
     try {
       const { data: files } = await supabase.storage.from("gym-assets").list();
@@ -127,10 +129,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         const logoFiles = files.filter((f) => f.name.startsWith("logo"));
         if (logoFiles.length > 0) await supabase.storage.from("gym-assets").remove(logoFiles.map((f) => f.name));
       }
-      const err = await updateLogoUrl(null);
-      if (err) throw err;
+      const { error: updateError } = await supabase.from("tenants").update({ logo_url: null }).eq("id", tenant.id);
+      if (updateError) throw updateError;
       toast.success("ロゴを削除しました");
-      refetch();
+      refetchTenant();
     } catch (err: any) {
       toast.error(err.message || "削除に失敗しました");
     } finally {

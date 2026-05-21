@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 
 const CustomerSettings = () => {
+  const { t } = useTranslation();
   const { profile, loading, updateDisplayName, updateGameMode, refetch } = useProfile();
   const { user, signOut } = useAuth();
   const { bookings: myBookings, loading: bookingsLoading } = useMyBookings();

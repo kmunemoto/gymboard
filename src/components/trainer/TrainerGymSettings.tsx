@@ -19,7 +19,7 @@ interface TrainerGymSettingsProps {
 }
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
-  const { settings, updateLogoUrl, refetch } = useGymSettings();
+  const { tenant, refetch: refetchTenant } = useTenant();
   const { user } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const [uploading, setUploading] = useState(false);

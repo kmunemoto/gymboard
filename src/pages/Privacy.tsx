@@ -30,7 +30,7 @@ const Privacy = () => {
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3">1. はじめに</h2>
             <p>
-              ジムボード（以下「当ジム」）が提供するgymboardアプリ（以下「本アプリ」）は、お客様の個人情報を適切に保護することを重要な責務と考えています。
+              ジムボード（以下「当社」）が提供するgymboardアプリ（以下「本アプリ」）は、お客様の個人情報を適切に保護することを重要な責務と考えています。
             </p>
           </section>
 
@@ -160,7 +160,7 @@ const Privacy = () => {
 
         <footer className="mt-12 pt-6 border-t text-sm text-muted-foreground space-y-2">
           <p>制定日：2026年4月20日</p>
-          <p>最終更新日：2026年4月20日</p>
+          <p>最終更新日：2026年5月21日</p>
           <div className="pt-4 flex flex-wrap gap-4">
             <BackLink />
             <Link to="/terms" className="text-sm text-accent hover:text-accent/80 transition-colors font-bold">

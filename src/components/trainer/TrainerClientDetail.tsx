@@ -710,18 +710,27 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         </h2>
         <Card>
           <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-            <div>
-              <select
-                value={clientPlan}
-                onChange={(e) => handlePlanChange(e.target.value)}
-                className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                {planOptions.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              <p className="text-sm font-bold mt-2">月額: ¥{getPrice(clientPlan).toLocaleString()}</p>
-            </div>
+            {tenantPlans.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-2">
+                プランが登録されていません。ジム設定のプラン管理から追加してください。
+              </div>
+            ) : (
+              <div>
+                <select
+                  value={clientPlan}
+                  onChange={(e) => handlePlanChange(e.target.value)}
+                  className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {!tenantPlans.some((p) => p.plan_name === clientPlan) && (
+                    <option value="" disabled>プランを選択</option>
+                  )}
+                  {tenantPlans.map((p) => (
+                    <option key={p.id} value={p.plan_name}>{p.plan_name}</option>
+                  ))}
+                </select>
+                <p className="text-sm font-bold mt-2">月額: ¥{getPrice(clientPlan).toLocaleString()}</p>
+              </div>
+            )}
 
             {/* Cycle Start Date */}
             <div className="pt-2 border-t border-border space-y-2">

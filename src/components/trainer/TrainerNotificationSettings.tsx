@@ -167,89 +167,99 @@ const TrainerNotificationSettings = () => {
       </h1>
 
       <div className="space-y-4 max-w-lg">
-        {/* Google Calendar連携 */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5 text-blue-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-sm mb-1">Googleカレンダー連携</h3>
-                <p className="text-xs text-muted-foreground mb-3">
-                  予約が入ると自動的にGoogleカレンダーに登録されます。キャンセル時は自動削除されます。
-                </p>
-                {gcalLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                ) : gcalLinked ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-blue-500">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Googleカレンダー連携済み
+        {/*
+          App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
+          連携済みユーザーのデータ・通知ロジックには影響しない。
+        */}
+        {false && (
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-sm mb-1">Googleカレンダー連携</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    予約が入ると自動的にGoogleカレンダーに登録されます。キャンセル時は自動削除されます。
+                  </p>
+                  {gcalLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  ) : gcalLinked ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-blue-500">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Googleカレンダー連携済み
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" onClick={handleSyncAll} disabled={syncing}>
+                          {syncing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                          既存予約を一括同期
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleGcalUnlink}>
+                          <Unlink className="w-3.5 h-3.5 mr-1.5" />
+                          連携を解除
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={handleSyncAll} disabled={syncing}>
-                        {syncing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
-                        既存予約を一括同期
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={handleGcalUnlink}>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleGcalLink}
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      <Calendar className="w-4 h-4 mr-1.5" />
+                      Googleカレンダーと連携する
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/*
+          App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
+          連携済みユーザーのデータ・通知ロジックには影響しない。
+        */}
+        {false && (
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#06C755]/10 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-5 h-5 text-[#06C755]" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-sm mb-1">LINE連携</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    LINEと連携すると、新規予約・キャンセルなどの通知をLINEで受け取れます。
+                  </p>
+                  {isLineLinked ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#06C755]">
+                        <CheckCircle2 className="w-4 h-4" />
+                        LINE連携済み
+                      </div>
+                      <Button size="sm" variant="outline" onClick={handleLineUnlink}>
                         <Unlink className="w-3.5 h-3.5 mr-1.5" />
                         連携を解除
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={handleGcalLink}
-                    className="bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    <Calendar className="w-4 h-4 mr-1.5" />
-                    Googleカレンダーと連携する
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* LINE連携 */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-[#06C755]/10 flex items-center justify-center shrink-0">
-                <MessageCircle className="w-5 h-5 text-[#06C755]" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-sm mb-1">LINE連携</h3>
-                <p className="text-xs text-muted-foreground mb-3">
-                  LINEと連携すると、新規予約・キャンセルなどの通知をLINEで受け取れます。
-                </p>
-                {isLineLinked ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#06C755]">
-                      <CheckCircle2 className="w-4 h-4" />
-                      LINE連携済み
-                    </div>
-                    <Button size="sm" variant="outline" onClick={handleLineUnlink}>
-                      <Unlink className="w-3.5 h-3.5 mr-1.5" />
-                      連携を解除
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleLineLink}
+                      className="bg-[#06C755] hover:bg-[#05b34c] text-white"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-1.5" />
+                      LINEと連携する
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={handleLineLink}
-                    className="bg-[#06C755] hover:bg-[#05b34c] text-white"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-1.5" />
-                    LINEと連携する
-                  </Button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Browser push notification */}
         <Card>

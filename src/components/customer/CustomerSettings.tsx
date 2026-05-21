@@ -239,51 +239,56 @@ const CustomerSettings = () => {
 
 
 
-      {/* LINE連携 */}
-      <section>
-        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-          <MessageCircle className="w-3.5 h-3.5" />
-          LINE連携
-        </h2>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isLineLinked ? "bg-[#06C755]/10" : "bg-muted"}`}>
-                <MessageCircle className={`w-4 h-4 ${isLineLinked ? "text-[#06C755]" : "text-muted-foreground"}`} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold">LINE通知</p>
-                <p className="text-[11px] text-muted-foreground mb-2">
-                  LINEアカウントと連携すると、予約確認やリマインド通知がLINEに届きます
-                </p>
-                {isLineLinked ? (
-                  <div className="space-y-2">
-                    <div className="bg-[#06C755]/5 rounded-lg p-2 border border-[#06C755]/20">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />
-                        LINE連携済み
-                      </p>
+      {/*
+        App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
+        連携済みユーザーのデータ・通知ロジックには影響しない。
+      */}
+      {false && (
+        <section>
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <MessageCircle className="w-3.5 h-3.5" />
+            LINE連携
+          </h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isLineLinked ? "bg-[#06C755]/10" : "bg-muted"}`}>
+                  <MessageCircle className={`w-4 h-4 ${isLineLinked ? "text-[#06C755]" : "text-muted-foreground"}`} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold">LINE通知</p>
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    LINEアカウントと連携すると、予約確認やリマインド通知がLINEに届きます
+                  </p>
+                  {isLineLinked ? (
+                    <div className="space-y-2">
+                      <div className="bg-[#06C755]/5 rounded-lg p-2 border border-[#06C755]/20">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />
+                          LINE連携済み
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={handleLineUnlink} className="text-xs h-7">
+                        <Unlink className="w-3 h-3 mr-1" />
+                        連携を解除
+                      </Button>
                     </div>
-                    <Button size="sm" variant="outline" onClick={handleLineUnlink} className="text-xs h-7">
-                      <Unlink className="w-3 h-3 mr-1" />
-                      連携を解除
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleLineLink}
+                      className="text-xs bg-[#06C755] hover:bg-[#06C755]/90 text-white"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                      LINEと連携する
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={handleLineLink}
-                    className="text-xs bg-[#06C755] hover:bg-[#06C755]/90 text-white"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5 mr-1" />
-                    LINEと連携する
-                  </Button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/*
         Googleカレンダー連携セクション（顧客向け）— Google OAuth審査中のため一時非表示。

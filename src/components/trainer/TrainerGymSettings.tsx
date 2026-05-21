@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, Loader2, RefreshCw, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
+import TrainerPlanManager from "./TrainerPlanManager";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 
 interface TrainerGymSettingsProps {
@@ -195,6 +196,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">お客様の招待</h3>
         <InviteCodeCard />
+      </section>
+
+      <Separator />
+
+      {/* === プラン管理 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プラン管理</h3>
+        <TrainerPlanManager />
       </section>
 
       <Separator />

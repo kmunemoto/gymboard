@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Flame, Trophy } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -7,13 +8,13 @@ interface StreakCardProps {
   hasFutureBookingThisWeek: boolean;
 }
 
-const getStreakMessage = (streak: number): string => {
-  if (streak >= 13) return "圧巻の継続力！トレーナーも感動しています";
-  if (streak >= 9) return "3ヶ月近く継続中！もはやプロです";
-  if (streak >= 5) return "素晴らしい継続力です！";
-  if (streak >= 3) return "習慣になってきましたね！";
-  if (streak >= 1) return "いいスタートです！";
-  return "今週の来店で記録をスタートしましょう！";
+const getStreakMessageKey = (streak: number): string => {
+  if (streak >= 13) return "streak.msg13";
+  if (streak >= 9) return "streak.msg9";
+  if (streak >= 5) return "streak.msg5";
+  if (streak >= 3) return "streak.msg3";
+  if (streak >= 1) return "streak.msg1";
+  return "streak.msg0";
 };
 
 const StreakCard = ({ currentStreak, bestStreak, hasFutureBookingThisWeek }: StreakCardProps) => {

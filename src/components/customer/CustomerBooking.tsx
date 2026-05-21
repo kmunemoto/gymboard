@@ -589,7 +589,7 @@ const CustomerBooking = () => {
                           return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
                         })()}
                       </span>
-                      （{slotMinutes}分）
+                      （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
                     <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting}>
                       {submitting ? (

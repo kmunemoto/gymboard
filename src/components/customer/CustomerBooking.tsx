@@ -614,7 +614,7 @@ const CustomerBooking = () => {
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
               <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelling}>
-                戻る
+                {t("booking.back")}
               </Button>
               <Button
                 onClick={handleCancel}

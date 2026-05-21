@@ -72,6 +72,7 @@ const Sparkline = ({ values, width = 60, height = 24 }: { values: number[]; widt
 };
 
 const ProgressCharts = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { measurements } = useMeasurements(user?.id);
   const [period, setPeriod] = useState<PeriodValue>("3m");
@@ -94,12 +95,12 @@ const ProgressCharts = () => {
             weight: w.weight,
             reps: w.reps,
             sets: w.sets || (w.weight != null ? [{ set: 1, weight: w.weight, reps: w.reps }] : null),
-            exercise_name: w.exercises?.name || "不明",
+            exercise_name: w.exercises?.name || t("common.unknown"),
           }))
         );
       }
     })();
-  }, [user]);
+  }, [user, t]);
 
   const periodStart = getPeriodStart(period);
 

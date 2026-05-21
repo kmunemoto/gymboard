@@ -609,7 +609,7 @@ const CustomerBooking = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 px-4">
           <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-lg">
             <div className="space-y-2 text-center sm:text-left">
-              <h3 className="text-lg font-semibold">予約をキャンセルしますか？</h3>
+              <h3 className="text-lg font-semibold">{t("booking.cancelConfirmTitle")}</h3>
               <p className="text-sm text-muted-foreground">{cancelDescription}</p>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">

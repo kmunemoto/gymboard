@@ -564,7 +564,7 @@ const CustomerBooking = () => {
                     >
                       <span>{slot.time}</span>
                       {!slot.available && (
-                        <span className="block text-[9px] text-destructive/70 font-medium">満枠</span>
+                        <span className="block text-[9px] text-destructive/70 font-medium">{t("booking.slotFull")}</span>
                       )}
                       {selectedSlot === slot.id && (
                         <Check className="w-2.5 h-2.5 absolute top-0.5 right-0.5" />

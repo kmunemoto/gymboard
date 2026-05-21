@@ -375,11 +375,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const displayName = profile?.display_name || "名前未設定";
   const initial = displayName[0];
 
-  const getPrice = (plan: string): number => {
-    if (planPrices[plan as PlanType] !== undefined) return planPrices[plan as PlanType];
-    const match = planOptions.find(p => p.startsWith(plan));
-    if (match) return planPrices[match];
-    return 0;
+  const getPrice = (planName: string): number => {
+    const match = tenantPlans.find((p) => p.plan_name === planName);
+    return match?.price ?? 0;
   };
 
   const bookings = clientBookings2;

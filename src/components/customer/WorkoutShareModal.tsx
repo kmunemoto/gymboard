@@ -711,7 +711,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           }}
         >
           <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-sm font-bold">シェア画像を生成中...</p>
+          <p className="text-sm font-bold">{t("workoutShare.generating")}</p>
         </div>
       )}
 

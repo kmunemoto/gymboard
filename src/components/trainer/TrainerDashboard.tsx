@@ -112,7 +112,8 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
     const map = new Map<string, number>();
     profiles.forEach((p) => {
       if (!p.plan || !p.cycle_start_date) return;
-      const price = planPrices[p.plan as PlanType] || 0;
+      const matched = tenantPlans.find((tp) => tp.plan_name === p.plan);
+      const price = matched?.price || 0;
       if (!price) return;
 
       const cycleStarts = getRevenueCycleStartDates(p, bookingsByUser.get(p.user_id) || [], today);
@@ -122,7 +123,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
       });
     });
     return map;
-  }, [profiles, bookingsByUser, today]);
+  }, [profiles, bookingsByUser, today, tenantPlans]);
 
   const currentMonthRevenue = revenueByMonth.get(currentMonth) || 0;
 

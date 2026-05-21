@@ -18,9 +18,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  planOptions, planPrices, PlanType,
-} from "@/lib/dummyData";
+import { useTenant } from "@/hooks/useTenant";
+import { fetchMyTenantId } from "@/lib/tenantHelper";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import { useMessages } from "@/hooks/useMessages";
 import { Switch } from "@/components/ui/switch";
@@ -189,11 +188,12 @@ const TrainingGrowthChart = ({ workoutRecords, loadingRecords }: { workoutRecord
 };
 
 const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => {
+  const { plans: tenantPlans } = useTenant();
   const [profile, setProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
   const [showUsagePeriod, setShowUsagePeriod] = useState(true);
-  const [clientPlan, setClientPlan] = useState<string>('初回無料体験');
+  const [clientPlan, setClientPlan] = useState<string>('');
   const [bodyWeight, setBodyWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
   const [savingMeasurement, setSavingMeasurement] = useState(false);
@@ -239,7 +239,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       if (data) {
         setProfile(data);
         setHasProfile(true);
-        setClientPlan(data.plan || '初回無料体験');
+        // Resolve current plan: prefer tenant_members.plan_id mapping, fallback to profiles.plan
+        const { data: mem } = await supabase
+          .from("tenant_members")
+          .select("plan_id, tenant_plans:plan_id(plan_name)")
+          .eq("user_id", clientId)
+          .maybeSingle();
+        const linkedName = (mem as any)?.tenant_plans?.plan_name as string | undefined;
+        setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
         setShowUsagePeriod(data.show_usage_period ?? true);
       } else {
@@ -375,11 +382,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const displayName = profile?.display_name || "名前未設定";
   const initial = displayName[0];
 
-  const getPrice = (plan: string): number => {
-    if (planPrices[plan as PlanType] !== undefined) return planPrices[plan as PlanType];
-    const match = planOptions.find(p => p.startsWith(plan));
-    if (match) return planPrices[match];
-    return 0;
+  const getPrice = (planName: string): number => {
+    const match = tenantPlans.find((p) => p.plan_name === planName);
+    return match?.price ?? 0;
   };
 
   const bookings = clientBookings2;
@@ -579,11 +584,22 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setSaving(false);
   };
 
-  const handlePlanChange = async (v: string) => {
-    const { error } = await supabase.from("profiles").update({ plan: v }).eq("user_id", clientId);
+  const handlePlanChange = async (planName: string) => {
+    const selected = tenantPlans.find((p) => p.plan_name === planName);
+    if (selected) {
+      const tenantId = await fetchMyTenantId();
+      if (tenantId) {
+        await supabase
+          .from("tenant_members")
+          .update({ plan_id: selected.id })
+          .eq("tenant_id", tenantId)
+          .eq("user_id", clientId);
+      }
+    }
+    const { error } = await supabase.from("profiles").update({ plan: planName }).eq("user_id", clientId);
     if (error) { toast.error("プラン変更に失敗しました"); return; }
-    setClientPlan(v as PlanType);
-    toast.success(`${displayName}さんのプランを「${v}」に変更しました`);
+    setClientPlan(planName);
+    toast.success(`${displayName}さんのプランを「${planName}」に変更しました`);
   };
 
   const handleCycleStartDateChange = async (newDate: string) => {
@@ -701,18 +717,27 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         </h2>
         <Card>
           <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-            <div>
-              <select
-                value={clientPlan}
-                onChange={(e) => handlePlanChange(e.target.value)}
-                className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                {planOptions.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              <p className="text-sm font-bold mt-2">月額: ¥{getPrice(clientPlan).toLocaleString()}</p>
-            </div>
+            {tenantPlans.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-2">
+                プランが登録されていません。ジム設定のプラン管理から追加してください。
+              </div>
+            ) : (
+              <div>
+                <select
+                  value={clientPlan}
+                  onChange={(e) => handlePlanChange(e.target.value)}
+                  className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {!tenantPlans.some((p) => p.plan_name === clientPlan) && (
+                    <option value="" disabled>プランを選択</option>
+                  )}
+                  {tenantPlans.map((p) => (
+                    <option key={p.id} value={p.plan_name}>{p.plan_name}</option>
+                  ))}
+                </select>
+                <p className="text-sm font-bold mt-2">月額: ¥{getPrice(clientPlan).toLocaleString()}</p>
+              </div>
+            )}
 
             {/* Cycle Start Date */}
             <div className="pt-2 border-t border-border space-y-2">

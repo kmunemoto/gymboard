@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useGymSettings } from "@/hooks/useGymSettings";
+import { useTenant } from "@/hooks/useTenant";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ interface TrainerGymSettingsProps {
 }
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
-  const { settings, updateLogoUrl, refetch } = useGymSettings();
+  const { tenant, refetch: refetchTenant } = useTenant();
   const { user } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const [uploading, setUploading] = useState(false);
@@ -98,6 +98,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("画像ファイルを選択してください"); return; }
     if (file.size > 2 * 1024 * 1024) { toast.error("ファイルサイズは2MB以下にしてください"); return; }
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
@@ -107,10 +108,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("gym-assets").getPublicUrl(filePath);
       const url = `${urlData.publicUrl}?t=${Date.now()}`;
-      const err = await updateLogoUrl(url);
-      if (err) throw err;
+      const { error: updateError } = await supabase.from("tenants").update({ logo_url: url }).eq("id", tenant.id);
+      if (updateError) throw updateError;
       toast.success("ロゴを更新しました");
-      refetch();
+      refetchTenant();
     } catch (err: any) {
       toast.error(err.message || "アップロードに失敗しました");
     } finally {
@@ -120,6 +121,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   };
 
   const handleDelete = async () => {
+    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
     setUploading(true);
     try {
       const { data: files } = await supabase.storage.from("gym-assets").list();
@@ -127,10 +129,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         const logoFiles = files.filter((f) => f.name.startsWith("logo"));
         if (logoFiles.length > 0) await supabase.storage.from("gym-assets").remove(logoFiles.map((f) => f.name));
       }
-      const err = await updateLogoUrl(null);
-      if (err) throw err;
+      const { error: updateError } = await supabase.from("tenants").update({ logo_url: null }).eq("id", tenant.id);
+      if (updateError) throw updateError;
       toast.success("ロゴを削除しました");
-      refetch();
+      refetchTenant();
     } catch (err: any) {
       toast.error(err.message || "削除に失敗しました");
     } finally {
@@ -248,8 +250,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 shrink-0">
-                {settings?.logo_url ? (
-                  <img src={settings.logo_url} alt="ジムロゴ" className="w-full h-full object-contain" />
+                {tenant?.logo_url ? (
+                  <img src={tenant.logo_url} alt="ジムロゴ" className="w-full h-full object-contain" />
                 ) : (
                   <span className="text-[10px] text-muted-foreground">未設定</span>
                 )}
@@ -258,9 +260,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
                 <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm" className="flex-1">
                   <Upload className="w-4 h-4 mr-1" />
-                  {uploading ? "処理中..." : settings?.logo_url ? "変更" : "アップロード"}
+                  {uploading ? "処理中..." : tenant?.logo_url ? "変更" : "アップロード"}
                 </Button>
-                {settings?.logo_url && (
+                {tenant?.logo_url && (
                   <Button variant="destructive" onClick={handleDelete} disabled={uploading} size="sm">
                     <Trash2 className="w-4 h-4" />
                   </Button>

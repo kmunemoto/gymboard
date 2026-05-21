@@ -425,7 +425,7 @@ const ProgressCharts = () => {
           ) : (
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                この期間のデータはありません。別の期間を選択してください。
+                {t("charts.noPeriodData")}
               </CardContent>
             </Card>
           )}

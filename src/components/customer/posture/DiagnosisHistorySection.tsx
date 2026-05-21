@@ -264,7 +264,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
       ) : diagnoses.length === 0 ? (
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground">まだ診断履歴はありません</p>
+            <p className="text-sm text-muted-foreground">まだ分析履歴はありません</p>
           </CardContent>
         </Card>
       ) : (

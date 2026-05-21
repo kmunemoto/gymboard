@@ -358,7 +358,7 @@ const CustomerBooking = () => {
           className="w-full bg-accent text-accent-foreground hover:bg-accent/90 py-6 text-base rounded-xl shadow-md"
         >
           <CalendarPlus className="w-5 h-5" />
-          新しい予約を取る
+          {t("booking.newBooking")}
         </Button>
 
         {/* Existing bookings */}

@@ -211,6 +211,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       <Separator />
 
+      {/* === 言語 / Language === */}
+      <LanguageSwitcher variant="trainer" />
+
+      <Separator />
+
+
+
       {/* === プロフィール === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プロフィール</h3>

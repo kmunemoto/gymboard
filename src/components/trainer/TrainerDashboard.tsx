@@ -1,7 +1,6 @@
 import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { planPrices, PlanType } from "@/lib/dummyData";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { useAllCustomerProfiles, useProfile } from "@/hooks/useProfile";
 import { useAllBookings } from "@/hooks/useBookings";
@@ -11,6 +10,7 @@ import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
 import { useMemo } from "react";
+import { useTenant } from "@/hooks/useTenant";
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;
@@ -70,6 +70,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
   const { bookings, loading: bookingsLoading } = useAllBookings();
   const { unreadCount: counselingUnread } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
+  const { plans: tenantPlans } = useTenant();
   const trainerName = trainerProfile?.display_name || "トレーナー";
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
@@ -111,7 +112,8 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
     const map = new Map<string, number>();
     profiles.forEach((p) => {
       if (!p.plan || !p.cycle_start_date) return;
-      const price = planPrices[p.plan as PlanType] || 0;
+      const matched = tenantPlans.find((tp) => tp.plan_name === p.plan);
+      const price = matched?.price || 0;
       if (!price) return;
 
       const cycleStarts = getRevenueCycleStartDates(p, bookingsByUser.get(p.user_id) || [], today);
@@ -121,7 +123,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
       });
     });
     return map;
-  }, [profiles, bookingsByUser, today]);
+  }, [profiles, bookingsByUser, today, tenantPlans]);
 
   const currentMonthRevenue = revenueByMonth.get(currentMonth) || 0;
 

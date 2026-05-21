@@ -360,10 +360,10 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         let y = contentTop;
 
         ctx.font = `300 28px ${FONT}`;
-        drawCenter("トレーニング時間", W / 2, y + 28);
+        drawCenter(t("workoutShare.trainingTime"), W / 2, y + 28);
         y += 28 + 20;
         ctx.font = `800 64px ${FONT}`;
-        drawCenter(`${session.durationMin}分`, W / 2, y + 60);
+        drawCenter(t("workoutShare.minutes", { count: session.durationMin }), W / 2, y + 60);
         y += 64 + 50;
 
         for (const ex of visBottom) {

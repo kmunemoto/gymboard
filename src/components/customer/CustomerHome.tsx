@@ -230,7 +230,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                   </p>
                   {hasPlan && maxSessions > 0 && (
                     <p className="text-xs font-semibold text-accent mt-1.5">
-                      {t("home.sessionOrdinal", { ordinal: nextBookingOrdinal > 0 ? String(nextBookingOrdinal) : "?", max: maxSessions })}
+                      {t("home.sessionOrdinal", { ordinal: nextBookingOrdinal > 0 ? String(nextBookingOrdinal) : "?", max: maxSessions } as any)}
                     </p>
                   )}
                 </div>

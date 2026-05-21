@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X, Download, Loader2, Moon, Sun, Image as ImageIcon, Camera } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import WorkoutShareCard, { type ShareTheme } from "./WorkoutShareCard";
 import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";
@@ -21,7 +22,8 @@ type PhotoLayout = "center" | "grid" | "bottom";
 const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions }: Props) => {
   const { user } = useAuth();
   const { tenant } = useTenant();
-  const gymBrand = tenant?.gym_name || "ジムボード";
+  const { t } = useTranslation();
+  const gymBrand = tenant?.gym_name || t("workoutShare.brandFallback");
   const [featuredBadges, setFeaturedBadges] = useState<string[]>([]);
   useEffect(() => {
     if (!open || !user) return;
@@ -247,11 +249,11 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
 
         // Time label
         ctx.font = `300 28px ${FONT}`;
-        drawCenter("トレーニング時間", W / 2, y + 28);
+        drawCenter(t("workoutShare.trainingTime"), W / 2, y + 28);
         y += 28 + labelGap;
         // Time value
         ctx.font = `800 88px ${FONT}`;
-        drawCenter(`${session.durationMin}分`, W / 2, y + 80);
+        drawCenter(t("workoutShare.minutes", { count: session.durationMin }), W / 2, y + 80);
         y += 88 + blockGap;
 
         // Exercises
@@ -301,12 +303,12 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         };
 
         // Row 1
-        drawCell("種目数", `${session.exercises.length}`, colLeftX, top);
-        drawCell("トレーニング時間", `${session.durationMin}分`, colRightX, top);
+        drawCell(t("workoutShare.exerciseCount"), `${session.exercises.length}`, colLeftX, top);
+        drawCell(t("workoutShare.trainingTime"), t("workoutShare.minutes", { count: session.durationMin }), colRightX, top);
         // Row 2
         const r2 = top + rowGap;
         drawCell(
-          "総セット",
+          t("workoutShare.totalSets"),
           `${session.exercises.reduce((a, e) => a + (e.setsCount ?? 1), 0)}`,
           colLeftX,
           r2,
@@ -314,7 +316,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         if (top1) {
           // Top exercise: smaller value (name can be long)
           ctx.font = `300 24px ${FONT}`;
-          drawCenter("トップ種目", colRightX, r2);
+          drawCenter(t("workoutShare.topExercise"), colRightX, r2);
           ctx.font = `700 36px ${FONT}`;
           drawCenter(top1.exercise_name, colRightX, r2 + 24 + 16 + 36 - 8);
           ctx.font = `400 28px ${FONT}`;
@@ -358,10 +360,10 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         let y = contentTop;
 
         ctx.font = `300 28px ${FONT}`;
-        drawCenter("トレーニング時間", W / 2, y + 28);
+        drawCenter(t("workoutShare.trainingTime"), W / 2, y + 28);
         y += 28 + 20;
         ctx.font = `800 64px ${FONT}`;
-        drawCenter(`${session.durationMin}分`, W / 2, y + 60);
+        drawCenter(t("workoutShare.minutes", { count: session.durationMin }), W / 2, y + 60);
         y += 64 + 50;
 
         for (const ex of visBottom) {
@@ -409,7 +411,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       setPhotoCompositeSrc(url);
     } catch (err) {
       console.error("[share] photo composite failed", err);
-      toast({ title: "写真の読み込みに失敗しました", variant: "destructive" });
+      toast({ title: t("workoutShare.photoLoadFailed"), variant: "destructive" });
     } finally {
       setBusy(false);
     }
@@ -471,7 +473,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       );
       if (!response.ok) {
         const errText = await response.text().catch(() => "");
-        throw new Error(errText || "画像生成に失敗しました");
+        throw new Error(errText || t("workoutShare.imageGenFailed"));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -481,7 +483,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       setFullScreenImageSrc(url);
     } catch (e) {
       console.error("[share] generate failed", e);
-      toast({ title: "画像の生成に失敗しました", variant: "destructive" });
+      toast({ title: t("workoutShare.imageGenFailedToast"), variant: "destructive" });
     } finally {
       setBusy(false);
     }
@@ -504,11 +506,11 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         className="flex items-center justify-between px-4 py-3 shrink-0"
         style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", paddingTop: "max(env(safe-area-inset-top), 12px)" }}
       >
-        <span className="text-white text-sm font-bold">トレーニング シェア</span>
+        <span className="text-white text-sm font-bold">{t("workoutShare.title")}</span>
         <button
           onClick={handleCloseAll}
           className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white hover:bg-white/25"
-          aria-label="閉じる"
+          aria-label={t("workoutShare.close")}
         >
           <X className="w-5 h-5" />
         </button>
@@ -523,7 +525,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         {photoCompositeSrc ? (
           <img
             src={photoCompositeSrc}
-            alt="プレビュー"
+            alt={t("workoutShare.preview")}
             style={{
               maxWidth: "100%",
               maxHeight: "100%",
@@ -572,7 +574,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
         {([
           { k: "dark" as const, icon: Moon, label: "Dark" },
           { k: "light" as const, icon: Sun, label: "Light" },
-          { k: "transparent" as const, icon: ImageIcon, label: "透過" },
+          { k: "transparent" as const, icon: ImageIcon, label: t("workoutShare.bgTransparent") },
         ]).map(({ k, icon: Icon, label }) => (
           <button
             key={k}
@@ -608,7 +610,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           }`}
         >
           <Camera className="w-3.5 h-3.5" />
-          {photoCompositeSrc ? "写真を変更" : "写真と合成"}
+          {photoCompositeSrc ? t("workoutShare.changePhoto") : t("workoutShare.addPhoto")}
         </button>
       </div>
 
@@ -616,9 +618,9 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       {photoCompositeSrc && (
         <div className="flex items-center justify-center gap-4 px-4 pb-3 shrink-0">
           {([
-            { k: "center" as const, label: "中央" },
-            { k: "grid" as const, label: "グリッド" },
-            { k: "bottom" as const, label: "下部" },
+            { k: "center" as const, label: t("workoutShare.layoutCenter") },
+            { k: "grid" as const, label: t("workoutShare.layoutGrid") },
+            { k: "bottom" as const, label: t("workoutShare.layoutBottom") },
           ]).map(({ k, label }) => {
             const active = photoLayout === k;
             return (
@@ -687,7 +689,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           disabled={busy}
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          画像を保存
+          {t("workoutShare.saveImage")}
         </Button>
       </div>
 
@@ -709,7 +711,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           }}
         >
           <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-sm font-bold">シェア画像を生成中...</p>
+          <p className="text-sm font-bold">{t("workoutShare.generating")}</p>
         </div>
       )}
 
@@ -731,11 +733,11 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           }}
         >
           <p style={{ color: "#aaa", fontSize: 14, marginBottom: 16, textAlign: "center" }}>
-            ↓ 画像を長押しして「写真に追加」で保存
+            {t("workoutShare.saveHint")}
           </p>
           <img
             src={fullScreenImageSrc}
-            alt="トレーニングシェア"
+            alt={t("workoutShare.shareImageAlt")}
             style={{
               maxWidth: "100%",
               maxHeight: "70vh",
@@ -756,7 +758,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
               fontWeight: 600,
             }}
           >
-            閉じる
+            {t("workoutShare.close")}
           </button>
         </div>
       )}

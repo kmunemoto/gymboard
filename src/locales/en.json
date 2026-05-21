@@ -75,5 +75,29 @@
     "minDataNote": "The chart appears once there are 2 or more data points",
     "noPeriodData": "No data for this period. Please select another period.",
     "trainingWeight": "Training Weight"
+  },
+  "workoutShare": {
+    "brandFallback": "GymBoard",
+    "trainingTime": "Training Time",
+    "minutes": "{{count}} min",
+    "exerciseCount": "Exercises",
+    "totalSets": "Total Sets",
+    "topExercise": "Top Exercise",
+    "photoLoadFailed": "Failed to load photo",
+    "imageGenFailed": "Failed to generate image",
+    "imageGenFailedToast": "Failed to generate image",
+    "title": "Workout Share",
+    "close": "Close",
+    "preview": "Preview",
+    "bgTransparent": "Transparent",
+    "changePhoto": "Change Photo",
+    "addPhoto": "Add Photo",
+    "layoutCenter": "Center",
+    "layoutGrid": "Grid",
+    "layoutBottom": "Bottom",
+    "saveImage": "Save Image",
+    "generating": "Generating share image...",
+    "saveHint": "↓ Long-press the image and tap 'Add to Photos' to save",
+    "shareImageAlt": "Workout Share"
   }
 }

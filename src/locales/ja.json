@@ -75,5 +75,29 @@
     "minDataNote": "2件以上のデータでグラフが表示されます",
     "noPeriodData": "この期間のデータはありません。別の期間を選択してください。",
     "trainingWeight": "トレーニング重量"
+  },
+  "workoutShare": {
+    "brandFallback": "ジムボード",
+    "trainingTime": "トレーニング時間",
+    "minutes": "{{count}}分",
+    "exerciseCount": "種目数",
+    "totalSets": "総セット",
+    "topExercise": "トップ種目",
+    "photoLoadFailed": "写真の読み込みに失敗しました",
+    "imageGenFailed": "画像生成に失敗しました",
+    "imageGenFailedToast": "画像の生成に失敗しました",
+    "title": "トレーニング シェア",
+    "close": "閉じる",
+    "preview": "プレビュー",
+    "bgTransparent": "透過",
+    "changePhoto": "写真を変更",
+    "addPhoto": "写真と合成",
+    "layoutCenter": "中央",
+    "layoutGrid": "グリッド",
+    "layoutBottom": "下部",
+    "saveImage": "画像を保存",
+    "generating": "シェア画像を生成中...",
+    "saveHint": "↓ 画像を長押しして「写真に追加」で保存",
+    "shareImageAlt": "トレーニングシェア"
   }
 }

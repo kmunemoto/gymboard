@@ -359,11 +359,11 @@ const CustomerPosture = () => {
       });
       if (error) throw error;
       setSaved(true);
-      toast.success("診断結果を保存しました");
+      toast.success("分析結果を保存しました");
     } catch (e: any) {
       console.error("Save diagnosis error:", e);
       const msg = e?.message || e?.error_description || "不明なエラー";
-      toast.error(`診断結果の保存に失敗しました: ${msg}`);
+      toast.error(`分析結果の保存に失敗しました: ${msg}`);
     } finally {
       savingRef.current = false;
       setSaving(false);

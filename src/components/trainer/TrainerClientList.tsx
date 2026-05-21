@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { planPrices, PlanType } from "@/lib/dummyData";
 import { useAllCustomerProfiles, ProfileWithBooking } from "@/hooks/useProfile";
+import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -23,6 +23,7 @@ interface TrainerClientListProps {
 
 const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
   const { profiles, loading, setProfiles } = useAllCustomerProfiles();
+  const { plans: tenantPlans } = useTenant();
   const [search, setSearch] = useState("");
   const [genderTab, setGenderTab] = useState<"all" | "male" | "female">("all");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -38,9 +39,9 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
     return c.gender === genderTab;
   });
 
-  const formatPrice = (plan: string) => {
-    const p = planPrices[plan as PlanType];
-    return p !== undefined ? `¥${p.toLocaleString()}` : "";
+  const formatPrice = (planName: string) => {
+    const match = tenantPlans.find((p) => p.plan_name === planName);
+    return match ? `¥${match.price.toLocaleString()}` : "";
   };
 
   const formatNextBooking = (profile: ProfileWithBooking) => {

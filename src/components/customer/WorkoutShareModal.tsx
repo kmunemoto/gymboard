@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X, Download, Loader2, Moon, Sun, Image as ImageIcon, Camera } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import WorkoutShareCard, { type ShareTheme } from "./WorkoutShareCard";
 import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";

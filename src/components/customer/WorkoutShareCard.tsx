@@ -18,7 +18,6 @@ const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
   ({ session, theme, featuredBadges }, ref) => {
     const { tenant } = useTenant();
     const gymBrand = tenant?.gym_name || "ジムボード";
-    const gymBrand = tenant?.gym_name || "ジムボード";
 
     const isLight = theme === "light";
     const isTransparent = theme === "transparent";

@@ -483,7 +483,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       setFullScreenImageSrc(url);
     } catch (e) {
       console.error("[share] generate failed", e);
-      toast({ title: "画像の生成に失敗しました", variant: "destructive" });
+      toast({ title: t("workoutShare.imageGenFailedToast"), variant: "destructive" });
     } finally {
       setBusy(false);
     }

@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 const BOOKING_BUFFER_MINUTES = 15;
 
 const CustomerBooking = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();

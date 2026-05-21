@@ -249,11 +249,11 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
 
         // Time label
         ctx.font = `300 28px ${FONT}`;
-        drawCenter("トレーニング時間", W / 2, y + 28);
+        drawCenter(t("workoutShare.trainingTime"), W / 2, y + 28);
         y += 28 + labelGap;
         // Time value
         ctx.font = `800 88px ${FONT}`;
-        drawCenter(`${session.durationMin}分`, W / 2, y + 80);
+        drawCenter(t("workoutShare.minutes", { count: session.durationMin }), W / 2, y + 80);
         y += 88 + blockGap;
 
         // Exercises

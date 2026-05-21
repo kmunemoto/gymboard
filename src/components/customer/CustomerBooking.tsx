@@ -19,10 +19,12 @@ import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow } from "@/lib/courseProgress";
 import { useTenant } from "@/hooks/useTenant";
+import { useTranslation } from "react-i18next";
 
 const BOOKING_BUFFER_MINUTES = 15;
 
 const CustomerBooking = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();
@@ -175,13 +177,13 @@ const CustomerBooking = () => {
     if (!slot) return;
 
     if (isBookingDayClosed(dateKey)) {
-      toast.error("予約は前日までにお願いします");
+      toast.error(t("booking.errorAdvance"));
       setSelectedSlot(null);
       return;
     }
 
     if (isSlotBlocked(dateKey, slot.time)) {
-      toast.error("この時間帯はすでに予約が入っています");
+      toast.error(t("booking.errorSlotTaken"));
       setSelectedSlot(null);
       return;
     }
@@ -190,7 +192,7 @@ const CustomerBooking = () => {
     const { data, error } = await createBooking(user.id, dateKey, slot.time, selectedPlan);
 
     if (error) {
-      toast.error("予約に失敗しました");
+      toast.error(t("booking.errorBookingFailed"));
       setSubmitting(false);
       return;
     }
@@ -205,7 +207,7 @@ const CustomerBooking = () => {
       date: dateKey,
       startTime: slot.time,
       endTime,
-      clientName: profile?.display_name || "自分",
+      clientName: profile?.display_name || t("common.me"),
       status: "予約済み",
       booking_type: selectedPlan,
     };
@@ -258,7 +260,7 @@ const CustomerBooking = () => {
     try {
       const { error } = await cancelBooking(cancelTarget.id);
       if (error) {
-        toast.error("キャンセルに失敗しました");
+        toast.error(t("booking.errorCancelFailed"));
         return;
       }
       const cancelled = cancelTarget;
@@ -279,7 +281,7 @@ const CustomerBooking = () => {
 
   const cancelDescription = cancelTarget
     ? `${formatJST(`${cancelTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja })} ${cancelTarget.startTime}〜${cancelTarget.endTime} の予約をキャンセルします。`
-    : "予約をキャンセルします。";
+    : t("booking.cancelDescDefault");
 
   if (profileLoading || bookingsLoading) {
     return (
@@ -316,12 +318,12 @@ const CustomerBooking = () => {
         <div>
           <h1 className="text-lg font-bold flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-accent" />
-            予約する
+            {t("booking.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            ご希望の日時を選択してください
+            {t("booking.selectDateTimePrompt")}
           </p>
-          <p className="text-xs text-muted-foreground/70 mt-1">※ご予約は24時間前までにお願いいたします</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">{t("booking.advanceNotice")}</p>
         </div>
 
         {hasPlan && (
@@ -330,18 +332,18 @@ const CustomerBooking = () => {
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-accent shrink-0" />
                 <span className="text-sm font-bold">
-                  現在のプラン：{planLabel(currentPlan!)}
+                  {t("booking.currentPlan", { plan: planLabel(currentPlan!) })}
                 </span>
               </div>
               {currentCycle && (
                 <div className="flex items-center gap-2">
                   <Clock className={`w-4 h-4 shrink-0 ${isExpired ? "text-destructive" : isExpiringSoon ? "text-warning" : "text-accent"}`} />
                   <span className="text-xs text-muted-foreground">
-                    利用期間：{format(currentCycle.start, "M/d", { locale: ja })}〜{format(currentCycle.end, "M/d", { locale: ja })}
+                    {t("booking.usagePeriod", { start: format(currentCycle.start, "M/d", { locale: ja }), end: format(currentCycle.end, "M/d", { locale: ja }) })}
                     {isExpired ? (
-                      <span className="font-bold text-destructive ml-1">（期限切れ）</span>
+                      <span className="font-bold text-destructive ml-1">{t("booking.expired")}</span>
                     ) : (
-                      <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>（残り{remainingDays}日）</span>
+                      <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>{t("booking.daysLeft", { count: remainingDays })}</span>
                     )}
                   </span>
                 </div>
@@ -356,14 +358,14 @@ const CustomerBooking = () => {
           className="w-full bg-accent text-accent-foreground hover:bg-accent/90 py-6 text-base rounded-xl shadow-md"
         >
           <CalendarPlus className="w-5 h-5" />
-          新しい予約を取る
+          {t("booking.newBooking")}
         </Button>
 
         {/* Existing bookings */}
         {activeBookings.length > 0 && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
-              予約済み（{activeBookings.length}件）
+              {t("booking.bookedCount", { count: activeBookings.length })}
             </h2>
             <div className="space-y-2">
               {[...activeBookings]
@@ -394,7 +396,7 @@ const CustomerBooking = () => {
                             window.open(buildGoogleCalendarUrl(b.date, b.startTime, b.endTime, planLabel(b.booking_type), tenant?.gym_name), "_blank");
                           }}
                           className="text-muted-foreground hover:text-accent transition-colors p-2"
-                          title="Googleカレンダーに追加"
+                          title={t("booking.addToGoogleCalendar")}
                         >
                           <CalendarPlus className="w-4 h-4" />
                         </button>
@@ -417,9 +419,9 @@ const CustomerBooking = () => {
         {!selectedPlan && (
           <Card className="border-l-4 border-l-destructive bg-destructive/5 slide-up">
             <CardContent className="p-4 space-y-2">
-              <p className="font-bold text-sm text-destructive">プランが設定されていません</p>
+              <p className="font-bold text-sm text-destructive">{t("booking.noPlanSet")}</p>
               <p className="text-xs text-muted-foreground">
-                トレーナーにお問い合わせの上、プランを設定してもらってください。
+                {t("booking.noPlanHelp")}
               </p>
             </CardContent>
           </Card>
@@ -432,7 +434,7 @@ const CustomerBooking = () => {
               <div className="flex-1">
                 <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  日時を選択
+                  {t("booking.selectDateTime")}
                 </h2>
               </div>
               <Badge variant="outline" className="text-xs shrink-0">
@@ -455,7 +457,7 @@ const CustomerBooking = () => {
                         const times = existing
                           .map((b) => `${b.startTime}〜${b.endTime}`)
                           .join("、");
-                        toast.info(`この日は ${times} に予約済みです`);
+                        toast.info(t("booking.alreadyBookedThisDay", { times }));
                       }
                     }
                     setSelectedDate(d);
@@ -538,7 +540,7 @@ const CustomerBooking = () => {
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  {format(selectedDate, "M月d日（E）", { locale: ja })} の空き枠
+                  {t("booking.availableSlots", { date: format(selectedDate, "M月d日（E）", { locale: ja }) })}
                 </h3>
                 <div className="grid grid-cols-4 gap-1.5">
                   {slots.map((slot) => (
@@ -562,7 +564,7 @@ const CustomerBooking = () => {
                     >
                       <span>{slot.time}</span>
                       {!slot.available && (
-                        <span className="block text-[9px] text-destructive/70 font-medium">満枠</span>
+                        <span className="block text-[9px] text-destructive/70 font-medium">{t("booking.slotFull")}</span>
                       )}
                       {selectedSlot === slot.id && (
                         <Check className="w-2.5 h-2.5 absolute top-0.5 right-0.5" />
@@ -587,13 +589,13 @@ const CustomerBooking = () => {
                           return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
                         })()}
                       </span>
-                      （{slotMinutes}分）
+                      （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
                     <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting}>
                       {submitting ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : null}
-                      この内容で予約する
+                      {t("booking.confirmBooking")}
                     </Button>
                   </div>
                 )}
@@ -607,19 +609,19 @@ const CustomerBooking = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 px-4">
           <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-lg">
             <div className="space-y-2 text-center sm:text-left">
-              <h3 className="text-lg font-semibold">予約をキャンセルしますか？</h3>
+              <h3 className="text-lg font-semibold">{t("booking.cancelConfirmTitle")}</h3>
               <p className="text-sm text-muted-foreground">{cancelDescription}</p>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
               <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelling}>
-                戻る
+                {t("booking.back")}
               </Button>
               <Button
                 onClick={handleCancel}
                 disabled={cancelling}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {cancelling ? "キャンセル中..." : "キャンセルする"}
+                {cancelling ? t("booking.cancelling") : t("booking.cancel")}
               </Button>
             </div>
           </div>

@@ -8,7 +8,8 @@
     "loading": "Loading...",
     "guest": "Guest",
     "share": "Share",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "me": "Me"
   },
   "settings": {
     "title": "Settings",
@@ -99,5 +100,34 @@
     "generating": "Generating share image...",
     "saveHint": "↓ Long-press the image and tap 'Add to Photos' to save",
     "shareImageAlt": "Workout Share"
+  },
+  "booking": {
+    "title": "Book a Session",
+    "selectDateTimePrompt": "Select your preferred date and time",
+    "advanceNotice": "* Please book at least 24 hours in advance",
+    "currentPlan": "Current Plan: {{plan}}",
+    "usagePeriod": "Valid period: {{start}}–{{end}}",
+    "expired": "(Expired)",
+    "daysLeft": "({{count}} days left)",
+    "newBooking": "Make a New Booking",
+    "bookedCount": "Booked ({{count}})",
+    "addToGoogleCalendar": "Add to Google Calendar",
+    "noPlanSet": "No plan has been set",
+    "noPlanHelp": "Please contact your trainer to set up a plan.",
+    "selectDateTime": "Select Date & Time",
+    "alreadyBookedThisDay": "You already have a booking at {{times}} on this day",
+    "availableSlots": "Available slots for {{date}}",
+    "slotFull": "Full",
+    "slotMinutes": "({{count}} min)",
+    "confirmBooking": "Confirm Booking",
+    "cancelConfirmTitle": "Cancel this booking?",
+    "cancelDescDefault": "This will cancel your booking.",
+    "back": "Back",
+    "cancelling": "Cancelling...",
+    "cancel": "Cancel",
+    "errorAdvance": "Bookings must be made by the day before",
+    "errorSlotTaken": "This time slot is already booked",
+    "errorBookingFailed": "Booking failed",
+    "errorCancelFailed": "Cancellation failed"
   }
 }

@@ -396,7 +396,7 @@ const CustomerBooking = () => {
                             window.open(buildGoogleCalendarUrl(b.date, b.startTime, b.endTime, planLabel(b.booking_type), tenant?.gym_name), "_blank");
                           }}
                           className="text-muted-foreground hover:text-accent transition-colors p-2"
-                          title="Googleカレンダーに追加"
+                          title={t("booking.addToGoogleCalendar")}
                         >
                           <CalendarPlus className="w-4 h-4" />
                         </button>

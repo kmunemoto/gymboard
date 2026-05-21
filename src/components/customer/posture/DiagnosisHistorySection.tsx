@@ -504,14 +504,14 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                                 ) : (
                                   <Trash2 className="w-3.5 h-3.5 mr-1" />
                                 )}
-                                この診断を削除
+                                この分析を削除
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>骨格診断を削除しますか？</AlertDialogTitle>
+                                <AlertDialogTitle>骨格分析を削除しますか？</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  {format(dt, "yyyy年M月d日 HH:mm", { locale: ja })}の診断結果と画像が完全に削除されます。この操作は取り消せません。
+                                  {format(dt, "yyyy年M月d日 HH:mm", { locale: ja })}の分析結果と画像が完全に削除されます。この操作は取り消せません。
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

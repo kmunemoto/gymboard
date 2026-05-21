@@ -37,6 +37,17 @@ jobs:
       - name: Add iOS platform
         run: npx cap add ios || true
 
+      - name: Generate app icon
+        run: |
+          mkdir -p assets
+          cp gymboard-app-icon-1024.png assets/icon-only.png
+          npx @capacitor/assets@3 generate --ios
+
+      - name: Set build number
+        run: |
+          cd ios/App
+          sed -i '' "s/CURRENT_PROJECT_VERSION = 1;/CURRENT_PROJECT_VERSION = ${{ github.run_number }};/g" App.xcodeproj/project.pbxproj
+
       - name: Fix Podfile for CI signing
         run: |
           sed -i '' "s/platform :ios, '.*'/platform :ios, '16.0'/" ios/App/Podfile

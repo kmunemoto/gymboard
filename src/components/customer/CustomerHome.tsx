@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import ProgressCharts from "./ProgressCharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ const fallbackPlanMaxSessions: Record<string, number> = {
 };
 
 const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profile, loading } = useProfile();
   const { plans: tenantPlans } = useTenant();
@@ -60,7 +62,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           reps: w.reps,
           sets: w.sets,
           exercise_id: w.exercise_id,
-          exercise_name: w.exercises?.name || "不明",
+          exercise_name: w.exercises?.name || t("common.unknown"),
         }));
         setLatestWorkouts(rows);
         setLatestDate(rows.length > 0 ? rows[0].workout_date : null);
@@ -74,11 +76,11 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       .neq("status", "キャンセル済み")
       .lt("booking_date", nowIso)
       .then(({ count }) => setTotalSessions(count || 0));
-  }, [user]);
+  }, [user, t]);
 
   const latestSession = latestDate ? buildSession(latestWorkouts, latestDate) : null;
 
-  const displayName = profile?.display_name || "ゲスト";
+  const displayName = profile?.display_name || t("common.guest");
   const currentPlan = profile?.plan;
   const hasPlan = !!currentPlan && currentPlan !== '初回無料体験';
 
@@ -195,16 +197,16 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-accent/10 -translate-y-8 translate-x-8" />
         <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full bg-accent/5 translate-y-6 -translate-x-4" />
         <div className="relative">
-          <p className="text-sm opacity-75 flex items-center gap-1">Good Morning <Flame className="w-3.5 h-3.5" /></p>
-          <h1 className="text-xl font-bold mt-1">{displayName}さん</h1>
+          <p className="text-sm opacity-75 flex items-center gap-1">{t("home.greeting")} <Flame className="w-3.5 h-3.5" /></p>
+          <h1 className="text-xl font-bold mt-1">{t("home.greetingName", { name: displayName })}</h1>
           <div className="flex items-center gap-4 mt-4">
             <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
               <Target className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">{bookings.length}回達成</span>
+              <span className="text-xs font-medium">{t("home.sessionsAchieved", { count: bookings.length })}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
               <Flame className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">{currentStreak > 0 ? `${currentStreak}週連続` : '継続中'}</span>
+              <span className="text-xs font-medium">{currentStreak > 0 ? t("home.weeksStreak", { count: currentStreak }) : t("home.keepingUp")}</span>
             </div>
           </div>
         </div>
@@ -215,7 +217,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
     <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <CalendarDays className="w-3.5 h-3.5" />
-          次回の予約
+          {t("home.nextBooking")}
         </h2>
         {nextBooking ? (
           <Card className="card-hover border-l-4 border-l-accent">
@@ -224,11 +226,11 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                 <div>
                   <p className="font-bold text-base">{formatBookingDate(nextBooking)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {nextBooking.booking_type === "初回無料体験" ? "初回無料体験" : "トレーニング"}
+                    {nextBooking.booking_type === "初回無料体験" ? t("home.freeTrial") : t("home.training")}
                   </p>
                   {hasPlan && maxSessions > 0 && (
                     <p className="text-xs font-semibold text-accent mt-1.5">
-                      今回 {nextBookingOrdinal > 0 ? nextBookingOrdinal : "?"}/{maxSessions}回目
+                      {t("home.sessionOrdinal", { ordinal: nextBookingOrdinal > 0 ? nextBookingOrdinal : "?", max: maxSessions })}
                     </p>
                   )}
                 </div>
@@ -241,7 +243,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         ) : (
           <Card>
             <CardContent className="p-4 text-center text-sm text-muted-foreground">
-              予約はありません
+              {t("home.noBookings")}
             </CardContent>
           </Card>
         )}
@@ -272,7 +274,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
             <Card className="card-hover">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-extrabold">{latest.weight}<span className="text-sm font-medium text-muted-foreground">kg</span></p>
-                <p className="text-xs text-muted-foreground mt-1">現在の体重</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("home.currentWeight")}</p>
                 {weightChange && (
                   <div className="flex items-center justify-center gap-1 mt-1.5">
                     {parseFloat(weightChange) <= 0 ? (
@@ -290,7 +292,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
             <Card className="card-hover">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-extrabold">{latest.body_fat}<span className="text-sm font-medium text-muted-foreground">%</span></p>
-                <p className="text-xs text-muted-foreground mt-1">体脂肪率</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("home.bodyFat")}</p>
                 {fatChange && (
                   <div className="flex items-center justify-center gap-1 mt-1.5">
                     {parseFloat(fatChange) <= 0 ? (
@@ -315,7 +317,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Dumbbell className="w-3.5 h-3.5" />
-            最新のトレーニング
+            {t("home.latestWorkout")}
           </h2>
           <div
             onClick={() => onNavigate?.("training")}
@@ -339,7 +341,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                 }}
                 className="w-9 h-9 rounded-lg flex items-center justify-center transition hover:opacity-80"
                 style={{ backgroundColor: "rgba(10, 186, 181, 0.15)", color: "#0ABAB5" }}
-                aria-label="シェア"
+                aria-label={t("common.share")}
               >
                 <Share2 className="w-4 h-4" />
               </button>
@@ -351,14 +353,14 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                 <p className="text-white font-extrabold text-2xl leading-none">
                   {latestSession.exerciseCount}
                 </p>
-                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>種目</p>
+                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>{t("home.exercisesUnit")}</p>
               </div>
               <div className="w-px h-10 self-center" style={{ backgroundColor: "#333" }} />
               <div className="flex-1 text-center">
                 <p className="text-white font-extrabold text-2xl leading-none">
                   {latestSession.totalSets}
                 </p>
-                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>セット</p>
+                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>{t("home.setsUnit")}</p>
               </div>
               <div className="w-px h-10 self-center" style={{ backgroundColor: "#333" }} />
               <div className="flex-1 text-center">
@@ -366,7 +368,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                   {latestSession.totalVolume.toLocaleString()}
                   <span className="text-xs font-medium ml-0.5" style={{ color: "#888" }}>kg</span>
                 </p>
-                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>総挙上量</p>
+                <p className="text-[11px] mt-1.5" style={{ color: "#888" }}>{t("home.totalVolume")}</p>
               </div>
             </div>
 
@@ -401,7 +403,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
               })}
               {latestSession.exercises.length > 3 && (
                 <p className="text-xs text-center pt-1" style={{ color: "#888" }}>
-                  他{latestSession.exercises.length - 3}種目
+                  {t("home.moreExercises", { count: latestSession.exercises.length - 3 })}
                 </p>
               )}
             </div>
@@ -419,11 +421,11 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                   <BarChart3 className="w-5 h-5 text-accent-foreground" />
                 </div>
                 <div>
-                  <p className="font-bold text-sm flex items-center gap-1.5"><BarChart3 className="w-4 h-4" />今回のレポート</p>
+                  <p className="font-bold text-sm flex items-center gap-1.5"><BarChart3 className="w-4 h-4" />{t("home.thisReport")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {(() => {
                        const currentCycle = getCycleWindow(profile?.cycle_start_date, now);
-                      if (!currentCycle) return "データを確認する";
+                      if (!currentCycle) return t("home.checkData");
                       const cycleVisited = bookings.filter(b => {
                         if (b.status === "キャンセル済み") return false;
                         const d = parseISO(b.date);
@@ -431,9 +433,9 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                         return d >= currentCycle.start && d < currentCycle.end && bTime < now;
                       }).length;
                       const parts: string[] = [];
-                      if (cycleVisited > 0) parts.push(`来店${cycleVisited}回`);
-                      if (latest && latest.weight != null && weightChange) parts.push(`体重${parseFloat(weightChange) <= 0 ? '' : '+'}${weightChange}kg`);
-                      return parts.length > 0 ? parts.join(" / ") : "データを確認する";
+                      if (cycleVisited > 0) parts.push(t("home.visitsCount", { count: cycleVisited }));
+                      if (latest && latest.weight != null && weightChange) parts.push(t("home.weightChange", { change: (parseFloat(weightChange) <= 0 ? '' : '+') + weightChange }));
+                      return parts.length > 0 ? parts.join(" / ") : t("home.checkData");
                     })()}
                   </p>
                 </div>
@@ -452,7 +454,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           onClick={() => onNavigate?.("posture")}
         >
           <ScanLine className="w-5 h-5" />
-          姿勢チェック（AI）
+          {t("home.postureCheck")}
         </Button>
       </section>
 

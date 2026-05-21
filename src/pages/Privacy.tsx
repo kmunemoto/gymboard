@@ -147,11 +147,11 @@ const Privacy = () => {
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3">11. お問い合わせ</h2>
             <div className="bg-card border rounded-xl p-4 space-y-1">
               <p className="font-bold">ジムボード</p>
-              <p className="text-sm">所在地：（ジム設定に依存）</p>
+              <p className="text-sm">運営者：宗本 寛太（KantaAppLab）</p>
               <p className="text-sm">
                 メール：
-                <a href="mailto:info@gymboard.app" className="text-accent underline hover:text-accent/80">
-                  info@gymboard.app
+                <a href="mailto:k.munemoto@kyoto-salute.com" className="text-accent underline hover:text-accent/80">
+                  k.munemoto@kyoto-salute.com
                 </a>
               </p>
             </div>

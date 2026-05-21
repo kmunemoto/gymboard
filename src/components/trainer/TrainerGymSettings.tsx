@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;

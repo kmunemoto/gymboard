@@ -34,6 +34,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/join" element={<JoinGym />} />
             <Route path="/join/:code" element={<JoinGym />} />
+            <Route path="/delete-account" element={<DeleteAccount />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

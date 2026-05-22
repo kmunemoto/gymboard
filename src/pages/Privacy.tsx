@@ -166,6 +166,9 @@ const Privacy = () => {
             <Link to="/terms" className="text-sm text-accent hover:text-accent/80 transition-colors font-bold">
               利用規約はこちら →
             </Link>
+            <Link to="/delete-account" className="text-sm text-accent hover:text-accent/80 transition-colors font-bold">
+              アカウント削除について →
+            </Link>
           </div>
         </footer>
       </div>

@@ -2187,15 +2187,18 @@ export type Database = {
           booking_cutoff_type: string | null
           business_type: string
           created_at: string
+          current_period_end: string | null
           email: string | null
           gamification_enabled: boolean | null
           gym_name: string
           gym_name_short: string | null
           gymboard_plan: string | null
+          gymboard_plan_period: string | null
           id: string
           invite_code: string | null
           logo_url: string | null
           max_customers: number | null
+          max_trainers: number | null
           operating_hours: Json | null
           owner_user_id: string | null
           phone: string | null
@@ -2204,6 +2207,7 @@ export type Database = {
           status: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          subscription_status: string | null
           trial_ends_at: string | null
           updated_at: string
           website_url: string | null
@@ -2214,15 +2218,18 @@ export type Database = {
           booking_cutoff_type?: string | null
           business_type?: string
           created_at?: string
+          current_period_end?: string | null
           email?: string | null
           gamification_enabled?: boolean | null
           gym_name: string
           gym_name_short?: string | null
           gymboard_plan?: string | null
+          gymboard_plan_period?: string | null
           id?: string
           invite_code?: string | null
           logo_url?: string | null
           max_customers?: number | null
+          max_trainers?: number | null
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
@@ -2231,6 +2238,7 @@ export type Database = {
           status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_status?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           website_url?: string | null
@@ -2241,15 +2249,18 @@ export type Database = {
           booking_cutoff_type?: string | null
           business_type?: string
           created_at?: string
+          current_period_end?: string | null
           email?: string | null
           gamification_enabled?: boolean | null
           gym_name?: string
           gym_name_short?: string | null
           gymboard_plan?: string | null
+          gymboard_plan_period?: string | null
           id?: string
           invite_code?: string | null
           logo_url?: string | null
           max_customers?: number | null
+          max_trainers?: number | null
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
@@ -2258,6 +2269,7 @@ export type Database = {
           status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_status?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           website_url?: string | null

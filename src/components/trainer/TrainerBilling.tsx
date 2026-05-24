@@ -15,6 +15,14 @@ import {
 } from "@/lib/gymboardPlans";
 import { Check, CreditCard, ExternalLink, Loader2, Users, UserCog, Info } from "lucide-react";
 
+const isEmbeddedPreview = () => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+};
+
 const TrainerBilling = () => {
   const { tenant, role, refetch } = useTenant();
   const [period, setPeriod] = useState<GymboardPeriod>("monthly");
@@ -47,6 +55,8 @@ const TrainerBilling = () => {
     const lookup_key = lookupKeyFor(plan, period);
     if (!lookup_key) return;
     setLoadingPlan(plan);
+    const checkoutWindow = isEmbeddedPreview() ? window.open("about:blank", "_blank") : null;
+    if (checkoutWindow) checkoutWindow.opener = null;
     try {
       const origin = window.location.origin;
       const path = window.location.pathname;
@@ -84,8 +94,13 @@ const TrainerBilling = () => {
         throw new Error(serverError || error?.message || "Checkoutセッションの作成に失敗しました");
       }
       console.log("[TrainerBilling] checkout redirect", { hasUrl: Boolean(data.url) });
-      window.location.href = data.url;
+      if (checkoutWindow && !checkoutWindow.closed) {
+        checkoutWindow.location.href = data.url;
+      } else {
+        window.location.assign(data.url);
+      }
     } catch (e: any) {
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
       console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
     } finally {

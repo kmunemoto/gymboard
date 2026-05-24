@@ -494,6 +494,7 @@ export type Database = {
           reviewed: boolean
           sleep_hours: string | null
           target_frequency: string | null
+          tenant_id: string | null
           trainer_memo: string | null
           ward: string | null
         }
@@ -518,6 +519,7 @@ export type Database = {
           reviewed?: boolean
           sleep_hours?: string | null
           target_frequency?: string | null
+          tenant_id?: string | null
           trainer_memo?: string | null
           ward?: string | null
         }
@@ -542,6 +544,7 @@ export type Database = {
           reviewed?: boolean
           sleep_hours?: string | null
           target_frequency?: string | null
+          tenant_id?: string | null
           trainer_memo?: string | null
           ward?: string | null
         }

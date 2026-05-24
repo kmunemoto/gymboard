@@ -60,12 +60,22 @@ const TrainerBilling = () => {
           cancel_url: `${origin}${path}?billing=cancel`,
         },
       });
-      if (error || !data?.url) {
-        throw new Error(error?.message || "Checkoutセッションの作成に失敗しました");
+      // supabase.functions.invoke: on non-2xx, the body is exposed via error.context (a Response).
+      let serverError: string | undefined = (data as any)?.error;
+      if (!serverError && error && (error as any).context?.json) {
+        try {
+          const body = await (error as any).context.json();
+          serverError = body?.error;
+        } catch { /* ignore */ }
+      }
+      if (error || serverError || !data?.url) {
+        throw new Error(serverError || error?.message || "Checkoutセッションの作成に失敗しました");
       }
       window.location.href = data.url;
     } catch (e: any) {
+      console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
+    } finally {
       setLoadingPlan(null);
     }
   };
@@ -82,12 +92,21 @@ const TrainerBilling = () => {
           environment,
         },
       });
-      if (error || !data?.url) {
-        throw new Error(error?.message || "ポータルセッションの作成に失敗しました");
+      let serverError: string | undefined = (data as any)?.error;
+      if (!serverError && error && (error as any).context?.json) {
+        try {
+          const body = await (error as any).context.json();
+          serverError = body?.error;
+        } catch { /* ignore */ }
+      }
+      if (error || serverError || !data?.url) {
+        throw new Error(serverError || error?.message || "ポータルセッションの作成に失敗しました");
       }
       window.location.href = data.url;
     } catch (e: any) {
+      console.error("gymboard-customer-portal failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
+    } finally {
       setPortalLoading(false);
     }
   };

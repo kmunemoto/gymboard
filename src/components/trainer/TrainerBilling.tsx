@@ -60,9 +60,14 @@ const TrainerBilling = () => {
           cancel_url: `${origin}${path}?billing=cancel`,
         },
       });
-      // supabase.functions.invoke: on non-2xx, `error` is set but `data` still
-      // contains the function's JSON body (e.g. { error: "Price not found..." }).
-      const serverError = (data as any)?.error;
+      // supabase.functions.invoke: on non-2xx, the body is exposed via error.context (a Response).
+      let serverError: string | undefined = (data as any)?.error;
+      if (!serverError && error && (error as any).context?.json) {
+        try {
+          const body = await (error as any).context.json();
+          serverError = body?.error;
+        } catch { /* ignore */ }
+      }
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || "Checkoutセッションの作成に失敗しました");
       }

@@ -55,18 +55,10 @@ const TrainerBilling = () => {
     const lookup_key = lookupKeyFor(plan, period);
     if (!lookup_key) return;
     setLoadingPlan(plan);
-    const checkoutWindow = isEmbeddedPreview() ? window.open("about:blank", "_blank") : null;
-    if (checkoutWindow) checkoutWindow.opener = null;
     try {
       const origin = window.location.origin;
       const path = window.location.pathname;
       const environment = detectStripeEnvironment(window.location.hostname);
-      console.log("[TrainerBilling] checkout invoke start", {
-        plan,
-        lookup_key,
-        environment,
-        hasTenant: Boolean(tenant?.id),
-      });
       const { data, error } = await supabase.functions.invoke("gymboard-create-checkout", {
         body: {
           tenant_id: tenant.id,
@@ -76,13 +68,6 @@ const TrainerBilling = () => {
           cancel_url: `${origin}${path}?billing=cancel`,
         },
       });
-      console.log("[TrainerBilling] checkout invoke result", {
-        hasData: Boolean(data),
-        hasError: Boolean(error),
-        hasUrl: Boolean((data as any)?.url),
-        errorMessage: error?.message,
-      });
-      // supabase.functions.invoke: on non-2xx, the body is exposed via error.context (a Response).
       let serverError: string | undefined = (data as any)?.error;
       if (!serverError && error && (error as any).context?.json) {
         try {
@@ -93,18 +78,22 @@ const TrainerBilling = () => {
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || "Checkoutセッションの作成に失敗しました");
       }
-      console.log("[TrainerBilling] checkout redirect", { hasUrl: Boolean(data.url) });
-      if (checkoutWindow && !checkoutWindow.closed) {
-        checkoutWindow.location.href = data.url;
+      // Top-level navigation. If embedded in an iframe (Lovable preview),
+      // break out to the top window so Stripe Checkout isn't blocked by X-Frame-Options.
+      if (isEmbeddedPreview()) {
+        try {
+          window.top!.location.href = data.url;
+        } catch {
+          // Cross-origin top access denied; fall back to opening a new tab.
+          window.open(data.url, "_blank", "noopener,noreferrer");
+        }
       } else {
-        window.location.assign(data.url);
+        window.location.href = data.url;
       }
     } catch (e: any) {
-      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
       console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
     } finally {
-      console.log("[TrainerBilling] checkout finally");
       setLoadingPlan(null);
     }
   };

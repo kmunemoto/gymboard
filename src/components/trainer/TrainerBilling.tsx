@@ -23,6 +23,21 @@ const isEmbeddedPreview = () => {
   }
 };
 
+// Top-level navigation that breaks out of the Lovable preview iframe when needed,
+// so Stripe-hosted pages (Checkout / Customer Portal) aren't blocked by X-Frame-Options.
+const navigateTopLevel = (url: string) => {
+  if (isEmbeddedPreview()) {
+    try {
+      window.top!.location.href = url;
+      return;
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+  }
+  window.location.href = url;
+};
+
 const TrainerBilling = () => {
   const { tenant, role, refetch } = useTenant();
   const [period, setPeriod] = useState<GymboardPeriod>("monthly");
@@ -78,18 +93,7 @@ const TrainerBilling = () => {
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || "Checkoutセッションの作成に失敗しました");
       }
-      // Top-level navigation. If embedded in an iframe (Lovable preview),
-      // break out to the top window so Stripe Checkout isn't blocked by X-Frame-Options.
-      if (isEmbeddedPreview()) {
-        try {
-          window.top!.location.href = data.url;
-        } catch {
-          // Cross-origin top access denied; fall back to opening a new tab.
-          window.open(data.url, "_blank", "noopener,noreferrer");
-        }
-      } else {
-        window.location.href = data.url;
-      }
+      navigateTopLevel(data.url);
     } catch (e: any) {
       console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
@@ -120,7 +124,7 @@ const TrainerBilling = () => {
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || "ポータルセッションの作成に失敗しました");
       }
-      window.location.href = data.url;
+      navigateTopLevel(data.url);
     } catch (e: any) {
       console.error("gymboard-customer-portal failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");

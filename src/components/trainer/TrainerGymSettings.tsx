@@ -12,6 +12,7 @@ import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2,
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerPlanManager from "./TrainerPlanManager";
+import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
@@ -207,6 +208,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プラン管理</h3>
         <TrainerPlanManager />
+      </section>
+
+      <Separator />
+
+      {/* === プラン・お支払い（GymBoard SaaS） === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プラン・お支払い</h3>
+        <TrainerBilling />
       </section>
 
       <Separator />

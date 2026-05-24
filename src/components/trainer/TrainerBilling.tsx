@@ -124,7 +124,7 @@ const TrainerBilling = () => {
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || "ポータルセッションの作成に失敗しました");
       }
-      window.location.href = data.url;
+      navigateTopLevel(data.url);
     } catch (e: any) {
       console.error("gymboard-customer-portal failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");

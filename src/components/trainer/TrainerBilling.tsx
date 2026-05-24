@@ -87,12 +87,15 @@ const TrainerBilling = () => {
           environment,
         },
       });
-      if (error || !data?.url) {
-        throw new Error(error?.message || "ポータルセッションの作成に失敗しました");
+      const serverError = (data as any)?.error;
+      if (error || serverError || !data?.url) {
+        throw new Error(serverError || error?.message || "ポータルセッションの作成に失敗しました");
       }
       window.location.href = data.url;
     } catch (e: any) {
+      console.error("gymboard-customer-portal failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
+    } finally {
       setPortalLoading(false);
     }
   };

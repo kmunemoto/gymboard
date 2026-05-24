@@ -92,7 +92,13 @@ const TrainerBilling = () => {
           environment,
         },
       });
-      const serverError = (data as any)?.error;
+      let serverError: string | undefined = (data as any)?.error;
+      if (!serverError && error && (error as any).context?.json) {
+        try {
+          const body = await (error as any).context.json();
+          serverError = body?.error;
+        } catch { /* ignore */ }
+      }
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || "ポータルセッションの作成に失敗しました");
       }

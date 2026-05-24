@@ -9,8 +9,6 @@ const getEnv = (key: string): string => {
 
 export type StripeEnv = 'sandbox' | 'live';
 
-const GATEWAY_STRIPE_BASE = 'https://connector-gateway.lovable.dev/stripe';
-
 export function getConnectionApiKey(env: StripeEnv): string {
   return env === 'sandbox'
     ? getEnv('STRIPE_SANDBOX_API_KEY')
@@ -18,22 +16,10 @@ export function getConnectionApiKey(env: StripeEnv): string {
 }
 
 export function createStripeClient(env: StripeEnv): Stripe {
-  const connectionApiKey = getConnectionApiKey(env);
-  const lovableApiKey = getEnv('LOVABLE_API_KEY');
-
-  return new Stripe(connectionApiKey, {
+  const apiKey = getConnectionApiKey(env);
+  return new Stripe(apiKey, {
     apiVersion: '2026-03-25.dahlia',
-    httpClient: Stripe.createFetchHttpClient((url: string | URL, init?: RequestInit) => {
-      const gatewayUrl = url.toString().replace('https://api.stripe.com', GATEWAY_STRIPE_BASE);
-      return fetch(gatewayUrl, {
-        ...init,
-        headers: {
-          ...Object.fromEntries(new Headers(init?.headers).entries()),
-          'X-Connection-Api-Key': connectionApiKey,
-          'Lovable-API-Key': lovableApiKey,
-        },
-      });
-    }),
+    httpClient: Stripe.createFetchHttpClient(),
   });
 }
 
@@ -41,8 +27,8 @@ export async function verifyWebhook(req: Request, env: StripeEnv): Promise<{ typ
   const signature = req.headers.get("stripe-signature");
   const body = await req.text();
   const secret = env === 'sandbox'
-    ? getEnv('PAYMENTS_SANDBOX_WEBHOOK_SECRET')
-    : getEnv('PAYMENTS_LIVE_WEBHOOK_SECRET');
+    ? getEnv('GYMBOARD_STRIPE_WEBHOOK_SECRET_SANDBOX')
+    : getEnv('GYMBOARD_STRIPE_WEBHOOK_SECRET_LIVE');
 
   if (!signature || !body) throw new Error("Missing signature or body");
 

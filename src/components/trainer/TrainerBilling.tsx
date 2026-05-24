@@ -23,6 +23,21 @@ const isEmbeddedPreview = () => {
   }
 };
 
+// Top-level navigation that breaks out of the Lovable preview iframe when needed,
+// so Stripe-hosted pages (Checkout / Customer Portal) aren't blocked by X-Frame-Options.
+const navigateTopLevel = (url: string) => {
+  if (isEmbeddedPreview()) {
+    try {
+      window.top!.location.href = url;
+      return;
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+  }
+  window.location.href = url;
+};
+
 const TrainerBilling = () => {
   const { tenant, role, refetch } = useTenant();
   const [period, setPeriod] = useState<GymboardPeriod>("monthly");

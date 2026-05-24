@@ -51,6 +51,12 @@ const TrainerBilling = () => {
       const origin = window.location.origin;
       const path = window.location.pathname;
       const environment = detectStripeEnvironment(window.location.hostname);
+      console.log("[TrainerBilling] checkout invoke start", {
+        plan,
+        lookup_key,
+        environment,
+        hasTenant: Boolean(tenant?.id),
+      });
       const { data, error } = await supabase.functions.invoke("gymboard-create-checkout", {
         body: {
           tenant_id: tenant.id,
@@ -59,6 +65,12 @@ const TrainerBilling = () => {
           success_url: `${origin}${path}?billing=success`,
           cancel_url: `${origin}${path}?billing=cancel`,
         },
+      });
+      console.log("[TrainerBilling] checkout invoke result", {
+        hasData: Boolean(data),
+        hasError: Boolean(error),
+        hasUrl: Boolean((data as any)?.url),
+        errorMessage: error?.message,
       });
       // supabase.functions.invoke: on non-2xx, the body is exposed via error.context (a Response).
       let serverError: string | undefined = (data as any)?.error;
@@ -71,11 +83,13 @@ const TrainerBilling = () => {
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || "Checkoutセッションの作成に失敗しました");
       }
+      console.log("[TrainerBilling] checkout redirect", { hasUrl: Boolean(data.url) });
       window.location.href = data.url;
     } catch (e: any) {
       console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
     } finally {
+      console.log("[TrainerBilling] checkout finally");
       setLoadingPlan(null);
     }
   };

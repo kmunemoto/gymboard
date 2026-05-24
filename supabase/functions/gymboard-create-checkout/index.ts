@@ -48,11 +48,15 @@ Deno.serve(async (req) => {
     if (typeof success_url !== "string" || typeof cancel_url !== "string") return bad("Missing URLs");
 
     // URL whitelist: only own domains
-    const allowedHosts = ["gymboard.lovable.app", "id-preview--69ac2641-45d8-44e0-b60d-4e002a4f9c1c.lovable.app", "localhost", "127.0.0.1"];
+    const allowedExactHosts = new Set(["localhost", "127.0.0.1"]);
+    const allowedSuffixes = [".lovable.app", ".lovableproject.com", ".lovable.dev", ".kyoto-salute.com"];
     for (const u of [success_url, cancel_url]) {
       try {
         const url = new URL(u);
-        if (!allowedHosts.some((h) => url.hostname === h || url.hostname.endsWith(".lovable.app") || url.hostname.endsWith(".kyoto-salute.com"))) {
+        const ok = allowedExactHosts.has(url.hostname)
+          || allowedSuffixes.some((s) => url.hostname.endsWith(s));
+        if (!ok) {
+          console.error("URL not allowed:", url.hostname);
           return bad("URL not allowed");
         }
       } catch {

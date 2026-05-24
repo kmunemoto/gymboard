@@ -60,12 +60,17 @@ const TrainerBilling = () => {
           cancel_url: `${origin}${path}?billing=cancel`,
         },
       });
-      if (error || !data?.url) {
-        throw new Error(error?.message || "Checkoutセッションの作成に失敗しました");
+      // supabase.functions.invoke: on non-2xx, `error` is set but `data` still
+      // contains the function's JSON body (e.g. { error: "Price not found..." }).
+      const serverError = (data as any)?.error;
+      if (error || serverError || !data?.url) {
+        throw new Error(serverError || error?.message || "Checkoutセッションの作成に失敗しました");
       }
       window.location.href = data.url;
     } catch (e: any) {
+      console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || "エラーが発生しました。もう一度お試しください。");
+    } finally {
       setLoadingPlan(null);
     }
   };

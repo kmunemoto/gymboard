@@ -31,8 +31,8 @@ export const PLAN_CARDS: PlanCardDef[] = [
   {
     plan: "light",
     name: "Starter",
-    monthlyPrice: 3980,
-    yearlyPrice: 39800,
+    monthlyPrice: 4980,
+    yearlyPrice: 49800,
     maxCustomers: 20,
     maxTrainers: 3,
     monthlyLookupKey: "gymboard_starter_monthly",

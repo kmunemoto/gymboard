@@ -115,6 +115,10 @@ const TrainerView = () => {
         </div>
       </div>
       <div className="pt-12">
+        <PlanLimitBanner
+          onUpgrade={() => { setTab("gym-settings"); setSelectedClientId(null); }}
+          onManageCustomers={() => { setTab("clients"); setSelectedClientId(null); }}
+        />
         <div className="flex">
           <TrainerSidebar
             activeTab={tab}

@@ -20,7 +20,7 @@ export interface Tenant {
   invite_code: string;
   status: string;
   gymboard_plan: string;
-  max_customers: number;
+  max_customers: number | null;
 }
 
 export interface TenantPlan {

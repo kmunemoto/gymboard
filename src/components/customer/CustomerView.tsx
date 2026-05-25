@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
 import AnnouncementsDialog from "./AnnouncementsDialog";
+import PlanLimitBanner from "@/components/PlanLimitBanner";
 import { useTenant } from "@/hooks/useTenant";
 
 export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report";
@@ -88,6 +89,7 @@ const CustomerView = () => {
         </div>
       </div>
       <div className="pt-12" key={tab}>
+        <PlanLimitBanner />
         {tab === "home" && <CustomerHome onNavigate={setTab} />}
         {tab === "booking" && <CustomerBooking />}
         {tab === "training" && <CustomerTraining />}

@@ -15,6 +15,7 @@ import CounselingResponseList from "./CounselingResponseList";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import GymLogo from "@/components/GymLogo";
+import PlanLimitBanner from "@/components/PlanLimitBanner";
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,6 +115,10 @@ const TrainerView = () => {
         </div>
       </div>
       <div className="pt-12">
+        <PlanLimitBanner
+          onUpgrade={() => { setTab("gym-settings"); setSelectedClientId(null); }}
+          onManageCustomers={() => { setTab("clients"); setSelectedClientId(null); }}
+        />
         <div className="flex">
           <TrainerSidebar
             activeTab={tab}

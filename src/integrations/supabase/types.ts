@@ -3244,6 +3244,7 @@ export type Database = {
       get_player_combat_stats: { Args: { p_user_id: string }; Returns: Json }
       get_quest_progress: { Args: { p_user_id: string }; Returns: Json }
       get_ranking: { Args: { p_gender: string; p_type: string }; Returns: Json }
+      get_tenant_limit_status: { Args: { p_tenant_id: string }; Returns: Json }
       get_tenant_public: {
         Args: { p_id: string }
         Returns: {
@@ -3299,6 +3300,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_tenant_over_limit: { Args: { p_tenant_id: string }; Returns: boolean }
       lookup_tenant_by_invite_code: {
         Args: { p_code: string }
         Returns: {

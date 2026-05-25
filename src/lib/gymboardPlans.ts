@@ -73,11 +73,36 @@ export function getPlanCard(plan: GymboardPlan): PlanCardDef | undefined {
   return PLAN_CARDS.find((p) => p.plan === plan);
 }
 
+const STRIPE_ENV_STORAGE_KEY = "gymboard_stripe_env_override";
+
 /**
- * Determine Stripe environment from current hostname.
- * Production (gymboard.lovable.app) -> live, everything else -> sandbox.
+ * Determine Stripe environment.
+ * Priority:
+ *   1. ?stripe_env=sandbox|live URL query (also persisted to localStorage)
+ *   2. localStorage override (set via the query param above)
+ *   3. Hostname: gymboard.lovable.app -> live, everything else -> sandbox
+ *
+ * To force sandbox on the production domain for testing, visit:
+ *   https://gymboard.lovable.app/?stripe_env=sandbox
+ * To clear the override:
+ *   https://gymboard.lovable.app/?stripe_env=auto
  */
 export function detectStripeEnvironment(hostname: string): "sandbox" | "live" {
+  if (typeof window !== "undefined") {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get("stripe_env");
+      if (q === "sandbox" || q === "live") {
+        window.localStorage.setItem(STRIPE_ENV_STORAGE_KEY, q);
+        return q;
+      }
+      if (q === "auto" || q === "clear") {
+        window.localStorage.removeItem(STRIPE_ENV_STORAGE_KEY);
+      }
+      const stored = window.localStorage.getItem(STRIPE_ENV_STORAGE_KEY);
+      if (stored === "sandbox" || stored === "live") return stored;
+    } catch { /* ignore storage errors */ }
+  }
   if (hostname === "gymboard.lovable.app") return "live";
   return "sandbox";
 }

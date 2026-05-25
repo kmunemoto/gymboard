@@ -89,6 +89,7 @@ const CustomerView = () => {
         </div>
       </div>
       <div className="pt-12" key={tab}>
+        <PlanLimitBanner />
         {tab === "home" && <CustomerHome onNavigate={setTab} />}
         {tab === "booking" && <CustomerBooking />}
         {tab === "training" && <CustomerTraining />}

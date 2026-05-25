@@ -277,6 +277,18 @@ const TrainerBilling = () => {
         })}
       </div>
 
+      {/* 法定リンク（購入ボタン直下） */}
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <Link to="/tokushoho" className="hover:text-accent underline transition-colors">
+          特定商取引法に基づく表記
+        </Link>
+        <span aria-hidden="true">·</span>
+        <Link to="/terms" className="hover:text-accent underline transition-colors">
+          利用規約
+        </Link>
+      </div>
+
+
       {/* Portal */}
       {hasPaidPlan && (
         <Card>

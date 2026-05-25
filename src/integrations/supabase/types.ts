@@ -3299,6 +3299,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_tenant_over_limit: { Args: { p_tenant_id: string }; Returns: boolean }
       lookup_tenant_by_invite_code: {
         Args: { p_code: string }
         Returns: {

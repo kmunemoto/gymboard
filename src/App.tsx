@@ -32,6 +32,7 @@ const App = () => (
             <Route path="/trial/:tenantId" element={<TrialBooking />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/tokushoho" element={<Tokushoho />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/join" element={<JoinGym />} />
             <Route path="/join/:code" element={<JoinGym />} />

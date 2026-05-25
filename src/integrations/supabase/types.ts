@@ -2325,7 +2325,7 @@ export type Database = {
           guest_name: string
           id: string
           status: string
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           booking_date: string
@@ -2336,7 +2336,7 @@ export type Database = {
           guest_name: string
           id?: string
           status?: string
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           booking_date?: string
@@ -2347,7 +2347,7 @@ export type Database = {
           guest_name?: string
           id?: string
           status?: string
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -3347,6 +3347,10 @@ export type Database = {
         Returns: Json
       }
       set_featured_badges: { Args: { p_badges: string[] }; Returns: undefined }
+      shares_tenant_with_me: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
       spin_gacha: {
         Args: { _result_date: string; _user_id: string }
         Returns: Json

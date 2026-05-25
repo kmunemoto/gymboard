@@ -90,6 +90,26 @@ Deno.serve(async (req) => {
     const stripe = createStripeClient(environment);
 
     let customerId = (tenant as any).stripe_customer_id as string | null;
+
+    // Validate that the stored customer ID still exists in the current Stripe environment.
+    // If the tenant was previously linked in sandbox and we're now in live (or the customer
+    // was deleted), the stored ID will be stale and Stripe will throw "No such customer".
+    if (customerId) {
+      try {
+        const existing = await stripe.customers.retrieve(customerId);
+        if ((existing as any).deleted) {
+          customerId = null;
+        }
+      } catch (retrieveErr: any) {
+        if (retrieveErr?.code === "resource_missing" || retrieveErr?.statusCode === 404) {
+          console.warn("Stale stripe_customer_id, will recreate:", customerId, retrieveErr?.message);
+          customerId = null;
+        } else {
+          throw retrieveErr;
+        }
+      }
+    }
+
     if (!customerId) {
       const customer = await stripe.customers.create({
         name: (tenant as any).gym_name || undefined,
@@ -120,8 +140,12 @@ Deno.serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("gymboard-create-checkout error:", e);
-    return bad("Checkout creation failed", 500);
+  } catch (e: any) {
+    // Surface the actual Stripe error type + message so the front-end toast and logs
+    // make root-causing trivial (auth error, missing price, stale customer, etc.).
+    const errType = e?.type || e?.name || "Error";
+    const errMsg = e?.message || String(e);
+    console.error("gymboard-create-checkout error:", errType, errMsg, e);
+    return bad(`${errType}: ${errMsg}`, 500);
   }
 });

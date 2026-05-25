@@ -276,10 +276,12 @@ const Auth = () => {
           {mode === "signup" && (
             <p className="mb-2">アカウント作成により、以下に同意したものとみなされます。</p>
           )}
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <Link to="/terms" className="hover:text-accent underline transition-colors">利用規約</Link>
             <span>·</span>
             <Link to="/privacy" className="hover:text-accent underline transition-colors">プライバシーポリシー</Link>
+            <span>·</span>
+            <Link to="/tokushoho" className="hover:text-accent underline transition-colors">特定商取引法に基づく表記</Link>
           </div>
         </div>
       </div>

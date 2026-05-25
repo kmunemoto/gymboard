@@ -517,13 +517,17 @@ const CustomerSettings = () => {
       </section>
 
       {/* 規約・ポリシー（控えめなフッターリンク） */}
-      <div className="pt-2 pb-4 flex items-center justify-center gap-2 text-[12px] text-muted-foreground/70">
+      <div className="pt-2 pb-4 flex flex-wrap items-center justify-center gap-2 text-[12px] text-muted-foreground/70">
         <Link to="/terms" className="px-2 py-1 hover:text-foreground transition-colors">
           利用規約
         </Link>
         <span aria-hidden="true">·</span>
         <Link to="/privacy" className="px-2 py-1 hover:text-foreground transition-colors">
           プライバシーポリシー
+        </Link>
+        <span aria-hidden="true">·</span>
+        <Link to="/tokushoho" className="px-2 py-1 hover:text-foreground transition-colors">
+          特定商取引法に基づく表記
         </Link>
       </div>
     </div>

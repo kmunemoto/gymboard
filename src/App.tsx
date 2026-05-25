@@ -11,6 +11,7 @@ import Unsubscribe from "./pages/Unsubscribe.tsx";
 import TrialBooking from "./pages/TrialBooking.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Terms from "./pages/Terms.tsx";
+import Tokushoho from "./pages/Tokushoho.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import JoinGym from "./pages/JoinGym.tsx";
 import DeleteAccount from "./pages/DeleteAccount.tsx";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/trial/:tenantId" element={<TrialBooking />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/tokushoho" element={<Tokushoho />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/join" element={<JoinGym />} />
             <Route path="/join/:code" element={<JoinGym />} />

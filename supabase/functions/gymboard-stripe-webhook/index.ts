@@ -81,8 +81,16 @@ async function applySubscriptionToTenant(
     return;
   }
   const def = PLAN_MAP[lookupKey];
-  const currentPeriodEnd = subscription?.current_period_end
-    ? new Date(subscription.current_period_end * 1000).toISOString()
+  // Newer Stripe API versions move current_period_end from the subscription
+  // down to each subscription item. Read item-level first, fall back to the
+  // legacy subscription-level field. Guard against empty items arrays.
+  const items = subscription?.items?.data;
+  const periodEndUnix: number | null =
+    (Array.isArray(items) && items.length > 0 && items[0]?.current_period_end) ||
+    subscription?.current_period_end ||
+    null;
+  const currentPeriodEnd = periodEndUnix
+    ? new Date(periodEndUnix * 1000).toISOString()
     : null;
 
   await admin.from("tenants").update({

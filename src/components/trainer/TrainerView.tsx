@@ -117,7 +117,7 @@ const TrainerView = () => {
           </button>
         </div>
       </div>
-      <div className="pt-12">
+      <div style={{ paddingTop: "calc(3rem + env(safe-area-inset-top, 0px))" }}>
         <PlanLimitBanner
           onUpgrade={() => { setTab("gym-settings"); setSelectedClientId(null); }}
           onManageCustomers={() => { setTab("clients"); setSelectedClientId(null); }}

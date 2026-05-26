@@ -42,7 +42,17 @@ Deno.serve(async (req) => {
 
     try {
       const url = new URL(return_url);
-      if (!(url.hostname.endsWith(".lovable.app") || url.hostname.endsWith(".kyoto-salute.com") || url.hostname === "localhost" || url.hostname === "127.0.0.1")) {
+      const host = url.hostname;
+      const allowed =
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.endsWith(".lovable.app") ||
+        host.endsWith(".lovable.dev") ||
+        host.endsWith(".lovableproject.com") ||
+        host === "kyoto-salute.com" ||
+        host.endsWith(".kyoto-salute.com");
+      if (!allowed) {
+        console.warn("gymboard-customer-portal: rejected return_url host:", host);
         return bad("URL not allowed");
       }
     } catch {

@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useTenantLimit } from "@/hooks/useTenantLimit";
 
@@ -10,9 +11,11 @@ interface Props {
 /**
  * Persistent warning shown to owner/trainer/customer when the tenant
  * is over its plan limits. Customers see only a neutral notice.
+ * On native apps, billing CTAs are hidden (no in-app purchases).
  */
 const PlanLimitBanner = ({ onUpgrade, onManageCustomers }: Props) => {
   const { status, role } = useTenantLimit();
+  const isNative = Capacitor.isNativePlatform();
   if (!status || !status.over_limit) return null;
 
   const parts: string[] = [];

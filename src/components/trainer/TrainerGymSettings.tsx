@@ -14,6 +14,7 @@ import InviteCodeCard from "./InviteCodeCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
+import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 interface TrainerGymSettingsProps {
@@ -370,6 +371,11 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
 
 
+
+      {/* === 使い方ガイド === */}
+      <section className="space-y-3">
+        <TrainerHelpGuide />
+      </section>
 
       {/* === ログアウト === */}
       <section className="space-y-3">

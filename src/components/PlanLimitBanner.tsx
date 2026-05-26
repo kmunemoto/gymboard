@@ -38,11 +38,13 @@ const PlanLimitBanner = ({ onUpgrade, onManageCustomers }: Props) => {
             <>
               <p className="font-bold">プランの上限を超えています（{detail}）。</p>
               <p className="text-muted-foreground mt-0.5">
-                アップグレードするか、顧客を上限以下にしてください。解消されるまで新規予約・記録などの作成ができません。
+                {isNative
+                  ? "顧客を上限以下にしてください。プランの変更はWebサイトから行えます。解消されるまで新規予約・記録などの作成ができません。"
+                  : "アップグレードするか、顧客を上限以下にしてください。解消されるまで新規予約・記録などの作成ができません。"}
               </p>
               {(onUpgrade || onManageCustomers) && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {onUpgrade && (
+                  {onUpgrade && !isNative && (
                     <Button size="sm" variant="default" onClick={onUpgrade}>
                       プランをアップグレード
                     </Button>

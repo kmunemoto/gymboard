@@ -372,6 +372,11 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
 
 
+      {/* === 使い方ガイド === */}
+      <section className="space-y-3">
+        <TrainerHelpGuide />
+      </section>
+
       {/* === ログアウト === */}
       <section className="space-y-3">
         <Button

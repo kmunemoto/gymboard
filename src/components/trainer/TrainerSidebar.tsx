@@ -67,7 +67,10 @@ const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCoun
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-border">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-border"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
         <div className="flex">
           {mobileTabs.map((t) => {
             const active = activeTab === t.id;

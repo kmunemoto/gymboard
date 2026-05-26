@@ -90,7 +90,10 @@ const TrainerView = () => {
   return (
     <div className="min-h-screen bg-background fade-in overflow-x-hidden">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
+      <div
+        className="fixed top-0 left-0 right-0 z-50 glass border-b border-border"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <div className="flex items-center justify-between px-3 sm:px-4 py-2">
           <div className="flex items-center gap-2 min-w-0">
             {tenant?.logo_url ? (
@@ -114,7 +117,7 @@ const TrainerView = () => {
           </button>
         </div>
       </div>
-      <div className="pt-12">
+      <div style={{ paddingTop: "calc(3rem + env(safe-area-inset-top, 0px))" }}>
         <PlanLimitBanner
           onUpgrade={() => { setTab("gym-settings"); setSelectedClientId(null); }}
           onManageCustomers={() => { setTab("clients"); setSelectedClientId(null); }}

@@ -49,6 +49,7 @@ import MuscleBalanceRadar from "@/components/customer/MuscleBalanceRadar";
 import SessionExpSummaryDialog from "@/components/customer/SessionExpSummaryDialog";
 import MilestoneAchievedDialog from "@/components/customer/MilestoneAchievedDialog";
 import TrainerWeightJourneyPanel from "./TrainerWeightJourneyPanel";
+import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
 
 interface TrainerClientDetailProps {
   clientId: string;
@@ -296,7 +297,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     const fetchRecords = async () => {
       const { data } = await supabase
         .from("workouts")
-        .select("*, exercises(name)")
+        .select("*, exercises(name, muscle_group)")
         .eq("user_id", clientId)
         .order("workout_date", { ascending: false })
         .limit(50);
@@ -304,6 +305,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         setWorkoutRecords(data.map((w: any) => ({
           ...w,
           exercise_name: w.exercises?.name || "不明",
+          muscle_group: w.exercises?.muscle_group ?? null,
         })));
       }
       setLoadingRecords(false);
@@ -1208,6 +1210,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       <div className="space-y-1.5 overflow-hidden">
                         {groupedRecords[date].map((r) => {
                           const setsData = r.sets || (r.weight != null ? [{ set: 1, weight: r.weight, reps: r.reps }] : []);
+                          const muscleIconUrl = getMuscleIconUrl(r.exercise_name, clientGender ?? "male", (r as any).muscle_group ?? null);
                           return (
                           <div key={r.id} className="flex items-start gap-2 text-sm min-w-0">
                             <Dumbbell className="w-3 h-3 text-accent shrink-0 mt-1" />
@@ -1217,6 +1220,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                                 <span key={si}>{si > 0 && " / "}{s.weight}kg×{s.reps}</span>
                               ))}
                             </span>
+                            {muscleIconUrl && (
+                              <img
+                                src={muscleIconUrl}
+                                alt=""
+                                loading="lazy"
+                                className="w-24 h-24 object-contain opacity-60 shrink-0 ml-2"
+                              />
+                            )}
                             <button onClick={() => setDeleteTarget(r)} className="ml-auto p-1.5 rounded-lg hover:bg-destructive/10 transition-colors shrink-0" title="削除">
                               <Trash2 className="w-3.5 h-3.5 text-destructive/70" />
                             </button>

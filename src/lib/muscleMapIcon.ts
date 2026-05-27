@@ -39,10 +39,11 @@ export function getMuscleKey(exerciseName: string, muscleGroup?: string | null):
 
 export function getMuscleIconUrl(
   exerciseName: string,
-  gender: "male" | "female",
+  gender: "male" | "female" | null | undefined,
   muscleGroup?: string | null
 ): string | null {
   const key = getMuscleKey(exerciseName, muscleGroup);
   if (!key) return null;
-  return `${AVATAR_CDN_BASE}/muscle-icons/${key}_${gender}.png`;
+  const safeGender: "male" | "female" = gender === "female" ? "female" : "male";
+  return `${AVATAR_CDN_BASE}/muscle-icons/${key}_${safeGender}.png`;
 }

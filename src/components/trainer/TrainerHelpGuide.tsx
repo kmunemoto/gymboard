@@ -17,6 +17,7 @@ import {
   Smartphone,
   AlertTriangle,
   ListChecks,
+  CreditCard,
 } from "lucide-react";
 
 const TrainerHelpGuide = () => {

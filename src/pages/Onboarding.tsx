@@ -148,7 +148,7 @@ const Onboarding = () => {
           gymboard_plan: "free",
           max_customers: 5,
         })
-        .select("id, invite_code")
+        .select("id")
         .single();
       if (tErr || !tenant) throw tErr || new Error("テナント作成失敗");
 
@@ -186,7 +186,8 @@ const Onboarding = () => {
         .from("user_roles")
         .upsert({ user_id: user.id, role: "trainer" }, { onConflict: "user_id,role" });
 
-      setCreatedTenant(tenant);
+      const { data: inviteCode } = await supabase.rpc("get_my_tenant_invite_code");
+      setCreatedTenant({ id: tenant.id, invite_code: (inviteCode as string) ?? "" });
       setStep(4);
     } catch (err: any) {
       toast({ title: "登録失敗", description: err.message, variant: "destructive" });

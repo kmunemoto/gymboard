@@ -297,7 +297,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     const fetchRecords = async () => {
       const { data } = await supabase
         .from("workouts")
-        .select("*, exercises(name)")
+        .select("*, exercises(name, muscle_group)")
         .eq("user_id", clientId)
         .order("workout_date", { ascending: false })
         .limit(50);
@@ -305,6 +305,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         setWorkoutRecords(data.map((w: any) => ({
           ...w,
           exercise_name: w.exercises?.name || "不明",
+          muscle_group: w.exercises?.muscle_group ?? null,
         })));
       }
       setLoadingRecords(false);

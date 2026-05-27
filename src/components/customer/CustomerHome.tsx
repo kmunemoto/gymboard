@@ -10,7 +10,6 @@ import { useMyBookings } from "@/hooks/useBookings";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStreak } from "@/hooks/useStreak";
-import StreakCard from "./StreakCard";
 import { Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getJSTNow, formatJST } from "@/lib/timezone";
@@ -37,7 +36,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { plans: tenantPlans } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
   const { chartData, latest, loading: metricsLoading } = useMeasurements(user?.id);
-  const { currentStreak, bestStreak, loading: streakLoading, hasFutureBookingThisWeek } = useStreak(user?.id);
+  const { currentStreak, loading: streakLoading } = useStreak(user?.id);
   const streakNotifiedRef = useRef(false);
   const [latestWorkouts, setLatestWorkouts] = useState<RawWorkout[]>([]);
   const [latestDate, setLatestDate] = useState<string | null>(null);
@@ -259,13 +258,6 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       {nextBookingSection}
 
       {/* 3. Streak */}
-      {!streakLoading && (
-        <StreakCard
-          currentStreak={currentStreak}
-          bestStreak={bestStreak}
-          hasFutureBookingThisWeek={hasFutureBookingThisWeek}
-        />
-      )}
 
       {/* 4. Weight / Body Fat Cards */}
       {latest && (latest.weight != null || latest.body_fat != null) && (

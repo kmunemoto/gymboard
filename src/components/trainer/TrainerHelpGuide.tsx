@@ -17,6 +17,7 @@ import {
   Smartphone,
   AlertTriangle,
   ListChecks,
+  CreditCard,
 } from "lucide-react";
 
 const TrainerHelpGuide = () => {
@@ -213,6 +214,66 @@ const TrainerHelpGuide = () => {
                   制限されます。プラン変更または顧客整理で解除されます。
                 </li>
               </ul>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* 5. プランのご契約方法 */}
+          <AccordionItem value="plan-subscription">
+            <AccordionTrigger className="text-sm font-bold">
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-accent" />
+                5. プランのご契約方法
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2">
+              <p>
+                GymBoardの有料プランはWeb版の管理画面からご契約いただけます。
+                アプリと同じアカウントでログインしてください。
+              </p>
+              <ol className="space-y-3 list-decimal list-inside">
+                <li>
+                  <b className="text-foreground">Webの管理サイトにアクセス</b>
+                  <p className="ml-5 mt-1">
+                    スマートフォンまたはPCのブラウザで
+                    <code className="text-xs bg-muted px-1 rounded">https://gymboard.lovable.app</code>
+                    を開き、アプリと同じメールアドレス・パスワードでログインします。
+                  </p>
+                </li>
+                <li>
+                  <b className="text-foreground">「プラン・お支払い」を開く</b>
+                  <p className="ml-5 mt-1">
+                    管理画面の「ジム設定」から「プラン・お支払い」セクションを
+                    選択します。
+                  </p>
+                </li>
+                <li>
+                  <b className="text-foreground">プランと支払い周期を選ぶ</b>
+                  <p className="ml-5 mt-1">
+                    Starter / Standard / Pro の中からご希望のプランを選び、
+                    月額または年額（2ヶ月分お得）を選択します。
+                  </p>
+                </li>
+                <li>
+                  <b className="text-foreground">決済を完了する</b>
+                  <p className="ml-5 mt-1">
+                    画面の案内にそってクレジットカード情報を入力し、
+                    決済を完了させます。請求情報や領収書は後から
+                    カスタマーポータルで確認できます。
+                  </p>
+                </li>
+                <li>
+                  <b className="text-foreground">アプリに反映される</b>
+                  <p className="ml-5 mt-1">
+                    契約完了後、アプリの「現在のプラン」表示に反映されます。
+                    反映には数分かかる場合があります。
+                  </p>
+                </li>
+              </ol>
+              <p className="text-xs">
+                <b className="text-foreground">注意</b>：
+                プランの変更・解約はWeb版のカスタマーポータルから行えます。
+                アプリ内では閲覧のみとなります。
+              </p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>

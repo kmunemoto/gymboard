@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { openExternalUrl } from "@/lib/nativeBridge";
 import {
   PLAN_CARDS,
   lookupKeyFor,
@@ -166,6 +167,15 @@ const TrainerBilling = () => {
           <Info className="w-4 h-4 shrink-0 mt-0.5" />
           <p>プランの変更はWebサイトから行えます。</p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full"
+          onClick={() => openExternalUrl("https://gymboard.lovable.app")}
+        >
+          <ExternalLink className="w-4 h-4 mr-1" />
+          Webサイトでプランを管理・変更する
+        </Button>
       </div>
     );
   }

@@ -1,14 +1,28 @@
+import { useEffect, useState } from "react";
 import { Copy, Link as LinkIcon, Ticket } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useTenant } from "@/hooks/useTenant";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const InviteCodeCard = () => {
-  const { tenant } = useTenant();
-  if (!tenant?.invite_code) return null;
+  const [code, setCode] = useState<string | null>(null);
 
-  const code = tenant.invite_code;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc("get_my_tenant_invite_code");
+      if (cancelled) return;
+      if (error) {
+        console.error(error);
+        return;
+      }
+      setCode((data as string) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!code) return null;
   const link = `${window.location.origin}/join/${code}`;
 
   const copy = async (text: string, label: string) => {

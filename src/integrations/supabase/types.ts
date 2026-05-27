@@ -3241,6 +3241,7 @@ export type Database = {
       }
       get_login_bonus_status: { Args: { p_user_id: string }; Returns: Json }
       get_my_tenant_id: { Args: never; Returns: string }
+      get_my_tenant_invite_code: { Args: never; Returns: string }
       get_player_combat_stats: { Args: { p_user_id: string }; Returns: Json }
       get_quest_progress: { Args: { p_user_id: string }; Returns: Json }
       get_ranking: { Args: { p_gender: string; p_type: string }; Returns: Json }

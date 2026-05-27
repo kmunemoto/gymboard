@@ -49,6 +49,7 @@ import MuscleBalanceRadar from "@/components/customer/MuscleBalanceRadar";
 import SessionExpSummaryDialog from "@/components/customer/SessionExpSummaryDialog";
 import MilestoneAchievedDialog from "@/components/customer/MilestoneAchievedDialog";
 import TrainerWeightJourneyPanel from "./TrainerWeightJourneyPanel";
+import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
 
 interface TrainerClientDetailProps {
   clientId: string;

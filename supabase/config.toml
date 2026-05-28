@@ -2,3 +2,6 @@ project_id = "rrbfwitprzuevzytykrq"
 
 [functions.gymboard-stripe-webhook]
 verify_jwt = false
+
+[functions.salute-connection-check]
+verify_jwt = false

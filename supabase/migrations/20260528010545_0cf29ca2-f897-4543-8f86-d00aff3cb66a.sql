@@ -1,0 +1,1 @@
+UPDATE public.tenants SET gymboard_plan = 'premium', max_customers = NULL, max_trainers = NULL WHERE id = 'ceda19b0-d5e0-4928-ab2e-996a0b823af4';

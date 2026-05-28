@@ -15,7 +15,7 @@ import {
   type GymboardPeriod,
   type GymboardPlan,
 } from "@/lib/gymboardPlans";
-import { Check, CreditCard, ExternalLink, Loader2, Users, UserCog, Info } from "lucide-react";
+import { Check, CreditCard, ExternalLink, Loader2, Users, Info } from "lucide-react";
 
 const isEmbeddedPreview = () => {
   try {
@@ -151,15 +151,9 @@ const TrainerBilling = () => {
               </div>
               <CreditCard className="w-5 h-5 text-accent" />
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span>お客様 {formatLimit(card.maxCustomers)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <UserCog className="w-4 h-4 text-muted-foreground" />
-                <span>スタッフ {formatLimit(card.maxTrainers)}</span>
-              </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span>お客様 {formatLimit(card.maxCustomers)}</span>
             </div>
           </CardContent>
         </Card>
@@ -253,10 +247,6 @@ const TrainerBilling = () => {
                   <li className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-accent" />
                     お客様 {formatLimit(card.maxCustomers)}
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-accent" />
-                    スタッフ {formatLimit(card.maxTrainers)}
                   </li>
                 </ul>
                 {isFree ? (

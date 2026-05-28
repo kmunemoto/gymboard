@@ -151,15 +151,9 @@ const TrainerBilling = () => {
               </div>
               <CreditCard className="w-5 h-5 text-accent" />
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span>お客様 {formatLimit(card.maxCustomers)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <UserCog className="w-4 h-4 text-muted-foreground" />
-                <span>スタッフ {formatLimit(card.maxTrainers)}</span>
-              </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span>お客様 {formatLimit(card.maxCustomers)}</span>
             </div>
           </CardContent>
         </Card>

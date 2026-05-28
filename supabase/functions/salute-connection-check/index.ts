@@ -25,7 +25,8 @@ Deno.serve(async (req) => {
   }
 
   const sb = createClient(url, key, { auth: { persistSession: false } });
-  const report: Record<string, unknown> = {};
+  const report: Record<string, unknown> = { salute_url: url };
+
 
   // 1. auth.users total
   try {

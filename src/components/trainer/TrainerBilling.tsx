@@ -248,10 +248,6 @@ const TrainerBilling = () => {
                     <Check className="w-3.5 h-3.5 text-accent" />
                     お客様 {formatLimit(card.maxCustomers)}
                   </li>
-                  <li className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-accent" />
-                    スタッフ {formatLimit(card.maxTrainers)}
-                  </li>
                 </ul>
                 {isFree ? (
                   <Button disabled variant="outline" size="sm" className="w-full">

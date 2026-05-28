@@ -108,5 +108,5 @@ export function detectStripeEnvironment(hostname: string): "sandbox" | "live" {
 }
 
 export function formatLimit(n: number | null): string {
-  return n === null ? "無制限" : `${n}名`;
+  return n === null ? "無制限" : `${n}名まで`;
 }

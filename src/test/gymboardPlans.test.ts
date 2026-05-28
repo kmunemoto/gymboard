@@ -35,6 +35,6 @@ describe("gymboardPlans", () => {
 
   it("formats limit correctly", () => {
     expect(formatLimit(null)).toBe("無制限");
-    expect(formatLimit(20)).toBe("20名");
+    expect(formatLimit(20)).toBe("20名まで");
   });
 });

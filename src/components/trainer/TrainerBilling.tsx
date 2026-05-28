@@ -15,7 +15,7 @@ import {
   type GymboardPeriod,
   type GymboardPlan,
 } from "@/lib/gymboardPlans";
-import { Check, CreditCard, ExternalLink, Loader2, Users, UserCog, Info } from "lucide-react";
+import { Check, CreditCard, ExternalLink, Loader2, Users, Info } from "lucide-react";
 
 const isEmbeddedPreview = () => {
   try {

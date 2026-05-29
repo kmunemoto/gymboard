@@ -15,6 +15,7 @@ import { template as trialBookingConfirmation } from './trial-booking-confirmati
 import { template as bookingCancellation } from './booking-cancellation.tsx'
 import { template as newAccountNotification } from './new-account-notification.tsx'
 import { template as trialBookingReminder } from './trial-booking-reminder.tsx'
+import { template as bookingReminder } from './booking-reminder.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-booking-notification': newBookingNotification,
@@ -23,4 +24,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'booking-cancellation': bookingCancellation,
   'new-account-notification': newAccountNotification,
   'trial-booking-reminder': trialBookingReminder,
+  'booking-reminder': bookingReminder,
 }

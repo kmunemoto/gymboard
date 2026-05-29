@@ -5,6 +5,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Look up an oauth_states row by nonce, verify it belongs to the expected provider,
+ * is not expired, and not previously consumed. Marks the row as used atomically.
+ * Returns the bound user_id, or null if invalid.
+ */
+async function consumeOauthState(
+  supabase: ReturnType<typeof createClient>,
+  nonce: string,
+  provider: string,
+): Promise<string | null> {
+  // Try to parse uuid; reject malformed input early
+  if (!/^[0-9a-fA-F-]{36}$/.test(nonce)) return null;
+
+  const { data, error } = await supabase
+    .from("oauth_states")
+    .update({ used_at: new Date().toISOString() })
+    .eq("nonce", nonce)
+    .eq("provider", provider)
+    .is("used_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .select("user_id")
+    .maybeSingle();
+  if (error) {
+    console.error("consumeOauthState error:", error);
+    return null;
+  }
+  return (data as any)?.user_id ?? null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -12,7 +41,7 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state"); // trainer user_id
+  const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
   if (error || !code || !state) {
@@ -28,18 +57,26 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Verify state via single-use nonce
+    const userId = await consumeOauthState(supabase, state, "google_calendar");
+    if (!userId) {
+      console.warn("Invalid or expired google_calendar oauth state");
+      return new Response(
+        `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:false},'*');window.close();</script><p>セッションが無効です。もう一度お試しください。</p></body></html>`,
+        { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
+      );
+    }
+
     const redirectUri = `${supabaseUrl}/functions/v1/google-calendar-callback`;
 
-    // Exchange code for tokens
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
+        code, client_id: clientId, client_secret: clientSecret,
+        redirect_uri: redirectUri, grant_type: "authorization_code",
       }),
     });
 
@@ -51,14 +88,11 @@ Deno.serve(async (req) => {
 
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-    // Upsert tokens
     const { error: dbError } = await supabase
       .from("google_calendar_tokens")
       .upsert(
         {
-          user_id: state,
+          user_id: userId,
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
           expires_at: expiresAt,

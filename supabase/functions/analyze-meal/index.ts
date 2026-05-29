@@ -9,10 +9,7 @@ const corsHeaders = {
 async function callAI(apiKey: string, messages: unknown[], model = "google/gemini-2.5-flash") {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages }),
   });
   if (!res.ok) {
@@ -32,6 +29,26 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // ---- AUTH: verify caller JWT ----
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
+    const { data: userData, error: userErr } = await authClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = userData.user.id;
+
     const { mealId, imageUrl, mealTypeHint, quantityNote } = await req.json();
     if (!mealId || !imageUrl) {
       return new Response(JSON.stringify({ error: "mealId and imageUrl required" }), {
@@ -39,19 +56,30 @@ serve(async (req) => {
       });
     }
 
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // ---- OWNERSHIP CHECK ----
+    const { data: mealRow, error: mealErr } = await supabase
+      .from("meals").select("id, user_id").eq("id", mealId).maybeSingle();
+    if (mealErr || !mealRow) {
+      return new Response(JSON.stringify({ error: "Meal not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (mealRow.user_id !== userId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Resolve storage path to signed URL
     let resolvedImageUrl = imageUrl;
     if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
       const { data: signedData, error: signError } = await supabase.storage
-        .from("meal-photos")
-        .createSignedUrl(imageUrl, 600);
+        .from("meal-photos").createSignedUrl(imageUrl, 600);
       if (signError || !signedData?.signedUrl) {
         console.error("Failed to create signed URL:", signError);
         throw new Error("Could not access uploaded image");
@@ -59,12 +87,10 @@ serve(async (req) => {
       resolvedImageUrl = signedData.signedUrl;
     }
 
-    // Build extra context from user hints
     let extraContext = "";
     if (mealTypeHint) extraContext += `\nユーザーの申告：この食事は「${mealTypeHint}」です。`;
     if (quantityNote) extraContext += `\n量の補足情報：「${quantityNote}」`;
 
-    // ========== STAGE 1: Identify dishes ==========
     const stage1System = `あなたは日本の食事写真を分析する専門家です。写真に映っているすべての料理と食材を正確に特定してください。
 
 【ルール】
@@ -84,13 +110,10 @@ serve(async (req) => {
 
     const stage1Content = await callAI(LOVABLE_API_KEY, [
       { role: "system", content: stage1System },
-      {
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: resolvedImageUrl, detail: "high" } },
-          { type: "text", text: "この食事の写真に映っているすべての料理を特定してください。" },
-        ],
-      },
+      { role: "user", content: [
+        { type: "image_url", image_url: { url: resolvedImageUrl, detail: "high" } },
+        { type: "text", text: "この食事の写真に映っているすべての料理を特定してください。" },
+      ]},
     ]);
 
     let stage1Result;
@@ -103,16 +126,12 @@ serve(async (req) => {
       });
     }
 
-    console.log("Stage 1 result:", JSON.stringify(stage1Result));
-
-    // ========== STAGE 2: Calculate nutrition ==========
     const dishList = stage1Result.dishes.map((d: { name: string; weight_g: number; ingredients: string[] }, i: number) =>
       `${i + 1}. ${d.name}（${d.weight_g}g）- 食材: ${d.ingredients.join("、")}`
     ).join("\n");
 
     const mealTypeInstruction = mealTypeHint
-      ? `\nユーザー申告の食事タイプ: ${mealTypeHint}（この情報を meal_type に使用してください）`
-      : "";
+      ? `\nユーザー申告の食事タイプ: ${mealTypeHint}（この情報を meal_type に使用してください）` : "";
 
     const stage2System = `あなたは管理栄養士です。以下の食事内容の栄養素を、日本食品標準成分表2020年版（八訂）に基づいて正確に計算してください。
 
@@ -157,12 +176,10 @@ ${mealTypeInstruction}
       });
     }
 
-    console.log("Stage 2 result:", JSON.stringify(analysis));
-
     const total = analysis.total || analysis;
     const dishes = analysis.dishes || null;
 
-    // Update the meal record in DB
+    // Update meal — scoped to verified owner
     const { error: updateError } = await supabase
       .from("meals")
       .update({
@@ -176,7 +193,8 @@ ${mealTypeInstruction}
         dishes: dishes,
         analyzed: true,
       })
-      .eq("id", mealId);
+      .eq("id", mealId)
+      .eq("user_id", userId);
 
     if (updateError) {
       console.error("DB update error:", updateError);

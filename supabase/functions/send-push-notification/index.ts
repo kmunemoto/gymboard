@@ -1,5 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { verifyCaller } from "../_shared/auth.ts";
+
+const ALLOWED_URL_HOSTS = new Set([
+  "app.gymboard.app",
+  "gymboard.lovable.app",
+]);
+
+function isAllowedUrl(u: string | undefined): boolean {
+  if (!u) return true;
+  if (u.startsWith("/")) return true;
+  try {
+    const parsed = new URL(u);
+    return ALLOWED_URL_HOSTS.has(parsed.host);
+  } catch {
+    return false;
+  }
+}
 
 // Web Push with VAPID using the web-push npm package approach via crypto APIs
 const VAPID_PUBLIC_KEY = "BKxLbT912uBVUI_0010w-QQWaic5ITY-_SZS1wo9BZdTq6mTyfbBPlmftYG_CKB4cdJYPTSLhiEGADA3Uv_R5_s";

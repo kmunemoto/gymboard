@@ -1,5 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { verifyCaller } from "../_shared/auth.ts";
+
+const ALLOWED_URL_HOSTS = new Set([
+  "app.gymboard.app",
+  "gymboard.lovable.app",
+]);
+
+function isAllowedUrl(u: string | undefined): boolean {
+  if (!u) return true;
+  if (u.startsWith("/")) return true;
+  try {
+    const parsed = new URL(u);
+    return ALLOWED_URL_HOSTS.has(parsed.host);
+  } catch {
+    return false;
+  }
+}
 
 // Web Push with VAPID using the web-push npm package approach via crypto APIs
 const VAPID_PUBLIC_KEY = "BKxLbT912uBVUI_0010w-QQWaic5ITY-_SZS1wo9BZdTq6mTyfbBPlmftYG_CKB4cdJYPTSLhiEGADA3Uv_R5_s";
@@ -114,8 +131,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-
   try {
+    // ---- AUTH ----
+    const caller = await verifyCaller(req);
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { user_ids, title, body, url, tag } = await req.json();
     if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
       return new Response(JSON.stringify({ error: "user_ids required" }), {
@@ -123,6 +147,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (!isAllowedUrl(url)) {
+      return new Response(JSON.stringify({ error: "Invalid url" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

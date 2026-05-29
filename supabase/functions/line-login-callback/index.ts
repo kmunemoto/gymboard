@@ -1,10 +1,29 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 function redirect(url: string): Response {
-  return new Response(null, {
-    status: 302,
-    headers: { Location: url },
-  });
+  return new Response(null, { status: 302, headers: { Location: url } });
+}
+
+async function consumeOauthState(
+  supabase: ReturnType<typeof createClient>,
+  nonce: string,
+  provider: string,
+): Promise<string | null> {
+  if (!/^[0-9a-fA-F-]{36}$/.test(nonce)) return null;
+  const { data, error } = await supabase
+    .from("oauth_states")
+    .update({ used_at: new Date().toISOString() })
+    .eq("nonce", nonce)
+    .eq("provider", provider)
+    .is("used_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .select("user_id")
+    .maybeSingle();
+  if (error) {
+    console.error("consumeOauthState error:", error);
+    return null;
+  }
+  return (data as any)?.user_id ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -25,6 +44,14 @@ Deno.serve(async (req) => {
       const channelSecret = Deno.env.get("LINE_CHANNEL_SECRET")!;
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+      const userId = await consumeOauthState(supabase, state, "line_login");
+      if (!userId) {
+        console.warn("Invalid or expired line_login oauth state");
+        return redirect(`${appUrl}/?line_link=error`);
+      }
 
       const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
         method: "POST",
@@ -58,11 +85,10 @@ Deno.serve(async (req) => {
       const lineProfile = await profileRes.json();
       const lineUserId = lineProfile.userId;
 
-      const supabase = createClient(supabaseUrl, serviceRoleKey);
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ line_user_id: lineUserId })
-        .eq("user_id", state);
+        .eq("user_id", userId);
 
       if (updateError) {
         console.error("Profile update error:", updateError);

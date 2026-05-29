@@ -19,9 +19,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
-    if (!clientId) {
-      return new Response(JSON.stringify({ error: "GOOGLE_CLIENT_ID not set" }), {
+    const channelId = Deno.env.get("LINE_LOGIN_CHANNEL_ID");
+    if (!channelId) {
+      return new Response(JSON.stringify({ error: "LINE_LOGIN_CHANNEL_ID not set" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -30,10 +30,9 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Create a short-lived random nonce bound to this user
     const { data: stateRow, error: stateErr } = await supabase
       .from("oauth_states")
-      .insert({ user_id: caller.userId, provider: "google_calendar" })
+      .insert({ user_id: caller.userId, provider: "line_login" })
       .select("nonce")
       .single();
     if (stateErr || !stateRow?.nonce) {
@@ -43,16 +42,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    const redirectUri = `${supabaseUrl}/functions/v1/google-calendar-callback`;
-    const scope = "https://www.googleapis.com/auth/calendar.events";
-
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=${stateRow.nonce}`;
+    const redirectUri = `${supabaseUrl}/functions/v1/line-login-callback`;
+    const authUrl =
+      `https://access.line.me/oauth2/v2.1/authorize?response_type=code` +
+      `&client_id=${encodeURIComponent(channelId)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&state=${stateRow.nonce}` +
+      `&scope=${encodeURIComponent("profile openid")}`;
 
     return new Response(JSON.stringify({ url: authUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("google-calendar-auth-url error:", e);
+    console.error("line-auth-url error:", e);
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

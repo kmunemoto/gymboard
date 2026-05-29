@@ -69,14 +69,16 @@ const TrainerNotificationSettings = () => {
     return () => window.removeEventListener("message", handler);
   }, []);
 
-  const handleLineLink = () => {
+  const handleLineLink = async () => {
     if (!user) return;
-    const channelId = "2009770713";
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const redirectUri = encodeURIComponent(`${supabaseUrl}/functions/v1/line-login-callback`);
-    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${channelId}&redirect_uri=${redirectUri}&state=${user.id}&scope=profile%20openid`;
-    window.location.href = lineAuthUrl;
+    const { data, error } = await supabase.functions.invoke("line-auth-url", { body: {} });
+    if (error || !data?.url) {
+      toast.error("LINE連携の開始に失敗しました");
+      return;
+    }
+    window.location.href = data.url;
   };
+
 
   const handleLineUnlink = async () => {
     if (!user) return;

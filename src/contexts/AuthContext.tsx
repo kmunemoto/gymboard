@@ -33,12 +33,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .then(({ data, error }) => {
-        const roles = data?.map((row) => row.role) ?? [];
-        const resolvedRole = roles.includes("trainer") ? "trainer" : "customer";
+      .then(async ({ data, error }) => {
+        let roles = data?.map((row) => row.role) ?? [];
         if (error) {
           console.warn("Failed to fetch role, defaulting to customer:", error.message);
         }
+
+        // Self-service trainer promotion: if the user signed up with
+        // user_metadata.role === "trainer" but no role row exists yet (because
+        // signup-trainer couldn't be called until email confirmation), invoke
+        // it now. The edge function verifies the JWT + email_confirmed_at.
+        if (!roles.includes("trainer")) {
+          const { data: userData } = await supabase.auth.getUser();
+          const intendedRole = (userData?.user?.user_metadata as any)?.role;
+          const emailConfirmed = !!userData?.user?.email_confirmed_at;
+          if (intendedRole === "trainer" && emailConfirmed) {
+            const { error: invokeErr } = await supabase.functions.invoke("signup-trainer", { body: {} });
+            if (!invokeErr) {
+              roles = [...roles, "trainer"];
+            } else {
+              console.warn("signup-trainer invocation failed:", invokeErr.message);
+            }
+          }
+        }
+
+        const resolvedRole = roles.includes("trainer") ? "trainer" : "customer";
         setRole(resolvedRole);
         setLoading(false);
       });

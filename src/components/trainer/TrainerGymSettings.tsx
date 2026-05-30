@@ -106,8 +106,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
-      const filePath = `logo_${Date.now()}.${ext}`;
-      await supabase.storage.from("gym-assets").remove([filePath]);
+      // Tenant-scoped folder path. RLS requires the first folder segment
+      // to match the trainer's own tenant_id.
+      const filePath = `${tenant.id}/logo_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from("gym-assets").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("gym-assets").getPublicUrl(filePath);
@@ -128,10 +129,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (!tenant) { toast.error("テナント情報が取得できません"); return; }
     setUploading(true);
     try {
-      const { data: files } = await supabase.storage.from("gym-assets").list();
+      // List only this tenant's folder, then delete its logo files.
+      const folder = tenant.id;
+      const { data: files } = await supabase.storage.from("gym-assets").list(folder);
       if (files && files.length > 0) {
         const logoFiles = files.filter((f) => f.name.startsWith("logo"));
-        if (logoFiles.length > 0) await supabase.storage.from("gym-assets").remove(logoFiles.map((f) => f.name));
+        if (logoFiles.length > 0) await supabase.storage.from("gym-assets").remove(logoFiles.map((f) => `${folder}/${f.name}`));
       }
       const { error: updateError } = await supabase.from("tenants").update({ logo_url: null }).eq("id", tenant.id);
       if (updateError) throw updateError;

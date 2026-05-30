@@ -187,7 +187,7 @@ const TrainerExerciseManager = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -416,7 +416,7 @@ const TrainerExerciseManager = () => {
                 className="w-full h-12 gap-1.5"
               >
                 {saving ? (
-                  <DumbbellLoader className="w-4 h-4 animate-spin" />
+                  <DumbbellLoader className="w-4 h-4" />
                 ) : (
                   <Save className="w-4 h-4" />
                 )}

@@ -305,7 +305,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
           <ArrowLeft className="w-4 h-4 mr-1" /> 戻る
         </Button>
         <div className="flex items-center justify-center py-20">
-          <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
+          <DumbbellLoader className="w-6 h-6 text-accent" />
         </div>
       </div>
     );

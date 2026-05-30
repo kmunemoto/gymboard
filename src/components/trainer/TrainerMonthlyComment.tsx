@@ -92,7 +92,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <DumbbellLoader className="w-5 h-5 animate-spin text-accent" />
+          <DumbbellLoader className="w-5 h-5 text-accent" />
         </div>
       ) : (
         <Card>
@@ -105,7 +105,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
               className="resize-none"
             />
             <Button onClick={handleSave} disabled={saving || !comment.trim()} className="w-full">
-              {saving ? <DumbbellLoader className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              {saving ? <DumbbellLoader className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
               {existingId ? "更新する" : "保存する"}
             </Button>
           </CardContent>

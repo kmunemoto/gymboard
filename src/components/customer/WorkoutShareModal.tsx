@@ -690,7 +690,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           onClick={handleSaveImage}
           disabled={busy}
         >
-          {busy ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {busy ? <DumbbellLoader className="w-4 h-4" /> : <Download className="w-4 h-4" />}
           {t("workoutShare.saveImage")}
         </Button>
       </div>
@@ -712,7 +712,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
             color: "#fff",
           }}
         >
-          <DumbbellLoader className="w-8 h-8 animate-spin text-accent" />
+          <DumbbellLoader className="w-8 h-8 text-accent" />
           <p className="text-sm font-bold">{t("workoutShare.generating")}</p>
         </div>
       )}

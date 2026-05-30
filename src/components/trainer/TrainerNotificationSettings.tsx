@@ -187,7 +187,7 @@ const TrainerNotificationSettings = () => {
                     予約が入ると自動的にGoogleカレンダーに登録されます。キャンセル時は自動削除されます。
                   </p>
                   {gcalLoading ? (
-                    <DumbbellLoader className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
                   ) : gcalLinked ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-xs font-bold text-blue-500">
@@ -196,7 +196,7 @@ const TrainerNotificationSettings = () => {
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <Button size="sm" variant="outline" onClick={handleSyncAll} disabled={syncing}>
-                          {syncing ? <DumbbellLoader className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                          {syncing ? <DumbbellLoader className="w-3.5 h-3.5 mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
                           既存予約を一括同期
                         </Button>
                         <Button size="sm" variant="outline" onClick={handleGcalUnlink}>

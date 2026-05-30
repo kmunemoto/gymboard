@@ -246,7 +246,7 @@ const TrainerSchedule = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -609,7 +609,7 @@ const TrainerSchedule = () => {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setProxyDialogOpen(false)} className="w-full sm:w-auto">キャンセル</Button>
             <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting} className="w-full sm:w-auto">
-              {submitting && <DumbbellLoader className="w-4 h-4 animate-spin mr-1" />}
+              {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               予約する
             </Button>
           </DialogFooter>
@@ -637,7 +637,7 @@ const TrainerSchedule = () => {
               onClick={() => void handleDeleteBooking()}
               className="w-full sm:w-auto"
             >
-              {deleting && <DumbbellLoader className="w-4 h-4 animate-spin mr-1" />}
+              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               {deleteTarget?.isBlocked ? "はい、解除する" : "はい、削除する"}
             </Button>
           </DialogFooter>
@@ -743,7 +743,7 @@ const TrainerSchedule = () => {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="w-full sm:w-auto">キャンセル</Button>
             <Button variant="destructive" onClick={handleBlockSlot} disabled={!blockDate || !blockStartTime || !blockEndTime || submitting} className="w-full sm:w-auto">
-              {submitting && <DumbbellLoader className="w-4 h-4 animate-spin mr-1" />}
+              {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               ブロックする
             </Button>
           </DialogFooter>

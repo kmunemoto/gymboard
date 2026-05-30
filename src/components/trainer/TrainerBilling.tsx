@@ -266,7 +266,7 @@ const TrainerBilling = () => {
                     disabled={loadingPlan !== null}
                   >
                     {loadingPlan === card.plan ? (
-                      <><DumbbellLoader className="w-4 h-4 mr-1 animate-spin" />処理中...</>
+                      <><DumbbellLoader className="w-4 h-4 mr-1" />処理中...</>
                     ) : (
                       <>このプランにする</>
                     )}
@@ -309,7 +309,7 @@ const TrainerBilling = () => {
               disabled={portalLoading}
             >
               {portalLoading ? (
-                <><DumbbellLoader className="w-4 h-4 mr-1 animate-spin" />処理中...</>
+                <><DumbbellLoader className="w-4 h-4 mr-1" />処理中...</>
               ) : (
                 <><ExternalLink className="w-4 h-4 mr-1" />カスタマーポータルを開く</>
               )}

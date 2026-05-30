@@ -200,7 +200,7 @@ const Onboarding = () => {
   if (authLoading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <DumbbellLoader className="w-8 h-8 animate-spin text-accent" />
+        <DumbbellLoader className="w-8 h-8 text-accent" />
       </div>
     );
   }
@@ -403,7 +403,7 @@ const Onboarding = () => {
               <div className="pt-4 flex justify-between">
                 <Button variant="outline" onClick={() => setStep(2)}>← 戻る</Button>
                 <Button onClick={handleComplete} disabled={submitting}>
-                  {submitting && <DumbbellLoader className="w-4 h-4 mr-2 animate-spin" />}
+                  {submitting && <DumbbellLoader className="w-4 h-4 mr-2" />}
                   登録する
                 </Button>
               </div>

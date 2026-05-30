@@ -159,7 +159,7 @@ const TrainerAnnouncementManager = () => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20"><DumbbellLoader className="w-6 h-6 animate-spin text-accent" /></div>;
+    return <div className="flex items-center justify-center py-20"><DumbbellLoader className="w-6 h-6 text-accent" /></div>;
   }
 
   return (
@@ -288,7 +288,7 @@ const TrainerAnnouncementManager = () => {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowForm(false)} disabled={submitting}>キャンセル</Button>
               <Button onClick={handleSubmit} disabled={submitting}>
-                {submitting && <DumbbellLoader className="w-4 h-4 animate-spin mr-1" />}
+                {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
                 {editing ? "更新" : "配信"}
               </Button>
             </div>
@@ -305,7 +305,7 @@ const TrainerAnnouncementManager = () => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting && <DumbbellLoader className="w-4 h-4 animate-spin mr-1" />}削除
+              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}削除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

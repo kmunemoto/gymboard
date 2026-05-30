@@ -378,7 +378,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   if (loadingProfile) {
     return (
       <div className="flex items-center justify-center py-20">
-        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -938,7 +938,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     setSavingMeasurement(false);
                   }}
                 >
-                  {savingMeasurement ? <DumbbellLoader className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+                  {savingMeasurement ? <DumbbellLoader className="w-4 h-4 mr-1" /> : <Save className="w-4 h-4 mr-1" />}
                   計測データを保存
                 </Button>
               </CardContent>
@@ -1018,7 +1018,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               最近のトレーニング記録
             </h2>
             {loadingRecords ? (
-              <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 animate-spin text-accent" /></div>
+              <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
             ) : sortedDates.length > 0 ? (
               <div className="space-y-2">
                 {sortedDates.slice(0, 3).map((date) => (
@@ -1177,7 +1177,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               </Button>
             )}
             <Button variant="accent" size="lg" onClick={handleSave} disabled={saving} className="gap-2 w-full sm:w-auto">
-              {saving ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? <DumbbellLoader className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {editingDate ? "変更を保存" : "記録を保存"}
             </Button>
           </div>
@@ -1191,7 +1191,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
           {/* Past records from DB */}
           {loadingRecords ? (
-            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 animate-spin text-accent" /></div>
+            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
           ) : sortedDates.length > 0 && (
             <section>
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">過去の記録</h2>
@@ -1251,7 +1251,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             食事記録
           </h2>
           {loadingMeals ? (
-            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 animate-spin text-accent" /></div>
+            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
           ) : clientMeals.length > 0 ? (
             <div className="space-y-3">
               {clientMeals.map((meal) => (
@@ -1284,7 +1284,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       </div>
                     ) : (
                       <div className="p-3 flex items-center gap-2 text-muted-foreground">
-                        <DumbbellLoader className="w-4 h-4 animate-spin" />
+                        <DumbbellLoader className="w-4 h-4" />
                         <span className="text-xs">AI分析中...</span>
                       </div>
                     )}
@@ -1304,7 +1304,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             予約一覧
           </h2>
           {loadingBookings ? (
-            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 animate-spin text-accent" /></div>
+            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
           ) : bookings.length > 0 ? (
             <div className="space-y-2">
               {bookings.map((b: any) => (
@@ -1355,7 +1355,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               </CardContent>
             </Card>
           ) : loadingChat ? (
-            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 animate-spin text-accent" /></div>
+            <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
           ) : (
             <div className="space-y-3">
               <Card>

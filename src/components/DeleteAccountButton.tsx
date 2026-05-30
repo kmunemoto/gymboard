@@ -74,7 +74,7 @@ const DeleteAccountButton = () => {
             disabled={deleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleting ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : "削除する"}
+            {deleting ? <DumbbellLoader className="w-4 h-4" /> : "削除する"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

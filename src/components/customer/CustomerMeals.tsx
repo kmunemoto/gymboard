@@ -337,7 +337,7 @@ const CustomerMeals = () => {
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
         >
-          {uploading ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+          {uploading ? <DumbbellLoader className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
           {uploading ? "分析中..." : "写真を追加"}
         </Button>
       </div>
@@ -352,7 +352,7 @@ const CustomerMeals = () => {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <DumbbellLoader className="w-6 h-6 animate-spin text-muted-foreground" />
+          <DumbbellLoader className="w-6 h-6 text-muted-foreground" />
         </div>
       ) : meals.length === 0 ? (
         <Card>
@@ -469,7 +469,7 @@ const CustomerMeals = () => {
                       </div>
                     ) : (
                       <div className="p-4 flex items-center gap-2 text-muted-foreground">
-                        <DumbbellLoader className="w-4 h-4 animate-spin" />
+                        <DumbbellLoader className="w-4 h-4" />
                         <span className="text-sm">AI分析中...</span>
                       </div>
                     )}
@@ -537,7 +537,7 @@ const CustomerMeals = () => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting ? <DumbbellLoader className="w-4 h-4 animate-spin mr-1" /> : null}
+              {deleting ? <DumbbellLoader className="w-4 h-4 mr-1" /> : null}
               削除する
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -563,7 +563,7 @@ const CustomerMeals = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
             <Button onClick={handleSaveTime} disabled={saving}>
-              {saving ? <DumbbellLoader className="w-4 h-4 animate-spin mr-1" /> : null}
+              {saving ? <DumbbellLoader className="w-4 h-4 mr-1" /> : null}
               保存
             </Button>
           </DialogFooter>

@@ -142,7 +142,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
   if (loading || bookingsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }

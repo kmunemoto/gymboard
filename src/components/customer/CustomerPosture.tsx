@@ -437,7 +437,7 @@ const CustomerPosture = () => {
               />
               {isLoading && (
                 <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center gap-2">
-                  <DumbbellLoader className="w-8 h-8 animate-spin text-accent" />
+                  <DumbbellLoader className="w-8 h-8 text-accent" />
                   <span className="text-sm font-medium">
                     {modelLoading ? "高精度AIモデルを読み込み中…（初回のみ時間がかかります）" : "高精度モードで解析中…"}
                   </span>
@@ -473,7 +473,7 @@ const CustomerPosture = () => {
                 className="flex-1"
               >
                 {saving ? (
-                  <DumbbellLoader className="w-4 h-4 mr-1 animate-spin" />
+                  <DumbbellLoader className="w-4 h-4 mr-1" />
                 ) : (
                   <Save className="w-4 h-4 mr-1" />
                 )}

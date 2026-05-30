@@ -47,14 +47,14 @@ const Unsubscribe = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardContent className="p-8 text-center space-y-4">
-          {status === "loading" && <DumbbellLoader className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />}
+          {status === "loading" && <DumbbellLoader className="w-8 h-8 mx-auto text-muted-foreground" />}
           {status === "valid" && (
             <>
               <MailX className="w-10 h-10 mx-auto text-muted-foreground" />
               <h1 className="text-lg font-bold">メール配信の停止</h1>
               <p className="text-sm text-muted-foreground">今後のメール通知の配信を停止しますか？</p>
               <Button onClick={handleUnsubscribe} disabled={submitting} className="w-full">
-                {submitting && <DumbbellLoader className="w-4 h-4 animate-spin mr-2" />}
+                {submitting && <DumbbellLoader className="w-4 h-4 mr-2" />}
                 配信を停止する
               </Button>
             </>

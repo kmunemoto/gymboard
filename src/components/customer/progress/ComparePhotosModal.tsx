@@ -153,7 +153,7 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
               disabled={sharing || !beforePhoto || !afterPhoto}
               className="w-full"
             >
-              {sharing ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : <><Share2 className="w-4 h-4" />シェア画像を作成</>}
+              {sharing ? <DumbbellLoader className="w-4 h-4" /> : <><Share2 className="w-4 h-4" />シェア画像を作成</>}
             </Button>
 
             {shareUrl && (

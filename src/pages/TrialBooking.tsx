@@ -560,7 +560,7 @@ const TrialBooking = () => {
                     onClick={handleSubmit}
                     disabled={submitting || !guestName.trim() || !guestEmail.trim()}
                   >
-                    {submitting ? <DumbbellLoader className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {submitting ? <DumbbellLoader className="w-4 h-4 mr-2" /> : null}
                     無料体験を予約する
                   </Button>
                 </div>

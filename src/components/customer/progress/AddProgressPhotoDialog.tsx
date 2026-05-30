@@ -180,7 +180,7 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
           </div>
 
           <Button variant="accent" onClick={handleUpload} disabled={uploading || !file} className="w-full">
-            {uploading ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : "保存する"}
+            {uploading ? <DumbbellLoader className="w-4 h-4" /> : "保存する"}
           </Button>
         </div>
       </div>

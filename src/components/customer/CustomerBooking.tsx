@@ -287,7 +287,7 @@ const CustomerBooking = () => {
   if (profileLoading || bookingsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -594,7 +594,7 @@ const CustomerBooking = () => {
                     </p>
                     <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting}>
                       {submitting ? (
-                        <DumbbellLoader className="w-4 h-4 animate-spin mr-2" />
+                        <DumbbellLoader className="w-4 h-4 mr-2" />
                       ) : null}
                       {t("booking.confirmBooking")}
                     </Button>

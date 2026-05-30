@@ -134,7 +134,7 @@ const JoinGym = () => {
   if (authLoading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <DumbbellLoader className="w-8 h-8 animate-spin text-accent" />
+        <DumbbellLoader className="w-8 h-8 text-accent" />
       </div>
     );
   }
@@ -182,7 +182,7 @@ const JoinGym = () => {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button onClick={() => handleSearch(code)} disabled={searching} className="w-full">
-                {searching ? <DumbbellLoader className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+                {searching ? <DumbbellLoader className="w-4 h-4 mr-2" /> : <Search className="w-4 h-4 mr-2" />}
                 検索
               </Button>
             </>
@@ -242,7 +242,7 @@ const JoinGym = () => {
                 disabled={submitting || !displayName.trim()}
                 onClick={handleJoin}
               >
-                {submitting && <DumbbellLoader className="w-4 h-4 mr-2 animate-spin" />}
+                {submitting && <DumbbellLoader className="w-4 h-4 mr-2" />}
                 アプリを始める →
               </Button>
               <Button variant="ghost" className="w-full" onClick={() => setStep("search")}>

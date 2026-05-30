@@ -29,7 +29,7 @@ const CounselingResponseList = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <DumbbellLoader className="w-5 h-5 animate-spin text-accent" />
+        <DumbbellLoader className="w-5 h-5 text-accent" />
       </div>
     );
   }

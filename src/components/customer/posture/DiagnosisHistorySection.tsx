@@ -81,7 +81,7 @@ const CompareView = ({
           </div>
         ) : d.image_url ? (
           <div className="flex items-center justify-center py-10 bg-muted/30 rounded-lg">
-            <DumbbellLoader className="w-4 h-4 animate-spin text-muted-foreground" />
+            <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
           </div>
         ) : (
           <div className="flex items-center justify-center py-10 bg-muted/30 rounded-lg text-[10px] text-muted-foreground">写真なし</div>
@@ -260,7 +260,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
 
       {loading ? (
         <div className="flex items-center justify-center py-6">
-          <DumbbellLoader className="w-5 h-5 animate-spin text-muted-foreground" />
+          <DumbbellLoader className="w-5 h-5 text-muted-foreground" />
         </div>
       ) : diagnoses.length === 0 ? (
         <Card>
@@ -424,7 +424,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                             <img src={signedUrls[d.id]} alt="骨格オーバーレイ" className="w-full h-auto" />
                           ) : (
                             <div className="flex items-center justify-center py-8 bg-muted/30">
-                              <DumbbellLoader className="w-5 h-5 animate-spin text-muted-foreground" />
+                              <DumbbellLoader className="w-5 h-5 text-muted-foreground" />
                             </div>
                           )}
                         </div>
@@ -501,7 +501,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                                 disabled={deletingId === d.id}
                               >
                                 {deletingId === d.id ? (
-                                  <DumbbellLoader className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                  <DumbbellLoader className="w-3.5 h-3.5 mr-1" />
                                 ) : (
                                   <Trash2 className="w-3.5 h-3.5 mr-1" />
                                 )}

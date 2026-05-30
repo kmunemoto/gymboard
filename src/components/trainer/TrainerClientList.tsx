@@ -71,7 +71,7 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -184,7 +184,7 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteCustomer} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting && <DumbbellLoader className="w-4 h-4 animate-spin mr-1" />}
+              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               削除する
             </AlertDialogAction>
           </AlertDialogFooter>

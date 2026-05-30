@@ -203,7 +203,7 @@ const TrainerPlanManager = () => {
     <div className="space-y-3">
       {loading ? (
         <div className="flex justify-center py-6">
-          <DumbbellLoader className="w-5 h-5 animate-spin text-muted-foreground" />
+          <DumbbellLoader className="w-5 h-5 text-muted-foreground" />
         </div>
       ) : plans.length === 0 ? (
         <Card>
@@ -337,7 +337,7 @@ const TrainerPlanManager = () => {
               キャンセル
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving && <DumbbellLoader className="w-4 h-4 mr-1 animate-spin" />}
+              {saving && <DumbbellLoader className="w-4 h-4 mr-1" />}
               {editing ? "更新" : "追加"}
             </Button>
           </DialogFooter>

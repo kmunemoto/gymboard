@@ -3171,7 +3171,6 @@ export type Database = {
         Args: { _damage: number; _user_id: string; _workout_date: string }
         Returns: Json
       }
-      assign_trainer_role: { Args: { p_user_id: string }; Returns: undefined }
       buy_gacha_ticket: {
         Args: { p_quantity?: number; p_user_id: string }
         Returns: Json

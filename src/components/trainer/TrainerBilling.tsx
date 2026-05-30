@@ -138,39 +138,113 @@ const TrainerBilling = () => {
 
   if (!tenant) return null;
 
-  // ===== Native (iOS) view: read-only =====
+  // ===== Native (iOS/Android) view: read-only plan list + Web CTA =====
   if (isNative) {
-    const card = PLAN_CARDS.find((p) => p.plan === currentPlan)!;
+    const currentCard = PLAN_CARDS.find((p) => p.plan === currentPlan)!;
+    const webPlansUrl = "https://gymboard.lovable.app/?tab=billing";
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
+        {/* 現在のプラン */}
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">現在のプラン</p>
-                <p className="text-lg font-bold">{card.name}</p>
+                <p className="text-lg font-bold">{currentCard.name}</p>
               </div>
               <CreditCard className="w-5 h-5 text-accent" />
             </div>
             <div className="flex items-center gap-1.5 text-sm">
               <Users className="w-4 h-4 text-muted-foreground" />
-              <span>お客様 {formatLimit(card.maxCustomers)}</span>
+              <span>お客様 {formatLimit(currentCard.maxCustomers)}</span>
             </div>
           </CardContent>
         </Card>
-        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-          <Info className="w-4 h-4 shrink-0 mt-0.5" />
-          <p>プランの変更はWebサイトから行えます。</p>
+
+        {/* 期間切り替え */}
+        <div className="flex items-center justify-center gap-2">
+          <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1">
+            <button
+              type="button"
+              onClick={() => setPeriod("monthly")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                period === "monthly" ? "bg-background shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              月額
+            </button>
+            <button
+              type="button"
+              onClick={() => setPeriod("yearly")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                period === "yearly" ? "bg-background shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              年額
+              <span className="ml-1.5 text-[10px] font-bold text-accent">2ヶ月分お得</span>
+            </button>
+          </div>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full"
-          onClick={() => openExternalUrl("https://gymboard.lovable.app")}
-        >
-          <ExternalLink className="w-4 h-4 mr-1" />
-          Webサイトでプランを管理・変更する
-        </Button>
+
+        {/* プラン一覧（情報提供のみ・読み取り専用） */}
+        <div className="grid grid-cols-1 gap-3">
+          {PLAN_CARDS.map((card) => {
+            const isCurrent = card.plan === currentPlan;
+            const isFree = card.plan === "free";
+            const price = period === "yearly" ? card.yearlyPrice : card.monthlyPrice;
+            const priceSuffix = isFree ? "" : period === "yearly" ? " / 年" : " / 月";
+            return (
+              <Card key={card.plan} className={isCurrent ? "border-accent ring-2 ring-accent/30" : ""}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold">{card.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{card.description}</p>
+                    </div>
+                    {isCurrent && (
+                      <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                        現在のプラン
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xl font-black">
+                    ¥{price.toLocaleString()}
+                    <span className="text-xs font-normal text-muted-foreground">{priceSuffix}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Check className="w-3.5 h-3.5 text-accent" />
+                    お客様 {formatLimit(card.maxCustomers)}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* CTA: Webで申し込み */}
+        {isOwner && (
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <p className="text-sm font-bold">プランの申し込み・変更</p>
+              <p className="text-xs text-muted-foreground">
+                お支払いはWebサイトで安全に行えます。下のボタンからシステムブラウザでWeb版を開き、お申し込みください。
+              </p>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => openExternalUrl(webPlansUrl)}
+              >
+                <ExternalLink className="w-4 h-4 mr-1" />
+                Webでプランに申し込む
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-[11px] text-muted-foreground">
+          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <p>プランのご契約・変更・解約は、Webサイトのカスタマーポータルから行えます。</p>
+        </div>
       </div>
     );
   }

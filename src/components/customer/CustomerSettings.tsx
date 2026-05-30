@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Settings, User, Pencil, MessageCircle, CheckCircle2, Unlink, LogOut, Loader2, History, Clock, Dumbbell, Award, Bone, Smartphone, Calendar, FileText, Shield as ShieldIcon, ChevronRight, Gamepad2 } from "lucide-react";
+import { Settings, User, Pencil, MessageCircle, CheckCircle2, Unlink, LogOut, History, Clock, Dumbbell, Award, Bone, Smartphone, Calendar, FileText, Shield as ShieldIcon, ChevronRight, Gamepad2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 import { useTenant } from "@/hooks/useTenant";
 
@@ -180,7 +181,7 @@ const CustomerSettings = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -213,7 +214,7 @@ const CustomerSettings = () => {
                     placeholder="名前を入力"
                   />
                   <Button size="sm" onClick={handleSaveName} disabled={saving || !displayName.trim()} className="h-8 text-xs">
-                    {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "保存"}
+                    {saving ? <DumbbellLoader className="w-3 h-3" /> : "保存"}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setDisplayName(profile?.display_name || ""); }} className="h-8 text-xs">
                     取消
@@ -315,7 +316,7 @@ const CustomerSettings = () => {
                     予約が入ると自動的にGoogleカレンダーに登録されます。キャンセル時は自動削除されます。
                   </p>
                   {gcalLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
                   ) : gcalLinked ? (
                     <div className="space-y-2">
                       <div className="bg-blue-500/5 rounded-lg p-2 border border-blue-500/20">
@@ -410,7 +411,7 @@ const CustomerSettings = () => {
 
         {bookingsLoading ? (
           <div className="flex items-center justify-center py-6">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <DumbbellLoader className="w-5 h-5 text-muted-foreground" />
           </div>
         ) : (() => {
           const now = getJSTNow();

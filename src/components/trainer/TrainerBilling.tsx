@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import {
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   PLAN_CARDS,
   lookupKeyFor,
   detectStripeEnvironment,
@@ -15,7 +16,7 @@ import {
   type GymboardPeriod,
   type GymboardPlan,
 } from "@/lib/gymboardPlans";
-import { Check, CreditCard, ExternalLink, Loader2, Users, Info } from "lucide-react";
+import { Check, CreditCard, ExternalLink, Users, Info } from "lucide-react";
 
 const isEmbeddedPreview = () => {
   try {
@@ -265,7 +266,7 @@ const TrainerBilling = () => {
                     disabled={loadingPlan !== null}
                   >
                     {loadingPlan === card.plan ? (
-                      <><Loader2 className="w-4 h-4 mr-1 animate-spin" />処理中...</>
+                      <><DumbbellLoader className="w-4 h-4 mr-1" />処理中...</>
                     ) : (
                       <>このプランにする</>
                     )}
@@ -308,7 +309,7 @@ const TrainerBilling = () => {
               disabled={portalLoading}
             >
               {portalLoading ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" />処理中...</>
+                <><DumbbellLoader className="w-4 h-4 mr-1" />処理中...</>
               ) : (
                 <><ExternalLink className="w-4 h-4 mr-1" />カスタマーポータルを開く</>
               )}

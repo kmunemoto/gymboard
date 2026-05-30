@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, Dumbbell, Loader2, Search, X, Save } from "lucide-react";
+import { Plus, Pencil, Trash2, Dumbbell, Search, X, Save } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadMuscleGroupMap } from "@/lib/muscleGroup";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface Exercise {
   id: string;
@@ -186,7 +187,7 @@ const TrainerExerciseManager = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -415,7 +416,7 @@ const TrainerExerciseManager = () => {
                 className="w-full h-12 gap-1.5"
               >
                 {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <DumbbellLoader className="w-4 h-4" />
                 ) : (
                   <Save className="w-4 h-4" />
                 )}

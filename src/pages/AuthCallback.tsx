@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const AuthCallback = () => {
   const hasHandledRef = useRef(false);
@@ -48,7 +48,7 @@ const AuthCallback = () => {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto" />
+        <DumbbellLoader className="w-8 h-8 text-accent mx-auto" />
         <p className="text-sm text-muted-foreground">認証処理中...</p>
       </div>
     </div>

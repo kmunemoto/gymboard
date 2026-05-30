@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Loader2, Trash2, Ban } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAllBookings, checkSlotBlocked, createBooking, cancelBooking } from "@/hooks/useBookings";
@@ -12,6 +12,7 @@ import { getJSTNow } from "@/lib/timezone";
 import { toast } from "sonner";
 import { sendBookingNotification } from "@/lib/bookingNotification";
 import {
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
@@ -245,7 +246,7 @@ const TrainerSchedule = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -608,7 +609,7 @@ const TrainerSchedule = () => {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setProxyDialogOpen(false)} className="w-full sm:w-auto">キャンセル</Button>
             <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting} className="w-full sm:w-auto">
-              {submitting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               予約する
             </Button>
           </DialogFooter>
@@ -636,7 +637,7 @@ const TrainerSchedule = () => {
               onClick={() => void handleDeleteBooking()}
               className="w-full sm:w-auto"
             >
-              {deleting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               {deleteTarget?.isBlocked ? "はい、解除する" : "はい、削除する"}
             </Button>
           </DialogFooter>
@@ -742,7 +743,7 @@ const TrainerSchedule = () => {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="w-full sm:w-auto">キャンセル</Button>
             <Button variant="destructive" onClick={handleBlockSlot} disabled={!blockDate || !blockStartTime || !blockEndTime || submitting} className="w-full sm:w-auto">
-              {submitting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               ブロックする
             </Button>
           </DialogFooter>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Loader2, Swords, CreditCard } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, CreditCard } from "lucide-react";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -20,6 +20,7 @@ import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow } from "@/lib/courseProgress";
 import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const BOOKING_BUFFER_MINUTES = 15;
 
@@ -286,7 +287,7 @@ const CustomerBooking = () => {
   if (profileLoading || bookingsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }
@@ -593,7 +594,7 @@ const CustomerBooking = () => {
                     </p>
                     <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting}>
                       {submitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <DumbbellLoader className="w-4 h-4 mr-2" />
                       ) : null}
                       {t("booking.confirmBooking")}
                     </Button>

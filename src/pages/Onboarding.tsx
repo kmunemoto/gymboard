@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Check, Plus, Trash2, Upload, Copy } from "lucide-react";
+import { Check, Plus, Trash2, Upload, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 type BusinessType = "personal_gym" | "pilates" | "yoga" | "seitai" | "other";
 type CutoffType = "prev_day" | "hours_before";
@@ -199,7 +200,7 @@ const Onboarding = () => {
   if (authLoading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <DumbbellLoader className="w-8 h-8 text-accent" />
       </div>
     );
   }
@@ -402,7 +403,7 @@ const Onboarding = () => {
               <div className="pt-4 flex justify-between">
                 <Button variant="outline" onClick={() => setStep(2)}>← 戻る</Button>
                 <Button onClick={handleComplete} disabled={submitting}>
-                  {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {submitting && <DumbbellLoader className="w-4 h-4 mr-2" />}
                   登録する
                 </Button>
               </div>

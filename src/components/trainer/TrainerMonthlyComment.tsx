@@ -3,12 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, Loader2, MessageSquare } from "lucide-react";
+import { Save, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface Props {
   clientId: string;
@@ -91,7 +92,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-5 h-5 animate-spin text-accent" />
+          <DumbbellLoader className="w-5 h-5 text-accent" />
         </div>
       ) : (
         <Card>
@@ -104,7 +105,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
               className="resize-none"
             />
             <Button onClick={handleSave} disabled={saving || !comment.trim()} className="w-full">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              {saving ? <DumbbellLoader className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
               {existingId ? "更新する" : "保存する"}
             </Button>
           </CardContent>

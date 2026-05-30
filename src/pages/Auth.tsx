@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Dumbbell, Mail, Lock, User, Shield, Loader2 } from "lucide-react";
+import { Dumbbell, Mail, Lock, User, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 type AuthMode = "login" | "signup";
 type LoginTarget = "customer" | "trainer";
@@ -30,7 +31,7 @@ const Auth = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <DumbbellLoader className="w-8 h-8 text-accent" />
       </div>
     );
   }

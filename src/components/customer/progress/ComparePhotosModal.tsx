@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Loader2, Share2 } from "lucide-react";
+import { X, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PhotoTypeIcon, photoTypeLabel } from "./PhotoTypeIcon";
 import type { PhotoType, ProgressPhoto } from "@/hooks/useProgressPhotos";
 import { buildCompareImage, daysBetween } from "@/lib/progressPhotoShare";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface Props {
   open: boolean;
@@ -152,7 +153,7 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
               disabled={sharing || !beforePhoto || !afterPhoto}
               className="w-full"
             >
-              {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Share2 className="w-4 h-4" />シェア画像を作成</>}
+              {sharing ? <DumbbellLoader className="w-4 h-4" /> : <><Share2 className="w-4 h-4" />シェア画像を作成</>}
             </Button>
 
             {shareUrl && (

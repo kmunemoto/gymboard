@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -73,7 +74,7 @@ const DeleteAccountButton = () => {
             disabled={deleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "削除する"}
+            {deleting ? <DumbbellLoader className="w-4 h-4" /> : "削除する"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

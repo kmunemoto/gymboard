@@ -10,7 +10,6 @@ import { useMyBookings } from "@/hooks/useBookings";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStreak } from "@/hooks/useStreak";
-import { Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getJSTNow, formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
@@ -20,6 +19,7 @@ import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 // Fallback for legacy Salute plans when tenant_plans has no match
 const fallbackPlanMaxSessions: Record<string, number> = {
@@ -172,7 +172,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   if (loading || bookingsLoading || metricsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 text-accent" />
       </div>
     );
   }

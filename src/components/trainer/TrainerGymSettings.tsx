@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, Loader2, RefreshCw, Settings } from "lucide-react";
+import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerPlanManager from "./TrainerPlanManager";
@@ -16,6 +16,7 @@ import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -314,7 +315,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                   <h3 className="font-bold text-sm mb-0.5">Googleカレンダー連携</h3>
                   <p className="text-xs text-muted-foreground mb-2">予約を自動的にGoogleカレンダーに登録します</p>
                   {gcalLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
                   ) : gcalLinked ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-blue-500">
@@ -322,7 +323,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <Button size="sm" variant="outline" onClick={handleSyncAll} disabled={syncing}>
-                          {syncing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                          {syncing ? <DumbbellLoader className="w-3.5 h-3.5 mr-1" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
                           一括同期
                         </Button>
                         <Button size="sm" variant="outline" onClick={handleGcalUnlink}>

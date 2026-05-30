@@ -12,10 +12,10 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface TrainerClientListProps {
   onSelectClient: (clientId: string) => void;

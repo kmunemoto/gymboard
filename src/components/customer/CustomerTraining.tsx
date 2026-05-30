@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Dumbbell, TrendingUp, Calendar, Share2, Camera } from "lucide-react";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   Select,
   SelectContent,
   SelectItem,
@@ -30,6 +29,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface SetData {
   set: number;

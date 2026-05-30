@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -17,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const DeleteAccountButton = () => {
   const { signOut } = useAuth();

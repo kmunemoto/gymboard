@@ -1,4 +1,5 @@
 import { type StripeEnv, createStripeClient } from "../_shared/stripe.ts";
+import { verifyCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +11,19 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: corsHeaders });
 
   try {
-    const { priceId, customerEmail, userId, returnUrl, environment } = await req.json();
+    // Verify caller is an authenticated user. The userId is always derived
+    // from the JWT — never trusted from the request body — so a payment can
+    // never be credited to an account the caller doesn't own.
+    const caller = await verifyCaller(req);
+    if (!caller?.userId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const userId = caller.userId;
+
+    const { priceId, customerEmail, returnUrl, environment } = await req.json();
     if (!priceId || !/^[a-zA-Z0-9_-]+$/.test(priceId)) throw new Error('Invalid priceId');
     if (environment !== 'sandbox' && environment !== 'live') throw new Error('Invalid environment');
     if (!returnUrl) throw new Error('Missing returnUrl');
@@ -28,7 +41,7 @@ Deno.serve(async (req) => {
       ui_mode: 'embedded_page',
       return_url: returnUrl,
       ...(customerEmail && { customer_email: customerEmail }),
-      ...(userId && { metadata: { userId, priceId } }),
+      metadata: { userId, priceId },
     });
 
     return new Response(JSON.stringify({ clientSecret: session.client_secret }), {

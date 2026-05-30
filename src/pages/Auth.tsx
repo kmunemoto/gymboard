@@ -23,6 +23,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [trainerSignupCode, setTrainerSignupCode] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -80,13 +81,17 @@ const Auth = () => {
           if (signInError) throw signInError;
         }
 
-        // Ensure trainer role is recorded so Index routes to /onboarding
+        // Ensure trainer role is recorded via the secured edge function.
+        // The previous open RPC was removed to prevent privilege escalation;
+        // trainer self-promotion now requires a server-side invite code.
         if (isTrainer && authData.user) {
-          const { error: roleError } = await supabase.rpc("assign_trainer_role", {
-            p_user_id: authData.user.id,
-          });
-          if (roleError) {
-            throw roleError;
+          const { data: roleData, error: roleError } = await supabase.functions.invoke(
+            "signup-trainer",
+            { body: { signup_code: trainerSignupCode } },
+          );
+          if (roleError || (roleData && (roleData as any).error)) {
+            const msg = (roleData as any)?.error || roleError?.message || "トレーナー登録に失敗しました。";
+            throw new Error(msg);
           }
         }
 
@@ -239,6 +244,24 @@ const Auth = () => {
                   {passwordMismatch && (
                     <p className="text-xs text-destructive font-medium">パスワードが一致しません</p>
                   )}
+                </div>
+              )}
+
+              {mode === "signup" && isTrainer && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold">トレーナー招待コード</label>
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      required
+                      value={trainerSignupCode}
+                      onChange={(e) => setTrainerSignupCode(e.target.value)}
+                      placeholder="運営から共有された招待コード"
+                      className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">※ トレーナーとして登録するには、運営から発行された招待コードが必要です。</p>
                 </div>
               )}
 

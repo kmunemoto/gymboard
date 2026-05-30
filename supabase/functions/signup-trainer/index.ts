@@ -1,8 +1,18 @@
-// Securely promotes the calling user to the trainer role.
-// Replaces the previously-public `assign_trainer_role` RPC that allowed any
-// customer to self-promote. Requires:
-//   1. A valid user JWT (the caller is the user being promoted).
-//   2. A `signup_code` body field that matches the TRAINER_SIGNUP_CODE secret.
+// Promotes the calling user to the trainer role for the self-service signup flow.
+//
+// Security model (self-service):
+//   1. Caller must present a valid user JWT (verifyCaller) — the role is only
+//      ever assigned to the authenticated caller themselves.
+//   2. The caller's email must be confirmed (`email_confirmed_at` set). This
+//      ensures the account is bound to a reachable, real email address before
+//      it gains trainer (tenant-owner) privileges.
+//
+// Tenant isolation guarantees (enforced elsewhere via RLS) ensure that a new
+// trainer can only create / access their own tenant's data, so open self-signup
+// does not expose other gyms' information.
+//
+// The legacy TRAINER_SIGNUP_CODE secret is no longer required. It is kept
+// unused so that we can re-introduce gating in the future without a migration.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyCaller } from "../_shared/auth.ts";
 
@@ -29,28 +39,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = await req.json().catch(() => null) as { signup_code?: string } | null;
-    const supplied = typeof body?.signup_code === "string" ? body.signup_code.trim() : "";
-    const expected = (Deno.env.get("TRAINER_SIGNUP_CODE") || "").trim();
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-    if (!expected) {
-      console.error("TRAINER_SIGNUP_CODE secret is not configured");
-      return new Response(JSON.stringify({ error: "トレーナー登録が無効です。管理者にお問い合わせください。" }), {
-        status: 503,
+    // Require a confirmed email before granting trainer privileges.
+    const { data: userData, error: userErr } = await admin.auth.admin.getUserById(caller.userId);
+    if (userErr || !userData?.user) {
+      console.error("Failed to load user for trainer promotion", userErr);
+      return new Response(JSON.stringify({ error: "ユーザー情報を取得できませんでした。" }), {
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!supplied || supplied !== expected) {
-      return new Response(JSON.stringify({ error: "招待コードが正しくありません。" }), {
+    if (!userData.user.email_confirmed_at) {
+      return new Response(JSON.stringify({
+        error: "メールアドレスの確認が完了していません。確認メール内のリンクをクリックしてからお試しください。",
+        code: "email_not_confirmed",
+      }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
     const { error } = await admin
       .from("user_roles")
       .upsert({ user_id: caller.userId, role: "trainer" }, { onConflict: "user_id,role", ignoreDuplicates: true });

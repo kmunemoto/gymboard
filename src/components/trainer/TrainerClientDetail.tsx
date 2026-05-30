@@ -301,6 +301,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         .select("*, exercises(name, muscle_group)")
         .eq("user_id", clientId)
         .order("workout_date", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(50);
       if (data) {
         setWorkoutRecords(data.map((w: any) => ({

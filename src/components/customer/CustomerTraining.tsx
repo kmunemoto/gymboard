@@ -74,6 +74,7 @@ const CustomerTraining = () => {
         .select("*, exercises(name, muscle_group)")
         .eq("user_id", user.id)
         .order("workout_date", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(200);
       if (data) {
         setWorkouts(data.map((w: any) => ({

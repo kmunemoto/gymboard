@@ -8,6 +8,7 @@ import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage } from "@/lib/i18n";
 const LANGUAGE_OPTIONS: { code: SupportedLanguage; nativeLabel: string; subLabel: string }[] = [
   { code: "ja", nativeLabel: "日本語", subLabel: "Japanese" },
   { code: "en", nativeLabel: "English", subLabel: "英語" },
+  { code: "ko", nativeLabel: "한국어", subLabel: "Korean" },
 ];
 
 interface LanguageSwitcherProps {

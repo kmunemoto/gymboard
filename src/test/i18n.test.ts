@@ -9,7 +9,7 @@ describe("i18n configuration", () => {
   it("initializes with supported languages and ja fallback", () => {
     expect(i18n.isInitialized).toBe(true);
     expect(i18n.options.fallbackLng).toContain("ja");
-    expect(SUPPORTED_LANGUAGES).toEqual(["ja", "en"]);
+    expect(SUPPORTED_LANGUAGES).toEqual(["ja", "en", "ko"]);
   });
 
   it("translates known keys in ja and en", async () => {

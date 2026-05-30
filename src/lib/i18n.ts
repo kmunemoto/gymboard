@@ -4,8 +4,9 @@ import LanguageDetector from "i18next-browser-languagedetector";
 
 import ja from "@/locales/ja.json";
 import en from "@/locales/en.json";
+import ko from "@/locales/ko.json";
 
-export const SUPPORTED_LANGUAGES = ["ja", "en"] as const;
+export const SUPPORTED_LANGUAGES = ["ja", "en", "ko"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 if (!i18n.isInitialized) {
@@ -16,6 +17,7 @@ if (!i18n.isInitialized) {
       resources: {
         ja: { translation: ja },
         en: { translation: en },
+        ko: { translation: ko },
       },
       supportedLngs: [...SUPPORTED_LANGUAGES],
       fallbackLng: "ja",

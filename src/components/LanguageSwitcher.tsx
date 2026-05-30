@@ -8,6 +8,7 @@ import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage } from "@/lib/i18n";
 const LANGUAGE_OPTIONS: { code: SupportedLanguage; nativeLabel: string; subLabel: string }[] = [
   { code: "ja", nativeLabel: "日本語", subLabel: "Japanese" },
   { code: "en", nativeLabel: "English", subLabel: "英語" },
+  { code: "ko", nativeLabel: "한국어", subLabel: "Korean" },
 ];
 
 interface LanguageSwitcherProps {
@@ -45,7 +46,7 @@ const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
               <p className="text-[11px] text-muted-foreground mb-3">
                 {t("settings.languageDescription")}
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {SUPPORTED_LANGUAGES.map((code) => {
                   const opt = LANGUAGE_OPTIONS.find((o) => o.code === code)!;
                   const active = currentLang === code;

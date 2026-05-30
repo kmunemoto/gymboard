@@ -16,6 +16,23 @@ function maskEmail(email: string | null | undefined): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Admin diagnostic endpoint — gate behind a shared secret so it can't be
+  // probed anonymously to enumerate user counts / schema.
+  const adminKey = Deno.env.get("SALUTE_ADMIN_KEY");
+  if (!adminKey) {
+    return new Response(JSON.stringify({ error: "SALUTE_ADMIN_KEY is not configured" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supplied = (req.headers.get("x-admin-key") || req.headers.get("authorization") || "")
+    .replace(/^Bearer\s+/i, "").trim();
+  if (supplied !== adminKey) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+
   const url = Deno.env.get("SALUTE_SUPABASE_URL");
   const key = Deno.env.get("SALUTE_SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) {

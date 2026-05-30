@@ -72,21 +72,29 @@ const Auth = () => {
         });
         if (error) throw error;
 
+        // Email confirmation is required. Supabase returns a user without a
+        // session in this case; the trainer role is assigned post-confirmation
+        // by AuthContext (which calls signup-trainer once the user signs in
+        // with a confirmed email and `user_metadata.role === "trainer"`).
         if (!authData.session) {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (signInError) throw signInError;
+          toast.success(
+            "確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。",
+            { duration: 8000 },
+          );
+          // Reset sensitive fields and switch back to login mode so the user
+          // can sign in after confirming.
+          setPassword("");
+          setPasswordConfirm("");
+          setMode("login");
+          return;
         }
 
-        // Ensure trainer role is recorded via the secured edge function.
-        // The previous open RPC was removed to prevent privilege escalation;
-        // trainer self-promotion now requires a server-side invite code.
-        if (isTrainer && authData.user) {
+        // Fallback path: email confirmation is disabled and a session already
+        // exists. Promote to trainer immediately if requested.
+        if (isTrainer) {
           const { data: roleData, error: roleError } = await supabase.functions.invoke(
             "signup-trainer",
-            { body: { signup_code: trainerSignupCode } },
+            { body: {} },
           );
           if (roleError || (roleData && (roleData as any).error)) {
             const msg = (roleData as any)?.error || roleError?.message || "トレーナー登録に失敗しました。";
@@ -95,8 +103,6 @@ const Auth = () => {
         }
 
         toast.success("アカウントを作成しました。");
-        // Trainer → /onboarding, Customer → /join
-        // Index.tsx also auto-routes, but be explicit here.
         navigate(redirectParam || (isTrainer ? "/onboarding" : "/join"));
       } else {
         const { error } = await supabase.auth.signInWithPassword({

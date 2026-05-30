@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Camera, Loader2, X } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,7 @@ import { getJSTToday } from "@/lib/timezone";
 import { toast } from "sonner";
 import { PhotoTypeIcon, photoTypeLabel } from "./PhotoTypeIcon";
 import type { PhotoType } from "@/hooks/useProgressPhotos";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface Props {
   open: boolean;
@@ -179,7 +180,7 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
           </div>
 
           <Button variant="accent" onClick={handleUpload} disabled={uploading || !file} className="w-full">
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "保存する"}
+            {uploading ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : "保存する"}
           </Button>
         </div>
       </div>

@@ -8,11 +8,11 @@ import { useAllCustomerProfiles, ProfileWithBooking } from "@/hooks/useProfile";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import {
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -71,7 +71,7 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
       </div>
     );
   }
@@ -184,7 +184,7 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteCustomer} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              {deleting && <DumbbellLoader className="w-4 h-4 animate-spin mr-1" />}
               削除する
             </AlertDialogAction>
           </AlertDialogFooter>

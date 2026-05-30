@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Camera, Plus, Loader2, ArrowLeftRight, Trash2 } from "lucide-react";
+import { Camera, Plus, ArrowLeftRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useProgressPhotos, type PhotoType, type ProgressPhoto } from "@/hooks/useProgressPhotos";
@@ -8,6 +8,7 @@ import ComparePhotosModal from "./ComparePhotosModal";
 import { PhotoTypeIcon, photoTypeLabel } from "./PhotoTypeIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const TYPES: PhotoType[] = ["front", "side", "back"];
 
@@ -42,7 +43,7 @@ const ProgressPhotosTab = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
       </div>
     );
   }

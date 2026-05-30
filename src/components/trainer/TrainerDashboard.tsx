@@ -1,4 +1,4 @@
-import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, Loader2 } from "lucide-react";
+import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
@@ -11,6 +11,7 @@ import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
 import { useMemo } from "react";
 import { useTenant } from "@/hooks/useTenant";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;
@@ -141,7 +142,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
   if (loading || bookingsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
       </div>
     );
   }

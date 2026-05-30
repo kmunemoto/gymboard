@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Loader2, User, CalendarPlus, Sparkles } from "lucide-react";
+import { CalendarDays, Clock, Check, User, CalendarPlus, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface TrialSlotBooking {
   date: string;
@@ -559,7 +560,7 @@ const TrialBooking = () => {
                     onClick={handleSubmit}
                     disabled={submitting || !guestName.trim() || !guestEmail.trim()}
                   >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {submitting ? <DumbbellLoader className="w-4 h-4 animate-spin mr-2" /> : null}
                     無料体験を予約する
                   </Button>
                 </div>

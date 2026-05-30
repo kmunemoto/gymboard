@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Dumbbell, TrendingUp, Calendar, Loader2, Share2, Camera } from "lucide-react";
+import { Dumbbell, TrendingUp, Calendar, Share2, Camera } from "lucide-react";
 import {
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   Select,
   SelectContent,
   SelectItem,
@@ -166,7 +167,7 @@ const CustomerTraining = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
       </div>
     );
   }

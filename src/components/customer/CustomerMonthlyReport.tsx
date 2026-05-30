@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus, Award, Utensils, Bone, MessageSquare, Sparkles, Loader2, CalendarDays, Flame, Dumbbell } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus, Award, Utensils, Bone, MessageSquare, Sparkles, CalendarDays, Flame, Dumbbell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +14,7 @@ import { getJSTNow, toJSTDate, formatJST } from "@/lib/timezone";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
 import MuscleGroupBadge from "./MuscleGroupBadge";
 import { useTenant } from "@/hooks/useTenant";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
 
@@ -304,7 +305,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
           <ArrowLeft className="w-4 h-4 mr-1" /> 戻る
         </Button>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-accent" />
+          <DumbbellLoader className="w-6 h-6 animate-spin text-accent" />
         </div>
       </div>
     );

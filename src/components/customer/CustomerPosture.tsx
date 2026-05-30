@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { Camera, Upload, Loader2, RotateCcw, AlertCircle, Save } from "lucide-react";
+import { Camera, Upload, RotateCcw, AlertCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import TrainingRecommendationCard from "./posture/TrainingRecommendationCard";
 import { analyzePosture } from "./posture/postureAnalysis";
 import { diagnoseSkeletalType } from "./posture/skeletalDiagnosis";
 import type { Keypoint } from "./posture/types";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 // BlazePose 33-keypoint skeleton edges
 const SKELETON_EDGES: [number, number][] = [
@@ -436,7 +437,7 @@ const CustomerPosture = () => {
               />
               {isLoading && (
                 <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center gap-2">
-                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                  <DumbbellLoader className="w-8 h-8 animate-spin text-accent" />
                   <span className="text-sm font-medium">
                     {modelLoading ? "高精度AIモデルを読み込み中…（初回のみ時間がかかります）" : "高精度モードで解析中…"}
                   </span>
@@ -472,7 +473,7 @@ const CustomerPosture = () => {
                 className="flex-1"
               >
                 {saving ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  <DumbbellLoader className="w-4 h-4 mr-1 animate-spin" />
                 ) : (
                   <Save className="w-4 h-4 mr-1" />
                 )}

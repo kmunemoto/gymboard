@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2, Search, MapPin, CheckCircle2 } from "lucide-react";
+import { Search, MapPin, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface FoundTenant {
   id: string;
@@ -133,7 +134,7 @@ const JoinGym = () => {
   if (authLoading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <DumbbellLoader className="w-8 h-8 animate-spin text-accent" />
       </div>
     );
   }
@@ -181,7 +182,7 @@ const JoinGym = () => {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button onClick={() => handleSearch(code)} disabled={searching} className="w-full">
-                {searching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+                {searching ? <DumbbellLoader className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
                 検索
               </Button>
             </>
@@ -241,7 +242,7 @@ const JoinGym = () => {
                 disabled={submitting || !displayName.trim()}
                 onClick={handleJoin}
               >
-                {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {submitting && <DumbbellLoader className="w-4 h-4 mr-2 animate-spin" />}
                 アプリを始める →
               </Button>
               <Button variant="ghost" className="w-full" onClick={() => setStep("search")}>

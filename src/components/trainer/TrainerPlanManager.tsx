@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import {
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   Dialog,
   DialogContent,
   DialogFooter,
@@ -24,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, CreditCard } from "lucide-react";
+import { Plus, Pencil, Trash2, CreditCard } from "lucide-react";
 
 type PlanType = "subscription" | "ticket" | "period";
 
@@ -202,7 +203,7 @@ const TrainerPlanManager = () => {
     <div className="space-y-3">
       {loading ? (
         <div className="flex justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <DumbbellLoader className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       ) : plans.length === 0 ? (
         <Card>
@@ -336,7 +337,7 @@ const TrainerPlanManager = () => {
               キャンセル
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              {saving && <DumbbellLoader className="w-4 h-4 mr-1 animate-spin" />}
               {editing ? "更新" : "追加"}
             </Button>
           </DialogFooter>

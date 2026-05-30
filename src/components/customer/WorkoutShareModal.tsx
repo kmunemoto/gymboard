@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { X, Download, Loader2, Moon, Sun, Image as ImageIcon, Camera } from "lucide-react";
+import { X, Download, Moon, Sun, Image as ImageIcon, Camera } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import WorkoutShareCard, { type ShareTheme } from "./WorkoutShareCard";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { STREAK_ENABLED } from "@/lib/featureFlags";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface Props {
   open: boolean;
@@ -689,7 +690,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
           onClick={handleSaveImage}
           disabled={busy}
         >
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {busy ? <DumbbellLoader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           {t("workoutShare.saveImage")}
         </Button>
       </div>
@@ -711,7 +712,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
             color: "#fff",
           }}
         >
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <DumbbellLoader className="w-8 h-8 animate-spin text-accent" />
           <p className="text-sm font-bold">{t("workoutShare.generating")}</p>
         </div>
       )}

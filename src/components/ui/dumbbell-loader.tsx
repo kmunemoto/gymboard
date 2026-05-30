@@ -1,6 +1,5 @@
 import { Dumbbell } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 type SizeKey = "xs" | "sm" | "md" | "lg" | "xl";
 

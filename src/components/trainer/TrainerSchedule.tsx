@@ -12,13 +12,13 @@ import { getJSTNow } from "@/lib/timezone";
 import { toast } from "sonner";
 import { sendBookingNotification } from "@/lib/bookingNotification";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import WeekTimelineView from "./WeekTimelineView";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 
 const TrainerSchedule = () => {

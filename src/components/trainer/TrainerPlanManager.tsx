@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   Dialog,
   DialogContent,
   DialogFooter,
@@ -26,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, CreditCard } from "lucide-react";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 type PlanType = "subscription" | "ticket" | "period";
 

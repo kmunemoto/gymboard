@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   PLAN_CARDS,
   lookupKeyFor,
   detectStripeEnvironment,
@@ -17,6 +16,7 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   type GymboardPlan,
 } from "@/lib/gymboardPlans";
 import { Check, CreditCard, ExternalLink, Users, Info } from "lucide-react";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const isEmbeddedPreview = () => {
   try {

@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -21,6 +20,7 @@ import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 type DiagnosisRow = {
   id: string;

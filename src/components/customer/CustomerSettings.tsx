@@ -18,9 +18,9 @@ import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 import { useTenant } from "@/hooks/useTenant";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();

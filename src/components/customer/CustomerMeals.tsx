@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { resolveMealPhotoUrls } from "@/lib/mealPhotoUrl";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import {
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -32,6 +31,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface DishDetail {
   name: string;

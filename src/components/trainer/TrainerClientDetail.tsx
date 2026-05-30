@@ -10,7 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -51,6 +50,7 @@ import SessionExpSummaryDialog from "@/components/customer/SessionExpSummaryDial
 import MilestoneAchievedDialog from "@/components/customer/MilestoneAchievedDialog";
 import TrainerWeightJourneyPanel from "./TrainerWeightJourneyPanel";
 import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface TrainerClientDetailProps {
   clientId: string;

@@ -1,8 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { verifyCaller } from "../_shared/auth.ts";
 
 const LINE_API = "https://api.line.me/v2/bot/message/push";
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  // Scheduled function: only the cron job (service role) may invoke this.
+  const caller = await verifyCaller(req);
+  if (!caller?.isServiceRole) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+  }
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

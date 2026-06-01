@@ -40,7 +40,7 @@ jobs:
       - name: Generate app icon
         run: |
           mkdir -p assets
-          cp gymboard-app-icon-1024.png assets/icon-only.png
+          cp gymboard-app-icon-1024.PNG assets/icon-only.png
           npx @capacitor/assets@3 generate --ios
 
       - name: Set build number
@@ -51,7 +51,7 @@ jobs:
       - name: Set marketing version
         run: |
           cd ios/App
-          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.0.5;/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.0.6;/g' App.xcodeproj/project.pbxproj
 
       - name: Fix Podfile for CI signing
         run: |

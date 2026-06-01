@@ -17,9 +17,13 @@ const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Scheduled function: only the cron job (service role) may invoke this.
+  // Scheduled function: require either the project's service-role key OR the
+  // pre-shared CRON_SECRET header to block anon-key visitors.
   const caller = await verifyCaller(req);
-  if (!caller?.isServiceRole) {
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const headerSecret = req.headers.get("x-cron-secret");
+  const cronAuthorized = !!cronSecret && headerSecret === cronSecret;
+  if (!caller?.isServiceRole && !cronAuthorized) {
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

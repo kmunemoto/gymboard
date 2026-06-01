@@ -11,10 +11,14 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  // Scheduled function: only the cron job (service role) may invoke this.
-  // The anon key passes the gateway's JWT check, so we re-verify here.
+  // Scheduled function: require either the project's service-role key OR the
+  // pre-shared CRON_SECRET header so anonymous visitors with the public anon
+  // key cannot trigger a mass-email sweep.
   const caller = await verifyCaller(req)
-  if (!caller?.isServiceRole) {
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  const headerSecret = req.headers.get('x-cron-secret')
+  const cronAuthorized = !!cronSecret && headerSecret === cronSecret
+  if (!caller?.isServiceRole && !cronAuthorized) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

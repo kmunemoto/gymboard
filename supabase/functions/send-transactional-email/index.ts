@@ -34,7 +34,7 @@ function generateToken(): string {
 // Supabase gateway only validates that *some* JWT is present (anon key passes),
 // so we re-verify in code to prevent unauthenticated visitors from triggering
 // template emails to arbitrary recipients (spam / phishing vector).
-import { verifyCaller } from '../_shared/auth.ts'
+import { verifyCaller, hasRole } from '../_shared/auth.ts'
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -46,6 +46,17 @@ Deno.serve(async (req) => {
   if (!caller || (!caller.isServiceRole && !caller.userId)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Only trainers / service role may invoke transactional emails. Customers cannot
+  // trigger branded emails to arbitrary recipients (spam/phishing vector) nor use
+  // the _resolve_user_ / _resolve_trainer_ placeholders to look up other users.
+  const callerIsTrainer = caller.userId ? await hasRole(caller.userId, 'trainer') : false
+  if (!caller.isServiceRole && !callerIsTrainer) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }

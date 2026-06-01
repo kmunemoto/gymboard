@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
-import { verifyCaller } from "../_shared/auth.ts";
+import { verifyCaller, hasRole } from "../_shared/auth.ts";
 
 const ALLOWED_URL_HOSTS = new Set([
   "app.gymboard.app",
@@ -151,6 +151,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid url" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ---- AUTHZ: only trainers / service role can target arbitrary users.
+    // Regular users may only push to themselves (e.g. for self-test notifications).
+    if (!caller.isServiceRole) {
+      const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
+      if (!isTrainer) {
+        if (user_ids.length !== 1 || user_ids[0] !== caller.userId) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
 
 

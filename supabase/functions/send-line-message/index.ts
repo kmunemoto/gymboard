@@ -3,7 +3,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { verifyCaller } from "../_shared/auth.ts";
+import { verifyCaller, hasRole } from "../_shared/auth.ts";
 
 const LINE_API = "https://api.line.me/v2/bot/message/push";
 const MAX_MESSAGE_LEN = 2000;
@@ -35,6 +35,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid message" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // AUTHZ: only trainers / service role may target other users or broadcast to trainers.
+    // Customers may only send LINE messages to themselves (e.g. test/link confirmation).
+    if (!caller.isServiceRole) {
+      const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
+      if (!isTrainer) {
+        if (to === "trainer" || line_user_id || (user_id && user_id !== caller.userId)) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

@@ -4,6 +4,7 @@
 //   (B) Email (transactional) to ALL customers with a booking — as a fallback
 // Scheduled by pg_cron at JST 21:00 (UTC 12:00).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { verifyCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,18 @@ const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Scheduled function: require either the project's service-role key OR the
+  // pre-shared CRON_SECRET header to block anon-key visitors.
+  const caller = await verifyCaller(req);
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const headerSecret = req.headers.get("x-cron-secret");
+  const cronAuthorized = !!cronSecret && headerSecret === cronSecret;
+  if (!caller?.isServiceRole && !cronAuthorized) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

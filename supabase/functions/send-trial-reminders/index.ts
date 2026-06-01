@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { verifyCaller } from '../_shared/auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,19 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  // Scheduled function: require either the project's service-role key OR the
+  // pre-shared CRON_SECRET header so anonymous visitors with the public anon
+  // key cannot trigger a mass-email sweep.
+  const caller = await verifyCaller(req)
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  const headerSecret = req.headers.get('x-cron-secret')
+  const cronAuthorized = !!cronSecret && headerSecret === cronSecret
+  if (!caller?.isServiceRole && !cronAuthorized) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!

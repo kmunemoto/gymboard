@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Dumbbell, Mail, Lock, User, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import gymboardLogo from "@/assets/gymboard-logo.png.asset.json";
 
 type AuthMode = "login" | "signup";
 type LoginTarget = "customer" | "trainer";
@@ -144,7 +145,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-6 slide-up mx-auto my-auto">
         {/* Logo & Title */}
         <div className="text-center flex flex-col items-center gap-1">
-          <Dumbbell className="w-10 h-10 text-accent" />
+          <img src={gymboardLogo.url} alt="ジムボード" className="h-20 w-auto object-contain" />
           <h1 className="text-2xl font-bold tracking-tight mt-1">ジムボード</h1>
           <p className="text-xs text-muted-foreground">パーソナルジム・ピラティス予約管理</p>
           <p className="text-sm text-muted-foreground mt-2">

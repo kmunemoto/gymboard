@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import PushNotificationSection from "./PushNotificationSection";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();
@@ -239,6 +240,9 @@ const CustomerSettings = () => {
 
       {/* Language */}
       <LanguageSwitcher variant="customer" />
+
+      {/* Push Notifications */}
+      <PushNotificationSection />
 
 
 

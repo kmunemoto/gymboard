@@ -288,6 +288,24 @@ const TrialBooking = () => {
         console.error("Trainer email notification failed:", e);
       }
     })();
+
+    // Fire-and-forget: notify trainers via web push (anon-allowed via purpose)
+    (async () => {
+      try {
+        await supabase.functions.invoke("send-push-notification", {
+          body: {
+            purpose: "trial_booking",
+            trial_booking_id: bookingId,
+            title: "初回体験の申し込み",
+            body: `${guestName.trim()}さんから初回無料体験のお申し込みがありました`,
+            url: "/",
+            tag: `trial-${bookingId}`,
+          },
+        });
+      } catch (e) {
+        console.error("Trial push notification failed:", e);
+      }
+    })();
   };
 
   if (completed && completedInfo) {

@@ -132,48 +132,105 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   try {
-    // ---- AUTH ----
-    const caller = await verifyCaller(req);
-    if (!caller) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
 
-    const { user_ids, title, body, url, tag } = await req.json();
-    if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
-      return new Response(JSON.stringify({ error: "user_ids required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const payloadJson = await req.json().catch(() => ({}));
+    const { purpose, trial_booking_id, title, body, url, tag } = payloadJson;
+    let { user_ids } = payloadJson;
+
     if (!isAllowedUrl(url)) {
       return new Response(JSON.stringify({ error: "Invalid url" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ---- AUTHZ: only trainers / service role can target arbitrary users.
-    // Regular users may only push to themselves (e.g. for self-test notifications).
-    if (!caller.isServiceRole) {
-      const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
-      if (!isTrainer) {
-        if (user_ids.length !== 1 || user_ids[0] !== caller.userId) {
-          return new Response(JSON.stringify({ error: "Forbidden" }), {
-            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // ---- Anonymous-allowed path: notify trainers of a brand-new trial booking.
+    // The caller passes only the trial_booking_id; we resolve trainer ids
+    // server-side from the booking's tenant_id. No arbitrary user targeting.
+    if (purpose === "trial_booking") {
+      if (!trial_booking_id || typeof trial_booking_id !== "string") {
+        return new Response(JSON.stringify({ error: "trial_booking_id required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: trial } = await adminClient
+        .from("trial_bookings")
+        .select("id, tenant_id")
+        .eq("id", trial_booking_id)
+        .maybeSingle();
+      if (!trial) {
+        return new Response(JSON.stringify({ error: "trial booking not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: members } = await adminClient
+        .from("tenant_members")
+        .select("user_id, role")
+        .eq("tenant_id", trial.tenant_id)
+        .in("role", ["trainer", "owner"]);
+      user_ids = (members ?? []).map((m: { user_id: string }) => m.user_id);
+      if (user_ids.length === 0) {
+        return new Response(JSON.stringify({ sent: 0, message: "No trainers" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      // ---- Authenticated path ----
+      const caller = await verifyCaller(req);
+      if (!caller) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+        return new Response(JSON.stringify({ error: "user_ids required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!caller.isServiceRole) {
+        const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
+        if (!isTrainer) {
+          // Regular users may only push to themselves OR to a trainer in their tenant
+          // (so customer→trainer chat / booking notifications work). Validate via tenant_members.
+          const callerId = caller.userId!;
+          const { data: mine } = await adminClient
+            .from("tenant_members")
+            .select("tenant_id")
+            .eq("user_id", callerId);
+          const tenantIds = (mine ?? []).map((r: { tenant_id: string }) => r.tenant_id);
+          const otherIds = user_ids.filter((id: string) => id !== callerId);
+          if (otherIds.length > 0) {
+            if (tenantIds.length === 0) {
+              return new Response(JSON.stringify({ error: "Forbidden" }), {
+                status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+            const { data: peers } = await adminClient
+              .from("tenant_members")
+              .select("user_id, role, tenant_id")
+              .in("user_id", otherIds)
+              .in("tenant_id", tenantIds);
+            const allowed = new Set(
+              (peers ?? [])
+                .filter((p: { role: string }) => p.role === "trainer" || p.role === "owner")
+                .map((p: { user_id: string }) => p.user_id),
+            );
+            const denied = otherIds.filter((id: string) => !allowed.has(id));
+            if (denied.length > 0) {
+              return new Response(JSON.stringify({ error: "Forbidden" }), {
+                status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+          }
         }
       }
     }
 
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: subscriptions, error } = await supabase
+    const { data: subscriptions, error } = await adminClient
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth, user_id")
       .in("user_id", user_ids);
@@ -185,7 +242,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const payload = JSON.stringify({
+    const pushPayload = JSON.stringify({
       title: title || "お知らせ",
       body: body || "新しい通知があります",
       url: url || "/",
@@ -193,15 +250,34 @@ Deno.serve(async (req) => {
     });
 
     const results = await Promise.allSettled(
-      subscriptions.map((sub) => sendPush(sub, payload, vapidPrivateKey))
+      subscriptions.map((sub) => sendPush(sub, pushPayload, vapidPrivateKey)),
     );
 
     let sent = 0;
-    for (const r of results) {
-      if (r.status === "fulfilled" && r.value.ok) sent++;
+    const expiredEndpoints: string[] = [];
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") {
+        if (r.value.ok) {
+          sent++;
+        } else if (r.value.status === 404 || r.value.status === 410) {
+          expiredEndpoints.push(subscriptions[i].endpoint);
+        }
+      }
+    });
+
+    // Cleanup expired subscriptions (fire-and-forget)
+    if (expiredEndpoints.length > 0) {
+      adminClient
+        .from("push_subscriptions")
+        .delete()
+        .in("endpoint", expiredEndpoints)
+        .then(({ error: delErr }) => {
+          if (delErr) console.warn("expired subscription cleanup failed:", delErr.message);
+          else console.log(`Cleaned up ${expiredEndpoints.length} expired subscription(s)`);
+        });
     }
 
-    return new Response(JSON.stringify({ sent, total: subscriptions.length }), {
+    return new Response(JSON.stringify({ sent, total: subscriptions.length, expired: expiredEndpoints.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

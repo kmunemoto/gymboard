@@ -240,6 +240,9 @@ const CustomerSettings = () => {
       {/* Language */}
       <LanguageSwitcher variant="customer" />
 
+      {/* Push Notifications */}
+      <PushNotificationSection />
+
 
 
       {/*

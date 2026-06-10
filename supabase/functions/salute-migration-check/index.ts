@@ -36,9 +36,9 @@ Deno.serve(async (req) => {
     ) => {
       let q: any = salute.from(table).select("*", { count: "exact", head: true });
       if (filter) q = filter(q);
-      const { count, error } = await q;
-      if (error) return { count: null, error: error.message };
-      return { count, error: null };
+      const { count, error, status } = await q;
+      if (error) return { count: null, status, error: JSON.stringify(error) };
+      return { count, status, error: null };
     };
 
     const [

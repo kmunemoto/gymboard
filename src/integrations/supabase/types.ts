@@ -959,6 +959,45 @@ export type Database = {
         }
         Relationships: []
       }
+      exercise_id_map: {
+        Row: {
+          created_at: string
+          gymboard_exercise_id: string
+          id: string
+          salute_exercise_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          gymboard_exercise_id: string
+          id?: string
+          salute_exercise_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          gymboard_exercise_id?: string
+          id?: string
+          salute_exercise_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_id_map_gymboard_exercise_id_fkey"
+            columns: ["gymboard_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_id_map_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           category: string

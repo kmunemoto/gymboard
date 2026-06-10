@@ -195,18 +195,21 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // --- bookings 補修 (全削除 → 全件再投入) ---
+        // --- bookings 補修 (追加INSERTのみ。既存と同じ booking_date のものはスキップ) ---
+        // check_booking_overlap トリガーが既存データを誤検知することがあるため、削除はせず追加のみ。
         let bookingsInserted = 0;
         const bookingErrors: string[] = [];
         if (needBookings) {
-          const { error: delErr } = await admin
+          const { data: existing } = await admin
             .from("bookings")
-            .delete()
+            .select("booking_date")
             .eq("tenant_id", TENANT_ID)
             .eq("user_id", gymboardUserId);
-          if (delErr) throw new Error(`bookings delete: ${delErr.message}`);
+          const existingDates = new Set((existing ?? []).map((r) => new Date(r.booking_date).toISOString()));
 
           for (const b of (c.bookings ?? [])) {
+            const key = new Date(b.booking_date).toISOString();
+            if (existingDates.has(key)) continue;
             const { error } = await admin
               .from("bookings")
               .insert({

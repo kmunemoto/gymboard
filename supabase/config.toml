@@ -9,3 +9,7 @@ verify_jwt = false
 [functions.salute-migration-check]
 verify_jwt = false
 
+[functions.gymboard-sync-trial-booking]
+verify_jwt = false
+
+

@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 
     let body: { limit?: number } = {};
     try { body = await req.json(); } catch { /* default */ }
-    const limit = Math.max(1, Math.min(50, Number(body.limit ?? 2)));
+    const limit = Math.max(1, Math.min(500, Number(body.limit ?? 2)));
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },

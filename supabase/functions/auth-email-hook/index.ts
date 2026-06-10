@@ -217,7 +217,25 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
-  const confirmationUrl = payload.data.url || '';
+  // Build a confirmation URL that points at our app's /auth/callback with
+  // token_hash + type. The client then calls supabase.auth.verifyOtp().
+  // This avoids Supabase's raw /auth/v1/verify endpoint which requires an
+  // apikey query param and otherwise responds with "No API key found in request".
+  const tokenHash = (payload.data as any).token_hash || (payload.data as any).tokenHash || ''
+  const redirectTo = (payload.data as any).redirect_to || (payload.data as any).redirectTo || ''
+  const APP_URL = 'https://gymboard.lovable.app'
+  let confirmationUrl = ''
+  if (tokenHash) {
+    const params = new URLSearchParams({
+      token_hash: tokenHash,
+      type: emailType,
+    })
+    if (redirectTo) params.set('next', redirectTo)
+    confirmationUrl = `${APP_URL}/auth/callback?${params.toString()}`
+  } else {
+    // Fallback to whatever URL the hook provided
+    confirmationUrl = payload.data.url || APP_URL
+  }
 
   // Build template props from payload.data (HookData structure)
   const templateProps = {

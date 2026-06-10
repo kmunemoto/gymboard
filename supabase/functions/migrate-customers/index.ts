@@ -87,9 +87,12 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Missing MIGRATION_SHARED_SECRET or SALUTE_CUSTOMERS_URL" }, 500);
     }
 
-    let body: { limit?: number } = {};
+    let body: { limit?: number; batch_size?: number } = {};
     try { body = await req.json(); } catch { /* default */ }
-    const limit = Math.max(1, Math.min(500, Number(body.limit ?? 2)));
+    // Salute 全員を取得するため limit はデフォルト 500
+    const limit = Math.max(1, Math.min(500, Number(body.limit ?? 500)));
+    // 1回の呼び出しで処理する最大人数
+    const batchSize = Math.max(1, Math.min(50, Number(body.batch_size ?? 5)));
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -140,12 +143,22 @@ Deno.serve(async (req) => {
       (existingMap ?? []).map((m) => [m.email.toLowerCase(), { gymboard_user_id: m.gymboard_user_id, salute_user_id: m.salute_user_id }]),
     );
 
+    // 未移行のお客様だけを抽出 (migration_user_map に salute_user_id / email のどちらも無い)
+    const unmigrated = customers.filter((c) => {
+      const byId = mappedBySalute.get(c.user_id);
+      const byEmail = mappedByEmail.get((c.email ?? "").toLowerCase());
+      return !byId && !byEmail;
+    });
+    const totalUnmigrated = unmigrated.length;
+    const batch = unmigrated.slice(0, batchSize);
+    const remaining = Math.max(0, totalUnmigrated - batch.length);
+
     const results: Array<Record<string, unknown>> = [];
     let createdAuthUsers = 0;
     let reusedAuthUsers = 0;
     let skippedAlreadyMigrated = 0;
 
-    for (const c of customers) {
+    for (const c of batch) {
       const log: Record<string, unknown> = { salute_user_id: c.user_id, email: c.email };
       try {
         // 冒頭スキップ判定 (salute_user_id または email で既存)
@@ -317,14 +330,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    const okCount = results.filter((r) => r.status === "ok").length;
+    const errorCount = results.filter((r) => r.status === "error").length;
+
     return json({
       ok: true,
       tenant_id: TENANT_ID,
       limit,
-      customers_processed: customers.length,
+      batch_size: batchSize,
+      customers_fetched: customers.length,
+      already_migrated_total: customers.length - totalUnmigrated,
+      unmigrated_total: totalUnmigrated,
+      processed_this_run: batch.length,
+      remaining,
       auth_created: createdAuthUsers,
       auth_reused: reusedAuthUsers,
       skipped_already_migrated: skippedAlreadyMigrated,
+      ok_count: okCount,
+      error_count: errorCount,
       results,
     }, 200);
   } catch (e) {

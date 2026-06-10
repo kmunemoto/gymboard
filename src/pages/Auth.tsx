@@ -164,7 +164,7 @@ const Auth = () => {
           <h1 className="text-2xl font-bold tracking-tight mt-1">ジムボード</h1>
           <p className="text-xs text-muted-foreground">パーソナルジム・ピラティス予約管理</p>
           <p className="text-sm text-muted-foreground mt-2">
-            {mode === "login" ? "アカウントにログイン" : "新規アカウント作成"}
+            {mode === "login" ? "アカウントにログイン" : mode === "signup" ? "新規アカウント作成" : "パスワードの再設定"}
           </p>
         </div>
 

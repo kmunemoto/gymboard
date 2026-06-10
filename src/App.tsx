@@ -15,6 +15,7 @@ import Tokushoho from "./pages/Tokushoho.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import JoinGym from "./pages/JoinGym.tsx";
 import DeleteAccount from "./pages/DeleteAccount.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/join" element={<JoinGym />} />
             <Route path="/join/:code" element={<JoinGym />} />
             <Route path="/delete-account" element={<DeleteAccount />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

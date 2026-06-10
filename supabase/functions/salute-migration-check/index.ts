@@ -25,6 +25,29 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Safely inspect the JWT payload (no signature, no secret leak).
+    let keyInfo: Record<string, unknown> = { length: SALUTE_KEY.length };
+    try {
+      const parts = SALUTE_KEY.split(".");
+      if (parts.length === 3) {
+        const pad = (s: string) => s + "=".repeat((4 - (s.length % 4)) % 4);
+        const b64 = pad(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+        const payload = JSON.parse(atob(b64));
+        keyInfo = {
+          length: SALUTE_KEY.length,
+          ref: payload.ref,
+          role: payload.role,
+          iss: payload.iss,
+          exp: payload.exp,
+          expired: typeof payload.exp === "number" ? payload.exp * 1000 < Date.now() : null,
+        };
+      } else {
+        keyInfo.format = "not_a_jwt_3_parts";
+      }
+    } catch (e) {
+      keyInfo.decode_error = e instanceof Error ? e.message : String(e);
+    }
+
     const salute = createClient(SALUTE_URL, SALUTE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -64,6 +87,7 @@ Deno.serve(async (req) => {
         ok: true,
         connected_to: SALUTE_URL,
         readonly: true,
+        key_info: keyInfo,
         counts: {
           profiles_total: profilesTotal,
           profiles_customers: profilesCustomers,

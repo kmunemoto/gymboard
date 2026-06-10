@@ -87,9 +87,12 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Missing MIGRATION_SHARED_SECRET or SALUTE_CUSTOMERS_URL" }, 500);
     }
 
-    let body: { limit?: number } = {};
+    let body: { limit?: number; batch_size?: number } = {};
     try { body = await req.json(); } catch { /* default */ }
-    const limit = Math.max(1, Math.min(500, Number(body.limit ?? 2)));
+    // Salute 全員を取得するため limit はデフォルト 500
+    const limit = Math.max(1, Math.min(500, Number(body.limit ?? 500)));
+    // 1回の呼び出しで処理する最大人数
+    const batchSize = Math.max(1, Math.min(50, Number(body.batch_size ?? 5)));
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },

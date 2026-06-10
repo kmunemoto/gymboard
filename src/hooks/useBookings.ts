@@ -524,3 +524,47 @@ async function sendCancelEmailNotification(
   }).then((result) => logEmailInvoke("booking-cancel-customer", "booking-cancellation", "_resolve_user_", result))
     .catch((e) => console.error("Cancel email (customer) failed:", e));
 }
+
+async function sendCancelPushNotification(
+  booking: { user_id: string; booking_date: string },
+  cancelledByTrainer: boolean,
+) {
+  try {
+    const md = formatJST(booking.booking_date, "M月d日", { locale: ja });
+    const hm = formatJST(booking.booking_date, "HH:mm", { locale: ja });
+
+    const [{ data: profile }, { data: trainerIds }] = await Promise.all([
+      supabase.from("profiles").select("display_name").eq("user_id", booking.user_id).maybeSingle(),
+      supabase.rpc("get_trainer_ids"),
+    ]);
+    const customerName = profile?.display_name || "お客様";
+    const trainers = (trainerIds ?? []).map((t: { user_id: string }) => t.user_id);
+
+    // Always notify customer about their own cancellation (confirmation)
+    await supabase.functions.invoke("send-push-notification", {
+      body: {
+        user_ids: [booking.user_id],
+        title: "予約がキャンセルされました",
+        body: `${md} ${hm} の予約をキャンセルしました`,
+        url: "/",
+        tag: `booking-cancel-${booking.user_id}-${booking.booking_date}`,
+      },
+    });
+
+    // Notify trainers
+    if (trainers.length > 0) {
+      await supabase.functions.invoke("send-push-notification", {
+        body: {
+          user_ids: trainers,
+          title: "予約キャンセル",
+          body: `${customerName}さんが ${md} ${hm} の予約をキャンセルしました`,
+          url: "/",
+          tag: `booking-cancel-trainer-${booking.user_id}-${booking.booking_date}`,
+        },
+      });
+    }
+  } catch (e) {
+    console.error("sendCancelPushNotification error:", e);
+  }
+}
+

@@ -143,12 +143,22 @@ Deno.serve(async (req) => {
       (existingMap ?? []).map((m) => [m.email.toLowerCase(), { gymboard_user_id: m.gymboard_user_id, salute_user_id: m.salute_user_id }]),
     );
 
+    // 未移行のお客様だけを抽出 (migration_user_map に salute_user_id / email のどちらも無い)
+    const unmigrated = customers.filter((c) => {
+      const byId = mappedBySalute.get(c.user_id);
+      const byEmail = mappedByEmail.get((c.email ?? "").toLowerCase());
+      return !byId && !byEmail;
+    });
+    const totalUnmigrated = unmigrated.length;
+    const batch = unmigrated.slice(0, batchSize);
+    const remaining = Math.max(0, totalUnmigrated - batch.length);
+
     const results: Array<Record<string, unknown>> = [];
     let createdAuthUsers = 0;
     let reusedAuthUsers = 0;
     let skippedAlreadyMigrated = 0;
 
-    for (const c of customers) {
+    for (const c of batch) {
       const log: Record<string, unknown> = { salute_user_id: c.user_id, email: c.email };
       try {
         // 冒頭スキップ判定 (salute_user_id または email で既存)

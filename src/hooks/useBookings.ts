@@ -383,6 +383,10 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
     sendCancelEmailNotification(booking, cancelledByTrainer).catch((e) =>
       console.error("sendCancelEmailNotification failed:", e)
     );
+    // Send web push notifications (fire-and-forget)
+    sendCancelPushNotification(booking, cancelledByTrainer).catch((e) =>
+      console.error("sendCancelPushNotification failed:", e)
+    );
   } else if (error) {
     console.error("cancelBooking: 削除エラー", error);
   }

@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import gymboardLogo from "@/assets/gymboard-logo.png";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot";
 type LoginTarget = "customer" | "trainer";
 
 import { getAuthCallbackUrl } from "@/lib/nativeBridge";

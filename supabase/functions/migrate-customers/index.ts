@@ -330,14 +330,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    const okCount = results.filter((r) => r.status === "ok").length;
+    const errorCount = results.filter((r) => r.status === "error").length;
+
     return json({
       ok: true,
       tenant_id: TENANT_ID,
       limit,
-      customers_processed: customers.length,
+      batch_size: batchSize,
+      customers_fetched: customers.length,
+      already_migrated_total: customers.length - totalUnmigrated,
+      unmigrated_total: totalUnmigrated,
+      processed_this_run: batch.length,
+      remaining,
       auth_created: createdAuthUsers,
       auth_reused: reusedAuthUsers,
       skipped_already_migrated: skippedAlreadyMigrated,
+      ok_count: okCount,
+      error_count: errorCount,
       results,
     }, 200);
   } catch (e) {

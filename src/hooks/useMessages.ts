@@ -68,7 +68,7 @@ export const useMessages = (otherUserId: string | null) => {
       content,
     }, tenantId) as any);
 
-    // Fire-and-forget: send LINE notification to receiver
+    // Fire-and-forget: send LINE + push notification to receiver
     (async () => {
       try {
         // Get sender's display name
@@ -80,13 +80,37 @@ export const useMessages = (otherUserId: string | null) => {
 
         const senderName = senderProfile?.display_name || "不明";
         const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
-        const message = `【ジムボード】新着メッセージが届きました！💬\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
+        const lineMessage = `【ジムボード】新着メッセージが届きました！\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
 
         await supabase.functions.invoke("send-line-message", {
-          body: { user_id: receiverId, message },
+          body: { user_id: receiverId, message: lineMessage },
         });
       } catch (e) {
         console.error("LINE notification failed (non-blocking):", e);
+      }
+    })();
+
+    // Fire-and-forget: web push to receiver
+    (async () => {
+      try {
+        const { data: senderProfile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const senderName = senderProfile?.display_name || "メッセージ";
+        const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
+        await supabase.functions.invoke("send-push-notification", {
+          body: {
+            user_ids: [receiverId],
+            title: `${senderName}さんからメッセージ`,
+            body: preview,
+            url: "/",
+            tag: `chat-${user.id}-${receiverId}`,
+          },
+        });
+      } catch (e) {
+        console.error("Push notification failed (non-blocking):", e);
       }
     })();
   };

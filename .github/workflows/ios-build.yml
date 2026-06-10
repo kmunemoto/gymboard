@@ -43,6 +43,18 @@ jobs:
           cp gymboard-app-icon-1024.PNG assets/icon-only.png
           npx @capacitor/assets@3 generate --ios
 
+      - name: Add iOS privacy usage descriptions to Info.plist
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'ジムのロゴ、お客様の進捗写真、姿勢診断写真、食事記録の撮影に使用します。'" "$PLIST" 2>/dev/null || \
+            /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'ジムのロゴ、お客様の進捗写真、姿勢診断写真、食事記録の撮影に使用します。'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'ジムのロゴ、お客様の進捗写真、姿勢診断写真、食事記録の選択に使用します。'" "$PLIST" 2>/dev/null || \
+            /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'ジムのロゴ、お客様の進捗写真、姿勢診断写真、食事記録の選択に使用します。'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string '進捗写真や姿勢診断写真を保存する際に使用します。'" "$PLIST" 2>/dev/null || \
+            /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription '進捗写真や姿勢診断写真を保存する際に使用します。'" "$PLIST"
+          echo "--- Info.plist after patch ---"
+          /usr/libexec/PlistBuddy -c "Print" "$PLIST" | grep -A0 "UsageDescription"
+
       - name: Set build number
         run: |
           cd ios/App

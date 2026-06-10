@@ -5,3 +5,7 @@ verify_jwt = false
 
 [functions.salute-connection-check]
 verify_jwt = false
+
+[functions.salute-migration-check]
+verify_jwt = false
+

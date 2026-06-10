@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
         ok: true,
         connected_to: SALUTE_URL,
         readonly: true,
+        key_info: keyInfo,
         counts: {
           profiles_total: profilesTotal,
           profiles_customers: profilesCustomers,

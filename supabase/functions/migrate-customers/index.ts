@@ -1,14 +1,15 @@
-// GymBoard 側: Salute からお客様データを試験移行する関数。
-// - Salute の salute-export-customers を limit 付きで呼ぶ (x-migration-secret)
-// - 各お客様ごとに auth.users / profiles / user_roles / tenant_members / bookings / workouts を投入
-// - migration_user_map で冪等性を担保 (再実行で重複作成しない)
+// GymBoard 側: Salute からお客様データを試験移行する関数 (冪等強化版)。
+// - 各お客様の冒頭で migration_user_map を salute_user_id と email の両方でチェック
+// - bookings/workouts は対象 user_id の既存件数が 0 のときだけ投入 (二重投入防止)
+// - migration_user_map の INSERT は ON CONFLICT DO NOTHING (重複キーでエラーにしない)
+// - 1人のエラーで他のお客様を止めない
 // - パスワードは設定しない (リセット方式)
 //
 // 必要 Secrets:
 //   - MIGRATION_SHARED_SECRET
 //   - SALUTE_CUSTOMERS_URL (未設定なら SALUTE_EXPORT_URL から派生)
 //
-// Body: { "limit": 2 }  (デフォルト 2)
+// Body: { "limit": 2 }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Unexpected upstream shape", upstream: upstreamJson }, 500);
     }
 
-    // 2. exercise_id_map / tenant_plans を一括ロード
+    // 2. exercise_id_map / tenant_plans / migration_user_map を一括ロード
     const { data: exMap } = await admin
       .from("exercise_id_map")
       .select("salute_exercise_id, gymboard_exercise_id")
@@ -128,13 +129,15 @@ Deno.serve(async (req) => {
       (plans ?? []).map((p) => [p.plan_name, p.id]),
     );
 
-    // 3. 既存 migration_user_map
     const { data: existingMap } = await admin
       .from("migration_user_map")
       .select("salute_user_id, gymboard_user_id, email")
       .eq("tenant_id", TENANT_ID);
-    const mappedSalute = new Map<string, { gymboard_user_id: string; email: string }>(
+    const mappedBySalute = new Map<string, { gymboard_user_id: string; email: string }>(
       (existingMap ?? []).map((m) => [m.salute_user_id, { gymboard_user_id: m.gymboard_user_id, email: m.email }]),
+    );
+    const mappedByEmail = new Map<string, { gymboard_user_id: string; salute_user_id: string }>(
+      (existingMap ?? []).map((m) => [m.email.toLowerCase(), { gymboard_user_id: m.gymboard_user_id, salute_user_id: m.salute_user_id }]),
     );
 
     const results: Array<Record<string, unknown>> = [];
@@ -145,10 +148,14 @@ Deno.serve(async (req) => {
     for (const c of customers) {
       const log: Record<string, unknown> = { salute_user_id: c.user_id, email: c.email };
       try {
-        if (mappedSalute.has(c.user_id)) {
+        // 冒頭スキップ判定 (salute_user_id または email で既存)
+        const byId = mappedBySalute.get(c.user_id);
+        const byEmail = mappedByEmail.get(c.email.toLowerCase());
+        if (byId || byEmail) {
           skippedAlreadyMigrated++;
-          log.status = "skipped_already_in_map";
-          log.gymboard_user_id = mappedSalute.get(c.user_id)!.gymboard_user_id;
+          log.status = "skipped_already_migrated";
+          log.gymboard_user_id = byId?.gymboard_user_id ?? byEmail?.gymboard_user_id;
+          log.matched_by = byId ? "salute_user_id" : "email";
           results.push(log);
           continue;
         }
@@ -161,8 +168,6 @@ Deno.serve(async (req) => {
           user_metadata: { migrated_from_salute: true, salute_user_id: c.user_id },
         });
         if (created.error) {
-          // 既存ユーザーを listUsers で検索 (admin API には getUserByEmail がないため)
-          // ページング考慮で email でフィルタ
           const lookup = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
           const found = lookup.data?.users?.find((u) => (u.email ?? "").toLowerCase() === c.email.toLowerCase());
           if (!found) {
@@ -183,7 +188,7 @@ Deno.serve(async (req) => {
 
         const p = c.profile ?? {} as SaluteProfile;
 
-        // (2) profiles upsert (user_id unique)
+        // (2) profiles upsert
         const { error: profErr } = await admin
           .from("profiles")
           .upsert({
@@ -197,13 +202,13 @@ Deno.serve(async (req) => {
           }, { onConflict: "user_id" });
         if (profErr) throw new Error(`profiles: ${profErr.message}`);
 
-        // (3) user_roles (customer)
+        // (3) user_roles upsert
         const { error: roleErr } = await admin
           .from("user_roles")
           .upsert({ user_id: gymboardUserId, role: "customer" }, { onConflict: "user_id,role" });
         if (roleErr) throw new Error(`user_roles: ${roleErr.message}`);
 
-        // (4) tenant_members
+        // (4) tenant_members upsert
         const planId = p.plan ? (planIdByName.get(p.plan) ?? null) : null;
         const { error: tmErr } = await admin
           .from("tenant_members")
@@ -220,59 +225,66 @@ Deno.serve(async (req) => {
         log.plan_id = planId;
         log.plan_name = p.plan ?? null;
 
-        // (5) bookings
+        // (5) bookings: 既存件数 0 のときだけ投入
+        const { count: existingBookings } = await admin
+          .from("bookings")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", gymboardUserId);
         let bookingsInserted = 0;
         const bookingErrors: string[] = [];
-        for (const b of (c.bookings ?? [])) {
-          const { error } = await admin
-            .from("bookings")
-            .insert({
-              user_id: gymboardUserId,
-              tenant_id: TENANT_ID,
-              booking_date: b.booking_date,
-              booking_type: normalizeBookingType(b.booking_type),
-              status: b.status,
-              google_event_id: b.google_event_id,
-              created_at: b.created_at ?? undefined,
-            });
-          if (error) {
-            bookingErrors.push(`${b.booking_date}: ${error.message}`);
-          } else {
-            bookingsInserted++;
+        if ((existingBookings ?? 0) > 0) {
+          log.bookings_skipped_existing = existingBookings;
+        } else {
+          for (const b of (c.bookings ?? [])) {
+            const { error } = await admin
+              .from("bookings")
+              .insert({
+                user_id: gymboardUserId,
+                tenant_id: TENANT_ID,
+                booking_date: b.booking_date,
+                booking_type: normalizeBookingType(b.booking_type),
+                status: b.status,
+                google_event_id: b.google_event_id,
+                created_at: b.created_at ?? undefined,
+              });
+            if (error) bookingErrors.push(`${b.booking_date}: ${error.message}`);
+            else bookingsInserted++;
           }
         }
         log.bookings_total = (c.bookings ?? []).length;
         log.bookings_inserted = bookingsInserted;
         log.bookings_errors = bookingErrors;
 
-        // (6) workouts
+        // (6) workouts: 既存件数 0 のときだけ投入
+        const { count: existingWorkouts } = await admin
+          .from("workouts")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", gymboardUserId);
         let workoutsInserted = 0;
         let workoutsSkippedNoExercise = 0;
         const workoutErrors: string[] = [];
-        for (const w of (c.workouts ?? [])) {
-          const salId = w.salute_exercise_id ?? w.exercise_id ?? null;
-          const gymEx = salId ? exMapById.get(salId) : null;
-          if (!gymEx) {
-            workoutsSkippedNoExercise++;
-            continue;
-          }
-          const { error } = await admin
-            .from("workouts")
-            .insert({
-              user_id: gymboardUserId,
-              tenant_id: TENANT_ID,
-              exercise_id: gymEx,
-              workout_date: w.workout_date,
-              weight: w.weight,
-              reps: w.reps,
-              sets: w.sets ?? null,
-              notes: w.notes,
-              created_at: w.created_at ?? undefined,
-            });
-          if (error) {
-            workoutErrors.push(`${w.workout_date}: ${error.message}`);
-          } else {
-            workoutsInserted++;
+        if ((existingWorkouts ?? 0) > 0) {
+          log.workouts_skipped_existing = existingWorkouts;
+        } else {
+          for (const w of (c.workouts ?? [])) {
+            const salId = w.salute_exercise_id ?? w.exercise_id ?? null;
+            const gymEx = salId ? exMapById.get(salId) : null;
+            if (!gymEx) { workoutsSkippedNoExercise++; continue; }
+            const { error } = await admin
+              .from("workouts")
+              .insert({
+                user_id: gymboardUserId,
+                tenant_id: TENANT_ID,
+                exercise_id: gymEx,
+                workout_date: w.workout_date,
+                weight: w.weight,
+                reps: w.reps,
+                sets: w.sets ?? null,
+                notes: w.notes,
+                created_at: w.created_at ?? undefined,
+              });
+            if (error) workoutErrors.push(`${w.workout_date}: ${error.message}`);
+            else workoutsInserted++;
           }
         }
         log.workouts_total = (c.workouts ?? []).length;
@@ -280,16 +292,20 @@ Deno.serve(async (req) => {
         log.workouts_skipped_no_exercise = workoutsSkippedNoExercise;
         log.workouts_errors = workoutErrors;
 
-        // (7) migration_user_map に記録
+        // (7) migration_user_map upsert (DO NOTHING)
         const { error: mapErr } = await admin
           .from("migration_user_map")
-          .insert({
+          .upsert({
             tenant_id: TENANT_ID,
             salute_user_id: c.user_id,
             gymboard_user_id: gymboardUserId,
             email: c.email,
-          });
+          }, { onConflict: "tenant_id,salute_user_id", ignoreDuplicates: true });
         if (mapErr) throw new Error(`migration_user_map: ${mapErr.message}`);
+
+        // ローカルキャッシュも更新 (同一実行内の二重処理防止)
+        mappedBySalute.set(c.user_id, { gymboard_user_id: gymboardUserId, email: c.email });
+        mappedByEmail.set(c.email.toLowerCase(), { gymboard_user_id: gymboardUserId, salute_user_id: c.user_id });
 
         log.status = "ok";
         log.gymboard_user_id = gymboardUserId;

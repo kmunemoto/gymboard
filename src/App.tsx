@@ -15,6 +15,7 @@ import Tokushoho from "./pages/Tokushoho.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import JoinGym from "./pages/JoinGym.tsx";
 import DeleteAccount from "./pages/DeleteAccount.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 
 const queryClient = new QueryClient();
 

@@ -20,7 +20,9 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 
 import { useTenant } from "@/hooks/useTenant";
+import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import PushNotificationSection from "./PushNotificationSection";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();

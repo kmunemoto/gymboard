@@ -1,10 +1,16 @@
-// Read-only connectivity check for the Salute source Supabase project.
-// This function performs SELECT count(*) queries only. It does NOT create,
-// update, or delete any data — in either the source (Salute) or destination
-// (GymBoard) projects.
+// GymBoard 側: Salute プロジェクトの salute-export-counts を共有シークレットで呼び出し、
+// 件数のみを取得して返す接続確認用関数。読み取りのみで、GymBoard 自身のDBにも
+// Salute のDBにも一切書き込みを行わない。
+//
+// 必要な Secrets:
+//   - MIGRATION_SHARED_SECRET: Salute 側と同一の合言葉
+//   - SALUTE_EXPORT_URL: https://gvgrqaigffxtkvckjfur.supabase.co/functions/v1/salute-export-counts
 
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,93 +18,48 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const SALUTE_URL = Deno.env.get("SALUTE_SUPABASE_URL");
-    const SALUTE_KEY = Deno.env.get("SALUTE_SUPABASE_SERVICE_ROLE_KEY");
+    const SALUTE_EXPORT_URL = Deno.env.get("SALUTE_EXPORT_URL");
+    const SHARED_SECRET = Deno.env.get("MIGRATION_SHARED_SECRET");
 
-    if (!SALUTE_URL || !SALUTE_KEY) {
+    if (!SALUTE_EXPORT_URL || !SHARED_SECRET) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: "Missing SALUTE_SUPABASE_URL or SALUTE_SUPABASE_SERVICE_ROLE_KEY",
+          error: "Missing SALUTE_EXPORT_URL or MIGRATION_SHARED_SECRET",
+          hint: "Configure both secrets in Cloud → Secrets.",
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Safely inspect the JWT payload (no signature, no secret leak).
-    let keyInfo: Record<string, unknown> = { length: SALUTE_KEY.length };
-    try {
-      const parts = SALUTE_KEY.split(".");
-      if (parts.length === 3) {
-        const pad = (s: string) => s + "=".repeat((4 - (s.length % 4)) % 4);
-        const b64 = pad(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
-        const payload = JSON.parse(atob(b64));
-        keyInfo = {
-          length: SALUTE_KEY.length,
-          ref: payload.ref,
-          role: payload.role,
-          iss: payload.iss,
-          exp: payload.exp,
-          expired: typeof payload.exp === "number" ? payload.exp * 1000 < Date.now() : null,
-        };
-      } else {
-        keyInfo.format = "not_a_jwt_3_parts";
-      }
-    } catch (e) {
-      keyInfo.decode_error = e instanceof Error ? e.message : String(e);
-    }
-
-    const salute = createClient(SALUTE_URL, SALUTE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
+    const upstream = await fetch(SALUTE_EXPORT_URL, {
+      method: "GET",
+      headers: {
+        "x-migration-secret": SHARED_SECRET,
+        "Content-Type": "application/json",
+      },
     });
 
-    // Read-only counts.
-    const countOf = async (
-      table: string,
-      filter?: (q: ReturnType<typeof salute.from>) => any,
-    ) => {
-      let q: any = salute.from(table).select("*", { count: "exact", head: true });
-      if (filter) q = filter(q);
-      const { count, error, status } = await q;
-      if (error) return { count: null, status, error: JSON.stringify(error) };
-      return { count, status, error: null };
-    };
-
-    const [
-      profilesTotal,
-      profilesCustomers,
-      profilesTrainers,
-      bookings,
-      workouts,
-      tenants,
-      tenantMembers,
-    ] = await Promise.all([
-      countOf("profiles"),
-      countOf("profiles", (q) => q.eq("role", "customer")),
-      countOf("profiles", (q) => q.eq("role", "trainer")),
-      countOf("bookings"),
-      countOf("workouts"),
-      countOf("tenants"),
-      countOf("tenant_members"),
-    ]);
+    const text = await upstream.text();
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = { raw: text };
+    }
 
     return new Response(
       JSON.stringify({
-        ok: true,
-        connected_to: SALUTE_URL,
+        ok: upstream.ok,
         readonly: true,
-        key_info: keyInfo,
-        counts: {
-          profiles_total: profilesTotal,
-          profiles_customers: profilesCustomers,
-          profiles_trainers: profilesTrainers,
-          bookings,
-          workouts,
-          tenants,
-          tenant_members: tenantMembers,
-        },
+        gymboard_called: SALUTE_EXPORT_URL,
+        upstream_status: upstream.status,
+        upstream_response: parsed,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: upstream.ok ? 200 : 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   } catch (e) {
     return new Response(

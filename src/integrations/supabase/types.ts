@@ -1246,6 +1246,41 @@ export type Database = {
           },
         ]
       }
+      migration_user_map: {
+        Row: {
+          email: string
+          gymboard_user_id: string
+          id: string
+          migrated_at: string
+          salute_user_id: string
+          tenant_id: string
+        }
+        Insert: {
+          email: string
+          gymboard_user_id: string
+          id?: string
+          migrated_at?: string
+          salute_user_id: string
+          tenant_id: string
+        }
+        Update: {
+          email?: string
+          gymboard_user_id?: string
+          id?: string
+          migrated_at?: string
+          salute_user_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_user_map_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monthly_reports: {
         Row: {
           created_at: string

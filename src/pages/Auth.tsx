@@ -46,6 +46,20 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "forgot") {
+      setLoading(true);
+      try {
+        const redirectTo = `${window.location.origin}/reset-password`;
+        // Always show success to avoid leaking whether the email is registered.
+        await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      } catch (err: any) {
+        console.warn("resetPasswordForEmail error (suppressed):", err?.message);
+      } finally {
+        setForgotSent(true);
+        setLoading(false);
+      }
+      return;
+    }
     if (mode === "signup") {
       if (password.length < 6) {
         toast.error("パスワードは6文字以上にしてください");

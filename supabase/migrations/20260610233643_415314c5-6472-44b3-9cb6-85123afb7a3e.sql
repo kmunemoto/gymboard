@@ -1,0 +1,1 @@
+DELETE FROM public.tenants WHERE id = '8c73dbbb-62b8-479c-a9a4-e94ff332eaea';

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
 import { verifyCaller, hasRole } from "../_shared/auth.ts";
 
 const ALLOWED_URL_HOSTS = new Set([
@@ -18,7 +19,9 @@ function isAllowedUrl(u: string | undefined): boolean {
   }
 }
 
-// Web Push with VAPID using the web-push npm package approach via crypto APIs
+// ============================================================
+// Web Push (VAPID) helpers — unchanged behavior
+// ============================================================
 const VAPID_PUBLIC_KEY = "BKxLbT912uBVUI_0010w-QQWaic5ITY-_SZS1wo9BZdTq6mTyfbBPlmftYG_CKB4cdJYPTSLhiEGADA3Uv_R5_s";
 
 function base64UrlDecode(str: string): Uint8Array {
@@ -39,7 +42,6 @@ function base64UrlEncode(buffer: ArrayBuffer): string {
 
 async function importVapidKey(privateKeyBase64Url: string): Promise<CryptoKey> {
   const rawKey = base64UrlDecode(privateKeyBase64Url);
-  // Build PKCS8 from raw 32-byte EC private key
   const pkcs8 = new Uint8Array([
     0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86,
     0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
@@ -56,40 +58,32 @@ async function createVapidAuthHeader(endpoint: string, privateKey: string): Prom
   const audience = `${url.protocol}//${url.host}`;
   const now = Math.floor(Date.now() / 1000);
   const expiry = now + 12 * 3600;
-
   const header = { typ: "JWT", alg: "ES256" };
   const payload = { aud: audience, exp: expiry, sub: "mailto:info@salute-gosyominami.com" };
-
   const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
   const payloadB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const unsignedToken = `${headerB64}.${payloadB64}`;
-
   const key = await importVapidKey(privateKey);
   const signature = await crypto.subtle.sign(
     { name: "ECDSA", hash: { name: "SHA-256" } },
     key,
-    new TextEncoder().encode(unsignedToken)
+    new TextEncoder().encode(unsignedToken),
   );
-
-  // Convert DER signature to raw r||s
   const sigBytes = new Uint8Array(signature);
   let r: Uint8Array, s: Uint8Array;
   if (sigBytes.length === 64) {
     r = sigBytes.slice(0, 32);
     s = sigBytes.slice(32);
   } else {
-    // DER format
     const rLen = sigBytes[3];
     const rStart = 4;
     r = sigBytes.slice(rStart, rStart + rLen);
     const sLen = sigBytes[rStart + rLen + 1];
     const sStart = rStart + rLen + 2;
     s = sigBytes.slice(sStart, sStart + sLen);
-    // Trim leading zeros
     if (r.length > 32) r = r.slice(r.length - 32);
     if (s.length > 32) s = s.slice(s.length - 32);
   }
-  // Pad if needed
   const rPad = new Uint8Array(32);
   rPad.set(r, 32 - r.length);
   const sPad = new Uint8Array(32);
@@ -97,24 +91,19 @@ async function createVapidAuthHeader(endpoint: string, privateKey: string): Prom
   const rawSig = new Uint8Array(64);
   rawSig.set(rPad, 0);
   rawSig.set(sPad, 32);
-
   const jwt = `${unsignedToken}.${base64UrlEncode(rawSig.buffer)}`;
-
   return {
     authorization: `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`,
     cryptoKey: `p256ecdsa=${VAPID_PUBLIC_KEY}`,
   };
 }
 
-async function sendPush(
+async function sendWebPush(
   subscription: { endpoint: string; p256dh: string; auth: string },
   payload: string,
-  vapidPrivateKey: string
+  vapidPrivateKey: string,
 ): Promise<Response> {
   const { authorization, cryptoKey } = await createVapidAuthHeader(subscription.endpoint, vapidPrivateKey);
-
-  // For simplicity, send unencrypted (aes128gcm requires complex encryption).
-  // Most browsers accept this for testing. For production, implement RFC 8291.
   return fetch(subscription.endpoint, {
     method: "POST",
     headers: {
@@ -127,6 +116,120 @@ async function sendPush(
   });
 }
 
+// ============================================================
+// FCM HTTP v1 API helpers
+// ============================================================
+type ServiceAccount = {
+  client_email: string;
+  private_key: string;
+  project_id: string;
+  token_uri?: string;
+};
+
+let cachedServiceAccount: ServiceAccount | null = null;
+let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+
+function getServiceAccount(): ServiceAccount | null {
+  if (cachedServiceAccount) return cachedServiceAccount;
+  const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ServiceAccount;
+    if (!parsed.client_email || !parsed.private_key || !parsed.project_id) {
+      console.error("FIREBASE_SERVICE_ACCOUNT_JSON missing required fields");
+      return null;
+    }
+    cachedServiceAccount = parsed;
+    return parsed;
+  } catch (e) {
+    console.error("FIREBASE_SERVICE_ACCOUNT_JSON parse failed:", e);
+    return null;
+  }
+}
+
+async function getFcmAccessToken(sa: ServiceAccount): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedAccessToken && cachedAccessToken.expiresAt - 60 > now) {
+    return cachedAccessToken.token;
+  }
+  const tokenUri = sa.token_uri || "https://oauth2.googleapis.com/token";
+  const privateKey = await importPKCS8(sa.private_key.replace(/\\n/g, "\n"), "RS256");
+  const jwt = await new SignJWT({
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+  })
+    .setProtectedHeader({ alg: "RS256", typ: "JWT" })
+    .setIssuer(sa.client_email)
+    .setSubject(sa.client_email)
+    .setAudience(tokenUri)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(privateKey);
+
+  const res = await fetch(tokenUri, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: jwt,
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`FCM token exchange failed: ${res.status} ${errText}`);
+  }
+  const data = await res.json() as { access_token: string; expires_in: number };
+  cachedAccessToken = {
+    token: data.access_token,
+    expiresAt: now + (data.expires_in ?? 3600),
+  };
+  return data.access_token;
+}
+
+async function sendFcm(
+  accessToken: string,
+  projectId: string,
+  token: string,
+  title: string,
+  body: string,
+  data: Record<string, string>,
+): Promise<{ ok: boolean; status: number; errorCode?: string; errorBody?: string }> {
+  const message = {
+    message: {
+      token,
+      notification: { title, body },
+      data,
+      apns: {
+        payload: {
+          aps: { sound: "default", badge: 1 },
+        },
+      },
+    },
+  };
+  const res = await fetch(
+    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    },
+  );
+  if (res.ok) return { ok: true, status: res.status };
+  const errBody = await res.text();
+  let errorCode: string | undefined;
+  try {
+    const parsed = JSON.parse(errBody);
+    errorCode = parsed?.error?.details?.find?.((d: { errorCode?: string }) => d.errorCode)?.errorCode
+      ?? parsed?.error?.status;
+  } catch { /* ignore */ }
+  return { ok: false, status: res.status, errorCode, errorBody: errBody };
+}
+
+// ============================================================
+// Main handler
+// ============================================================
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -148,9 +251,7 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // ---- Anonymous-allowed path: notify trainers of a brand-new trial booking.
-    // The caller passes only the trial_booking_id; we resolve trainer ids
-    // server-side from the booking's tenant_id. No arbitrary user targeting.
+    // ---- Anonymous-allowed path: notify trainers of a new trial booking.
     if (purpose === "trial_booking") {
       if (!trial_booking_id || typeof trial_booking_id !== "string") {
         return new Response(JSON.stringify({ error: "trial_booking_id required" }), {
@@ -194,8 +295,6 @@ Deno.serve(async (req) => {
       if (!caller.isServiceRole) {
         const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
         if (!isTrainer) {
-          // Regular users may only push to themselves OR to a trainer in their tenant
-          // (so customer→trainer chat / booking notifications work). Validate via tenant_members.
           const callerId = caller.userId!;
           const { data: mine } = await adminClient
             .from("tenant_members")
@@ -230,56 +329,138 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: subscriptions, error } = await adminClient
-      .from("push_subscriptions")
-      .select("endpoint, p256dh, auth, user_id")
-      .in("user_id", user_ids);
+    // ---- Load both delivery targets in parallel ----
+    const [webRes, nativeRes] = await Promise.all([
+      adminClient
+        .from("push_subscriptions")
+        .select("endpoint, p256dh, auth, user_id")
+        .in("user_id", user_ids),
+      adminClient
+        .from("push_devices")
+        .select("id, fcm_token, platform, user_id")
+        .in("user_id", user_ids),
+    ]);
+    if (webRes.error) throw webRes.error;
+    if (nativeRes.error) throw nativeRes.error;
 
-    if (error) throw error;
-    if (!subscriptions || subscriptions.length === 0) {
-      return new Response(JSON.stringify({ sent: 0, message: "No subscriptions found" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const subscriptions = webRes.data ?? [];
+    const devices = (nativeRes.data ?? []).filter((d: { fcm_token: string | null }) => !!d.fcm_token);
 
-    const pushPayload = JSON.stringify({
-      title: title || "お知らせ",
-      body: body || "新しい通知があります",
-      url: url || "/",
-      tag: tag || "default",
+    const notifTitle = title || "お知らせ";
+    const notifBody = body || "新しい通知があります";
+    const notifUrl = url || "/";
+    const notifTag = tag || "default";
+
+    const webPayload = JSON.stringify({
+      title: notifTitle, body: notifBody, url: notifUrl, tag: notifTag,
     });
 
-    const results = await Promise.allSettled(
-      subscriptions.map((sub) => sendPush(sub, pushPayload, vapidPrivateKey)),
+    // ---- Web Push tasks ----
+    const webTasks = subscriptions.map((sub) =>
+      sendWebPush(sub, webPayload, vapidPrivateKey)
+        .then((r) => ({ kind: "web" as const, sub, response: r as Response, error: null as unknown }))
+        .catch((e) => ({ kind: "web" as const, sub, response: null, error: e })),
     );
 
-    let sent = 0;
-    const expiredEndpoints: string[] = [];
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") {
-        if (r.value.ok) {
-          sent++;
-        } else if (r.value.status === 404 || r.value.status === 410) {
-          expiredEndpoints.push(subscriptions[i].endpoint);
+    // ---- FCM tasks ----
+    const sa = getServiceAccount();
+    let fcmTasks: Promise<{
+      kind: "fcm";
+      device: { id: string; fcm_token: string; user_id: string };
+      result: Awaited<ReturnType<typeof sendFcm>> | null;
+      error: unknown;
+    }>[] = [];
+    if (devices.length > 0) {
+      if (!sa) {
+        console.warn("push_devices found but FIREBASE_SERVICE_ACCOUNT_JSON missing — skipping FCM");
+      } else {
+        try {
+          const accessToken = await getFcmAccessToken(sa);
+          fcmTasks = devices.map((d) =>
+            sendFcm(accessToken, sa.project_id, d.fcm_token, notifTitle, notifBody, { url: notifUrl, tag: notifTag })
+              .then((result) => ({ kind: "fcm" as const, device: d, result, error: null as unknown }))
+              .catch((e) => ({ kind: "fcm" as const, device: d, result: null, error: e })),
+          );
+        } catch (e) {
+          console.error("FCM access token fetch failed:", e);
         }
+      }
+    }
+
+    const [webResults, fcmResults] = await Promise.all([
+      Promise.allSettled(webTasks),
+      Promise.allSettled(fcmTasks),
+    ]);
+
+    // ---- Tally Web Push ----
+    let webSent = 0;
+    const expiredEndpoints: string[] = [];
+    webResults.forEach((r) => {
+      if (r.status !== "fulfilled") return;
+      const { response, sub, error } = r.value;
+      if (error) { console.warn("web push error:", error); return; }
+      if (!response) return;
+      if (response.ok) {
+        webSent++;
+      } else if (response.status === 404 || response.status === 410) {
+        expiredEndpoints.push(sub.endpoint);
+        console.log(`web push expired (${response.status}) endpoint=${sub.endpoint}`);
+      } else {
+        console.warn(`web push failed status=${response.status}`);
       }
     });
 
-    // Cleanup expired subscriptions (fire-and-forget)
+    // ---- Tally FCM ----
+    let fcmSent = 0;
+    const invalidDeviceIds: string[] = [];
+    fcmResults.forEach((r) => {
+      if (r.status !== "fulfilled") return;
+      const { device, result, error } = r.value;
+      if (error) { console.warn(`fcm error device=${device.id}:`, error); return; }
+      if (!result) return;
+      if (result.ok) {
+        fcmSent++;
+      } else {
+        const code = result.errorCode ?? "";
+        const isInvalid =
+          result.status === 404 ||
+          code === "UNREGISTERED" ||
+          code === "INVALID_ARGUMENT" ||
+          code === "NOT_FOUND";
+        console.warn(`fcm failed device=${device.id} status=${result.status} code=${code} body=${result.errorBody?.slice(0, 300)}`);
+        if (isInvalid) invalidDeviceIds.push(device.id);
+      }
+    });
+
+    // ---- Cleanup (fire-and-forget) ----
     if (expiredEndpoints.length > 0) {
-      adminClient
-        .from("push_subscriptions")
-        .delete()
-        .in("endpoint", expiredEndpoints)
+      adminClient.from("push_subscriptions").delete().in("endpoint", expiredEndpoints)
         .then(({ error: delErr }) => {
-          if (delErr) console.warn("expired subscription cleanup failed:", delErr.message);
-          else console.log(`Cleaned up ${expiredEndpoints.length} expired subscription(s)`);
+          if (delErr) console.warn("expired web subscription cleanup failed:", delErr.message);
+          else console.log(`Cleaned up ${expiredEndpoints.length} expired web subscription(s)`);
+        });
+    }
+    if (invalidDeviceIds.length > 0) {
+      adminClient.from("push_devices").delete().in("id", invalidDeviceIds)
+        .then(({ error: delErr }) => {
+          if (delErr) console.warn("invalid fcm device cleanup failed:", delErr.message);
+          else console.log(`Cleaned up ${invalidDeviceIds.length} invalid fcm device(s)`);
         });
     }
 
-    return new Response(JSON.stringify({ sent, total: subscriptions.length, expired: expiredEndpoints.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const totalSent = webSent + fcmSent;
+    const totalTargets = subscriptions.length + devices.length;
+    return new Response(
+      JSON.stringify({
+        sent: totalSent,
+        total: totalTargets,
+        web: { sent: webSent, total: subscriptions.length, expired: expiredEndpoints.length },
+        fcm: { sent: fcmSent, total: devices.length, invalid: invalidDeviceIds.length },
+        // Keep top-level "expired" for backwards compatibility with existing callers
+        expired: expiredEndpoints.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err) {
     console.error("Push notification error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {

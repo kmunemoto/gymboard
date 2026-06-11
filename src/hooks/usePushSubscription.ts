@@ -122,8 +122,6 @@ export function usePushSubscription() {
 
     await PushNotifications.addListener("registrationError", (err) => {
       console.error("[Push native] registrationError:", err);
-      // DEBUG: Remove before release
-      toast.error(`registrationError: ${err.error}`, { duration: 8000 });
       toast.error("プッシュ通知の登録に失敗しました");
     });
 

@@ -216,19 +216,43 @@ export function usePushSubscription() {
     if (!user) return false;
     try {
       const { PushNotifications } = await import("@capacitor/push-notifications");
+      // DEBUG: Remove before release
+      toast.info("PushNotifications imported", { duration: 8000 });
+
+      const permState = await PushNotifications.checkPermissions();
+      // DEBUG: Remove before release
+      toast.info(`Permission state: ${permState.receive}`, { duration: 8000 });
+
+      // DEBUG: Remove before release
+      toast.info("Requesting push permission...", { duration: 8000 });
       const perm = await PushNotifications.requestPermissions();
       setPermission(perm.receive === "granted" ? "granted" : perm.receive === "denied" ? "denied" : "default");
       if (perm.receive !== "granted") {
         console.warn("[Push native] permission not granted:", perm.receive);
+        // DEBUG: Remove before release
+        toast.error(`Permission denied: ${perm.receive}`, { duration: 8000 });
         return false;
       }
+      // DEBUG: Remove before release
+      toast.info(`Permission granted: ${perm.receive}`, { duration: 8000 });
 
       await attachNativeListeners();
+      // DEBUG: Remove before release
+      toast.info("registration listener attached", { duration: 8000 });
+      // DEBUG: Remove before release
+      toast.info("registrationError listener attached", { duration: 8000 });
+
+      // DEBUG: Remove before release
+      toast.info("Calling PushNotifications.register()", { duration: 8000 });
       await PushNotifications.register();
+      // DEBUG: Remove before release
+      toast.info("register() resolved (waiting for event)", { duration: 8000 });
       // Token arrives via 'registration' listener which sets isSubscribed.
       return true;
     } catch (err) {
       console.error("[Push native] subscribe failed:", err);
+      // DEBUG: Remove before release
+      toast.error(`subscribeNative threw: ${err instanceof Error ? err.message : String(err)}`, { duration: 8000 });
       toast.error("プッシュ通知の登録に失敗しました");
       return false;
     }

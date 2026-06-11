@@ -27,22 +27,36 @@ export function usePushSubscription() {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [permission, setPermission] = useState<"default" | "granted" | "denied">("default");
   const listenersAttached = useRef(false);
 
   // ===== Initial detection =====
   useEffect(() => {
     if (isNative()) {
       setIsSupported(true);
+      (async () => {
+        try {
+          const { PushNotifications } = await import("@capacitor/push-notifications");
+          const p = await PushNotifications.checkPermissions();
+          setPermission(p.receive === "granted" ? "granted" : p.receive === "denied" ? "denied" : "default");
+        } catch {
+          /* ignore */
+        }
+      })();
       if (user) checkNativeSubscription();
       else setLoading(false);
     } else {
       const supported = "serviceWorker" in navigator && "PushManager" in window;
       setIsSupported(supported);
+      if (supported && typeof Notification !== "undefined") {
+        setPermission(Notification.permission as "default" | "granted" | "denied");
+      }
       if (supported && user) checkWebSubscription();
       else setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
 
   // ===== Web =====
   const checkWebSubscription = useCallback(async () => {

@@ -73,14 +73,7 @@ jobs:
         run: |
           ENT="ios/App/App/App.entitlements"
           if [ ! -f "$ENT" ]; then
-            cat > "$ENT" <<'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-          </dict>
-          </plist>
-          EOF
+            printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0">' '<dict>' '</dict>' '</plist>' > "$ENT"
           fi
           /usr/libexec/PlistBuddy -c "Add :aps-environment string production" "$ENT" 2>/dev/null || \
             /usr/libexec/PlistBuddy -c "Set :aps-environment production" "$ENT"
@@ -89,8 +82,7 @@ jobs:
           # Ensure the entitlements file is wired into the Xcode project
           PBX="ios/App/App.xcodeproj/project.pbxproj"
           if ! grep -q "CODE_SIGN_ENTITLEMENTS = App/App.entitlements" "$PBX"; then
-            sed -i '' 's|PRODUCT_BUNDLE_IDENTIFIER = app.gymboard.mobile;|CODE_SIGN_ENTITLEMENTS = App/App.entitlements;\
-				PRODUCT_BUNDLE_IDENTIFIER = app.gymboard.mobile;|g' "$PBX"
+            sed -i '' 's|PRODUCT_BUNDLE_IDENTIFIER = app.gymboard.mobile;|CODE_SIGN_ENTITLEMENTS = App/App.entitlements; PRODUCT_BUNDLE_IDENTIFIER = app.gymboard.mobile;|g' "$PBX"
             echo "--- Wired CODE_SIGN_ENTITLEMENTS into project.pbxproj ---"
             grep "CODE_SIGN_ENTITLEMENTS" "$PBX" || true
           fi

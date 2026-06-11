@@ -146,8 +146,10 @@ export function usePushSubscription() {
   const subscribeWeb = useCallback(async () => {
     if (!user) return false;
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return false;
+      const perm = await Notification.requestPermission();
+      setPermission(perm as "default" | "granted" | "denied");
+      if (perm !== "granted") return false;
+
 
       let registration: ServiceWorkerRegistration;
       try {

@@ -205,10 +205,12 @@ export function usePushSubscription() {
     try {
       const { PushNotifications } = await import("@capacitor/push-notifications");
       const perm = await PushNotifications.requestPermissions();
+      setPermission(perm.receive === "granted" ? "granted" : perm.receive === "denied" ? "denied" : "default");
       if (perm.receive !== "granted") {
         console.warn("[Push native] permission not granted:", perm.receive);
         return false;
       }
+
       await attachNativeListeners();
       await PushNotifications.register();
       // Token arrives via 'registration' listener which sets isSubscribed.

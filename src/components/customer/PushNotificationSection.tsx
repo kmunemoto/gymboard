@@ -1,4 +1,5 @@
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, AlertCircle } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -6,7 +7,10 @@ import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const PushNotificationSection = () => {
-  const { isSupported, isSubscribed, loading, subscribe, unsubscribe } = usePushSubscription();
+  const { isSupported, isSubscribed, loading, permission, subscribe, unsubscribe } = usePushSubscription();
+  const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
+
 
   if (!isSupported) return null;
 
@@ -52,12 +56,26 @@ const PushNotificationSection = () => {
                     通知をOFFにする
                   </Button>
                 </div>
+              ) : permission === "denied" ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <div className="text-xs text-muted-foreground break-all">
+                    {isNative ? (
+                      <>
+                        通知が拒否されています。{platform === "ios" ? "iPhoneの「設定」→「ジムボード」→「通知」" : "端末の「設定」→「アプリ」→「ジムボード」→「通知」"}から許可してください。
+                      </>
+                    ) : (
+                      <>通知が拒否されています。ブラウザのサイト設定から通知を許可してください。</>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <Button size="sm" onClick={handleToggle} variant="accent">
                   <Bell className="w-4 h-4 mr-1.5" />
                   通知を受け取る
                 </Button>
               )}
+
             </div>
           </div>
         </CardContent>

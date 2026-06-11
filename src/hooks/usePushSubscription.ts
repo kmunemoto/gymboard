@@ -27,22 +27,36 @@ export function usePushSubscription() {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [permission, setPermission] = useState<"default" | "granted" | "denied">("default");
   const listenersAttached = useRef(false);
 
   // ===== Initial detection =====
   useEffect(() => {
     if (isNative()) {
       setIsSupported(true);
+      (async () => {
+        try {
+          const { PushNotifications } = await import("@capacitor/push-notifications");
+          const p = await PushNotifications.checkPermissions();
+          setPermission(p.receive === "granted" ? "granted" : p.receive === "denied" ? "denied" : "default");
+        } catch {
+          /* ignore */
+        }
+      })();
       if (user) checkNativeSubscription();
       else setLoading(false);
     } else {
       const supported = "serviceWorker" in navigator && "PushManager" in window;
       setIsSupported(supported);
+      if (supported && typeof Notification !== "undefined") {
+        setPermission(Notification.permission as "default" | "granted" | "denied");
+      }
       if (supported && user) checkWebSubscription();
       else setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
 
   // ===== Web =====
   const checkWebSubscription = useCallback(async () => {
@@ -132,8 +146,10 @@ export function usePushSubscription() {
   const subscribeWeb = useCallback(async () => {
     if (!user) return false;
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return false;
+      const perm = await Notification.requestPermission();
+      setPermission(perm as "default" | "granted" | "denied");
+      if (perm !== "granted") return false;
+
 
       let registration: ServiceWorkerRegistration;
       try {
@@ -189,10 +205,12 @@ export function usePushSubscription() {
     try {
       const { PushNotifications } = await import("@capacitor/push-notifications");
       const perm = await PushNotifications.requestPermissions();
+      setPermission(perm.receive === "granted" ? "granted" : perm.receive === "denied" ? "denied" : "default");
       if (perm.receive !== "granted") {
         console.warn("[Push native] permission not granted:", perm.receive);
         return false;
       }
+
       await attachNativeListeners();
       await PushNotifications.register();
       // Token arrives via 'registration' listener which sets isSubscribed.
@@ -249,5 +267,5 @@ export function usePushSubscription() {
     return isNative() ? unsubscribeNative() : unsubscribeWeb();
   }, [unsubscribeNative, unsubscribeWeb]);
 
-  return { isSupported, isSubscribed, loading, subscribe, unsubscribe };
+  return { isSupported, isSubscribed, loading, permission, subscribe, unsubscribe };
 }

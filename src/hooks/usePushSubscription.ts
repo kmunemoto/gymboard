@@ -95,12 +95,8 @@ export function usePushSubscription() {
 
     await PushNotifications.addListener("registration", async (token) => {
       console.log("[Push native] FCM token:", token.value);
-      // DEBUG: Remove before release
-      toast.success(`registration event fired, token length: ${token.value?.length ?? 0}`, { duration: 8000 });
       if (!user) return;
       try {
-        // DEBUG: Remove before release
-        toast.info(`Upserting to push_devices for user ${user.id.substring(0, 8)}...`, { duration: 8000 });
         const { error } = await supabase.from("push_devices" as any).upsert(
           {
             user_id: user.id,
@@ -115,25 +111,17 @@ export function usePushSubscription() {
         );
         if (error) {
           console.error("[Push native] DB save failed:", error);
-          // DEBUG: Remove before release
-          toast.error(`DB save failed: ${error.message}`, { duration: 8000 });
           toast.error(`通知トークン保存に失敗: ${error.message}`);
         } else {
-          // DEBUG: Remove before release
-          toast.success("push_devices upsert OK", { duration: 8000 });
           setIsSubscribed(true);
         }
       } catch (e) {
         console.error("[Push native] save error:", e);
-        // DEBUG: Remove before release
-        toast.error(`DB save failed: ${e instanceof Error ? e.message : String(e)}`, { duration: 8000 });
       }
     });
 
     await PushNotifications.addListener("registrationError", (err) => {
       console.error("[Push native] registrationError:", err);
-      // DEBUG: Remove before release
-      toast.error(`registrationError: ${err.error}`, { duration: 8000 });
       toast.error("プッシュ通知の登録に失敗しました");
     });
 
@@ -216,43 +204,23 @@ export function usePushSubscription() {
     if (!user) return false;
     try {
       const { PushNotifications } = await import("@capacitor/push-notifications");
-      // DEBUG: Remove before release
-      toast.info("PushNotifications imported", { duration: 8000 });
 
       const permState = await PushNotifications.checkPermissions();
-      // DEBUG: Remove before release
-      toast.info(`Permission state: ${permState.receive}`, { duration: 8000 });
 
-      // DEBUG: Remove before release
-      toast.info("Requesting push permission...", { duration: 8000 });
       const perm = await PushNotifications.requestPermissions();
       setPermission(perm.receive === "granted" ? "granted" : perm.receive === "denied" ? "denied" : "default");
       if (perm.receive !== "granted") {
         console.warn("[Push native] permission not granted:", perm.receive);
-        // DEBUG: Remove before release
-        toast.error(`Permission denied: ${perm.receive}`, { duration: 8000 });
         return false;
       }
-      // DEBUG: Remove before release
-      toast.info(`Permission granted: ${perm.receive}`, { duration: 8000 });
 
       await attachNativeListeners();
-      // DEBUG: Remove before release
-      toast.info("registration listener attached", { duration: 8000 });
-      // DEBUG: Remove before release
-      toast.info("registrationError listener attached", { duration: 8000 });
 
-      // DEBUG: Remove before release
-      toast.info("Calling PushNotifications.register()", { duration: 8000 });
       await PushNotifications.register();
-      // DEBUG: Remove before release
-      toast.info("register() resolved (waiting for event)", { duration: 8000 });
       // Token arrives via 'registration' listener which sets isSubscribed.
       return true;
     } catch (err) {
       console.error("[Push native] subscribe failed:", err);
-      // DEBUG: Remove before release
-      toast.error(`subscribeNative threw: ${err instanceof Error ? err.message : String(err)}`, { duration: 8000 });
       toast.error("プッシュ通知の登録に失敗しました");
       return false;
     }

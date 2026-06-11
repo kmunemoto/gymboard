@@ -95,12 +95,8 @@ export function usePushSubscription() {
 
     await PushNotifications.addListener("registration", async (token) => {
       console.log("[Push native] FCM token:", token.value);
-      // DEBUG: Remove before release
-      toast.success(`registration event fired, token length: ${token.value?.length ?? 0}`, { duration: 8000 });
       if (!user) return;
       try {
-        // DEBUG: Remove before release
-        toast.info(`Upserting to push_devices for user ${user.id.substring(0, 8)}...`, { duration: 8000 });
         const { error } = await supabase.from("push_devices" as any).upsert(
           {
             user_id: user.id,
@@ -115,18 +111,12 @@ export function usePushSubscription() {
         );
         if (error) {
           console.error("[Push native] DB save failed:", error);
-          // DEBUG: Remove before release
-          toast.error(`DB save failed: ${error.message}`, { duration: 8000 });
           toast.error(`通知トークン保存に失敗: ${error.message}`);
         } else {
-          // DEBUG: Remove before release
-          toast.success("push_devices upsert OK", { duration: 8000 });
           setIsSubscribed(true);
         }
       } catch (e) {
         console.error("[Push native] save error:", e);
-        // DEBUG: Remove before release
-        toast.error(`DB save failed: ${e instanceof Error ? e.message : String(e)}`, { duration: 8000 });
       }
     });
 

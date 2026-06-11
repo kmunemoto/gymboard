@@ -56,12 +56,26 @@ const PushNotificationSection = () => {
                     通知をOFFにする
                   </Button>
                 </div>
+              ) : permission === "denied" ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <div className="text-xs text-muted-foreground break-all">
+                    {isNative ? (
+                      <>
+                        通知が拒否されています。{platform === "ios" ? "iPhoneの「設定」→「ジムボード」→「通知」" : "端末の「設定」→「アプリ」→「ジムボード」→「通知」"}から許可してください。
+                      </>
+                    ) : (
+                      <>通知が拒否されています。ブラウザのサイト設定から通知を許可してください。</>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <Button size="sm" onClick={handleToggle} variant="accent">
                   <Bell className="w-4 h-4 mr-1.5" />
                   通知を受け取る
                 </Button>
               )}
+
             </div>
           </div>
         </CardContent>

@@ -1,4 +1,5 @@
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, AlertCircle } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -6,7 +7,10 @@ import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const PushNotificationSection = () => {
-  const { isSupported, isSubscribed, loading, subscribe, unsubscribe } = usePushSubscription();
+  const { isSupported, isSubscribed, loading, permission, subscribe, unsubscribe } = usePushSubscription();
+  const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
+
 
   if (!isSupported) return null;
 

@@ -267,5 +267,5 @@ export function usePushSubscription() {
     return isNative() ? unsubscribeNative() : unsubscribeWeb();
   }, [unsubscribeNative, unsubscribeWeb]);
 
-  return { isSupported, isSubscribed, loading, subscribe, unsubscribe };
+  return { isSupported, isSubscribed, loading, permission, subscribe, unsubscribe };
 }

@@ -341,6 +341,9 @@ Deno.serve(async (req) => {
       .from("workouts")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", TENANT_ID);
+    const { count: totalSkippedOverlap } = await admin
+      .from("repair_skipped_bookings")
+      .select("id", { count: "exact", head: true });
 
     return json({
       ok: true,
@@ -357,6 +360,7 @@ Deno.serve(async (req) => {
         salute_workouts_sum: totalSaluteWorkouts,
         gymboard_bookings_now: totalGymBookings ?? 0,
         gymboard_workouts_now: totalGymWorkouts ?? 0,
+        repair_skipped_overlap_total: totalSkippedOverlap ?? 0,
       },
       results,
     }, 200);

@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
     const results: Array<Record<string, unknown>> = [];
 
     for (const cand of batch) {
-      const { c, gymboardUserId, saluteBookings, saluteWorkouts, gymBookingsBefore, gymWorkoutsBefore } = cand;
+      const { c, gymboardUserId, saluteBookings, saluteWorkouts, gymBookingsBefore, gymWorkoutsBefore, skippedBookingsBefore } = cand;
       const log: Record<string, unknown> = {
         email: c.email,
         gymboard_user_id: gymboardUserId,
@@ -189,10 +189,11 @@ Deno.serve(async (req) => {
         salute_workouts: saluteWorkouts,
         gym_bookings_before: gymBookingsBefore,
         gym_workouts_before: gymWorkoutsBefore,
+        skipped_overlap_before: skippedBookingsBefore,
       };
 
       try {
-        const needBookings = gymBookingsBefore < saluteBookings;
+        const needBookings = (gymBookingsBefore + skippedBookingsBefore) < saluteBookings;
         const needWorkouts = gymWorkoutsBefore < saluteWorkouts;
 
         if (dryRun) {
@@ -203,9 +204,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // --- bookings 補修 (追加INSERTのみ。既存と同じ booking_date のものはスキップ) ---
-        // check_booking_overlap トリガーが既存データを誤検知することがあるため、削除はせず追加のみ。
+        // --- bookings 補修 (追加INSERTのみ。overlap で弾かれたものは repair_skipped_bookings に記録) ---
         let bookingsInserted = 0;
+        let bookingsSkippedOverlap = 0;
         const bookingErrors: string[] = [];
         if (needBookings) {
           const { data: existing } = await admin
@@ -215,9 +216,16 @@ Deno.serve(async (req) => {
             .eq("user_id", gymboardUserId);
           const existingDates = new Set((existing ?? []).map((r) => new Date(r.booking_date).toISOString()));
 
+          const { data: alreadySkipped } = await admin
+            .from("repair_skipped_bookings")
+            .select("booking_date")
+            .eq("gymboard_user_id", gymboardUserId);
+          const skippedDates = new Set((alreadySkipped ?? []).map((r) => new Date(r.booking_date).toISOString()));
+
           for (const b of (c.bookings ?? [])) {
             const key = new Date(b.booking_date).toISOString();
             if (existingDates.has(key)) continue;
+            if (skippedDates.has(key)) continue;
             const { error } = await admin
               .from("bookings")
               .insert({
@@ -229,8 +237,28 @@ Deno.serve(async (req) => {
                 google_event_id: b.google_event_id,
                 created_at: b.created_at ?? undefined,
               });
-            if (error) bookingErrors.push(`${b.booking_date}: ${error.message}`);
-            else bookingsInserted++;
+            if (error) {
+              const msg = error.message ?? "";
+              const isOverlap = msg.includes("この時間帯はすでに予約が入っています") || msg.toLowerCase().includes("overlap");
+              if (isOverlap) {
+                await admin
+                  .from("repair_skipped_bookings")
+                  .upsert(
+                    {
+                      salute_user_id: c.user_id,
+                      gymboard_user_id: gymboardUserId,
+                      booking_date: b.booking_date,
+                      reason: "overlap",
+                    },
+                    { onConflict: "gymboard_user_id,booking_date", ignoreDuplicates: true },
+                  );
+                bookingsSkippedOverlap++;
+              } else {
+                bookingErrors.push(`${b.booking_date}: ${msg}`);
+              }
+            } else {
+              bookingsInserted++;
+            }
           }
         }
 

@@ -49,14 +49,13 @@ const Auth = () => {
     if (mode === "forgot") {
       setLoading(true);
       try {
-        // Route through /auth/callback so both the token_hash flow (custom
-        // email hook) and the implicit-hash fallback (default /verify
-        // redirect) land in our SPA, which then forwards recovery to
-        // /reset-password. /auth/callback is in the Supabase Redirect URLs
-        // allow list; /reset-password is not, so pointing redirectTo there
-        // can cause Supabase to fall back to Site URL (login screen).
-        const redirectTo = `${window.location.origin}/auth/callback`;
-        // Always show success to avoid leaking whether the email is registered.
+        // Always send users to the published web URL — native (capacitor://)
+        // and preview origins are NOT in Supabase's Redirect URLs allow list,
+        // so using window.location.origin causes Supabase to fall back to
+        // Site URL (Lovable platform login screen).
+        // /reset-password handles both the implicit-hash (#access_token&type=recovery)
+        // and PKCE (?code=) flows via onAuthStateChange + setSession.
+        const redirectTo = "https://gymboard.lovable.app/reset-password";
         await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       } catch (err: any) {
         console.warn("resetPasswordForEmail error (suppressed):", err?.message);

@@ -307,15 +307,21 @@ Deno.serve(async (req) => {
           .select("id", { count: "exact", head: true })
           .eq("tenant_id", TENANT_ID)
           .eq("user_id", gymboardUserId);
+        const { count: skippedAfter } = await admin
+          .from("repair_skipped_bookings")
+          .select("id", { count: "exact", head: true })
+          .eq("gymboard_user_id", gymboardUserId);
 
         log.status = "repaired";
         log.repaired_bookings = needBookings;
         log.repaired_workouts = needWorkouts;
         log.bookings_inserted = bookingsInserted;
+        log.bookings_skipped_overlap = bookingsSkippedOverlap;
         log.workouts_inserted = workoutsInserted;
         log.workouts_skipped_no_exercise = workoutsSkippedNoExercise;
         log.gym_bookings_after = gymBAfter ?? 0;
         log.gym_workouts_after = gymWAfter ?? 0;
+        log.skipped_overlap_total = skippedAfter ?? 0;
         if (bookingErrors.length) log.booking_errors = bookingErrors;
         if (workoutErrors.length) log.workout_errors = workoutErrors;
         results.push(log);

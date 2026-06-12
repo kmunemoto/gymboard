@@ -249,6 +249,25 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Cap free-form text fields to prevent abuse if these are forwarded
+    // straight to push providers. Title/body remain client-supplied (legacy
+    // contract); see README note in repo for the future template migration.
+    if (typeof title === "string" && title.length > 120) {
+      return new Response(JSON.stringify({ error: "title too long" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (typeof body === "string" && body.length > 500) {
+      return new Response(JSON.stringify({ error: "body too long" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (typeof tag === "string" && tag.length > 120) {
+      return new Response(JSON.stringify({ error: "tag too long" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     // ---- Anonymous-allowed path: notify trainers of a new trial booking.
@@ -296,31 +315,15 @@ Deno.serve(async (req) => {
         const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
         if (!isTrainer) {
           const callerId = caller.userId!;
-          const { data: mine } = await adminClient
-            .from("tenant_members")
-            .select("tenant_id")
-            .eq("user_id", callerId);
-          const tenantIds = (mine ?? []).map((r: { tenant_id: string }) => r.tenant_id);
-          const otherIds = user_ids.filter((id: string) => id !== callerId);
+          // Customers may push to themselves or to verified trainers (single-tenant gym).
+          // Trainer users are tracked in user_roles, NOT necessarily in tenant_members,
+          // so we authoritatively check has_role per target.
+          const otherIds: string[] = (user_ids as string[]).filter((id) => id !== callerId);
           if (otherIds.length > 0) {
-            if (tenantIds.length === 0) {
-              return new Response(JSON.stringify({ error: "Forbidden" }), {
-                status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            }
-            const { data: peers } = await adminClient
-              .from("tenant_members")
-              .select("user_id, role, tenant_id")
-              .in("user_id", otherIds)
-              .in("tenant_id", tenantIds);
-            const allowed = new Set(
-              (peers ?? [])
-                .filter((p: { role: string }) => p.role === "trainer" || p.role === "owner")
-                .map((p: { user_id: string }) => p.user_id),
-            );
-            const denied = otherIds.filter((id: string) => !allowed.has(id));
+            const checks = await Promise.all(otherIds.map((id) => hasRole(id, "trainer")));
+            const denied = otherIds.filter((_, i) => !checks[i]);
             if (denied.length > 0) {
-              return new Response(JSON.stringify({ error: "Forbidden" }), {
+              return new Response(JSON.stringify({ error: "Forbidden", denied }), {
                 status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
               });
             }
@@ -328,6 +331,7 @@ Deno.serve(async (req) => {
         }
       }
     }
+
 
     // ---- Load both delivery targets in parallel ----
     const [webRes, nativeRes] = await Promise.all([

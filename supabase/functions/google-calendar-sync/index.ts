@@ -14,19 +14,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ---- AUTH: trainer or service role only ----
+    // ---- AUTH ----
     const caller = await verifyCaller(req);
     if (!caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-    if (!caller.isServiceRole) {
-      if (!caller.userId || !(await hasRole(caller.userId, "trainer"))) {
-        return new Response(JSON.stringify({ error: "Forbidden" }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
     }
 
     const { action, booking_id, booking_date, booking_type, client_name, google_event_id, is_trial } = await req.json();
@@ -43,6 +36,36 @@ Deno.serve(async (req) => {
     const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // ---- AUTHZ ----
+    // Trainers / service role: full access (existing behavior).
+    // Customers: only "create" or "delete" for a booking they own (non-trial).
+    if (!caller.isServiceRole) {
+      const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
+      if (!isTrainer) {
+        if (action === "sync_all" || is_trial) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (!booking_id || typeof booking_id !== "string") {
+          return new Response(JSON.stringify({ error: "booking_id required" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const { data: bk } = await supabase
+          .from("bookings")
+          .select("id, user_id")
+          .eq("id", booking_id)
+          .maybeSingle();
+        if (!bk || bk.user_id !== caller.userId) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
 
     const { data: trainerIds } = await supabase.rpc("get_trainer_ids");
     const trainerId = trainerIds?.[0]?.user_id;

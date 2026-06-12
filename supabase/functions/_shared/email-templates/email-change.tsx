@@ -28,7 +28,7 @@ export const EmailChangeEmail = ({
   confirmationUrl,
 }: EmailChangeEmailProps) => (
   <Html lang="ja" dir="ltr">
-    <Head />
+    <Head><meta charSet="utf-8" /><meta httpEquiv="Content-Type" content="text/html; charset=utf-8" /></Head>
     <Preview>{siteName}のメールアドレス変更確認</Preview>
     <Body style={main}>
       <Container style={container}>

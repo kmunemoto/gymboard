@@ -19,7 +19,7 @@ interface MagicLinkEmailProps {
 
 export const MagicLinkEmail = ({ siteName, confirmationUrl }: MagicLinkEmailProps) => (
   <Html lang="ja" dir="ltr">
-    <Head />
+    <Head><meta charSet="utf-8" /><meta httpEquiv="Content-Type" content="text/html; charset=utf-8" /></Head>
     <Preview>{siteName}のログイン用リンク</Preview>
     <Body style={main}>
       <Container style={container}>

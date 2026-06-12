@@ -1951,6 +1951,33 @@ export type Database = {
           },
         ]
       }
+      repair_skipped_bookings: {
+        Row: {
+          booking_date: string
+          created_at: string
+          gymboard_user_id: string
+          id: string
+          reason: string
+          salute_user_id: string | null
+        }
+        Insert: {
+          booking_date: string
+          created_at?: string
+          gymboard_user_id: string
+          id?: string
+          reason: string
+          salute_user_id?: string | null
+        }
+        Update: {
+          booking_date?: string
+          created_at?: string
+          gymboard_user_id?: string
+          id?: string
+          reason?: string
+          salute_user_id?: string | null
+        }
+        Relationships: []
+      }
       rival_battle_entries: {
         Row: {
           entered_at: string

@@ -218,12 +218,26 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
+  // Build confirmationUrl using token_hash flow so the link lands on our app's
+  // /auth/callback (which calls verifyOtp). Falls back to payload.data.url.
+  const tokenHash = (payload.data as any).token_hash || (payload.data as any).tokenHash || ''
+  const redirectTo = (payload.data as any).redirect_to || (payload.data as any).redirectTo || ''
+  const APP_URL = 'https://gymboard.lovable.app'
+  let confirmationUrl = ''
+  if (tokenHash) {
+    const params = new URLSearchParams({ token_hash: tokenHash, type: emailType })
+    if (redirectTo) params.set('next', redirectTo)
+    confirmationUrl = `${APP_URL}/auth/callback?${params.toString()}`
+  } else {
+    confirmationUrl = payload.data.url || APP_URL
+  }
+
   // Build template props from payload.data (HookData structure)
   const templateProps = {
     siteName: SITE_NAME,
     siteUrl: `https://${ROOT_DOMAIN}`,
     recipient: payload.data.email,
-    confirmationUrl: payload.data.url,
+    confirmationUrl: confirmationUrl,
     token: payload.data.token,
     email: payload.data.email,
     oldEmail: payload.data.old_email,

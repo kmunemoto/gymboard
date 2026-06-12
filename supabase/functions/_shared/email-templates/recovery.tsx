@@ -22,23 +22,22 @@ export const RecoveryEmail = ({
   siteName,
   confirmationUrl,
 }: RecoveryEmailProps) => (
-  <Html lang="ja" dir="ltr">
+  <Html lang="en" dir="ltr">
     <Head />
-    <Preview>ジムボード - パスワードの再設定</Preview>
+    <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>パスワードの再設定</Heading>
+        <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          ジムボードのパスワード再設定のリクエストを受け付けました。
-        </Text>
-        <Text style={text}>
-          以下のボタンをクリックして、新しいパスワードを設定してください。
+          We received a request to reset your password for {siteName}. Click
+          the button below to choose a new password.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          パスワードを再設定する
+          Reset Password
         </Button>
         <Text style={footer}>
-          ※ このリクエストにお心当たりがない場合は、無視していただいて問題ございません。パスワードは変更されません。
+          If you didn't request a password reset, you can safely ignore this
+          email. Your password will not be changed.
         </Text>
       </Container>
     </Body>
@@ -47,26 +46,26 @@ export const RecoveryEmail = ({
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: '"Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: 'hsl(36, 40%, 42%)',
+  color: '#000000',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
   color: '#55575d',
-  lineHeight: '1.8',
+  lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const button = {
-  backgroundColor: 'hsl(36, 40%, 42%)',
+  backgroundColor: '#000000',
   color: '#ffffff',
   fontSize: '14px',
-  borderRadius: '12px',
-  padding: '12px 24px',
+  borderRadius: '8px',
+  padding: '12px 20px',
   textDecoration: 'none',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0', lineHeight: '1.6' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

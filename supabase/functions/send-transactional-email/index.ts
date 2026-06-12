@@ -50,15 +50,40 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Only trainers / service role may invoke transactional emails. Customers cannot
-  // trigger branded emails to arbitrary recipients (spam/phishing vector) nor use
-  // the _resolve_user_ / _resolve_trainer_ placeholders to look up other users.
+  // Trainers and service role may invoke any template. Authenticated customers
+  // may only invoke booking-related templates, and only when the target is
+  // either themselves or a verified trainer (prevents spam/phishing via
+  // arbitrary recipient or _resolve_*_ placeholders).
   const callerIsTrainer = caller.userId ? await hasRole(caller.userId, 'trainer') : false
+  const CUSTOMER_ALLOWED_TEMPLATES = new Set([
+    'booking-confirmation',
+    'booking-cancellation',
+    'new-booking-notification',
+  ])
+  let peekedBody: any = null
   if (!caller.isServiceRole && !callerIsTrainer) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), {
-      status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    try { peekedBody = await req.clone().json() } catch { /* ignore */ }
+    const tn: string = peekedBody?.templateName || peekedBody?.template_name || ''
+    const td: any = peekedBody?.templateData || {}
+    const recip: string = peekedBody?.recipientEmail || peekedBody?.recipient_email || ''
+    let ok = false
+    if (CUSTOMER_ALLOWED_TEMPLATES.has(tn)) {
+      if (tn === 'new-booking-notification') {
+        ok = recip === '_resolve_trainer_'
+          && typeof td.trainerUserId === 'string'
+          && await hasRole(td.trainerUserId, 'trainer')
+      } else {
+        const callerEmail = (caller as any).email as string | undefined
+        ok = (typeof td.resolveUserId === 'string' && td.resolveUserId === caller.userId)
+          || (typeof recip === 'string' && !!callerEmail && recip.toLowerCase() === callerEmail.toLowerCase())
+      }
+    }
+    if (!ok) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
   }
 
 

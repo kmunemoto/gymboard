@@ -1,6 +1,8 @@
 project_id = "rrbfwitprzuevzytykrq"
 
 [functions]
+  [functions.send-push-notification]
+    verify_jwt = false
   [functions.auth-email-hook]
     verify_jwt = false
   [functions.gymboard-stripe-webhook]

@@ -1319,6 +1319,21 @@ export type Database = {
           },
         ]
       }
+      notification_dedupe: {
+        Row: {
+          idempotency_key: string
+          sent_at: string
+        }
+        Insert: {
+          idempotency_key: string
+          sent_at?: string
+        }
+        Update: {
+          idempotency_key?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string

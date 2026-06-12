@@ -218,16 +218,22 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
-  // Build confirmationUrl using token_hash flow so the link lands on our app's
-  // /auth/callback (which calls verifyOtp). Falls back to payload.data.url.
+  // Build confirmationUrl. For recovery, link DIRECTLY to /reset-password with
+  // token_hash so the page can call verifyOtp itself — this works across
+  // browsers (no code_verifier required, unlike the PKCE /auth/callback flow).
+  // Other email types continue to use /auth/callback.
   const tokenHash = (payload.data as any).token_hash || (payload.data as any).tokenHash || ''
   const redirectTo = (payload.data as any).redirect_to || (payload.data as any).redirectTo || ''
   const APP_URL = 'https://gymboard.lovable.app'
   let confirmationUrl = ''
   if (tokenHash) {
     const params = new URLSearchParams({ token_hash: tokenHash, type: emailType })
-    if (redirectTo) params.set('next', redirectTo)
-    confirmationUrl = `${APP_URL}/auth/callback?${params.toString()}`
+    if (emailType === 'recovery') {
+      confirmationUrl = `${APP_URL}/reset-password?${params.toString()}`
+    } else {
+      if (redirectTo) params.set('next', redirectTo)
+      confirmationUrl = `${APP_URL}/auth/callback?${params.toString()}`
+    }
   } else {
     confirmationUrl = payload.data.url || APP_URL
   }
@@ -244,8 +250,15 @@ async function handleWebhook(req: Request): Promise<Response> {
     newEmail: payload.data.new_email,
   }
 
-  // Render React Email to HTML and plain text
-  const html = await renderAsync(React.createElement(EmailTemplate, templateProps))
+  // Render React Email to HTML and plain text.
+  // pretty:true inserts line breaks into the HTML output. Without this the
+  // body is a single giant line and the upstream mail transport wraps it at
+  // a fixed byte boundary, sometimes splitting a multibyte UTF-8 char (the
+  // observed "パ"/"ー" mojibake). Pretty lines stay short enough that
+  // wrapping never lands inside a multibyte char.
+  const html = await renderAsync(React.createElement(EmailTemplate, templateProps), {
+    pretty: true,
+  })
   const text = await renderAsync(React.createElement(EmailTemplate, templateProps), {
     plainText: true,
   })

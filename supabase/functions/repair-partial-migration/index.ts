@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
       saluteWorkouts: number;
       gymBookingsBefore: number;
       gymWorkoutsBefore: number;
+      skippedBookingsBefore: number;
     }> = [];
 
     let totalSaluteBookings = 0;
@@ -150,11 +151,17 @@ Deno.serve(async (req) => {
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", TENANT_ID)
         .eq("user_id", gymboardUserId);
+      const { count: skippedB } = await admin
+        .from("repair_skipped_bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("gymboard_user_id", gymboardUserId);
 
       const gymBookingsBefore = gymB ?? 0;
       const gymWorkoutsBefore = gymW ?? 0;
+      const skippedBookingsBefore = skippedB ?? 0;
 
-      if (gymBookingsBefore < saluteBookings || gymWorkoutsBefore < saluteWorkouts) {
+      // overlap で恒久的に入らない分は「解消済み」とみなす
+      if ((gymBookingsBefore + skippedBookingsBefore) < saluteBookings || gymWorkoutsBefore < saluteWorkouts) {
         candidates.push({
           c,
           gymboardUserId,
@@ -162,6 +169,7 @@ Deno.serve(async (req) => {
           saluteWorkouts,
           gymBookingsBefore,
           gymWorkoutsBefore,
+          skippedBookingsBefore,
         });
       }
     }
@@ -173,7 +181,7 @@ Deno.serve(async (req) => {
     const results: Array<Record<string, unknown>> = [];
 
     for (const cand of batch) {
-      const { c, gymboardUserId, saluteBookings, saluteWorkouts, gymBookingsBefore, gymWorkoutsBefore } = cand;
+      const { c, gymboardUserId, saluteBookings, saluteWorkouts, gymBookingsBefore, gymWorkoutsBefore, skippedBookingsBefore } = cand;
       const log: Record<string, unknown> = {
         email: c.email,
         gymboard_user_id: gymboardUserId,
@@ -181,10 +189,11 @@ Deno.serve(async (req) => {
         salute_workouts: saluteWorkouts,
         gym_bookings_before: gymBookingsBefore,
         gym_workouts_before: gymWorkoutsBefore,
+        skipped_overlap_before: skippedBookingsBefore,
       };
 
       try {
-        const needBookings = gymBookingsBefore < saluteBookings;
+        const needBookings = (gymBookingsBefore + skippedBookingsBefore) < saluteBookings;
         const needWorkouts = gymWorkoutsBefore < saluteWorkouts;
 
         if (dryRun) {
@@ -195,9 +204,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // --- bookings 補修 (追加INSERTのみ。既存と同じ booking_date のものはスキップ) ---
-        // check_booking_overlap トリガーが既存データを誤検知することがあるため、削除はせず追加のみ。
+        // --- bookings 補修 (追加INSERTのみ。overlap で弾かれたものは repair_skipped_bookings に記録) ---
         let bookingsInserted = 0;
+        let bookingsSkippedOverlap = 0;
         const bookingErrors: string[] = [];
         if (needBookings) {
           const { data: existing } = await admin
@@ -207,9 +216,16 @@ Deno.serve(async (req) => {
             .eq("user_id", gymboardUserId);
           const existingDates = new Set((existing ?? []).map((r) => new Date(r.booking_date).toISOString()));
 
+          const { data: alreadySkipped } = await admin
+            .from("repair_skipped_bookings")
+            .select("booking_date")
+            .eq("gymboard_user_id", gymboardUserId);
+          const skippedDates = new Set((alreadySkipped ?? []).map((r) => new Date(r.booking_date).toISOString()));
+
           for (const b of (c.bookings ?? [])) {
             const key = new Date(b.booking_date).toISOString();
             if (existingDates.has(key)) continue;
+            if (skippedDates.has(key)) continue;
             const { error } = await admin
               .from("bookings")
               .insert({
@@ -221,8 +237,28 @@ Deno.serve(async (req) => {
                 google_event_id: b.google_event_id,
                 created_at: b.created_at ?? undefined,
               });
-            if (error) bookingErrors.push(`${b.booking_date}: ${error.message}`);
-            else bookingsInserted++;
+            if (error) {
+              const msg = error.message ?? "";
+              const isOverlap = msg.includes("この時間帯はすでに予約が入っています") || msg.toLowerCase().includes("overlap");
+              if (isOverlap) {
+                await admin
+                  .from("repair_skipped_bookings")
+                  .upsert(
+                    {
+                      salute_user_id: c.user_id,
+                      gymboard_user_id: gymboardUserId,
+                      booking_date: b.booking_date,
+                      reason: "overlap",
+                    },
+                    { onConflict: "gymboard_user_id,booking_date", ignoreDuplicates: true },
+                  );
+                bookingsSkippedOverlap++;
+              } else {
+                bookingErrors.push(`${b.booking_date}: ${msg}`);
+              }
+            } else {
+              bookingsInserted++;
+            }
           }
         }
 
@@ -271,15 +307,21 @@ Deno.serve(async (req) => {
           .select("id", { count: "exact", head: true })
           .eq("tenant_id", TENANT_ID)
           .eq("user_id", gymboardUserId);
+        const { count: skippedAfter } = await admin
+          .from("repair_skipped_bookings")
+          .select("id", { count: "exact", head: true })
+          .eq("gymboard_user_id", gymboardUserId);
 
         log.status = "repaired";
         log.repaired_bookings = needBookings;
         log.repaired_workouts = needWorkouts;
         log.bookings_inserted = bookingsInserted;
+        log.bookings_skipped_overlap = bookingsSkippedOverlap;
         log.workouts_inserted = workoutsInserted;
         log.workouts_skipped_no_exercise = workoutsSkippedNoExercise;
         log.gym_bookings_after = gymBAfter ?? 0;
         log.gym_workouts_after = gymWAfter ?? 0;
+        log.skipped_overlap_total = skippedAfter ?? 0;
         if (bookingErrors.length) log.booking_errors = bookingErrors;
         if (workoutErrors.length) log.workout_errors = workoutErrors;
         results.push(log);
@@ -299,6 +341,9 @@ Deno.serve(async (req) => {
       .from("workouts")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", TENANT_ID);
+    const { count: totalSkippedOverlap } = await admin
+      .from("repair_skipped_bookings")
+      .select("id", { count: "exact", head: true });
 
     return json({
       ok: true,
@@ -315,6 +360,7 @@ Deno.serve(async (req) => {
         salute_workouts_sum: totalSaluteWorkouts,
         gymboard_bookings_now: totalGymBookings ?? 0,
         gymboard_workouts_now: totalGymWorkouts ?? 0,
+        repair_skipped_overlap_total: totalSkippedOverlap ?? 0,
       },
       results,
     }, 200);

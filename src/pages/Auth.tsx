@@ -49,7 +49,13 @@ const Auth = () => {
     if (mode === "forgot") {
       setLoading(true);
       try {
-        const redirectTo = `${window.location.origin}/reset-password`;
+        // Route through /auth/callback so both the token_hash flow (custom
+        // email hook) and the implicit-hash fallback (default /verify
+        // redirect) land in our SPA, which then forwards recovery to
+        // /reset-password. /auth/callback is in the Supabase Redirect URLs
+        // allow list; /reset-password is not, so pointing redirectTo there
+        // can cause Supabase to fall back to Site URL (login screen).
+        const redirectTo = `${window.location.origin}/auth/callback`;
         // Always show success to avoid leaking whether the email is registered.
         await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       } catch (err: any) {

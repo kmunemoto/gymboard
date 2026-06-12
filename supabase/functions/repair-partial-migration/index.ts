@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
       saluteWorkouts: number;
       gymBookingsBefore: number;
       gymWorkoutsBefore: number;
+      skippedBookingsBefore: number;
     }> = [];
 
     let totalSaluteBookings = 0;
@@ -150,11 +151,17 @@ Deno.serve(async (req) => {
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", TENANT_ID)
         .eq("user_id", gymboardUserId);
+      const { count: skippedB } = await admin
+        .from("repair_skipped_bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("gymboard_user_id", gymboardUserId);
 
       const gymBookingsBefore = gymB ?? 0;
       const gymWorkoutsBefore = gymW ?? 0;
+      const skippedBookingsBefore = skippedB ?? 0;
 
-      if (gymBookingsBefore < saluteBookings || gymWorkoutsBefore < saluteWorkouts) {
+      // overlap で恒久的に入らない分は「解消済み」とみなす
+      if ((gymBookingsBefore + skippedBookingsBefore) < saluteBookings || gymWorkoutsBefore < saluteWorkouts) {
         candidates.push({
           c,
           gymboardUserId,
@@ -162,6 +169,7 @@ Deno.serve(async (req) => {
           saluteWorkouts,
           gymBookingsBefore,
           gymWorkoutsBefore,
+          skippedBookingsBefore,
         });
       }
     }

@@ -37,15 +37,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // AUTHZ: only trainers / service role may target other users or broadcast to trainers.
-    // Customers may only send LINE messages to themselves (e.g. test/link confirmation).
+    // AUTHZ: trainers / service role may target anyone. Customers may target
+    // themselves OR a verified trainer in this gym (single-tenant). Raw
+    // `line_user_id` and `to:"trainer"` broadcast remain trainer-only.
     if (!caller.isServiceRole) {
       const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
       if (!isTrainer) {
-        if (to === "trainer" || line_user_id || (user_id && user_id !== caller.userId)) {
+        if (to === "trainer" || line_user_id) {
           return new Response(JSON.stringify({ error: "Forbidden" }), {
             status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+        if (user_id && user_id !== caller.userId) {
+          const targetIsTrainer = await hasRole(user_id, "trainer");
+          if (!targetIsTrainer) {
+            return new Response(JSON.stringify({ error: "Forbidden" }), {
+              status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
       }
     }

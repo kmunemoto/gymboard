@@ -18,10 +18,10 @@ const corsHeaders = {
 
 const EMAIL_SUBJECTS: Record<string, string> = {
   signup: '【ジムボード】メールアドレスの確認',
-  invite: '【ジムボード】ご招待',
-  magiclink: '【ジムボード】ログインリンク',
-  recovery: '【ジムボード】パスワードの再設定',
-  email_change: '【ジムボード】メールアドレス変更の確認',
+  invite: '【ジムボード】ご招待のお知らせ',
+  magiclink: '【ジムボード】ログイン用リンク',
+  recovery: '【ジムボード】パスワード再設定',
+  email_change: '【ジムボード】新しいメールアドレスの確認',
   reauthentication: '【ジムボード】認証コード',
 }
 
@@ -36,17 +36,17 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "gymboard"
-const SENDER_DOMAIN = "k.gymboard.app"
-const ROOT_DOMAIN = "gymboard.app"
-const FROM_DOMAIN = "k.gymboard.app" // Domain shown in From address (may be root or sender subdomain)
+const SITE_NAME = "ジムボード"
+const SENDER_DOMAIN = "notify.kyoto-salute.com"
+const ROOT_DOMAIN = "kyoto-salute.com"
+const FROM_DOMAIN = "notify.kyoto-salute.com" // Domain shown in From address (may be root or sender subdomain)
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
 // The sample email uses a fixed placeholder (RFC 6761 .test TLD) so the Go backend
 // can always find-and-replace it with the actual recipient when sending test emails,
 // even if the project's domain has changed since the template was scaffolded.
-const SAMPLE_PROJECT_URL = "https://app.gymboard.app"
+const SAMPLE_PROJECT_URL = "https://gymboard.lovable.app"
 const SAMPLE_EMAIL = "user@example.test"
 const SAMPLE_DATA: Record<string, object> = {
   signup: {
@@ -70,6 +70,7 @@ const SAMPLE_DATA: Record<string, object> = {
   },
   email_change: {
     siteName: SITE_NAME,
+    oldEmail: SAMPLE_EMAIL,
     email: SAMPLE_EMAIL,
     newEmail: SAMPLE_EMAIL,
     confirmationUrl: SAMPLE_PROJECT_URL,
@@ -217,34 +218,15 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
-  // Build a confirmation URL that points at our app's /auth/callback with
-  // token_hash + type. The client then calls supabase.auth.verifyOtp().
-  // This avoids Supabase's raw /auth/v1/verify endpoint which requires an
-  // apikey query param and otherwise responds with "No API key found in request".
-  const tokenHash = (payload.data as any).token_hash || (payload.data as any).tokenHash || ''
-  const redirectTo = (payload.data as any).redirect_to || (payload.data as any).redirectTo || ''
-  const APP_URL = 'https://gymboard.lovable.app'
-  let confirmationUrl = ''
-  if (tokenHash) {
-    const params = new URLSearchParams({
-      token_hash: tokenHash,
-      type: emailType,
-    })
-    if (redirectTo) params.set('next', redirectTo)
-    confirmationUrl = `${APP_URL}/auth/callback?${params.toString()}`
-  } else {
-    // Fallback to whatever URL the hook provided
-    confirmationUrl = payload.data.url || APP_URL
-  }
-
   // Build template props from payload.data (HookData structure)
   const templateProps = {
     siteName: SITE_NAME,
     siteUrl: `https://${ROOT_DOMAIN}`,
     recipient: payload.data.email,
-    confirmationUrl,
+    confirmationUrl: payload.data.url,
     token: payload.data.token,
     email: payload.data.email,
+    oldEmail: payload.data.old_email,
     newEmail: payload.data.new_email,
   }
 

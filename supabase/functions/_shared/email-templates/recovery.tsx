@@ -18,27 +18,21 @@ interface RecoveryEmailProps {
   confirmationUrl: string
 }
 
-export const RecoveryEmail = ({
-  siteName,
-  confirmationUrl,
-}: RecoveryEmailProps) => (
+export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>ジムボード - パスワードの再設定</Preview>
+    <Preview>{siteName}のパスワード再設定</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>パスワードの再設定</Heading>
         <Text style={text}>
-          ジムボードのパスワード再設定のリクエストを受け付けました。
-        </Text>
-        <Text style={text}>
-          以下のボタンをクリックして、新しいパスワードを設定してください。
+          {siteName}のパスワード再設定リクエストを受け付けました。下のボタンから新しいパスワードを設定してください。
         </Text>
         <Button style={button} href={confirmationUrl}>
           パスワードを再設定する
         </Button>
         <Text style={footer}>
-          ※ このリクエストにお心当たりがない場合は、無視していただいて問題ございません。パスワードは変更されません。
+          このメールにお心当たりがない場合は、破棄してください。パスワードは変更されません。
         </Text>
       </Container>
     </Body>
@@ -47,26 +41,9 @@ export const RecoveryEmail = ({
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: '"Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif' }
+const main = { backgroundColor: '#ffffff', fontFamily: '"Hiragino Sans", "Yu Gothic", Arial, sans-serif' }
 const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(36, 40%, 42%)',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.8',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: 'hsl(36, 40%, 42%)',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '12px',
-  padding: '12px 24px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0', lineHeight: '1.6' }
+const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#000000', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.7', margin: '0 0 25px' }
+const button = { backgroundColor: '#000000', color: '#ffffff', fontSize: '14px', borderRadius: '8px', padding: '12px 20px', textDecoration: 'none' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

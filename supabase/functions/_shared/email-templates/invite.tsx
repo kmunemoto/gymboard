@@ -9,6 +9,7 @@ import {
   Head,
   Heading,
   Html,
+  Link,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
@@ -19,25 +20,21 @@ interface InviteEmailProps {
   confirmationUrl: string
 }
 
-export const InviteEmail = ({
-  siteName,
-  siteUrl,
-  confirmationUrl,
-}: InviteEmailProps) => (
+export const InviteEmail = ({ siteName, siteUrl, confirmationUrl }: InviteEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head />
-    <Preview>ジムボードへの招待</Preview>
+    <Preview>{siteName}へのご招待</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>ジムボードへの招待</Heading>
+        <Heading style={h1}>ご招待のお知らせ</Heading>
         <Text style={text}>
-          ジムボードにご招待されました。以下のボタンをクリックして、アカウントを作成してください。
+          <Link href={siteUrl} style={link}><strong>{siteName}</strong></Link>へご招待されました。下のボタンから招待を承認し、アカウントを作成してください。
         </Text>
         <Button style={button} href={confirmationUrl}>
           招待を承認する
         </Button>
         <Text style={footer}>
-          ※ この招待にお心当たりがない場合は、無視していただいて問題ございません。
+          このメールにお心当たりがない場合は、破棄してください。
         </Text>
       </Container>
     </Body>
@@ -46,26 +43,10 @@ export const InviteEmail = ({
 
 export default InviteEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: '"Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif' }
+const main = { backgroundColor: '#ffffff', fontFamily: '"Hiragino Sans", "Yu Gothic", Arial, sans-serif' }
 const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(36, 40%, 42%)',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.8',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: 'hsl(36, 40%, 42%)',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '12px',
-  padding: '12px 24px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0', lineHeight: '1.6' }
+const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#000000', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.7', margin: '0 0 25px' }
+const link = { color: 'inherit', textDecoration: 'underline' }
+const button = { backgroundColor: '#000000', color: '#ffffff', fontSize: '14px', borderRadius: '8px', padding: '12px 20px', textDecoration: 'none' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

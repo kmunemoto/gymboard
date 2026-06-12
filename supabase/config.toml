@@ -1,15 +1,15 @@
 project_id = "rrbfwitprzuevzytykrq"
 
-[functions.gymboard-stripe-webhook]
-verify_jwt = false
-
-[functions.salute-connection-check]
-verify_jwt = false
-
-[functions.salute-migration-check]
-verify_jwt = false
-
-[functions.gymboard-sync-trial-booking]
-verify_jwt = false
-
-
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.gymboard-stripe-webhook]
+    verify_jwt = false
+  [functions.gymboard-sync-trial-booking]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.salute-connection-check]
+    verify_jwt = false
+  [functions.salute-migration-check]
+    verify_jwt = false

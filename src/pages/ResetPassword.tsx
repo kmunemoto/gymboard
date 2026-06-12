@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,27 +7,103 @@ import { toast } from "sonner";
 import { Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import gymboardLogo from "@/assets/gymboard-logo.png";
 
+const VERIFY_TIMEOUT_MS = 10_000;
+
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkExpired, setLinkExpired] = useState(false);
+  const ran = useRef(false);
 
   useEffect(() => {
-    // Supabase parses the recovery token from the URL hash and emits
-    // PASSWORD_RECOVERY. Also check existing session for direct navigations.
+    if (ran.current) return;
+    ran.current = true;
+
+    const expire = (msg?: string) => {
+      setLinkExpired(true);
+      setError(
+        msg ||
+          "リンクの有効期限が切れています。お手数ですがもう一度パスワードリセットをやり直してください。",
+      );
+    };
+
+    // Listen for PASSWORD_RECOVERY in case Supabase parses a hash-based link
+    // (legacy/implicit flow) before we get a chance to inspect URL params.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setReady(true);
       }
     });
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setReady(true);
-    });
-    return () => subscription.unsubscribe();
+
+    let timer: number | undefined;
+
+    (async () => {
+      try {
+        // 1) token_hash flow (new): /reset-password?token_hash=...&type=recovery
+        const tokenHash = searchParams.get("token_hash");
+        const typeParam = searchParams.get("type");
+        if (tokenHash) {
+          timer = window.setTimeout(() => {
+            if (!ready) expire();
+          }, VERIFY_TIMEOUT_MS);
+
+          const { error: vErr } = await supabase.auth.verifyOtp({
+            type: (typeParam as "recovery") || "recovery",
+            token_hash: tokenHash,
+          });
+          window.clearTimeout(timer);
+          if (vErr) {
+            expire();
+          } else {
+            setReady(true);
+          }
+          return;
+        }
+
+        // 2) PKCE flow (?code=...) — only works in same browser that initiated
+        const code = searchParams.get("code");
+        if (code) {
+          timer = window.setTimeout(() => {
+            if (!ready) expire();
+          }, VERIFY_TIMEOUT_MS);
+          const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
+          window.clearTimeout(timer);
+          if (exErr) {
+            expire();
+          } else {
+            setReady(true);
+          }
+          return;
+        }
+
+        // 3) Implicit/hash flow — supabase-js handles it; check existing session
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          setReady(true);
+          return;
+        }
+
+        // 4) Wait a short while for PASSWORD_RECOVERY from a hash, then give up
+        timer = window.setTimeout(() => {
+          if (!ready) expire();
+        }, VERIFY_TIMEOUT_MS);
+      } catch {
+        if (timer) window.clearTimeout(timer);
+        expire();
+      }
+    })();
+
+    return () => {
+      subscription.unsubscribe();
+      if (timer) window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,6 +150,23 @@ const ResetPassword = () => {
                 <Button variant="accent" className="w-full" onClick={() => navigate("/auth")}>
                   ログインへ
                 </Button>
+              </div>
+            ) : linkExpired ? (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-destructive font-medium">{error}</p>
+                <Button
+                  variant="accent"
+                  className="w-full"
+                  onClick={() => navigate("/auth?mode=forgot")}
+                >
+                  パスワードリセットをやり直す
+                </Button>
+                <Link
+                  to="/auth"
+                  className="text-sm text-muted-foreground hover:text-foreground underline block"
+                >
+                  ログインへ戻る
+                </Link>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">

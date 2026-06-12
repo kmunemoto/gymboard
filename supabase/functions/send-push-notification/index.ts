@@ -240,8 +240,8 @@ Deno.serve(async (req) => {
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
 
     const payloadJson = await req.json().catch(() => ({}));
-    const { purpose, trial_booking_id, title, body, url, tag } = payloadJson;
-    let { user_ids } = payloadJson;
+    const { purpose, trial_booking_id, url } = payloadJson;
+    let { title, body, tag, user_ids } = payloadJson;
 
     if (!isAllowedUrl(url)) {
       return new Response(JSON.stringify({ error: "Invalid url" }), {
@@ -250,8 +250,9 @@ Deno.serve(async (req) => {
     }
 
     // Cap free-form text fields to prevent abuse if these are forwarded
-    // straight to push providers. Title/body remain client-supplied (legacy
-    // contract); see README note in repo for the future template migration.
+    // straight to push providers. Title/body remain client-supplied on the
+    // authenticated path (legacy contract). The anonymous trial_booking path
+    // below overrides these with server-generated text.
     if (typeof title === "string" && title.length > 120) {
       return new Response(JSON.stringify({ error: "title too long" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -279,7 +280,7 @@ Deno.serve(async (req) => {
       }
       const { data: trial } = await adminClient
         .from("trial_bookings")
-        .select("id, tenant_id")
+        .select("id, tenant_id, guest_name, booking_date")
         .eq("id", trial_booking_id)
         .maybeSingle();
       if (!trial) {
@@ -287,6 +288,41 @@ Deno.serve(async (req) => {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // ---- Idempotency: skip if a recent send already happened for this trial.
+      const idempotencyKey = `trial-${trial.id}`;
+      const { data: existingDedupe } = await adminClient
+        .from("notification_dedupe")
+        .select("idempotency_key, sent_at")
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      if (existingDedupe?.sent_at) {
+        const ageMs = Date.now() - new Date(existingDedupe.sent_at as string).getTime();
+        if (ageMs < 10 * 60 * 1000) {
+          return new Response(
+            JSON.stringify({ sent: 0, skipped: true, reason: "duplicate" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
+      // Reserve the key now to prevent races; refresh sent_at on upsert.
+      await adminClient
+        .from("notification_dedupe")
+        .upsert({ idempotency_key: idempotencyKey, sent_at: new Date().toISOString() });
+
+      // ---- Server-generated, fixed text (ignore any client-supplied values).
+      const dt = new Date(trial.booking_date as string);
+      const fmt = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        month: "numeric", day: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+      const when = fmt.format(dt);
+      const safeName = String(trial.guest_name ?? "ゲスト").slice(0, 40);
+      title = "新しい体験予約";
+      body = `${safeName}様 ${when} に体験予約が入りました`;
+      tag = idempotencyKey;
+
       const { data: members } = await adminClient
         .from("tenant_members")
         .select("user_id, role")
@@ -354,6 +390,7 @@ Deno.serve(async (req) => {
     const notifBody = body || "新しい通知があります";
     const notifUrl = url || "/";
     const notifTag = tag || "default";
+
 
     const webPayload = JSON.stringify({
       title: notifTitle, body: notifBody, url: notifUrl, tag: notifTag,

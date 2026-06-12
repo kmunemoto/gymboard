@@ -32,7 +32,7 @@ export async function verifyCaller(req: Request): Promise<CallerIdentity | null>
   });
   const { data, error } = await client.auth.getUser();
   if (error || !data?.user) return null;
-  return { userId: data.user.id, isServiceRole: false };
+  return { userId: data.user.id, isServiceRole: false, email: data.user.email ?? null };
 }
 
 export async function hasRole(userId: string, role: string): Promise<boolean> {

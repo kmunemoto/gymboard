@@ -17,21 +17,30 @@ interface RecoveryEmailProps {
   confirmationUrl: string
 }
 
-export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps) => (
+// NOTE: All visible Japanese text is written as single raw string literals
+// (no variable interpolation, no string concatenation across JSX nodes).
+// Splitting Japanese across React text nodes (e.g. `{siteName}のパスワード…`)
+// has been observed to corrupt the first multi-byte char after the boundary
+// in some email clients (mojibake on "パ"). Inlining the full sentence
+// prevents that.
+export const RecoveryEmail = (_: RecoveryEmailProps) => (
   <Html lang="ja" dir="ltr">
-    <Head><meta charSet="utf-8" /><meta httpEquiv="Content-Type" content="text/html; charset=utf-8" /></Head>
-    <Preview>{siteName}のパスワード再設定</Preview>
+    <Head>
+      <meta charSet="utf-8" />
+      <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
+    </Head>
+    <Preview>ジムボードのパスワード再設定</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>パスワードの再設定</Heading>
         <Text style={text}>
-          {siteName}のパスワード再設定リクエストを受け付けました。下のボタンから新しいパスワードを設定してください。
+          ジムボードのパスワード再設定リクエストを受け付けました。下のボタンから新しいパスワードを設定してください。
         </Text>
         <table role="presentation" cellPadding={0} cellSpacing={0} style={{ margin: '0 0 25px' }}>
           <tbody>
             <tr>
               <td style={buttonCell}>
-                <a href={confirmationUrl} target="_blank" style={buttonLink}>
+                <a href={_.confirmationUrl} target="_blank" style={buttonLink}>
                   パスワードを再設定する
                 </a>
               </td>

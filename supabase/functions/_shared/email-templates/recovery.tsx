@@ -19,7 +19,7 @@ interface RecoveryEmailProps {
 
 export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps) => (
   <Html lang="ja" dir="ltr">
-    <Head />
+    <Head><meta charSet="utf-8" /><meta httpEquiv="Content-Type" content="text/html; charset=utf-8" /></Head>
     <Preview>{siteName}のパスワード再設定</Preview>
     <Body style={main}>
       <Container style={container}>

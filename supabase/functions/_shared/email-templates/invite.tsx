@@ -21,7 +21,7 @@ interface InviteEmailProps {
 
 export const InviteEmail = ({ siteName, siteUrl, confirmationUrl }: InviteEmailProps) => (
   <Html lang="ja" dir="ltr">
-    <Head />
+    <Head><meta charSet="utf-8" /><meta httpEquiv="Content-Type" content="text/html; charset=utf-8" /></Head>
     <Preview>{siteName}へのご招待</Preview>
     <Body style={main}>
       <Container style={container}>

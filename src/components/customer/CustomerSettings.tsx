@@ -442,33 +442,6 @@ const CustomerSettings = () => {
 
           return (
             <>
-              {/* Summary card */}
-              <Card className="mb-3 border-accent/30 bg-gradient-to-br from-accent/5 to-accent/10">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
-                    <Award className="w-6 h-6 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">今回の受講回数</p>
-                    {maxSessions ? (
-                      <p className="text-2xl font-extrabold tracking-tight">
-                        <span className="text-accent">{cycleCount}</span>
-                        <span className="text-base font-bold text-muted-foreground"> / {maxSessions} 回</span>
-                      </p>
-                    ) : isUnlimited ? (
-                      <p className="text-2xl font-extrabold tracking-tight">
-                        <span className="text-accent">{cycleCount}</span>
-                        <span className="text-base font-bold text-muted-foreground"> 回</span>
-                      </p>
-                    ) : (
-                      <p className="text-2xl font-extrabold tracking-tight">
-                        <span className="text-accent">{pastBookings.length}</span>
-                        <span className="text-base font-bold text-muted-foreground"> 回</span>
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
 
               {pastBookings.length === 0 ? (
                 <Card>

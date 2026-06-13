@@ -54,7 +54,10 @@ const CustomerView = () => {
   return (
     <div className="min-h-screen bg-background pb-20 w-full max-w-md mx-auto overflow-x-hidden fade-in" translate="no">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
+      <div
+        className="fixed top-0 left-0 right-0 z-50 glass border-b border-border"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <div className="max-w-md mx-auto flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-2 min-w-0">
             {tenant?.logo_url && (
@@ -88,7 +91,8 @@ const CustomerView = () => {
           </div>
         </div>
       </div>
-      <div className="pt-12" key={tab}>
+      <div className="pt-12" style={{ marginTop: "env(safe-area-inset-top, 0px)" }} key={tab}>
+
         <PlanLimitBanner />
         {tab === "home" && <CustomerHome onNavigate={setTab} />}
         {tab === "booking" && <CustomerBooking />}

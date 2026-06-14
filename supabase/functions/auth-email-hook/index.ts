@@ -10,6 +10,15 @@ import { RecoveryEmail } from '../_shared/email-templates/recovery.tsx'
 import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
 import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
 
+/** 非ASCII文字をHTML数値文字参照に変換し、SMTP行折り返しによるUTF-8文字化けを防止する */
+function escapeNonAsciiToEntities(html: string): string {
+  return Array.from(html).map(ch => {
+    const code = ch.codePointAt(0)!;
+    return code > 127 ? `&#${code};` : ch;
+  }).join('');
+}
+
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':

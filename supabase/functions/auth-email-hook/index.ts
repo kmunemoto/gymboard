@@ -233,7 +233,28 @@ async function handleWebhook(req: Request): Promise<Response> {
   // token_hash so the page can call verifyOtp itself — this works across
   // browsers (no code_verifier required, unlike the PKCE /auth/callback flow).
   // Other email types continue to use /auth/callback.
-  const tokenHash = (payload.data as any).token_hash || (payload.data as any).tokenHash || ''
+  let tokenHash = (payload.data as any).token_hash || (payload.data as any).tokenHash || ''
+  // token_hash が直接取得できない場合、payload.data.url から抽出を試みる
+  if (!tokenHash && (payload.data as any).url) {
+    try {
+      const parsedUrl = new URL((payload.data as any).url)
+      tokenHash = parsedUrl.searchParams.get('token_hash') || parsedUrl.searchParams.get('token') || ''
+      if (tokenHash) {
+        console.log('token_hash extracted from payload.data.url')
+      }
+    } catch {
+      console.warn('Failed to parse payload.data.url')
+    }
+  }
+  if (!tokenHash) {
+    console.error('token_hash not found in payload.data', {
+      keys: Object.keys(payload.data),
+      hasUrl: !!(payload.data as any).url,
+      emailType,
+      run_id,
+    })
+  }
+
   const redirectTo = (payload.data as any).redirect_to || (payload.data as any).redirectTo || ''
   const APP_URL = 'https://gymboard.lovable.app'
   let confirmationUrl = ''

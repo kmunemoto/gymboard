@@ -301,5 +301,57 @@ export function usePushSubscription() {
     return isNative() ? unsubscribeNative() : unsubscribeWeb();
   }, [unsubscribeNative, unsubscribeWeb]);
 
-  return { isSupported, isSubscribed, loading, permission, subscribe, unsubscribe };
+  // ===== Notification preferences =====
+  const getNotificationPreferences = useCallback(async (): Promise<NotificationPreferences> => {
+    if (!user) return DEFAULT_PREFS;
+    try {
+      const { data } = await supabase
+        .from("notification_preferences" as any)
+        .select("reminder_day_before, reminder_hour_before")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!data) return DEFAULT_PREFS;
+      const row = data as unknown as NotificationPreferences;
+      return {
+        reminder_day_before: row.reminder_day_before ?? true,
+        reminder_hour_before: row.reminder_hour_before ?? true,
+      };
+    } catch (e) {
+      console.warn("[Push] getNotificationPreferences failed:", e);
+      return DEFAULT_PREFS;
+    }
+  }, [user]);
+
+  const updateNotificationPreference = useCallback(
+    async (key: keyof NotificationPreferences, value: boolean): Promise<boolean> => {
+      if (!user) return false;
+      try {
+        const current = await getNotificationPreferences();
+        const next = { ...current, [key]: value };
+        const { error } = await supabase
+          .from("notification_preferences" as any)
+          .upsert(
+            { user_id: user.id, ...next, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" },
+          );
+        if (error) throw error;
+        return true;
+      } catch (e) {
+        console.error("[Push] updateNotificationPreference failed:", e);
+        return false;
+      }
+    },
+    [user, getNotificationPreferences],
+  );
+
+  return {
+    isSupported,
+    isSubscribed,
+    loading,
+    permission,
+    subscribe,
+    unsubscribe,
+    getNotificationPreferences,
+    updateNotificationPreference,
+  };
 }

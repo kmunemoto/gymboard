@@ -76,9 +76,9 @@ Deno.serve(async (req) => {
     const userIds = [...byUser.keys()];
     const tenantIds = [...new Set(bookings.map((b) => b.tenant_id).filter(Boolean))] as string[];
 
-    const [{ data: profiles }, { data: subs }, { data: tenants }] = await Promise.all([
+    const [{ data: profiles }, { data: prefs }, { data: tenants }] = await Promise.all([
       supabase.from("profiles").select("user_id, display_name, plan, tenant_id" as any).in("user_id", userIds),
-      supabase.from("push_subscriptions").select("user_id").in("user_id", userIds),
+      supabase.from("notification_preferences").select("user_id, reminder_day_before").in("user_id", userIds),
       tenantIds.length
         ? supabase.from("tenants").select("id, gym_name").in("id", tenantIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -86,7 +86,12 @@ Deno.serve(async (req) => {
 
     const profileMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
     const tenantMap = new Map((tenants ?? []).map((t: any) => [t.id, t]));
-    const subscribedUsers = new Set((subs ?? []).map((s: any) => s.user_id));
+    // Missing record => opted in (backward compatible default).
+    const optedOutDayBefore = new Set(
+      (prefs ?? [])
+        .filter((p: { reminder_day_before: boolean }) => p.reminder_day_before === false)
+        .map((p: { user_id: string }) => p.user_id),
+    );
 
     let pushSent = 0;
     let emailSent = 0;
@@ -112,8 +117,9 @@ Deno.serve(async (req) => {
       const tenantId = sorted[0].tenant_id as string | null;
       const gymName = tenantId ? (tenantMap.get(tenantId) as any)?.gym_name ?? "" : "";
 
-      // (A) Push — only if subscribed
-      if (subscribedUsers.has(userId)) {
+      // (A) Push — sent via send-push-notification (covers Web Push + native FCM)
+      //     Skip if the customer opted out of the day-before reminder.
+      if (!optedOutDayBefore.has(userId)) {
         try {
           const { error: pushErr } = await supabase.functions.invoke("send-push-notification", {
             body: {
@@ -130,6 +136,7 @@ Deno.serve(async (req) => {
           console.error(`Push exception for ${userId}:`, e);
         }
       }
+
 
       // (B) Email — always (Strategy X: email to ALL as a safety net)
       try {

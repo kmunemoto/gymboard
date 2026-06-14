@@ -288,9 +288,11 @@ async function handleWebhook(req: Request): Promise<Response> {
   // a fixed byte boundary, sometimes splitting a multibyte UTF-8 char (the
   // observed "パ"/"ー" mojibake). Pretty lines stay short enough that
   // wrapping never lands inside a multibyte char.
-  const html = await renderAsync(React.createElement(EmailTemplate, templateProps), {
+  const rawHtml = await renderAsync(React.createElement(EmailTemplate, templateProps), {
     pretty: true,
   })
+  const html = escapeNonAsciiToEntities(rawHtml)
+
   const text = await renderAsync(React.createElement(EmailTemplate, templateProps), {
     plainText: true,
   })

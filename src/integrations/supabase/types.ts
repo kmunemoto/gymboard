@@ -1334,6 +1334,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          reminder_day_before: boolean
+          reminder_hour_before: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reminder_day_before?: boolean
+          reminder_hour_before?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reminder_day_before?: boolean
+          reminder_hour_before?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string

@@ -22,6 +22,33 @@ const isNative = () => Capacitor.isNativePlatform();
 const nativePlatform = (): "ios" | "android" =>
   Capacitor.getPlatform() === "ios" ? "ios" : "android";
 
+export type NotificationPreferences = {
+  reminder_day_before: boolean;
+  reminder_hour_before: boolean;
+};
+
+const DEFAULT_PREFS: NotificationPreferences = {
+  reminder_day_before: true,
+  reminder_hour_before: true,
+};
+
+async function ensureDefaultPreferences(userId: string): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("notification_preferences" as any)
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!data) {
+      await supabase
+        .from("notification_preferences" as any)
+        .insert({ user_id: userId, ...DEFAULT_PREFS });
+    }
+  } catch (e) {
+    console.warn("[Push] ensureDefaultPreferences failed:", e);
+  }
+}
+
 export function usePushSubscription() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);

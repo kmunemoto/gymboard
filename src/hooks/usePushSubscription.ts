@@ -113,12 +113,14 @@ export function usePushSubscription() {
           console.error("[Push native] DB save failed:", error);
           toast.error(`通知トークン保存に失敗: ${error.message}`);
         } else {
+          await ensureDefaultPreferences(user.id);
           setIsSubscribed(true);
         }
       } catch (e) {
         console.error("[Push native] save error:", e);
       }
     });
+
 
     await PushNotifications.addListener("registrationError", (err) => {
       console.error("[Push native] registrationError:", err);

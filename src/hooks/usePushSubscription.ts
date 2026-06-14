@@ -221,6 +221,7 @@ export function usePushSubscription() {
         return false;
       }
 
+      await ensureDefaultPreferences(user.id);
       setIsSubscribed(true);
       return true;
     } catch (err) {

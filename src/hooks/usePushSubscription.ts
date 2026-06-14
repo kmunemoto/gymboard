@@ -22,6 +22,33 @@ const isNative = () => Capacitor.isNativePlatform();
 const nativePlatform = (): "ios" | "android" =>
   Capacitor.getPlatform() === "ios" ? "ios" : "android";
 
+export type NotificationPreferences = {
+  reminder_day_before: boolean;
+  reminder_hour_before: boolean;
+};
+
+const DEFAULT_PREFS: NotificationPreferences = {
+  reminder_day_before: true,
+  reminder_hour_before: true,
+};
+
+async function ensureDefaultPreferences(userId: string): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("notification_preferences" as any)
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!data) {
+      await supabase
+        .from("notification_preferences" as any)
+        .insert({ user_id: userId, ...DEFAULT_PREFS });
+    }
+  } catch (e) {
+    console.warn("[Push] ensureDefaultPreferences failed:", e);
+  }
+}
+
 export function usePushSubscription() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -113,12 +140,14 @@ export function usePushSubscription() {
           console.error("[Push native] DB save failed:", error);
           toast.error(`通知トークン保存に失敗: ${error.message}`);
         } else {
+          await ensureDefaultPreferences(user.id);
           setIsSubscribed(true);
         }
       } catch (e) {
         console.error("[Push native] save error:", e);
       }
     });
+
 
     await PushNotifications.addListener("registrationError", (err) => {
       console.error("[Push native] registrationError:", err);
@@ -192,6 +221,7 @@ export function usePushSubscription() {
         return false;
       }
 
+      await ensureDefaultPreferences(user.id);
       setIsSubscribed(true);
       return true;
     } catch (err) {
@@ -271,5 +301,57 @@ export function usePushSubscription() {
     return isNative() ? unsubscribeNative() : unsubscribeWeb();
   }, [unsubscribeNative, unsubscribeWeb]);
 
-  return { isSupported, isSubscribed, loading, permission, subscribe, unsubscribe };
+  // ===== Notification preferences =====
+  const getNotificationPreferences = useCallback(async (): Promise<NotificationPreferences> => {
+    if (!user) return DEFAULT_PREFS;
+    try {
+      const { data } = await supabase
+        .from("notification_preferences" as any)
+        .select("reminder_day_before, reminder_hour_before")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!data) return DEFAULT_PREFS;
+      const row = data as unknown as NotificationPreferences;
+      return {
+        reminder_day_before: row.reminder_day_before ?? true,
+        reminder_hour_before: row.reminder_hour_before ?? true,
+      };
+    } catch (e) {
+      console.warn("[Push] getNotificationPreferences failed:", e);
+      return DEFAULT_PREFS;
+    }
+  }, [user]);
+
+  const updateNotificationPreference = useCallback(
+    async (key: keyof NotificationPreferences, value: boolean): Promise<boolean> => {
+      if (!user) return false;
+      try {
+        const current = await getNotificationPreferences();
+        const next = { ...current, [key]: value };
+        const { error } = await supabase
+          .from("notification_preferences" as any)
+          .upsert(
+            { user_id: user.id, ...next, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" },
+          );
+        if (error) throw error;
+        return true;
+      } catch (e) {
+        console.error("[Push] updateNotificationPreference failed:", e);
+        return false;
+      }
+    },
+    [user, getNotificationPreferences],
+  );
+
+  return {
+    isSupported,
+    isSubscribed,
+    loading,
+    permission,
+    subscribe,
+    unsubscribe,
+    getNotificationPreferences,
+    updateNotificationPreference,
+  };
 }

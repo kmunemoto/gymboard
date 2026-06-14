@@ -1,16 +1,51 @@
-import { Bell, BellOff, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, BellOff, AlertCircle, Clock } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { usePushSubscription, type NotificationPreferences } from "@/hooks/usePushSubscription";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const PushNotificationSection = () => {
-  const { isSupported, isSubscribed, loading, permission, subscribe, unsubscribe } = usePushSubscription();
+  const {
+    isSupported,
+    isSubscribed,
+    loading,
+    permission,
+    subscribe,
+    unsubscribe,
+    getNotificationPreferences,
+    updateNotificationPreference,
+  } = usePushSubscription();
   const isNative = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
 
+  const [prefs, setPrefs] = useState<NotificationPreferences>({
+    reminder_day_before: true,
+    reminder_hour_before: true,
+  });
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  // Load preferences whenever the subscription becomes active.
+  useEffect(() => {
+    let cancelled = false;
+    if (!isSubscribed) {
+      setPrefsLoaded(false);
+      return;
+    }
+    (async () => {
+      const p = await getNotificationPreferences();
+      if (!cancelled) {
+        setPrefs(p);
+        setPrefsLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSubscribed, getNotificationPreferences]);
 
   if (!isSupported) return null;
 
@@ -23,6 +58,17 @@ const PushNotificationSection = () => {
       const ok = await subscribe();
       if (ok) toast.success("プッシュ通知をオンにしました");
       else toast.error("通知の許可が得られませんでした。ブラウザの設定をご確認ください。");
+    }
+  };
+
+  const handlePrefToggle = async (key: keyof NotificationPreferences, value: boolean) => {
+    // Optimistic update
+    const prev = prefs;
+    setPrefs({ ...prefs, [key]: value });
+    const ok = await updateNotificationPreference(key, value);
+    if (!ok) {
+      setPrefs(prev);
+      toast.error("設定の更新に失敗しました");
     }
   };
 
@@ -75,9 +121,41 @@ const PushNotificationSection = () => {
                   通知を受け取る
                 </Button>
               )}
-
             </div>
           </div>
+
+          {isSubscribed && (
+            <div className="mt-4 pt-4 border-t border-border space-y-3">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                予約のリマインダーを受け取れます
+              </p>
+
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">前日にお知らせ</p>
+                  <p className="text-xs text-muted-foreground break-all">前日21時に翌日のご予約をお知らせします</p>
+                </div>
+                <Switch
+                  checked={prefs.reminder_day_before}
+                  disabled={!prefsLoaded}
+                  onCheckedChange={(v) => handlePrefToggle("reminder_day_before", v)}
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">1時間前にお知らせ</p>
+                  <p className="text-xs text-muted-foreground break-all">予約開始の約1時間前にお知らせします</p>
+                </div>
+                <Switch
+                  checked={prefs.reminder_hour_before}
+                  disabled={!prefsLoaded}
+                  onCheckedChange={(v) => handlePrefToggle("reminder_hour_before", v)}
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </section>

@@ -78,10 +78,9 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       start: addMonths(currentCycle.start, cycleOffset),
       end: addMonths(currentCycle.end, cycleOffset),
     };
-    const prev = {
-      start: addMonths(shifted.start, -1),
-      end: shifted.start,
-    };
+    // prev cycle: アニバーサリー日（shifted.start の前日）を含むサイクル
+    const prevRef = addDays(shifted.start, -1);
+    const prev = getCycleWindow(cycleStartDate, prevRef);
     return {
       cycleStart: shifted.start,
       cycleEnd: shifted.end,

@@ -1,4 +1,4 @@
-import { addMonths, parseISO } from "date-fns";
+import { addMonths, addDays, parseISO, startOfDay } from "date-fns";
 import { PlanType, planOptions } from "./dummyData";
 import { getJSTNow } from "./timezone";
 
@@ -21,24 +21,32 @@ export interface CycleWindow {
 }
 
 /**
- * cycle_start_date を起算日として、targetDate を含むサイクル期間 [start, end) を求める
+ * cycle_start_date を起算日として、targetDate を含むサイクル期間 [start, end) を求める。
+ *
+ * 仕様: アニバーサリー日（起算日と同じ日付）は「前サイクルの最終日」として扱う。
+ * 例: cycle_start_date = 2026-05-19 の場合
+ *   - サイクル1: 2026-05-19 〜 2026-06-19（6/19 を含む）
+ *   - サイクル2: 2026-06-20 〜 2026-07-19（6/20 から開始）
+ * 返り値の end はアニバーサリー翌日の 00:00（排他的上限）。
+ * 比較は暦日（startOfDay）基準で行い、時刻成分の影響を排除する。
  */
 export const getCycleWindow = (cycleStartDate: string | null | undefined, targetDate: Date): CycleWindow | null => {
   if (!cycleStartDate) return null;
   const initialStart = parseISO(cycleStartDate);
+  const targetDay = startOfDay(targetDate);
+
+  // 契約起算日より前は、最初のサイクルを返す（架空の「前回」を作らない）
+  if (targetDay < initialStart) {
+    return { start: initialStart, end: addDays(addMonths(initialStart, 1), 1) };
+  }
+
+  // アニバーサリー日（addMonths(start,1)）が targetDay より「厳密に前」のときだけ次サイクルへ進める。
+  // → アニバーサリー日と一致する日は現サイクルに含める。
   let start = initialStart;
-
-  // 契約起算日より前に、架空の「前回」を作らない。
-  // 例: 起算日 2026-04-26 / 参照日 2026-04-25 の場合も、今回は 4/26〜5/25 とする。
-  if (targetDate < initialStart) {
-    return { start: initialStart, end: addMonths(initialStart, 1) };
+  while (addMonths(start, 1) < targetDay) {
+    start = addDays(addMonths(start, 1), 1);
   }
-
-  // targetDate が属する、起算日ベースの [start, end) を求める
-  while (addMonths(start, 1) <= targetDate) {
-    start = addMonths(start, 1);
-  }
-  return { start, end: addMonths(start, 1) };
+  return { start, end: addDays(addMonths(start, 1), 1) };
 };
 
 export interface BookingForProgress {

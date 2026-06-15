@@ -12,6 +12,7 @@ import { useMyBookings, BookingWithTime } from "@/hooks/useBookings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { getCycleWindow } from "@/lib/courseProgress";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
@@ -427,13 +428,12 @@ const CustomerSettings = () => {
             })
             .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
 
-          // Compute cycle-based count
-          const cycleStart = profile?.cycle_start_date ? new Date(profile.cycle_start_date) : null;
-          const cycleEnd = cycleStart ? new Date(new Date(cycleStart).setMonth(cycleStart.getMonth() + 1)) : null;
-          const cycleCount = cycleStart && cycleEnd
+          // Compute cycle-based count（アニバーサリー日は前サイクル最終日として扱う）
+          const cycleWindow = profile?.cycle_start_date ? getCycleWindow(profile.cycle_start_date, now) : null;
+          const cycleCount = cycleWindow
             ? pastBookings.filter((b) => {
                 const d = new Date(b.date);
-                return d >= cycleStart && d < cycleEnd;
+                return d >= cycleWindow.start && d < cycleWindow.end;
               }).length
             : pastBookings.length;
 

@@ -8,14 +8,17 @@ import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow } from "@/lib/timezone";
 import { getMuscleGroup, loadMuscleGroupMap, subscribeMuscleGroup } from "@/lib/muscleGroup";
+import { getCycleWindow as sharedGetCycleWindow } from "@/lib/courseProgress";
 
 const MUSCLE_GROUPS = ["胸", "背中", "肩", "脚", "二頭筋", "三頭筋", "腹筋"] as const;
 
+/**
+ * 共通の courseProgress.getCycleWindow に統一。
+ * アニバーサリー日は前サイクルの最終日として扱う。
+ */
 const getCycleWindow = (cycleStartDate: string, targetDate: Date) => {
-  let cycleStart = parseISO(cycleStartDate);
-  while (addMonths(cycleStart, 1) <= targetDate) cycleStart = addMonths(cycleStart, 1);
-  while (cycleStart > targetDate) cycleStart = addMonths(cycleStart, -1);
-  return { start: cycleStart, end: addMonths(cycleStart, 1) };
+  const w = sharedGetCycleWindow(cycleStartDate, targetDate);
+  return w ?? { start: parseISO(cycleStartDate), end: addMonths(parseISO(cycleStartDate), 1) };
 };
 
 interface WorkoutRow {

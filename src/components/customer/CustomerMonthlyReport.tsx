@@ -8,13 +8,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useStreak } from "@/hooks/useStreak";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addMonths, parseISO, differenceInDays, isBefore } from "date-fns";
+import { format, addMonths, addDays, parseISO, differenceInDays, isBefore } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow, toJSTDate, formatJST } from "@/lib/timezone";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
 import MuscleGroupBadge from "./MuscleGroupBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { getCycleWindow as getSharedCycleWindow } from "@/lib/courseProgress";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
 
@@ -22,17 +23,14 @@ interface Props {
   onBack: () => void;
 }
 
-/** Given a cycle_start_date and a target date, find the cycle window containing that date */
+/**
+ * Given a cycle_start_date and a target date, find the cycle window containing that date.
+ * 共通の courseProgress.getCycleWindow に統一（アニバーサリー日は前サイクル最終日として扱う）。
+ */
 const getCycleWindow = (cycleStartDate: string, targetDate: Date) => {
-  let cycleStart = parseISO(cycleStartDate);
-  while (addMonths(cycleStart, 1) <= targetDate) {
-    cycleStart = addMonths(cycleStart, 1);
-  }
-  // Also handle if target is before the first cycle start
-  while (cycleStart > targetDate) {
-    cycleStart = addMonths(cycleStart, -1);
-  }
-  return { start: cycleStart, end: addMonths(cycleStart, 1) };
+  const w = getSharedCycleWindow(cycleStartDate, targetDate);
+  // 共通関数は null 不可ケースを想定するため、ここでは必ず値が返る前提
+  return w ?? { start: parseISO(cycleStartDate), end: addDays(addMonths(parseISO(cycleStartDate), 1), 1) };
 };
 
 const CustomerMonthlyReport = ({ onBack }: Props) => {
@@ -80,10 +78,9 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       start: addMonths(currentCycle.start, cycleOffset),
       end: addMonths(currentCycle.end, cycleOffset),
     };
-    const prev = {
-      start: addMonths(shifted.start, -1),
-      end: shifted.start,
-    };
+    // prev cycle: アニバーサリー日（shifted.start の前日）を含むサイクル
+    const prevRef = addDays(shifted.start, -1);
+    const prev = getCycleWindow(cycleStartDate, prevRef);
     return {
       cycleStart: shifted.start,
       cycleEnd: shifted.end,

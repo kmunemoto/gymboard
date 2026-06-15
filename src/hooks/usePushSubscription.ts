@@ -121,8 +121,12 @@ export function usePushSubscription() {
     listenersAttached.current = true;
 
     await PushNotifications.addListener("registration", async (token) => {
+      toast.info(`[DEBUG 8] registration リスナー発火, token=${token.value.substring(0, 20)}...`);
       console.log("[Push native] FCM token:", token.value);
-      if (!user) return;
+      if (!user) {
+        toast.info("[DEBUG 8b] user が null - return");
+        return;
+      }
       try {
         const { error } = await supabase.from("push_devices" as any).upsert(
           {
@@ -138,19 +142,26 @@ export function usePushSubscription() {
         );
         if (error) {
           console.error("[Push native] DB save failed:", error);
+          toast.error(`[DEBUG 9] DB保存失敗: ${error.message}`);
           toast.error(`通知トークン保存に失敗: ${error.message}`);
         } else {
+          toast.info("[DEBUG 10] DB保存成功");
           await ensureDefaultPreferences(user.id);
+          toast.info("[DEBUG 11] ensureDefaultPreferences完了");
           setIsSubscribed(true);
+          toast.info("[DEBUG 12] setIsSubscribed(true) 完了");
         }
       } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
         console.error("[Push native] save error:", e);
+        toast.error(`[DEBUG 9b] save例外: ${msg}`);
       }
     });
 
 
     await PushNotifications.addListener("registrationError", (err) => {
       console.error("[Push native] registrationError:", err);
+      toast.error(`[DEBUG ERR-REG] registrationError: ${JSON.stringify(err)}`);
       toast.error("プッシュ通知の登録に失敗しました");
     });
 
@@ -231,27 +242,39 @@ export function usePushSubscription() {
   }, [user]);
 
   const subscribeNative = useCallback(async () => {
-    if (!user) return false;
+    if (!user) {
+      toast.info("[DEBUG 0] user が null");
+      return false;
+    }
     try {
+      toast.info("[DEBUG 1] subscribeNative 開始");
+
       const { PushNotifications } = await import("@capacitor/push-notifications");
+      toast.info("[DEBUG 2] PushNotifications import 成功");
 
       const permState = await PushNotifications.checkPermissions();
+      toast.info(`[DEBUG 3] checkPermissions: ${permState.receive}`);
 
       const perm = await PushNotifications.requestPermissions();
+      toast.info(`[DEBUG 4] requestPermissions: ${perm.receive}`);
+
       setPermission(perm.receive === "granted" ? "granted" : perm.receive === "denied" ? "denied" : "default");
       if (perm.receive !== "granted") {
-        console.warn("[Push native] permission not granted:", perm.receive);
+        toast.info("[DEBUG 4b] 許可されなかった - return false");
         return false;
       }
 
+      toast.info("[DEBUG 5] attachNativeListeners 呼び出し前");
       await attachNativeListeners();
+      toast.info("[DEBUG 6] attachNativeListeners 完了");
 
       await PushNotifications.register();
-      // Token arrives via 'registration' listener which sets isSubscribed.
+      toast.info("[DEBUG 7] register() 完了 - トークン待ち");
+
       return true;
     } catch (err) {
-      console.error("[Push native] subscribe failed:", err);
-      toast.error("プッシュ通知の登録に失敗しました");
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`[DEBUG ERR] subscribeNative 例外: ${msg}`);
       return false;
     }
   }, [user, attachNativeListeners]);

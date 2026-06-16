@@ -186,6 +186,25 @@ jobs:
           </plist>
           EOF
 
+      - name: Add GoogleService-Info.plist to Xcode target (Copy Bundle Resources)
+        run: |
+          gem list -i xcodeproj >/dev/null 2>&1 || sudo gem install xcodeproj
+          ruby -e '
+            require "xcodeproj"
+            project_path = "ios/App/App.xcodeproj"
+            plist_name = "GoogleService-Info.plist"
+            project = Xcodeproj::Project.open(project_path)
+            target = project.targets.find { |t| t.name == "App" } or abort("App target not found")
+            app_group = project.main_group["App"] || project.main_group.find_subpath("App", true)
+            file_ref = app_group.files.find { |f| f.display_name == plist_name } || app_group.new_reference(plist_name)
+            already = target.resources_build_phase.files.any? { |bf| bf.file_ref && bf.file_ref.display_name == plist_name }
+            target.add_resources([file_ref]) unless already
+            project.save
+            puts "OK: wired #{plist_name} into App resources (already_present=#{already})"
+          '
+          echo "--- pbxproj references to the plist (expect >= 1) ---"
+          grep -c "GoogleService-Info.plist" ios/App/App.xcodeproj/project.pbxproj
+
       - name: Build archive
         run: |
           cd ios/App

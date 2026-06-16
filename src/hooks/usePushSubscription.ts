@@ -63,9 +63,15 @@ export function usePushSubscription() {
       setIsSupported(true);
       (async () => {
         try {
-          const { PushNotifications } = await import("@capacitor/push-notifications");
-          const p = await PushNotifications.checkPermissions();
-          setPermission(p.receive === "granted" ? "granted" : p.receive === "denied" ? "denied" : "default");
+          if (nativePlatform() === "ios") {
+            const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
+            const p = await FirebaseMessaging.checkPermissions();
+            setPermission(p.receive === "granted" ? "granted" : p.receive === "denied" ? "denied" : "default");
+          } else {
+            const { PushNotifications } = await import("@capacitor/push-notifications");
+            const p = await PushNotifications.checkPermissions();
+            setPermission(p.receive === "granted" ? "granted" : p.receive === "denied" ? "denied" : "default");
+          }
         } catch {
           /* ignore */
         }
@@ -83,6 +89,7 @@ export function usePushSubscription() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
 
 
   // ===== Web =====

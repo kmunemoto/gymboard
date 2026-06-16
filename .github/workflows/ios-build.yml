@@ -96,7 +96,7 @@ jobs:
       - name: Set marketing version
         run: |
           cd ios/App
-          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.2.0;/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.1.3;/g' App.xcodeproj/project.pbxproj
 
       - name: Fix Podfile for CI signing
         run: |

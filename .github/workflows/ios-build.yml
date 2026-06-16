@@ -64,8 +64,19 @@ jobs:
             exit 1
           fi
           DEST="ios/App/App/GoogleService-Info.plist"
-          echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > "$DEST"
-          echo "--- GoogleService-Info.plist written ---"
+          # Strip any whitespace/newlines from the secret, then base64-decode
+          printf '%s' "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | tr -d '[:space:]' | base64 --decode > "$DEST"
+          echo "--- decoded file size (bytes) ---"
+          wc -c "$DEST" || true
+          echo "--- first 3 lines (expect XML starting with <?xml ...) ---"
+          head -3 "$DEST" || true
+          echo "--- validate as a property list ---"
+          if ! plutil -lint "$DEST"; then
+            echo "ERROR: decoded GoogleService-Info.plist is NOT a valid property list." >&2
+            echo "The GOOGLE_SERVICE_INFO_PLIST_BASE64 secret is corrupted, or is not base64 of the .plist file." >&2
+            echo "Regenerate the secret from a fresh Firebase Console download and re-run." >&2
+            exit 1
+          fi
           /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" "$DEST" || true
           /usr/libexec/PlistBuddy -c "Print :GOOGLE_APP_ID" "$DEST" || true
 

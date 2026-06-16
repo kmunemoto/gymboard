@@ -364,13 +364,27 @@ export function usePushSubscription() {
   const unsubscribeNative = useCallback(async () => {
     if (!user) return false;
     try {
-      const { PushNotifications } = await import("@capacitor/push-notifications");
-      try {
-        await PushNotifications.removeAllListeners();
-      } catch {
-        /* ignore */
+      if (nativePlatform() === "ios") {
+        const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
+        try {
+          await FirebaseMessaging.deleteToken();
+        } catch {
+          /* ignore */
+        }
+        try {
+          await FirebaseMessaging.removeAllListeners();
+        } catch {
+          /* ignore */
+        }
+      } else {
+        const { PushNotifications } = await import("@capacitor/push-notifications");
+        try {
+          await PushNotifications.removeAllListeners();
+        } catch {
+          /* ignore */
+        }
+        listenersAttached.current = false;
       }
-      listenersAttached.current = false;
       await supabase.from("push_devices" as any).delete().eq("user_id", user.id);
       setIsSubscribed(false);
       return true;
@@ -379,6 +393,7 @@ export function usePushSubscription() {
       return false;
     }
   }, [user]);
+
 
   const unsubscribe = useCallback(async () => {
     return isNative() ? unsubscribeNative() : unsubscribeWeb();

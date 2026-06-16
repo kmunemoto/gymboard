@@ -198,6 +198,16 @@ const TrainerNotificationSettings = () => {
     }
   };
 
+  const handlePrefToggle = async (key: keyof NotificationPreferences, value: boolean) => {
+    const prev = prefs;
+    setPrefs({ ...prefs, [key]: value });
+    const ok = await updateNotificationPreference(key, value);
+    if (!ok) {
+      setPrefs(prev);
+      toast.error("設定の更新に失敗しました");
+    }
+  };
+
   return (
     <div className="pb-20 md:pb-0">
       <h1 className="text-xl font-bold flex items-center gap-2 mb-6">

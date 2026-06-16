@@ -57,6 +57,25 @@ const TrainerNotificationSettings = () => {
     checkGcalStatus();
   }, [user]);
 
+  // Load push notification preferences when subscription becomes active
+  useEffect(() => {
+    let cancelled = false;
+    if (!isSubscribed) {
+      setPrefsLoaded(false);
+      return;
+    }
+    (async () => {
+      const p = await getNotificationPreferences();
+      if (!cancelled) {
+        setPrefs(p);
+        setPrefsLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSubscribed, getNotificationPreferences]);
+
   // Handle LINE link result from redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

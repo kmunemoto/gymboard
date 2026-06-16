@@ -1,19 +1,36 @@
 import { useState, useEffect } from "react";
-import { Bell, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw } from "lucide-react";
+import { Bell, BellOff, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, AlertCircle, Clock } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { usePushSubscription, type NotificationPreferences } from "@/hooks/usePushSubscription";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const TrainerNotificationSettings = () => {
-  const [messageNotif, setMessageNotif] = useState(true);
-  const [reminderNotif, setReminderNotif] = useState(true);
-  const { isSupported, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushSubscription();
+  const {
+    isSupported,
+    isSubscribed,
+    loading: pushLoading,
+    permission,
+    subscribe,
+    unsubscribe,
+    getNotificationPreferences,
+    updateNotificationPreference,
+  } = usePushSubscription();
+  const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
+
+  const [prefs, setPrefs] = useState<NotificationPreferences>({
+    reminder_day_before: true,
+    reminder_hour_before: true,
+  });
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
   const { profile, loading: profileLoading, refetch } = useProfile();
   const { user } = useAuth();
 
@@ -39,6 +56,25 @@ const TrainerNotificationSettings = () => {
   useEffect(() => {
     checkGcalStatus();
   }, [user]);
+
+  // Load push notification preferences when subscription becomes active
+  useEffect(() => {
+    let cancelled = false;
+    if (!isSubscribed) {
+      setPrefsLoaded(false);
+      return;
+    }
+    (async () => {
+      const p = await getNotificationPreferences();
+      if (!cancelled) {
+        setPrefs(p);
+        setPrefsLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSubscribed, getNotificationPreferences]);
 
   // Handle LINE link result from redirect
   useEffect(() => {
@@ -162,6 +198,16 @@ const TrainerNotificationSettings = () => {
     }
   };
 
+  const handlePrefToggle = async (key: keyof NotificationPreferences, value: boolean) => {
+    const prev = prefs;
+    setPrefs({ ...prefs, [key]: value });
+    const ok = await updateNotificationPreference(key, value);
+    if (!ok) {
+      setPrefs(prev);
+      toast.error("設定の更新に失敗しました");
+    }
+  };
+
   return (
     <div className="pb-20 md:pb-0">
       <h1 className="text-xl font-bold flex items-center gap-2 mb-6">
@@ -264,74 +310,87 @@ const TrainerNotificationSettings = () => {
           </Card>
         )}
 
-        {/* Browser push notification */}
+        {/* Push notification */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                <Shield className="w-5 h-5 text-accent" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isSubscribed ? "bg-accent/10" : "bg-muted"}`}>
+                {isSubscribed ? (
+                  <Bell className="w-5 h-5 text-accent" />
+                ) : (
+                  <BellOff className="w-5 h-5 text-muted-foreground" />
+                )}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-sm mb-1">プッシュ通知</h3>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-3 break-all">
                   アプリを開いていない時でも、新着メッセージや予約の通知をスマートフォンに届けます。
                 </p>
                 {!isSupported ? (
-                  <p className="text-xs text-muted-foreground">このブラウザはプッシュ通知に対応していません。</p>
+                  <p className="text-xs text-muted-foreground">この環境はプッシュ通知に対応していません。</p>
+                ) : pushLoading ? (
+                  <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
                 ) : isSubscribed ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-accent">
-                      <BellRing className="w-4 h-4" />
-                      プッシュ通知は有効です
-                    </div>
-                    <Button size="sm" variant="outline" onClick={handleTogglePush} disabled={pushLoading}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-accent">通知ON</span>
+                    <Button size="sm" variant="outline" onClick={handleTogglePush}>
                       通知を無効にする
                     </Button>
                   </div>
+                ) : permission === "denied" ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-xs text-muted-foreground break-all">
+                      {isNative ? (
+                        <>
+                          通知が拒否されています。{platform === "ios" ? "iPhoneの「設定」→「ジムボード」→「通知」" : "端末の「設定」→「アプリ」→「ジムボード」→「通知」"}から許可してください。
+                        </>
+                      ) : (
+                        <>通知が拒否されています。ブラウザのサイト設定から通知を許可してください。</>
+                      )}
+                    </div>
+                  </div>
                 ) : (
-                  <Button size="sm" onClick={handleTogglePush} disabled={pushLoading}>
+                  <Button size="sm" onClick={handleTogglePush}>
                     <Bell className="w-4 h-4 mr-1.5" />
                     プッシュ通知を許可する
                   </Button>
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Message notification toggle */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <BellRing className="w-5 h-5 text-accent" />
+            {isSubscribed && (
+              <div className="mt-4 pt-4 border-t border-border space-y-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  予約のリマインダーを受け取れます
+                </p>
+
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">前日にお知らせ</p>
+                    <p className="text-xs text-muted-foreground break-all">前日21時に翌日のご予約をお知らせします</p>
+                  </div>
+                  <Switch
+                    checked={prefs.reminder_day_before}
+                    disabled={!prefsLoaded}
+                    onCheckedChange={(v) => handlePrefToggle("reminder_day_before", v)}
+                  />
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm">新着メッセージ通知</h3>
-                  <p className="text-xs text-muted-foreground">顧客からメッセージが届いた際に通知</p>
+
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">1時間前にお知らせ</p>
+                    <p className="text-xs text-muted-foreground break-all">予約開始の約1時間前にお知らせします</p>
+                  </div>
+                  <Switch
+                    checked={prefs.reminder_hour_before}
+                    disabled={!prefsLoaded}
+                    onCheckedChange={(v) => handlePrefToggle("reminder_hour_before", v)}
+                  />
                 </div>
               </div>
-              <Switch checked={messageNotif} onCheckedChange={setMessageNotif} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Reminder notification toggle */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <Bell className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">予約リマインド通知</h3>
-                  <p className="text-xs text-muted-foreground">予約24時間前の自動リマインド送信状況</p>
-                </div>
-              </div>
-              <Switch checked={reminderNotif} onCheckedChange={setReminderNotif} />
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

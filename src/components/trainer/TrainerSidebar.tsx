@@ -26,6 +26,7 @@ const mobileTabs: { id: TrainerTab; label: string; icon: typeof LayoutDashboard 
   { id: "schedule", label: "予約", icon: CalendarDays },
   { id: "exercises", label: "種目", icon: Dumbbell },
   { id: "announcements", label: "お知らせ", icon: Megaphone },
+  { id: "notifications", label: "通知", icon: Bell },
   { id: "gym-settings", label: "設定", icon: Settings2 },
 ];
 

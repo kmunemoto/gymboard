@@ -239,42 +239,105 @@ export function usePushSubscription() {
   }, [user]);
 
   const subscribeNative = useCallback(async () => {
-    if (!user) {
-      toast.info("[DEBUG 0] user が null");
-      return false;
-    }
+    if (!user) return false;
     try {
-      toast.info("[DEBUG 1] subscribeNative 開始");
+      if (nativePlatform() === "ios") {
+        // === iOS: @capacitor-firebase/messaging で FCM トークンを取得 ===
+        const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
 
-      const { PushNotifications } = await import("@capacitor/push-notifications");
-      toast.info("[DEBUG 2] PushNotifications import 成功");
+        const perm = await FirebaseMessaging.requestPermissions();
+        setPermission(
+          perm.receive === "granted"
+            ? "granted"
+            : perm.receive === "denied"
+            ? "denied"
+            : "default"
+        );
+        if (perm.receive !== "granted") return false;
 
-      const permState = await PushNotifications.checkPermissions();
-      toast.info(`[DEBUG 3] checkPermissions: ${permState.receive}`);
+        const { token } = await FirebaseMessaging.getToken();
+        console.log("[Push iOS] FCM token:", token);
 
-      const perm = await PushNotifications.requestPermissions();
-      toast.info(`[DEBUG 4] requestPermissions: ${perm.receive}`);
+        const { error } = await supabase.from("push_devices" as any).upsert(
+          {
+            user_id: user.id,
+            fcm_token: token,
+            platform: "ios",
+            device_info: {
+              ua: navigator.userAgent,
+              capacitor_platform: Capacitor.getPlatform(),
+            },
+          },
+          { onConflict: "user_id,fcm_token" }
+        );
 
-      setPermission(perm.receive === "granted" ? "granted" : perm.receive === "denied" ? "denied" : "default");
-      if (perm.receive !== "granted") {
-        toast.info("[DEBUG 4b] 許可されなかった - return false");
-        return false;
+        if (error) {
+          console.error("[Push iOS] DB save failed:", error);
+          toast.error("通知トークン保存に失敗しました");
+          return false;
+        }
+
+        await ensureDefaultPreferences(user.id);
+
+        await FirebaseMessaging.addListener("tokenReceived", async (event) => {
+          console.log("[Push iOS] token refreshed:", event.token);
+          await supabase.from("push_devices" as any).upsert(
+            {
+              user_id: user.id,
+              fcm_token: event.token,
+              platform: "ios",
+              device_info: {
+                ua: navigator.userAgent,
+                capacitor_platform: Capacitor.getPlatform(),
+              },
+            },
+            { onConflict: "user_id,fcm_token" }
+          );
+        });
+
+        await FirebaseMessaging.addListener("notificationReceived", (event) => {
+          console.log("[Push iOS] foreground notification:", event);
+          const title = event.notification?.title || "お知らせ";
+          const body = event.notification?.body || "";
+          toast(title, { description: body });
+        });
+
+        await FirebaseMessaging.addListener("notificationActionPerformed", (event) => {
+          console.log("[Push iOS] notification tapped:", event);
+          const data = (event.notification?.data || {}) as Record<string, unknown>;
+          const url = typeof data.url === "string" ? data.url : undefined;
+          if (url && url.startsWith("/")) {
+            window.location.assign(url);
+          }
+        });
+
+        setIsSubscribed(true);
+        return true;
+      } else {
+        // === Android: 既存の @capacitor/push-notifications をそのまま使用 ===
+        const { PushNotifications } = await import("@capacitor/push-notifications");
+
+        const perm = await PushNotifications.requestPermissions();
+        setPermission(
+          perm.receive === "granted"
+            ? "granted"
+            : perm.receive === "denied"
+            ? "denied"
+            : "default"
+        );
+        if (perm.receive !== "granted") return false;
+
+        await attachNativeListeners();
+        await PushNotifications.register();
+        return true;
       }
-
-      toast.info("[DEBUG 5] attachNativeListeners 呼び出し前");
-      await attachNativeListeners();
-      toast.info("[DEBUG 6] attachNativeListeners 完了");
-
-      await PushNotifications.register();
-      toast.info("[DEBUG 7] register() 完了 - トークン待ち");
-
-      return true;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`[DEBUG ERR] subscribeNative 例外: ${msg}`);
+      console.error("[Push native] subscribe failed:", err);
+      toast.error("プッシュ通知の登録に失敗しました");
       return false;
     }
   }, [user, attachNativeListeners]);
+
 
   const subscribe = useCallback(async () => {
     return isNative() ? subscribeNative() : subscribeWeb();

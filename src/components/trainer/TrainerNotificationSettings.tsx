@@ -1,19 +1,36 @@
 import { useState, useEffect } from "react";
-import { Bell, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw } from "lucide-react";
+import { Bell, BellOff, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, AlertCircle, Clock } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { usePushSubscription, type NotificationPreferences } from "@/hooks/usePushSubscription";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const TrainerNotificationSettings = () => {
-  const [messageNotif, setMessageNotif] = useState(true);
-  const [reminderNotif, setReminderNotif] = useState(true);
-  const { isSupported, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushSubscription();
+  const {
+    isSupported,
+    isSubscribed,
+    loading: pushLoading,
+    permission,
+    subscribe,
+    unsubscribe,
+    getNotificationPreferences,
+    updateNotificationPreference,
+  } = usePushSubscription();
+  const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
+
+  const [prefs, setPrefs] = useState<NotificationPreferences>({
+    reminder_day_before: true,
+    reminder_hour_before: true,
+  });
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
   const { profile, loading: profileLoading, refetch } = useProfile();
   const { user } = useAuth();
 

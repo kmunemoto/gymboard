@@ -96,7 +96,7 @@ jobs:
       - name: Set marketing version
         run: |
           cd ios/App
-          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.1.2;/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.2.0;/g' App.xcodeproj/project.pbxproj
 
       - name: Fix Podfile for CI signing
         run: |
@@ -116,6 +116,27 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync ios
+
+      - name: Initialize Firebase in AppDelegate
+        run: |
+          DELEGATE="ios/App/App/AppDelegate.swift"
+
+          if ! grep -q "import FirebaseCore" "$DELEGATE"; then
+            sed -i '' '/^import UIKit$/a\
+          import FirebaseCore
+          ' "$DELEGATE"
+            echo "--- Added import FirebaseCore ---"
+          fi
+
+          if ! grep -q "FirebaseApp.configure()" "$DELEGATE"; then
+            sed -i '' '/didFinishLaunchingWithOptions.*-> Bool {/a\
+                  FirebaseApp.configure()
+          ' "$DELEGATE"
+            echo "--- Added FirebaseApp.configure() ---"
+          fi
+
+          echo "--- AppDelegate.swift ---"
+          cat "$DELEGATE"
 
       - name: Install CocoaPods
         run: cd ios/App && pod install

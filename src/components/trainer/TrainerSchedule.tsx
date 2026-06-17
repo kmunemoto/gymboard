@@ -153,6 +153,12 @@ const TrainerSchedule = () => {
     if (!deleteTarget || deleting) return;
 
     const target = deleteTarget;
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可（ブロックは対象外）
+    if (!target.isBlocked && isSaluteJuneLocked(target.date)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      setDeleteTarget(null);
+      return;
+    }
     setDeleting(true);
 
     // Blocked slot → delete from blocked_slots table

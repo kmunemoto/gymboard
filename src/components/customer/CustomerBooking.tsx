@@ -639,7 +639,7 @@ const CustomerBooking = () => {
                       </span>
                       （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
-                    <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting}>
+                    <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting || isSaluteJuneLocked(dateKey)}>
                       {submitting ? (
                         <DumbbellLoader className="w-4 h-4 mr-2" />
                       ) : null}

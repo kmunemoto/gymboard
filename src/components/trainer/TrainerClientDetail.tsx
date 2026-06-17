@@ -624,6 +624,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setTrainingGoal(trimmed);
     setEditingGoal(false);
     toast.success("目標を保存しました");
+  };
+
+
 
   const handleCycleStartDateChange = async (newDate: string) => {
     const { error } = await supabase.from("profiles").update({ cycle_start_date: newDate || null }).eq("user_id", clientId);

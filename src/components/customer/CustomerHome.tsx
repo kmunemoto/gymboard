@@ -46,6 +46,10 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const [latestDate, setLatestDate] = useState<string | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
+  const [measurementDate, setMeasurementDate] = useState<Date>(getJSTNow());
+  const [inputWeight, setInputWeight] = useState("");
+  const [inputBodyFat, setInputBodyFat] = useState("");
+  const [savingMeasurement, setSavingMeasurement] = useState(false);
 
   // Fetch all workouts (for PR + latest session) and total sessions count
   useEffect(() => {

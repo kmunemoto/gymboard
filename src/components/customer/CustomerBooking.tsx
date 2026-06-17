@@ -172,7 +172,29 @@ const CustomerBooking = () => {
 
   const slots = dateKey ? generateSlots() : [];
 
+  // ============================================================
+  // 6月/7月の棲み分け対応・移行完了後に削除
+  // Salute御所南テナントのみ、2026年6月の予約日に対する新規作成と
+  // キャンセルを GymBoard 上で不可にする（従来の Salute アプリで管理）。
+  // 7月以降は通常通り利用可能。判定は予約日の文字列のみで行う。
+  // ============================================================
+  const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+  const isJune2026 = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
+  const isSaluteJuneLocked = (d: string) =>
+    tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026(d);
+  const JUNE_LOCK_MESSAGE =
+    "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。";
+  // ============================================================
+  // 棲み分け対応ここまで
+  // ============================================================
+
   const handleBook = async () => {
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可
+    if (isSaluteJuneLocked(dateKey)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      return;
+    }
+
     if (!selectedDate || !selectedSlot || !user || !selectedPlan) return;
     const slot = slots.find((s) => s.id === selectedSlot);
     if (!slot) return;

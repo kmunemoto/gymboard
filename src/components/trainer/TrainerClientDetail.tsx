@@ -223,6 +223,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [editingRecordIds, setEditingRecordIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRecord | null>(null);
   const [cycleStartDate, setCycleStartDate] = useState<string>("");
+  const [trainingGoal, setTrainingGoal] = useState<string>("");
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState<string>("");
   const [chatInput, setChatInput] = useState("");
   const [clientGender, setClientGender] = useState<"male" | "female" | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);

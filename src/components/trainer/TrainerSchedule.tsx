@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAllBookings, checkSlotBlocked, createBooking, cancelBooking } from "@/hooks/useBookings";
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
@@ -19,6 +20,18 @@ import WeekTimelineView from "./WeekTimelineView";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+
+// ============================================================
+// 6月/7月の棲み分け対応・移行完了後に削除
+// Salute御所南テナントのみ、2026年6月の予約日の新規作成・キャンセルを
+// GymBoard 上で不可にする（従来の Salute アプリで管理）。
+// ============================================================
+const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+const isJune2026Date = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
+const JUNE_LOCK_MESSAGE =
+  "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。";
+// ============================================================
+
 
 
 const TrainerSchedule = () => {
@@ -40,6 +53,10 @@ const TrainerSchedule = () => {
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
+  const { tenant } = useTenant();
+  // [6月/7月の棲み分け対応] Salute御所南テナントかつ予約日が2026年6月か
+  const isSaluteJuneLocked = (d: string) =>
+    tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026Date(d);
 
   // user_id ごとの予約一覧（進捗計算用）
   const bookingsByUser = (() => {
@@ -93,6 +110,11 @@ const TrainerSchedule = () => {
       toast.error("日付・時間・お客様・プランを選択してください");
       return;
     }
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可
+    if (isSaluteJuneLocked(proxyDateKey)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      return;
+    }
 
     if (checkSlotBlocked(bookings, proxyDateKey, proxyTime)) {
       toast.error("すでに予約が入っています。別の時間を選んでください。");
@@ -131,6 +153,12 @@ const TrainerSchedule = () => {
     if (!deleteTarget || deleting) return;
 
     const target = deleteTarget;
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可（ブロックは対象外）
+    if (!target.isBlocked && isSaluteJuneLocked(target.date)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      setDeleteTarget(null);
+      return;
+    }
     setDeleting(true);
 
     // Blocked slot → delete from blocked_slots table
@@ -605,10 +633,17 @@ const TrainerSchedule = () => {
                 </div>
               </div>
             )}
+            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月は案内バナー */}
+            {isSaluteJuneLocked(proxyDateKey) && (
+              <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
+              </div>
+            )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setProxyDialogOpen(false)} className="w-full sm:w-auto">キャンセル</Button>
-            <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting} className="w-full sm:w-auto">
+            <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting || isSaluteJuneLocked(proxyDateKey)} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               予約する
             </Button>
@@ -626,6 +661,13 @@ const TrainerSchedule = () => {
                 : deleteTarget && `${deleteTarget.clientName}さんの予約（${deleteTarget.date} ${deleteTarget.startTime}）を削除します。本当にこの予約を削除しますか？元に戻すことはできません。`
               }
             </p>
+            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約は案内バナー */}
+            {deleteTarget && !deleteTarget.isBlocked && isSaluteJuneLocked(deleteTarget.date) && (
+              <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3 mt-2">
+                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
+              </div>
+            )}
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full sm:w-auto">
@@ -633,7 +675,7 @@ const TrainerSchedule = () => {
             </Button>
             <Button
               variant="destructive"
-              disabled={deleting}
+              disabled={deleting || (!!deleteTarget && !deleteTarget.isBlocked && isSaluteJuneLocked(deleteTarget.date))}
               onClick={() => void handleDeleteBooking()}
               className="w-full sm:w-auto"
             >

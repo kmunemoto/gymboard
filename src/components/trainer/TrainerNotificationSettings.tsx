@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, AlertCircle, Clock } from "lucide-react";
+import { Bell, BellOff, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, AlertCircle, Check } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { usePushSubscription, type NotificationPreferences } from "@/hooks/usePushSubscription";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";

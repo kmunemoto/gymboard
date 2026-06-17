@@ -279,6 +279,11 @@ const CustomerBooking = () => {
 
   const handleCancel = async () => {
     if (!cancelTarget || cancelling) return;
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可
+    if (isSaluteJuneLocked(cancelTarget.date)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      return;
+    }
     setCancelling(true);
     try {
       const { error } = await cancelBooking(cancelTarget.id);

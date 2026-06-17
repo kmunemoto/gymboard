@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { MONTHLY_REPORT_ENABLED } from "@/lib/featureFlags";
-import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon } from "lucide-react";
+import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target } from "lucide-react";
 import { exerciseCategories } from "@/lib/dummyData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -223,6 +223,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [editingRecordIds, setEditingRecordIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRecord | null>(null);
   const [cycleStartDate, setCycleStartDate] = useState<string>("");
+  const [trainingGoal, setTrainingGoal] = useState<string>("");
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState<string>("");
   const [chatInput, setChatInput] = useState("");
   const [clientGender, setClientGender] = useState<"male" | "female" | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -251,6 +255,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         const linkedName = (mem as any)?.tenant_plans?.plan_name as string | undefined;
         setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
+        setTrainingGoal((data as any).training_goal || "");
         setShowUsagePeriod(data.show_usage_period ?? true);
       } else {
         setHasProfile(false);
@@ -607,6 +612,22 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     toast.success(`${displayName}さんのプランを「${planName}」に変更しました`);
   };
 
+  const handleSaveGoal = async () => {
+    const trimmed = goalDraft.trim();
+    setSavingGoal(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ training_goal: trimmed || null } as any)
+      .eq("user_id", clientId);
+    setSavingGoal(false);
+    if (error) { toast.error("目標の保存に失敗しました"); return; }
+    setTrainingGoal(trimmed);
+    setEditingGoal(false);
+    toast.success("目標を保存しました");
+  };
+
+
+
   const handleCycleStartDateChange = async (newDate: string) => {
     const { error } = await supabase.from("profiles").update({ cycle_start_date: newDate || null }).eq("user_id", clientId);
     if (error) { toast.error("起算日の更新に失敗しました"); return; }
@@ -713,6 +734,70 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <p className="text-xs sm:text-sm text-muted-foreground truncate">{clientPlan}</p>
         </div>
       </div>
+
+      {/* Training Goal */}
+      <section className="mb-4 sm:mb-6">
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <Target className="w-3.5 h-3.5" />
+          目標・トレーニング目的
+        </h2>
+        {editingGoal ? (
+          <Card>
+            <CardContent className="p-3 sm:p-4 space-y-2">
+              <Textarea
+                value={goalDraft}
+                onChange={(e) => setGoalDraft(e.target.value)}
+                placeholder="例: 体脂肪率15%以下、姿勢改善・肩こり解消、フルマラソン完走、健康維持・筋力アップ"
+                rows={4}
+                className="text-sm resize-none break-all"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => { setEditingGoal(false); setGoalDraft(trainingGoal); }} disabled={savingGoal} className="h-8 text-xs">
+                  取消
+                </Button>
+                <Button size="sm" onClick={handleSaveGoal} disabled={savingGoal} className="h-8 text-xs gap-1">
+                  <Save className="w-3 h-3" />
+                  {savingGoal ? "保存中..." : "保存"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : trainingGoal ? (
+          <button
+            type="button"
+            onClick={() => { setGoalDraft(trainingGoal); setEditingGoal(true); }}
+            className="w-full text-left"
+          >
+            <Card className="bg-primary/5 border-primary/30 hover:bg-primary/10 transition-colors">
+              <CardContent className="p-3 sm:p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                  <Target className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium whitespace-pre-wrap break-all leading-relaxed">{trainingGoal}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
+                    <Pencil className="w-3 h-3" />
+                    タップして編集
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </button>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">目標が未設定です</span>
+              <Button size="sm" variant="outline" onClick={() => { setGoalDraft(""); setEditingGoal(true); }} className="h-8 text-xs gap-1 shrink-0">
+                <Plus className="w-3 h-3" />
+                目標を設定
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+
 
       {/* Plan */}
       <section className="mb-4 sm:mb-6">

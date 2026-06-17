@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Settings, User, Pencil, MessageCircle, CheckCircle2, Unlink, LogOut, History, Clock, Dumbbell, Award, Bone, Smartphone, Calendar, FileText, Shield as ShieldIcon, ChevronRight, Gamepad2 } from "lucide-react";
+import { Settings, User, Pencil, MessageCircle, CheckCircle2, Unlink, LogOut, History, Clock, Dumbbell, Award, Bone, Smartphone, Calendar, FileText, Shield as ShieldIcon, ChevronRight, Gamepad2, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -237,6 +237,30 @@ const CustomerSettings = () => {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      {/* Training Goal (read-only, set by trainer) */}
+      <section>
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <Target className="w-3.5 h-3.5" />
+          目標
+        </h2>
+        {profile?.training_goal ? (
+          <Card className="bg-primary/5 border-primary/30">
+            <CardContent className="p-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <Target className="w-4 h-4 text-primary" />
+              </div>
+              <p className="text-sm font-medium whitespace-pre-wrap break-all leading-relaxed flex-1 min-w-0">{profile.training_goal}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">目標はまだ設定されていません。次回のセッションでトレーナーと一緒に決めましょう。</p>
+            </CardContent>
+          </Card>
+        )}
       </section>
 
       {/* Language */}

@@ -576,6 +576,14 @@ const CustomerBooking = () => {
               </CardContent>
             </Card>
 
+            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月は案内バナー */}
+            {isSaluteJuneLocked(dateKey) && (
+              <div className="mt-3 flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
+              </div>
+            )}
+
             {selectedDate && (
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">

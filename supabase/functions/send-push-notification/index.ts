@@ -464,6 +464,7 @@ Deno.serve(async (req) => {
       if (!result) return;
       if (result.ok) {
         fcmSent++;
+        console.log(`[FCM DEBUG] sent ok device=${device.id}`);
       } else {
         const code = result.errorCode ?? "";
         const isInvalid =

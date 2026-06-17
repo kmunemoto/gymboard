@@ -17,6 +17,7 @@ export interface Profile {
   best_streak: number;
   last_streak_notified: number;
   game_mode_enabled: boolean;
+  training_goal: string | null;
   created_at: string;
   updated_at: string;
 }

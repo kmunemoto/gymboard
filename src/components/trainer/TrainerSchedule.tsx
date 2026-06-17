@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAllBookings, checkSlotBlocked, createBooking, cancelBooking } from "@/hooks/useBookings";
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
@@ -19,6 +20,18 @@ import WeekTimelineView from "./WeekTimelineView";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+
+// ============================================================
+// 6月/7月の棲み分け対応・移行完了後に削除
+// Salute御所南テナントのみ、2026年6月の予約日の新規作成・キャンセルを
+// GymBoard 上で不可にする（従来の Salute アプリで管理）。
+// ============================================================
+const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+const isJune2026Date = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
+const JUNE_LOCK_MESSAGE =
+  "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。";
+// ============================================================
+
 
 
 const TrainerSchedule = () => {

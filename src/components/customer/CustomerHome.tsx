@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2 } from "lucide-react";
+import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import ProgressCharts from "./ProgressCharts";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,13 +39,17 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { profile, loading } = useProfile();
   const { plans: tenantPlans } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
-  const { chartData, latest, loading: metricsLoading } = useMeasurements(user?.id);
+  const { chartData, latest, loading: metricsLoading, saveMeasurement } = useMeasurements(user?.id);
   const { currentStreak, loading: streakLoading } = useStreak(user?.id);
   const streakNotifiedRef = useRef(false);
   const [latestWorkouts, setLatestWorkouts] = useState<RawWorkout[]>([]);
   const [latestDate, setLatestDate] = useState<string | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
+  const [measurementDate, setMeasurementDate] = useState<Date>(getJSTNow());
+  const [inputWeight, setInputWeight] = useState("");
+  const [inputBodyFat, setInputBodyFat] = useState("");
+  const [savingMeasurement, setSavingMeasurement] = useState(false);
 
   // Fetch all workouts (for PR + latest session) and total sessions count
   useEffect(() => {
@@ -300,6 +308,65 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           )}
         </div>
       )}
+
+      {/* 4b. Measurement Input */}
+      <section>
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <Weight className="w-3.5 h-3.5" />
+          計測データを記録
+        </h2>
+        <Card>
+          <CardContent className="p-3 sm:p-4 space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">計測日</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full h-11 justify-start text-left font-normal", !measurementDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : "日付を選択"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={measurementDate}
+                    onSelect={(d) => d && setMeasurementDate(d)}
+                    disabled={(date) => date > getJSTNow()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">体重 (kg)</label>
+                <Input type="number" inputMode="decimal" step="0.1" placeholder={latest?.weight?.toString() || "60.0"} value={inputWeight} onChange={(e) => setInputWeight(e.target.value)} className="h-11" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">体脂肪率 (%)</label>
+                <Input type="number" inputMode="decimal" step="0.1" placeholder={latest?.body_fat?.toString() || "20.0"} value={inputBodyFat} onChange={(e) => setInputBodyFat(e.target.value)} className="h-11" />
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              disabled={savingMeasurement || (!inputWeight && !inputBodyFat)}
+              onClick={async () => {
+                setSavingMeasurement(true);
+                const dateStr = format(measurementDate, "yyyy-MM-dd");
+                const w = inputWeight ? parseFloat(inputWeight) : null;
+                const f = inputBodyFat ? parseFloat(inputBodyFat) : null;
+                const ok = await saveMeasurement(dateStr, w, f);
+                if (ok) { setInputWeight(""); setInputBodyFat(""); setMeasurementDate(getJSTNow()); }
+                setSavingMeasurement(false);
+              }}
+            >
+              <Save className="w-4 h-4 mr-1" />
+              {savingMeasurement ? "保存中..." : "保存"}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
 
       {/* 5. Progress Charts */}
       <ProgressCharts />

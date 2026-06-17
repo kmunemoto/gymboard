@@ -39,7 +39,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { profile, loading } = useProfile();
   const { plans: tenantPlans } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
-  const { chartData, latest, loading: metricsLoading } = useMeasurements(user?.id);
+  const { chartData, latest, loading: metricsLoading, saveMeasurement } = useMeasurements(user?.id);
   const { currentStreak, loading: streakLoading } = useStreak(user?.id);
   const streakNotifiedRef = useRef(false);
   const [latestWorkouts, setLatestWorkouts] = useState<RawWorkout[]>([]);

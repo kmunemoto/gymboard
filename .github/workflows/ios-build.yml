@@ -56,29 +56,44 @@ jobs:
           /usr/libexec/PlistBuddy -c "Print" "$PLIST" | grep -A0 "UsageDescription"
 
       - name: Inject GoogleService-Info.plist
-        env:
-          GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
         run: |
-          if [ -z "$GOOGLE_SERVICE_INFO_PLIST_BASE64" ]; then
-            echo "ERROR: GOOGLE_SERVICE_INFO_PLIST_BASE64 secret is not set" >&2
-            exit 1
-          fi
           DEST="ios/App/App/GoogleService-Info.plist"
-          # Strip any whitespace/newlines from the secret, then base64-decode
-          printf '%s' "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | tr -d '[:space:]' | base64 --decode > "$DEST"
-          echo "--- decoded file size (bytes) ---"
-          wc -c "$DEST" || true
-          echo "--- first 3 lines (expect XML starting with <?xml ...) ---"
-          head -3 "$DEST" || true
+          cat > "$DEST" << 'PLIST_EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          <key>API_KEY</key>
+          <string>AIzaSyB8UmCsSZ9C6ePEr5f-Anf1XCovlgZbvQg</string>
+          <key>GCM_SENDER_ID</key>
+          <string>655937839767</string>
+          <key>PLIST_VERSION</key>
+          <string>1</string>
+          <key>BUNDLE_ID</key>
+          <string>app.gymboard.mobile</string>
+          <key>PROJECT_ID</key>
+          <string>gymboard-59570</string>
+          <key>STORAGE_BUCKET</key>
+          <string>gymboard-59570.firebasestorage.app</string>
+          <key>IS_ADS_ENABLED</key>
+          <false/>
+          <key>IS_ANALYTICS_ENABLED</key>
+          <false/>
+          <key>IS_APPINVITE_ENABLED</key>
+          <true/>
+          <key>IS_GCM_ENABLED</key>
+          <true/>
+          <key>IS_SIGNIN_ENABLED</key>
+          <true/>
+          <key>GOOGLE_APP_ID</key>
+          <string>1:655937839767:ios:24127d2563fa75b9667fd2</string>
+          </dict>
+          </plist>
+          PLIST_EOF
           echo "--- validate as a property list ---"
-          if ! plutil -lint "$DEST"; then
-            echo "ERROR: decoded GoogleService-Info.plist is NOT a valid property list." >&2
-            echo "The GOOGLE_SERVICE_INFO_PLIST_BASE64 secret is corrupted, or is not base64 of the .plist file." >&2
-            echo "Regenerate the secret from a fresh Firebase Console download and re-run." >&2
-            exit 1
-          fi
+          plutil -lint "$DEST"
           /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" "$DEST" || true
-          /usr/libexec/PlistBuddy -c "Print :GOOGLE_APP_ID" "$DEST" || true
+          /usr/libexec/PlistBuddy -c "Print :PROJECT_ID" "$DEST" || true
 
       - name: Enable Push Notifications capability (aps-environment)
         run: |

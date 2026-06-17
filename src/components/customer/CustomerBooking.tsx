@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, CreditCard } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, CreditCard, Info } from "lucide-react";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -172,7 +172,29 @@ const CustomerBooking = () => {
 
   const slots = dateKey ? generateSlots() : [];
 
+  // ============================================================
+  // 6月/7月の棲み分け対応・移行完了後に削除
+  // Salute御所南テナントのみ、2026年6月の予約日に対する新規作成と
+  // キャンセルを GymBoard 上で不可にする（従来の Salute アプリで管理）。
+  // 7月以降は通常通り利用可能。判定は予約日の文字列のみで行う。
+  // ============================================================
+  const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+  const isJune2026 = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
+  const isSaluteJuneLocked = (d: string) =>
+    tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026(d);
+  const JUNE_LOCK_MESSAGE =
+    "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。";
+  // ============================================================
+  // 棲み分け対応ここまで
+  // ============================================================
+
   const handleBook = async () => {
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可
+    if (isSaluteJuneLocked(dateKey)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      return;
+    }
+
     if (!selectedDate || !selectedSlot || !user || !selectedPlan) return;
     const slot = slots.find((s) => s.id === selectedSlot);
     if (!slot) return;
@@ -257,6 +279,11 @@ const CustomerBooking = () => {
 
   const handleCancel = async () => {
     if (!cancelTarget || cancelling) return;
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可
+    if (isSaluteJuneLocked(cancelTarget.date)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      return;
+    }
     setCancelling(true);
     try {
       const { error } = await cancelBooking(cancelTarget.id);
@@ -401,13 +428,23 @@ const CustomerBooking = () => {
                         >
                           <CalendarPlus className="w-4 h-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setCancelTarget(b)}
-                          className="text-destructive hover:text-destructive/80 transition-colors p-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可 */}
+                        {isSaluteJuneLocked(b.date) ? (
+                          <span
+                            className="text-muted-foreground/40 p-2 cursor-not-allowed"
+                            title={JUNE_LOCK_MESSAGE}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setCancelTarget(b)}
+                            className="text-destructive hover:text-destructive/80 transition-colors p-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -476,6 +513,8 @@ const CustomerBooking = () => {
                     // `date` is in browser local TZ; build the JST 20:15 instant
                     // for that calendar day using a JST-anchored ISO.
                     const yyyyMMdd = format(date, "yyyy-MM-dd");
+                    // [6月/7月の棲み分け対応] Salute御所南×2026年6月は選択不可
+                    if (isSaluteJuneLocked(yyyyMMdd)) return true;
                     const latestSlot = new Date(`${yyyyMMdd}T20:15:00+09:00`);
                     return latestSlot.getTime() - Date.now() < 24 * 60 * 60 * 1000;
                   }}
@@ -537,6 +576,14 @@ const CustomerBooking = () => {
               </CardContent>
             </Card>
 
+            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月は案内バナー */}
+            {isSaluteJuneLocked(dateKey) && (
+              <div className="mt-3 flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
+              </div>
+            )}
+
             {selectedDate && (
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
@@ -592,7 +639,7 @@ const CustomerBooking = () => {
                       </span>
                       （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
-                    <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting}>
+                    <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting || isSaluteJuneLocked(dateKey)}>
                       {submitting ? (
                         <DumbbellLoader className="w-4 h-4 mr-2" />
                       ) : null}

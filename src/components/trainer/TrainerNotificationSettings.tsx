@@ -18,17 +18,9 @@ const TrainerNotificationSettings = () => {
     permission,
     subscribe,
     unsubscribe,
-    getNotificationPreferences,
-    updateNotificationPreference,
   } = usePushSubscription();
   const isNative = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
-
-  const [prefs, setPrefs] = useState<NotificationPreferences>({
-    reminder_day_before: true,
-    reminder_hour_before: true,
-  });
-  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   const { profile, loading: profileLoading, refetch } = useProfile();
   const { user } = useAuth();
@@ -56,24 +48,6 @@ const TrainerNotificationSettings = () => {
     checkGcalStatus();
   }, [user]);
 
-  // Load push notification preferences when subscription becomes active
-  useEffect(() => {
-    let cancelled = false;
-    if (!isSubscribed) {
-      setPrefsLoaded(false);
-      return;
-    }
-    (async () => {
-      const p = await getNotificationPreferences();
-      if (!cancelled) {
-        setPrefs(p);
-        setPrefsLoaded(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isSubscribed, getNotificationPreferences]);
 
   // Handle LINE link result from redirect
   useEffect(() => {
@@ -197,15 +171,6 @@ const TrainerNotificationSettings = () => {
     }
   };
 
-  const handlePrefToggle = async (key: keyof NotificationPreferences, value: boolean) => {
-    const prev = prefs;
-    setPrefs({ ...prefs, [key]: value });
-    const ok = await updateNotificationPreference(key, value);
-    if (!ok) {
-      setPrefs(prev);
-      toast.error("設定の更新に失敗しました");
-    }
-  };
 
   return (
     <div className="pb-20 md:pb-0">
@@ -323,15 +288,18 @@ const TrainerNotificationSettings = () => {
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-sm mb-1">プッシュ通知</h3>
                 <p className="text-xs text-muted-foreground mb-3 break-all">
-                  アプリを開いていない時でも、新着メッセージや予約の通知をスマートフォンに届けます。
+                  アプリを開いていない時でも、予約・キャンセル・体験予約・メッセージの通知をスマートフォンに届けます。
                 </p>
                 {!isSupported ? (
-                  <p className="text-xs text-muted-foreground">この環境はプッシュ通知に対応していません。</p>
+                  <p className="text-xs text-muted-foreground">このデバイスはプッシュ通知に対応していません。</p>
                 ) : pushLoading ? (
                   <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
                 ) : isSubscribed ? (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-accent">通知ON</span>
+                    <span className="text-xs font-bold text-accent flex items-center gap-1">
+                      <BellRing className="w-3.5 h-3.5" />
+                      プッシュ通知は有効です
+                    </span>
                     <Button size="sm" variant="outline" onClick={handleTogglePush}>
                       通知を無効にする
                     </Button>
@@ -359,35 +327,26 @@ const TrainerNotificationSettings = () => {
             </div>
 
             {isSubscribed && (
-              <div className="mt-4 pt-4 border-t border-border space-y-3">
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  予約のリマインダーを受け取れます
-                </p>
-
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold">前日にお知らせ</p>
-                    <p className="text-xs text-muted-foreground break-all">前日21時に翌日のご予約をお知らせします</p>
-                  </div>
-                  <Switch
-                    checked={prefs.reminder_day_before}
-                    disabled={!prefsLoaded}
-                    onCheckedChange={(v) => handlePrefToggle("reminder_day_before", v)}
-                  />
-                </div>
-
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold">1時間前にお知らせ</p>
-                    <p className="text-xs text-muted-foreground break-all">予約開始の約1時間前にお知らせします</p>
-                  </div>
-                  <Switch
-                    checked={prefs.reminder_hour_before}
-                    disabled={!prefsLoaded}
-                    onCheckedChange={(v) => handlePrefToggle("reminder_hour_before", v)}
-                  />
-                </div>
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="text-xs font-bold mb-2">受け取る通知</p>
+                <ul className="space-y-1.5">
+                  <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                    新しい予約
+                  </li>
+                  <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                    予約キャンセル
+                  </li>
+                  <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                    新しい体験予約
+                  </li>
+                  <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                    お客様からのメッセージ
+                  </li>
+                </ul>
               </div>
             )}
           </CardContent>

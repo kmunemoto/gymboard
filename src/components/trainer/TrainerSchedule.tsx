@@ -633,10 +633,17 @@ const TrainerSchedule = () => {
                 </div>
               </div>
             )}
+            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月は案内バナー */}
+            {isSaluteJuneLocked(proxyDateKey) && (
+              <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
+              </div>
+            )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setProxyDialogOpen(false)} className="w-full sm:w-auto">キャンセル</Button>
-            <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting} className="w-full sm:w-auto">
+            <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting || isSaluteJuneLocked(proxyDateKey)} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               予約する
             </Button>

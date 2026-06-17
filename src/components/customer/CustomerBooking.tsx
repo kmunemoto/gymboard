@@ -513,6 +513,8 @@ const CustomerBooking = () => {
                     // `date` is in browser local TZ; build the JST 20:15 instant
                     // for that calendar day using a JST-anchored ISO.
                     const yyyyMMdd = format(date, "yyyy-MM-dd");
+                    // [6月/7月の棲み分け対応] Salute御所南×2026年6月は選択不可
+                    if (isSaluteJuneLocked(yyyyMMdd)) return true;
                     const latestSlot = new Date(`${yyyyMMdd}T20:15:00+09:00`);
                     return latestSlot.getTime() - Date.now() < 24 * 60 * 60 * 1000;
                   }}

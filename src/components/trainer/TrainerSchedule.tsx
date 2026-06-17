@@ -53,6 +53,10 @@ const TrainerSchedule = () => {
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
+  const { tenant } = useTenant();
+  // [6月/7月の棲み分け対応] Salute御所南テナントかつ予約日が2026年6月か
+  const isSaluteJuneLocked = (d: string) =>
+    tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026Date(d);
 
   // user_id ごとの予約一覧（進捗計算用）
   const bookingsByUser = (() => {

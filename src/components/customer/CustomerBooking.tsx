@@ -428,13 +428,23 @@ const CustomerBooking = () => {
                         >
                           <CalendarPlus className="w-4 h-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setCancelTarget(b)}
-                          className="text-destructive hover:text-destructive/80 transition-colors p-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可 */}
+                        {isSaluteJuneLocked(b.date) ? (
+                          <span
+                            className="text-muted-foreground/40 p-2 cursor-not-allowed"
+                            title={JUNE_LOCK_MESSAGE}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setCancelTarget(b)}
+                            className="text-destructive hover:text-destructive/80 transition-colors p-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

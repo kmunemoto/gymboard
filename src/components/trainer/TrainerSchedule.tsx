@@ -661,6 +661,13 @@ const TrainerSchedule = () => {
                 : deleteTarget && `${deleteTarget.clientName}さんの予約（${deleteTarget.date} ${deleteTarget.startTime}）を削除します。本当にこの予約を削除しますか？元に戻すことはできません。`
               }
             </p>
+            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約は案内バナー */}
+            {deleteTarget && !deleteTarget.isBlocked && isSaluteJuneLocked(deleteTarget.date) && (
+              <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3 mt-2">
+                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
+              </div>
+            )}
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full sm:w-auto">
@@ -668,7 +675,7 @@ const TrainerSchedule = () => {
             </Button>
             <Button
               variant="destructive"
-              disabled={deleting}
+              disabled={deleting || (!!deleteTarget && !deleteTarget.isBlocked && isSaluteJuneLocked(deleteTarget.date))}
               onClick={() => void handleDeleteBooking()}
               className="w-full sm:w-auto"
             >

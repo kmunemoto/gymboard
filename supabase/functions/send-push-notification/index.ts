@@ -405,9 +405,6 @@ Deno.serve(async (req) => {
 
     // ---- FCM tasks ----
     const sa = getServiceAccount();
-    if (sa) {
-      console.log(`[FCM DEBUG] project_id=${sa.project_id}, devices=${devices.length}, tokens=${devices.map(d => d.fcm_token.substring(0, 15)).join(",")}`);
-    }
     let fcmTasks: Promise<{
       kind: "fcm";
       device: { id: string; fcm_token: string; user_id: string };
@@ -464,7 +461,6 @@ Deno.serve(async (req) => {
       if (!result) return;
       if (result.ok) {
         fcmSent++;
-        console.log(`[FCM DEBUG] sent ok device=${device.id}`);
       } else {
         const code = result.errorCode ?? "";
         const isInvalid =

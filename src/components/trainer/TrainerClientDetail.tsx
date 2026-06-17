@@ -612,6 +612,19 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     toast.success(`${displayName}さんのプランを「${planName}」に変更しました`);
   };
 
+  const handleSaveGoal = async () => {
+    const trimmed = goalDraft.trim();
+    setSavingGoal(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ training_goal: trimmed || null } as any)
+      .eq("user_id", clientId);
+    setSavingGoal(false);
+    if (error) { toast.error("目標の保存に失敗しました"); return; }
+    setTrainingGoal(trimmed);
+    setEditingGoal(false);
+    toast.success("目標を保存しました");
+
   const handleCycleStartDateChange = async (newDate: string) => {
     const { error } = await supabase.from("profiles").update({ cycle_start_date: newDate || null }).eq("user_id", clientId);
     if (error) { toast.error("起算日の更新に失敗しました"); return; }

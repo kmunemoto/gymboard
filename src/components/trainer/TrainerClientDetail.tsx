@@ -255,6 +255,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         const linkedName = (mem as any)?.tenant_plans?.plan_name as string | undefined;
         setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
+        setTrainingGoal((data as any).training_goal || "");
         setShowUsagePeriod(data.show_usage_period ?? true);
       } else {
         setHasProfile(false);

@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2 } from "lucide-react";
+import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import ProgressCharts from "./ProgressCharts";
 import { Card, CardContent } from "@/components/ui/card";

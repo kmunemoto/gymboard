@@ -110,6 +110,11 @@ const TrainerSchedule = () => {
       toast.error("日付・時間・お客様・プランを選択してください");
       return;
     }
+    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可
+    if (isSaluteJuneLocked(proxyDateKey)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      return;
+    }
 
     if (checkSlotBlocked(bookings, proxyDateKey, proxyTime)) {
       toast.error("すでに予約が入っています。別の時間を選んでください。");

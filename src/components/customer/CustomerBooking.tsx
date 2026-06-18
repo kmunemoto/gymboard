@@ -136,15 +136,15 @@ const CustomerBooking = () => {
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     const newMin = timeToMin(time);
-    // NOTE: get_booked_slots RPC already returns end_booking_date = start + 75min
-    // (60m session + 15m buffer baked in) for non-block bookings. Do NOT add the
-    // buffer again here, otherwise customers see slots blocked 15 min later than
-    // the trainer view. Blocked slots use their exact end_blocked_date.
+    // Existing bookings already include their 15-min post-session buffer in endTime
+    // (so the NEXT booking starts after that buffer). The new candidate itself only
+    // occupies its 60-min session — its own buffer is forward-looking, so it must
+    // NOT block earlier slots. Use the slot length (slotMinutes), not 75.
     return bookedSlots.some((b) => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
       const bEnd = timeToMin(b.endTime);
-      return newMin < bEnd && bMin < newMin + 75;
+      return newMin < bEnd && bMin < newMin + slotMinutes;
     });
   };
 

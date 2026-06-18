@@ -213,10 +213,10 @@ export const checkSlotBlocked = (bookings: BookingWithTime[], date: string, star
   };
 
   const newMin = timeToMin(startTime);
-  // Default new-candidate footprint is 60 min (the session itself). The 15-min
-  // post-session buffer is forward-only and is already added to existing bookings'
-  // bEnd below — adding it on the new side too would wrongly block earlier slots.
-  const newEnd = endTimeOverride ? timeToMin(endTimeOverride) : newMin + 60;
+  // Default booking footprint is 60 minutes plus the required 15-minute interval.
+  // This symmetric 75-minute window prevents bookings from being placed too close
+  // before or after an existing booking.
+  const newEnd = endTimeOverride ? timeToMin(endTimeOverride) : newMin + 60 + BUFFER_MINUTES;
 
   return bookings.some((b) => {
     if (b.date !== date || b.status === "キャンセル済み") return false;

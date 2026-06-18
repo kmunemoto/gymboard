@@ -72,6 +72,11 @@ Deno.serve(async (req) => {
         ok = recip === '_resolve_trainer_'
           && typeof td.trainerUserId === 'string'
           && await hasRole(td.trainerUserId, 'trainer')
+      } else if (recip === '_resolve_trainer_') {
+        // Customers may notify a verified trainer on booking-confirmation /
+        // booking-cancellation (e.g. customer-initiated cancellation).
+        ok = typeof td.trainerUserId === 'string'
+          && await hasRole(td.trainerUserId, 'trainer')
       } else {
         const callerEmail = (caller as any).email as string | undefined
         ok = (typeof td.resolveUserId === 'string' && td.resolveUserId === caller.userId)

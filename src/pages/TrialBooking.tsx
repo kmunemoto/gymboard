@@ -106,9 +106,7 @@ const TrialBooking = () => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
       const bEnd = timeToMin(b.endTime);
-      // New candidate only occupies its 60-min session; the post-session buffer
-      // is forward-looking and is already baked into existing bookings' endTime.
-      return newMin < bEnd && bMin < newMin + 60;
+      return newMin < bEnd && bMin < newMin + 75;
     });
   };
 

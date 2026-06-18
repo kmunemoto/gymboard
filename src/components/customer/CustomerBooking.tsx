@@ -22,6 +22,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
+const BOOKING_SESSION_MINUTES = 60;
 const BOOKING_BUFFER_MINUTES = 15;
 
 const CustomerBooking = () => {
@@ -136,15 +137,15 @@ const CustomerBooking = () => {
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     const newMin = timeToMin(time);
-    // Existing bookings already include their 15-min post-session buffer in endTime
-    // (so the NEXT booking starts after that buffer). The new candidate itself only
-    // occupies its 60-min session — its own buffer is forward-looking, so it must
-    // NOT block earlier slots. Use the slot length (slotMinutes), not 75.
+    const newEnd = newMin + BOOKING_SESSION_MINUTES + BOOKING_BUFFER_MINUTES;
+    // Bookings occupy 60 minutes plus a 15-minute interval. Apply the same
+    // 75-minute footprint to both existing bookings and the candidate so the
+    // buffer is enforced before and after every booking.
     return bookedSlots.some((b) => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
       const bEnd = timeToMin(b.endTime);
-      return newMin < bEnd && bMin < newMin + slotMinutes;
+      return newMin < bEnd && bMin < newEnd;
     });
   };
 

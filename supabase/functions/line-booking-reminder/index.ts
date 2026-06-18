@@ -34,9 +34,11 @@ Deno.serve(async (req) => {
     const tomorrowStart = new Date(Date.UTC(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 0, 0, 0));
     const tomorrowEnd = new Date(Date.UTC(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 23, 59, 59));
 
+    const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
     const { data: bookings, error: bookingError } = await supabase
       .from("bookings")
-      .select("id, user_id, booking_date, booking_type, status")
+      .select("id, user_id, booking_date, booking_type, status, tenant_id")
+      .eq("tenant_id", SALUTE_TENANT_ID)
       .gte("booking_date", tomorrowStart.toISOString())
       .lte("booking_date", tomorrowEnd.toISOString())
       .eq("status", "予約済み");

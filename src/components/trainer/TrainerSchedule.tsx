@@ -414,13 +414,13 @@ const TrainerSchedule = () => {
                                     type="button"
                                     variant="destructive"
                                     size="icon"
-                                    aria-label={session.isBlocked ? "ブロック解除" : `${session.clientName}さんの予約を削除`}
+                                    aria-label={session.isBlocked ? t("schedule.blockedRelease") : t("schedule.deleteBookingAria", { name: session.clientName })}
                                     onClick={() => setDeleteTarget({ id: session.id, clientName: session.clientName, date: session.date, startTime: session.startTime, isBlocked: session.isBlocked })}
                                     className="absolute top-1 right-1 h-7 w-7 rounded-md"
                                   >
                                     <Trash2 className="w-3 h-3" />
                                   </Button>
-                                  <p className="font-bold truncate">{session.isBlocked ? "ブロック" : session.clientName}</p>
+                                  <p className="font-bold truncate">{session.isBlocked ? t("schedule.blockedLabel") : session.clientName}</p>
                                   <p className="opacity-75 truncate">{session.startTime}〜{session.endTime}</p>
                                   {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{session.booking_type}</p>}
                                   {!session.isBlocked && (() => {

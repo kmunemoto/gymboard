@@ -560,9 +560,9 @@ const TrainerSchedule = () => {
                 }}
                 className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
-                <option value="" disabled>選択してください</option>
+                <option value="" disabled>{t("schedule.selectPrompt")}</option>
                 {profiles.map((p) => (
-                  <option key={p.user_id} value={p.user_id}>{p.display_name || "不明"}</option>
+                  <option key={p.user_id} value={p.user_id}>{p.display_name || t("common.unknown")}</option>
                 ))}
               </select>
             </div>

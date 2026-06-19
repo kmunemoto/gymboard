@@ -234,28 +234,28 @@ const TrainerAnnouncementManager = () => {
             className="bg-background rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold">{editing ? "お知らせ編集" : "新規お知らせ"}</h2>
+            <h2 className="text-lg font-bold">{editing ? t("announcement.editTitle") : t("announcement.newTitle")}</h2>
 
             <div className="space-y-1.5">
-              <Label>タイトル</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="お知らせのタイトル" />
+              <Label>{t("announcement.fieldTitle")}</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("announcement.titlePlaceholder")} />
             </div>
 
             <div className="space-y-1.5">
-              <Label>本文</Label>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} placeholder="本文（改行はそのまま反映されます）" />
+              <Label>{t("announcement.fieldBody")}</Label>
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} placeholder={t("announcement.bodyPlaceholder")} />
             </div>
 
             <div className="space-y-1.5">
-              <Label>アイコン</Label>
+              <Label>{t("announcement.fieldIcon")}</Label>
               <IconPicker value={icon} onChange={setIcon} />
             </div>
 
             <div className="space-y-1.5">
-              <Label>配信対象</Label>
+              <Label>{t("announcement.fieldTarget")}</Label>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant={targetMode === "all" ? "default" : "outline"} onClick={() => setTargetMode("all")}>全員</Button>
-                <Button type="button" size="sm" variant={targetMode === "user" ? "default" : "outline"} onClick={() => setTargetMode("user")}>個別</Button>
+                <Button type="button" size="sm" variant={targetMode === "all" ? "default" : "outline"} onClick={() => setTargetMode("all")}>{t("announcement.targetAll")}</Button>
+                <Button type="button" size="sm" variant={targetMode === "user" ? "default" : "outline"} onClick={() => setTargetMode("user")}>{t("announcement.targetIndividual")}</Button>
               </div>
               {targetMode === "user" && (
                 <select
@@ -263,7 +263,7 @@ const TrainerAnnouncementManager = () => {
                   value={targetUserId}
                   onChange={(e) => setTargetUserId(e.target.value)}
                 >
-                  <option value="">顧客を選択…</option>
+                  <option value="">{t("announcement.selectClientPrompt")}</option>
                   {profiles.map((p) => (
                     <option key={p.user_id} value={p.user_id}>{p.display_name || p.user_id}</option>
                   ))}
@@ -272,10 +272,10 @@ const TrainerAnnouncementManager = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>配信日時</Label>
+              <Label>{t("announcement.fieldSchedule")}</Label>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant={scheduleMode === "now" ? "default" : "outline"} onClick={() => setScheduleMode("now")}>今すぐ</Button>
-                <Button type="button" size="sm" variant={scheduleMode === "later" ? "default" : "outline"} onClick={() => setScheduleMode("later")}>日時指定</Button>
+                <Button type="button" size="sm" variant={scheduleMode === "now" ? "default" : "outline"} onClick={() => setScheduleMode("now")}>{t("announcement.scheduleNow")}</Button>
+                <Button type="button" size="sm" variant={scheduleMode === "later" ? "default" : "outline"} onClick={() => setScheduleMode("later")}>{t("announcement.scheduleLater")}</Button>
               </div>
               {scheduleMode === "later" && (
                 <Input

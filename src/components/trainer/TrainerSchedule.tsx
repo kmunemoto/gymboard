@@ -524,11 +524,11 @@ const TrainerSchedule = () => {
       <div className="flex gap-4 mt-3">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded accent-gradient" />
-          <span className="text-xs text-muted-foreground">予約あり</span>
+          <span className="text-xs text-muted-foreground">{t("schedule.legendBooked")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded border border-dashed border-destructive/30 bg-muted" />
-          <span className="text-xs text-muted-foreground">ブロック</span>
+          <span className="text-xs text-muted-foreground">{t("schedule.legendBlocked")}</span>
         </div>
       </div>
         </>

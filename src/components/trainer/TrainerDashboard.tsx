@@ -138,7 +138,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
   const revenueData = getRecentMonths(today).map((monthStart) => {
     const monthKey = monthStart.slice(0, 7);
     const monthNumber = Number(monthStart.slice(5, 7));
-    return { month: `${monthNumber}月`, revenue: revenueByMonth.get(monthKey) || 0 };
+    return { month: t("dashboard.monthLabel", { month: monthNumber }), revenue: revenueByMonth.get(monthKey) || 0 };
   });
 
   if (loading || bookingsLoading) {

@@ -979,17 +979,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Weight className="w-3.5 h-3.5" />
-              計測データ入力
+              {t("clientDetail.measurementInput")}
             </h2>
             <Card>
               <CardContent className="p-3 sm:p-4 space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">計測日</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.measureDate")}</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full h-11 justify-start text-left font-normal", !measurementDate && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : "日付を選択"}
+                        {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : t("clientDetail.selectDate")}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1006,11 +1006,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">体重 (kg)</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.weightKg")}</label>
                     <Input type="number" step="0.1" placeholder={latestMeasurement?.weight?.toString() || "73.5"} value={bodyWeight} onChange={(e) => setBodyWeight(e.target.value)} className="h-11" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">体脂肪率 (%)</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.bodyFatPct")}</label>
                     <Input type="number" step="0.1" placeholder={latestMeasurement?.body_fat?.toString() || "18.0"} value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} className="h-11" />
                   </div>
                 </div>
@@ -1028,7 +1028,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   }}
                 >
                   {savingMeasurement ? <DumbbellLoader className="w-4 h-4 mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-                  計測データを保存
+                  {t("clientDetail.saveMeasurement")}
                 </Button>
               </CardContent>
             </Card>

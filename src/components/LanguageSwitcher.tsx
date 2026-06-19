@@ -51,7 +51,7 @@ const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
               <p className="text-[11px] text-muted-foreground mb-3">
                 {t("settings.languageDescription")}
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {SUPPORTED_LANGUAGES.map((code) => {
                   const opt = LANGUAGE_OPTIONS.find((o) => o.code === code)!;
                   const active = currentLang === code;

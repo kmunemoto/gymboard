@@ -160,11 +160,11 @@ const TrainerExerciseManager = () => {
       .delete()
       .eq("id", deleteTarget.id);
     if (error) {
-      toast.error("削除に失敗しました");
+      toast.error(t("exercise.deleteFailed"));
       return;
     }
     setExercises((prev) => prev.filter((e) => e.id !== deleteTarget.id));
-    toast.success(`「${deleteTarget.name}」を削除しました`);
+    toast.success(t("exercise.deletedToast", { name: deleteTarget.name }));
     setDeleteTarget(null);
   };
 

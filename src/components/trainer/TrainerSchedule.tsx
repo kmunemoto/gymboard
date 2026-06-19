@@ -784,10 +784,10 @@ const TrainerSchedule = () => {
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="w-full sm:w-auto">キャンセル</Button>
+            <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="w-full sm:w-auto">{t("common.cancel")}</Button>
             <Button variant="destructive" onClick={handleBlockSlot} disabled={!blockDate || !blockStartTime || !blockEndTime || submitting} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-              ブロックする
+              {t("schedule.blockBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>

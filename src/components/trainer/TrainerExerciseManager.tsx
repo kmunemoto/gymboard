@@ -321,12 +321,12 @@ const TrainerExerciseManager = () => {
           <div className="bg-background rounded-t-2xl p-5 max-h-[92vh] overflow-y-auto safe-area-bottom shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">
-                {editingId ? "種目を編集" : "種目を追加"}
+                {editingId ? t("exercise.editTitle") : t("exercise.addTitle")}
               </h2>
               <button
                 onClick={closeSheet}
                 className="p-2 -mr-2 text-muted-foreground"
-                aria-label="閉じる"
+                aria-label={t("exercise.closeAria")}
               >
                 <X className="w-5 h-5" />
               </button>

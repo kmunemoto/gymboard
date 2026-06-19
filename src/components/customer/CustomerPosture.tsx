@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import PostureFeedbackCard from "./posture/PostureFeedbackCard";
 import SkeletalTypeCard from "./posture/SkeletalTypeCard";
 import TrainingRecommendationCard from "./posture/TrainingRecommendationCard";
@@ -45,6 +46,7 @@ const MIN_SCORE_DETECT = 0.2; // 解析に使用する閾値
 const MIN_SCORE_DRAW = 0.3;   // 描画に使用する閾値
 
 const CustomerPosture = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -78,12 +80,12 @@ const CustomerPosture = () => {
       return detector;
     } catch (e) {
       console.error("Model load error:", e);
-      toast.error("AIモデルの読み込みに失敗しました");
+      toast.error(t("posture.toast.modelFailed"));
       return null;
     } finally {
       setModelLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const normalizeImage = useCallback(async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -108,7 +110,7 @@ const CustomerPosture = () => {
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      toast.error("画像ファイルを選択してください");
+      toast.error(t("posture.toast.imageInvalid"));
       return;
     }
     setKeypoints([]);
@@ -117,7 +119,7 @@ const CustomerPosture = () => {
       setImageUrl(normalized);
     } catch (e) {
       console.error("Image normalization error:", e);
-      toast.error("画像の読み込みに失敗しました");
+      toast.error(t("posture.toast.imageFailed"));
     }
   };
 
@@ -161,7 +163,7 @@ const CustomerPosture = () => {
       }
 
       if (allPoses.length === 0) {
-        toast.error("姿勢を検出できませんでした。全身が映った写真をお試しください。");
+        toast.error(t("posture.toast.noPosture"));
         return;
       }
 
@@ -187,14 +189,14 @@ const CustomerPosture = () => {
       }));
 
       setKeypoints(scaledKeypoints);
-      toast.success("姿勢解析が完了しました！");
+      toast.success(t("posture.toast.analysisDone"));
     } catch (e) {
       console.error("Pose estimation error:", e);
-      toast.error("解析中にエラーが発生しました");
+      toast.error(t("posture.toast.analysisFailed"));
     } finally {
       setAnalyzing(false);
     }
-  }, [getDetector]);
+  }, [getDetector, t]);
 
   const syncCanvasSize = useCallback(() => {
     const img = imgRef.current;
@@ -360,16 +362,16 @@ const CustomerPosture = () => {
       });
       if (error) throw error;
       setSaved(true);
-      toast.success("分析結果を保存しました");
+      toast.success(t("posture.toast.saved"));
     } catch (e: any) {
       console.error("Save diagnosis error:", e);
       const msg = e?.message || e?.error_description || "不明なエラー";
-      toast.error(`分析結果の保存に失敗しました: ${msg}`);
+      toast.error(t("posture.toast.saveFailed", { msg }));
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
-  }, [user, skeletalDiagnosis, saved, captureOverlayBlob]);
+  }, [user, skeletalDiagnosis, saved, captureOverlayBlob, t]);
 
   const reset = () => {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
@@ -382,12 +384,12 @@ const CustomerPosture = () => {
 
   return (
     <div className="px-4 py-4 space-y-4 slide-up">
-      <h2 className="text-lg font-bold">姿勢チェック・骨格分析（AI）</h2>
+      <h2 className="text-lg font-bold">{t("posture.title")}</h2>
       <p className="text-xs text-muted-foreground">
-        全身が映った写真をアップロードすると、AIが33箇所の関節ポイントを解析し、姿勢チェックと骨格タイプの分析を行います。
+        {t("posture.description")}
       </p>
       <p className="text-[11px] text-muted-foreground">
-        ※本機能はAIによる姿勢・骨格の分析であり、医療的な診断ではありません。
+        {t("posture.disclaimer")}
       </p>
 
       {!imageUrl ? (
@@ -396,7 +398,7 @@ const CustomerPosture = () => {
             <div className="flex flex-col items-center gap-3">
               <Button onClick={() => fileRef.current?.click()} className="w-full" size="lg">
                 <Upload className="w-4 h-4 mr-2" />
-                写真をアップロード
+                {t("posture.uploadPhoto")}
               </Button>
               <Button
                 variant="outline"
@@ -411,12 +413,12 @@ const CustomerPosture = () => {
                 size="lg"
               >
                 <Camera className="w-4 h-4 mr-2" />
-                カメラで撮影
+                {t("posture.takePhoto")}
               </Button>
             </div>
             <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>全身が映った正面の写真が最適です。骨格タイプの分析には肩・腰・足首が見える写真が必要です。</span>
+              <span>{t("posture.photoTip")}</span>
             </div>
           </CardContent>
         </Card>
@@ -427,7 +429,7 @@ const CustomerPosture = () => {
               <img
                 ref={imgRef}
                 src={imageUrl}
-                alt="姿勢解析用画像"
+                alt={t("posture.imageAlt")}
                 className="block w-full h-auto"
                 onLoad={onImgLoad}
               />
@@ -439,7 +441,7 @@ const CustomerPosture = () => {
                 <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center gap-2">
                   <DumbbellLoader className="w-8 h-8 text-accent" />
                   <span className="text-sm font-medium">
-                    {modelLoading ? "高精度AIモデルを読み込み中…（初回のみ時間がかかります）" : "高精度モードで解析中…"}
+                    {modelLoading ? t("posture.modelLoading") : t("posture.analyzing")}
                   </span>
                 </div>
               )}
@@ -450,7 +452,10 @@ const CustomerPosture = () => {
             <Card>
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground">
-                  検出ポイント：{keypoints.filter((k) => (k.score ?? 1) >= MIN_SCORE_DETECT).length} / {keypoints.length}
+                  {t("posture.detectedPoints", {
+                    detected: keypoints.filter((k) => (k.score ?? 1) >= MIN_SCORE_DETECT).length,
+                    total: keypoints.length,
+                  })}
                 </p>
               </CardContent>
             </Card>
@@ -463,7 +468,7 @@ const CustomerPosture = () => {
           <div className="flex gap-2">
             <Button variant="outline" onClick={reset} className="flex-1">
               <RotateCcw className="w-4 h-4 mr-1" />
-              やり直す
+              {t("posture.redo")}
             </Button>
             {skeletalDiagnosis && user && (
               <Button
@@ -477,11 +482,11 @@ const CustomerPosture = () => {
                 ) : (
                   <Save className="w-4 h-4 mr-1" />
                 )}
-                {saved ? "保存済み" : saving ? "保存中…" : "結果を保存"}
+                {saved ? t("posture.saveDone") : saving ? t("posture.saveInProgress") : t("posture.saveResult")}
               </Button>
             )}
             <Button onClick={analyze} disabled={isLoading} variant="outline" className="flex-1">
-              再解析
+              {t("posture.reanalyze")}
             </Button>
           </div>
         </div>

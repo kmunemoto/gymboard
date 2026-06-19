@@ -183,8 +183,7 @@ const CustomerBooking = () => {
   const isJune2026 = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
   const isSaluteJuneLocked = (d: string) =>
     tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026(d);
-  const JUNE_LOCK_MESSAGE =
-    "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。";
+  const JUNE_LOCK_MESSAGE = t("booking.juneLockMessage");
   // ============================================================
   // 棲み分け対応ここまで
   // ============================================================
@@ -245,7 +244,7 @@ const CustomerBooking = () => {
     fetchBookedSlots(dateKey);
 
     // Fire-and-forget notification email to trainer
-    sendBookingNotification(data.id, profile?.display_name || "お客様", dateKey, slot.time, endTime, selectedPlan, user.id, user.email);
+    sendBookingNotification(data.id, profile?.display_name || t("booking.customerFallback"), dateKey, slot.time, endTime, selectedPlan, user.id, user.email);
 
     // Fire-and-forget LINE message to customer
     // Gated by feature flag — customer LINE booking notifications are currently disabled
@@ -309,7 +308,7 @@ const CustomerBooking = () => {
   });
 
   const cancelDescription = cancelTarget
-    ? `${formatJST(`${cancelTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja })} ${cancelTarget.startTime}〜${cancelTarget.endTime} の予約をキャンセルします。`
+    ? t("booking.cancelDescWithTime", { date: formatJST(`${cancelTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }), startTime: cancelTarget.startTime, endTime: cancelTarget.endTime })
     : t("booking.cancelDescDefault");
 
   if (profileLoading || bookingsLoading) {

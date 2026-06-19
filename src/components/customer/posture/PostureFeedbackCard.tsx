@@ -1,5 +1,6 @@
-import { CheckCircle2, AlertTriangle, XCircle, Sparkles, Activity } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Activity } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 import type { PostureFeedback } from "./types";
 
 type Props = {
@@ -11,13 +12,6 @@ const scoreColor = (score: number) => {
   if (score >= 80) return "text-accent";
   if (score >= 60) return "text-warning";
   return "text-destructive";
-};
-
-const scoreLabel = (score: number) => {
-  if (score >= 90) return "とても良い姿勢です！";
-  if (score >= 80) return "良い姿勢です";
-  if (score >= 60) return "やや改善の余地があります";
-  return "改善ポイントが複数あります";
 };
 
 const SeverityIcon = ({ severity }: { severity: string }) => {
@@ -34,6 +28,15 @@ const SeverityIcon = ({ severity }: { severity: string }) => {
 };
 
 const PostureFeedbackCard = ({ feedbacks, score }: Props) => {
+  const { t } = useTranslation();
+
+  const scoreLabel = (s: number) => {
+    if (s >= 90) return t("posture.feedback.scoreVeryGood");
+    if (s >= 80) return t("posture.feedback.scoreGood");
+    if (s >= 60) return t("posture.feedback.scoreOk");
+    return t("posture.feedback.scoreBad");
+  };
+
   if (feedbacks.length === 0) return null;
 
   return (
@@ -43,14 +46,16 @@ const PostureFeedbackCard = ({ feedbacks, score }: Props) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Activity className="w-4 h-4 text-accent" />
-            <span>AIからの姿勢アドバイス</span>
+            <span>{t("posture.feedback.title")}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3 bg-muted/40 rounded-xl p-3">
-          <div className={`text-3xl font-bold ${scoreColor(score)}`}>{score}<span className="text-base font-normal">点</span></div>
+          <div className={`text-3xl font-bold ${scoreColor(score)}`}>
+            {score}<span className="text-base font-normal">{t("posture.feedback.scoreUnit")}</span>
+          </div>
           <div className="flex-1">
-            <p className="text-xs font-semibold">姿勢スコア</p>
+            <p className="text-xs font-semibold">{t("posture.feedback.scoreLabel")}</p>
             <p className="text-[11px] text-muted-foreground">{scoreLabel(score)}</p>
           </div>
           {/* Mini bar */}

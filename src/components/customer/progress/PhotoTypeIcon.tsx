@@ -1,3 +1,4 @@
+import i18next from "i18next";
 import type { PhotoType } from "@/hooks/useProgressPhotos";
 
 interface Props {
@@ -33,4 +34,8 @@ export const PhotoTypeIcon = ({ type, className = "w-4 h-4" }: Props) => {
 };
 
 export const photoTypeLabel = (t: PhotoType) =>
-  t === "front" ? "正面" : t === "side" ? "側面" : "背面";
+  t === "front"
+    ? i18next.t("progress.typeFront")
+    : t === "side"
+    ? i18next.t("progress.typeSide")
+    : i18next.t("progress.typeBack");

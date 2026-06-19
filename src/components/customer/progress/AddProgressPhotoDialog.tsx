@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PhotoTypeIcon, photoTypeLabel } from "./PhotoTypeIcon";
 import type { PhotoType } from "@/hooks/useProgressPhotos";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [date, setDate] = useState(getJSTToday());
   const [photoType, setPhotoType] = useState<PhotoType>("front");
@@ -50,7 +52,7 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
 
   const handleUpload = async () => {
     if (!user || !file) {
-      toast.error("写真を選択してください");
+      toast.error(t("progress.errNoPhoto"));
       return;
     }
     setUploading(true);
@@ -71,13 +73,13 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
         notes: notes.trim() || null,
       }, tenantId) as any);
       if (insErr) throw insErr;
-      toast.success("写真を追加しました");
+      toast.success(t("progress.uploadSuccess"));
       reset();
       onUploaded();
       onClose();
     } catch (e: any) {
       console.error(e);
-      toast.error("アップロードに失敗しました");
+      toast.error(t("progress.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -90,7 +92,7 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">写真を追加</h2>
+          <h2 className="text-lg font-bold">{t("progress.addPhoto")}</h2>
           <button onClick={handleClose} disabled={uploading} className="p-1 rounded-lg hover:bg-muted">
             <X className="w-5 h-5" />
           </button>
@@ -99,7 +101,7 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
         <div className="space-y-4">
           {/* Date */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground mb-1 block">撮影日</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("progress.dateLabel")}</label>
             <input
               type="date"
               value={date}
@@ -111,23 +113,23 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
 
           {/* Photo type */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">写真の種類</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("progress.typeLabel")}</label>
             <div className="grid grid-cols-3 gap-2">
-              {(["front", "side", "back"] as PhotoType[]).map((t) => {
-                const active = photoType === t;
+              {(["front", "side", "back"] as PhotoType[]).map((t_) => {
+                const active = photoType === t_;
                 return (
                   <button
-                    key={t}
+                    key={t_}
                     type="button"
-                    onClick={() => setPhotoType(t)}
+                    onClick={() => setPhotoType(t_)}
                     className={`h-14 rounded-xl border flex flex-col items-center justify-center gap-0.5 text-xs font-medium transition ${
                       active
                         ? "border-accent bg-accent/10 text-accent"
                         : "border-input bg-background text-muted-foreground hover:bg-muted"
                     }`}
                   >
-                    <PhotoTypeIcon type={t} className="w-5 h-5" />
-                    <span>{photoTypeLabel(t)}</span>
+                    <PhotoTypeIcon type={t_} className="w-5 h-5" />
+                    <span>{photoTypeLabel(t_)}</span>
                   </button>
                 );
               })}
@@ -136,7 +138,7 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
 
           {/* File */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">写真</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("progress.photoLabel")}</label>
             <input
               ref={fileRef}
               type="file"
@@ -146,13 +148,13 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
             />
             {preview ? (
               <div className="relative">
-                <img src={preview} alt="プレビュー" className="w-full max-h-64 object-contain rounded-xl bg-muted" />
+                <img src={preview} alt={t("progress.previewAlt")} className="w-full max-h-64 object-contain rounded-xl bg-muted" />
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   className="absolute bottom-2 right-2 px-3 py-1.5 rounded-lg bg-background/90 text-xs font-semibold border"
                 >
-                  変更
+                  {t("progress.changePhoto")}
                 </button>
               </div>
             ) : (
@@ -162,25 +164,25 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
                 className="w-full h-32 rounded-xl border-2 border-dashed border-border hover:border-accent flex flex-col items-center justify-center gap-2 transition"
               >
                 <Camera className="w-6 h-6 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">写真を選択</span>
+                <span className="text-sm text-muted-foreground">{t("progress.selectPhoto")}</span>
               </button>
             )}
           </div>
 
           {/* Notes */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground mb-1 block">メモ（任意）</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("progress.memoLabel")}</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none"
-              placeholder="体調や気づきなど"
+              placeholder={t("progress.memoPlaceholder")}
             />
           </div>
 
           <Button variant="accent" onClick={handleUpload} disabled={uploading || !file} className="w-full">
-            {uploading ? <DumbbellLoader className="w-4 h-4" /> : "保存する"}
+            {uploading ? <DumbbellLoader className="w-4 h-4" /> : t("progress.save")}
           </Button>
         </div>
       </div>

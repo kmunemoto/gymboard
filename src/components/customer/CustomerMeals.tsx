@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ImagePlus, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Trash2, Pencil, ChevronDown, Sunrise, Sun, Moon, Apple, CalendarDays, Bot } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ const mealTypeOptions = ["朝食", "昼食", "夕食", "間食"];
 const PFC_GOALS = { p: 30, f: 20, c: 50 };
 
 const CustomerMeals = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -175,7 +177,7 @@ const CustomerMeals = () => {
       const resolvedUrl = await getMealPhotoUrl(storagePath);
       const newMeal = { ...(mealData as unknown as Meal), resolved_image_url: resolvedUrl };
       setMeals((prev) => [newMeal, ...prev]);
-      toast.success("写真をアップロードしました。AI分析中...");
+      toast.success(t("meals.toast.uploadedAnalyzing"));
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke("analyze-meal", {
         body: {
@@ -201,15 +203,15 @@ const CustomerMeals = () => {
           analyzed: true,
         };
         await supabase.from("meals").update(dummyAnalysis).eq("id", newMeal.id);
-        toast.info("ダミーの分析結果を表示しています");
+        toast.info(t("meals.toast.dummyResult"));
         fetchMeals();
       } else {
-        toast.success("AI分析が完了しました！");
+        toast.success(t("meals.toast.analysisComplete"));
         fetchMeals();
       }
     } catch (err) {
       console.error(err);
-      toast.error("アップロードに失敗しました");
+      toast.error(t("meals.toast.uploadFailed"));
     } finally {
       setUploading(false);
       setPendingFile(null);
@@ -227,10 +229,10 @@ const CustomerMeals = () => {
       const { error } = await supabase.from("meals").delete().eq("id", deleteTarget.id);
       if (error) throw error;
       setMeals((prev) => prev.filter((m) => m.id !== deleteTarget.id));
-      toast.success("食事記録を削除しました");
+      toast.success(t("meals.toast.deleted"));
     } catch (err) {
       console.error(err);
-      toast.error("削除に失敗しました");
+      toast.error(t("meals.toast.deleteFailed"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -258,11 +260,11 @@ const CustomerMeals = () => {
         .update({ created_at: newDateTime.toISOString() })
         .eq("id", editTarget.id);
       if (error) throw error;
-      toast.success("日時を変更しました");
+      toast.success(t("meals.toast.datetimeChanged"));
       fetchMeals();
     } catch (err) {
       console.error(err);
-      toast.error("日時の変更に失敗しました");
+      toast.error(t("meals.toast.datetimeChangeFailed"));
     } finally {
       setSaving(false);
       setEditTarget(null);
@@ -283,9 +285,9 @@ const CustomerMeals = () => {
     const [, m, d] = key.split("-");
     const today = getDateKey(new Date().toISOString());
     const yesterday = getDateKey(new Date(Date.now() - 86400000).toISOString());
-    const label = `${parseInt(m)}月${parseInt(d)}日`;
-    if (key === today) return `今日 (${label})`;
-    if (key === yesterday) return `昨日 (${label})`;
+    const label = t("meals.dateLabel", { m: parseInt(m), d: parseInt(d) });
+    if (key === today) return t("meals.today", { label });
+    if (key === yesterday) return t("meals.yesterday", { label });
     return label;
   };
 
@@ -327,9 +329,9 @@ const CustomerMeals = () => {
         <div>
           <h1 className="text-lg font-bold flex items-center gap-2">
             <Utensils className="w-5 h-5 text-accent" />
-            食事管理
+            {t("meals.title")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">写真を撮るだけでAIが自動分析</p>
+          <p className="text-sm text-muted-foreground mt-1">{t("meals.subtitle")}</p>
         </div>
         <Button
           variant="accent"
@@ -338,7 +340,7 @@ const CustomerMeals = () => {
           disabled={uploading}
         >
           {uploading ? <DumbbellLoader className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
-          {uploading ? "分析中..." : "写真を追加"}
+          {uploading ? t("meals.analyzing") : t("meals.addPhoto")}
         </Button>
       </div>
 
@@ -358,7 +360,7 @@ const CustomerMeals = () => {
         <Card>
           <CardContent className="py-12 text-center">
             <ImagePlus className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">食事の写真を撮って記録を始めましょう</p>
+            <p className="text-sm text-muted-foreground">{t("meals.empty")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -370,7 +372,7 @@ const CustomerMeals = () => {
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-end gap-4">
                     <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1">合計カロリー</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t("meals.totalCalories")}</p>
                       <div className="flex items-baseline gap-1">
                         <Flame className="w-5 h-5 text-destructive shrink-0" />
                         <span className="text-3xl font-extrabold text-foreground">{totals.calories.toLocaleString()}</span>
@@ -382,19 +384,19 @@ const CustomerMeals = () => {
                         <p className="text-[10px] text-muted-foreground">P</p>
                         <p className="text-sm font-bold text-accent">{totals.protein.toFixed(1)}<span className="text-[10px] text-muted-foreground ml-0.5">g</span></p>
                         <p className="text-[10px] font-semibold text-accent">{pfc.pPct}%</p>
-                        <p className="text-[9px] text-muted-foreground">目標{PFC_GOALS.p}%</p>
+                        <p className="text-[9px] text-muted-foreground">{t("meals.pfcGoal", { pct: PFC_GOALS.p })}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-muted-foreground">F</p>
                         <p className="text-sm font-bold text-warning">{totals.fat.toFixed(1)}<span className="text-[10px] text-muted-foreground ml-0.5">g</span></p>
                         <p className="text-[10px] font-semibold text-warning">{pfc.fPct}%</p>
-                        <p className="text-[9px] text-muted-foreground">目標{PFC_GOALS.f}%</p>
+                        <p className="text-[9px] text-muted-foreground">{t("meals.pfcGoal", { pct: PFC_GOALS.f })}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-muted-foreground">C</p>
                         <p className="text-sm font-bold text-info">{totals.carbs.toFixed(1)}<span className="text-[10px] text-muted-foreground ml-0.5">g</span></p>
                         <p className="text-[10px] font-semibold text-info">{pfc.cPct}%</p>
-                        <p className="text-[9px] text-muted-foreground">目標{PFC_GOALS.c}%</p>
+                        <p className="text-[9px] text-muted-foreground">{t("meals.pfcGoal", { pct: PFC_GOALS.c })}</p>
                       </div>
                     </div>
                   </div>
@@ -410,8 +412,8 @@ const CustomerMeals = () => {
                         <div className="absolute top-0 h-full w-0.5 bg-foreground/60 rounded" style={{ left: `${PFC_GOALS.p + PFC_GOALS.f}%` }} title="F目標" />
                       </div>
                       <div className="flex justify-between text-[9px] text-muted-foreground">
-                        <span>実績バランス</span>
-                        <span>▼ 目標ライン</span>
+                        <span>{t("meals.actualBalance")}</span>
+                        <span>{t("meals.goalLine")}</span>
                       </div>
                     </div>
                   )}
@@ -424,7 +426,7 @@ const CustomerMeals = () => {
                     <div className="relative">
                       <img
                         src={meal.resolved_image_url || meal.image_url}
-                        alt="食事写真"
+                        alt={t("meals.mealPhotoAlt")}
                         className="w-full h-48 object-cover"
                       />
                       <div className="absolute top-2 left-2 bg-foreground/70 text-primary-foreground px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-sm flex items-center gap-1">
@@ -448,11 +450,11 @@ const CustomerMeals = () => {
                     {meal.analyzed ? (
                       <div className="p-4 space-y-3">
                         <div className="grid grid-cols-5 gap-2">
-                          <NutrientBadge icon={Flame} label="カロリー" value={`${meal.calories ?? 0}`} unit="kcal" color="text-destructive" />
-                          <NutrientBadge icon={Beef} label="タンパク質" value={`${meal.protein ?? 0}`} unit="g" color="text-accent" />
-                          <NutrientBadge icon={Droplets} label="脂質" value={`${meal.fat ?? 0}`} unit="g" color="text-warning" />
-                          <NutrientBadge icon={Wheat} label="炭水化物" value={`${meal.carbs ?? 0}`} unit="g" color="text-info" />
-                          <NutrientBadge icon={Leaf} label="食物繊維" value={`${meal.fiber ?? 0}`} unit="g" color="text-success" />
+                          <NutrientBadge icon={Flame} label={t("meals.nutrient.calories")} value={`${meal.calories ?? 0}`} unit="kcal" color="text-destructive" />
+                          <NutrientBadge icon={Beef} label={t("meals.nutrient.protein")} value={`${meal.protein ?? 0}`} unit="g" color="text-accent" />
+                          <NutrientBadge icon={Droplets} label={t("meals.nutrient.fat")} value={`${meal.fat ?? 0}`} unit="g" color="text-warning" />
+                          <NutrientBadge icon={Wheat} label={t("meals.nutrient.carbs")} value={`${meal.carbs ?? 0}`} unit="g" color="text-info" />
+                          <NutrientBadge icon={Leaf} label={t("meals.nutrient.fiber")} value={`${meal.fiber ?? 0}`} unit="g" color="text-success" />
                         </div>
 
                         {/* Dishes breakdown accordion */}
@@ -462,7 +464,7 @@ const CustomerMeals = () => {
 
                         {meal.feedback && (
                           <div className="bg-accent/10 rounded-xl p-3">
-                            <p className="text-xs font-bold text-accent mb-1 flex items-center gap-1"><Bot className="w-3.5 h-3.5" />AIアドバイス</p>
+                            <p className="text-xs font-bold text-accent mb-1 flex items-center gap-1"><Bot className="w-3.5 h-3.5" />{t("meals.aiAdvice")}</p>
                             <p className="text-sm text-foreground leading-relaxed">{meal.feedback}</p>
                           </div>
                         )}
@@ -470,7 +472,7 @@ const CustomerMeals = () => {
                     ) : (
                       <div className="p-4 flex items-center gap-2 text-muted-foreground">
                         <DumbbellLoader className="w-4 h-4" />
-                        <span className="text-sm">AI分析中...</span>
+                        <span className="text-sm">{t("meals.aiAnalyzing")}</span>
                       </div>
                     )}
                   </CardContent>
@@ -485,41 +487,41 @@ const CustomerMeals = () => {
       <Dialog open={showUploadDialog} onOpenChange={(open) => { if (!open) { setShowUploadDialog(false); setPendingFile(null); } }}>
         <DialogContent className="max-w-[340px] rounded-xl">
           <DialogHeader>
-            <DialogTitle>食事の情報（任意）</DialogTitle>
+            <DialogTitle>{t("meals.uploadDialog.title")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>食事タイプ</Label>
+              <Label>{t("meals.uploadDialog.mealType")}</Label>
               <div className="flex gap-2 flex-wrap">
-                {mealTypeOptions.map((t) => (
+                {mealTypeOptions.map((opt) => (
                   <button
-                    key={t}
-                    onClick={() => setSelectedMealType(t)}
+                    key={opt}
+                    onClick={() => setSelectedMealType(opt)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors inline-flex items-center gap-1 ${
-                      selectedMealType === t
+                      selectedMealType === opt
                         ? "bg-accent text-accent-foreground"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
-                    <MealTypeIcon type={t} className="w-3 h-3" />{t}
+                    <MealTypeIcon type={opt} className="w-3 h-3" />{opt}
                   </button>
                 ))}
               </div>
             </div>
             <div className="space-y-2">
-              <Label>量の補足（任意）</Label>
+              <Label>{t("meals.uploadDialog.quantityLabel")}</Label>
               <Input
-                placeholder="例：大盛り、半分残した、2人前"
+                placeholder={t("meals.uploadDialog.quantityPlaceholder")}
                 value={quantityNote}
                 onChange={(e) => setQuantityNote(e.target.value)}
               />
-              <p className="text-[11px] text-muted-foreground">入力するとAIの推定精度が向上します</p>
+              <p className="text-[11px] text-muted-foreground">{t("meals.uploadDialog.quantityHint")}</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowUploadDialog(false); setPendingFile(null); }}>キャンセル</Button>
+            <Button variant="outline" onClick={() => { setShowUploadDialog(false); setPendingFile(null); }}>{t("common.cancel")}</Button>
             <Button onClick={handleUploadConfirm} disabled={uploading}>
-              分析開始
+              {t("meals.uploadDialog.startAnalysis")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -529,16 +531,16 @@ const CustomerMeals = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>この食事記録を削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>{t("meals.deleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              削除すると元に戻すことはできません。写真と分析データが完全に削除されます。
+              {t("meals.deleteDialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? <DumbbellLoader className="w-4 h-4 mr-1" /> : null}
-              削除する
+              {t("meals.deleteDialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -548,23 +550,23 @@ const CustomerMeals = () => {
       <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
         <DialogContent className="max-w-[340px] rounded-xl">
           <DialogHeader>
-            <DialogTitle>食事の日時を変更</DialogTitle>
+            <DialogTitle>{t("meals.editDateDialog.title")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>日付</Label>
+              <Label>{t("meals.editDateDialog.date")}</Label>
               <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>時間</Label>
+              <Label>{t("meals.editDateDialog.time")}</Label>
               <Input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
+            <Button variant="outline" onClick={() => setEditTarget(null)} disabled={saving}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveTime} disabled={saving}>
               {saving ? <DumbbellLoader className="w-4 h-4 mr-1" /> : null}
-              保存
+              {t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -574,12 +576,13 @@ const CustomerMeals = () => {
 };
 
 const DishesBreakdown = ({ dishes }: { dishes: DishDetail[] }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex items-center gap-1 text-xs text-accent font-medium hover:text-accent/80 transition-colors w-full">
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
-        内訳を見る（{dishes.length}品）
+        {t("meals.dishesBreakdown", { count: dishes.length })}
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-2 space-y-1.5">

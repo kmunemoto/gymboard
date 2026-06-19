@@ -21,6 +21,7 @@ import { formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTranslation } from "react-i18next";
 
 type DiagnosisRow = {
   id: string;
@@ -68,6 +69,7 @@ const CompareView = ({
   signedUrls: Record<string, string>;
   onClose: () => void;
 }) => {
+  const { t } = useTranslation();
   const [before, after] = items;
 
   const renderSide = (d: DiagnosisRow, label: string) => {
@@ -84,7 +86,7 @@ const CompareView = ({
             <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex items-center justify-center py-10 bg-muted/30 rounded-lg text-[10px] text-muted-foreground">写真なし</div>
+          <div className="flex items-center justify-center py-10 bg-muted/30 rounded-lg text-[10px] text-muted-foreground">{t("posture.history.noPhoto")}</div>
         )}
         <div className="text-center">
           <Badge style={{ backgroundColor: info.color, color: "white" }} className="text-[10px]">
@@ -96,11 +98,11 @@ const CompareView = ({
         </div>
         {/* Scores */}
         <div className="space-y-1">
-          {(["straight", "wave", "natural"] as const).map((t) => {
-            const ti = TYPE_LABELS[t];
-            const val = d.scores?.[t] ?? 0;
+          {(["straight", "wave", "natural"] as const).map((tk) => {
+            const ti = TYPE_LABELS[tk];
+            const val = d.scores?.[tk] ?? 0;
             return (
-              <div key={t} className="flex items-center gap-1">
+              <div key={tk} className="flex items-center gap-1">
                 <span className="text-[9px] w-10 truncate">{ti.label}</span>
                 <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: ti.color }} />
@@ -113,9 +115,9 @@ const CompareView = ({
         {/* Metrics */}
         {d.metrics && (
           <div className="space-y-0.5 text-center">
-            <p className="text-[9px] text-muted-foreground">肩/ヒップ {d.metrics.shoulderHipRatio ?? "-"}</p>
-            <p className="text-[9px] text-muted-foreground">上半身 {d.metrics.upperBodyRatio != null ? `${(d.metrics.upperBodyRatio * 100).toFixed(0)}%` : "-"}</p>
-            <p className="text-[9px] text-muted-foreground">四肢/胴 {d.metrics.limbTorsoRatio ?? "-"}</p>
+            <p className="text-[9px] text-muted-foreground">{t("posture.history.shoulderHipShort")} {d.metrics.shoulderHipRatio ?? "-"}</p>
+            <p className="text-[9px] text-muted-foreground">{t("posture.history.upperBodyShort")} {d.metrics.upperBodyRatio != null ? `${(d.metrics.upperBodyRatio * 100).toFixed(0)}%` : "-"}</p>
+            <p className="text-[9px] text-muted-foreground">{t("posture.history.limbTorsoShort")} {d.metrics.limbTorsoRatio ?? "-"}</p>
           </div>
         )}
       </div>
@@ -128,7 +130,7 @@ const CompareView = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <ArrowLeftRight className="w-3.5 h-3.5 text-accent" />
-            <span className="text-xs font-bold">ビフォーアフター比較</span>
+            <span className="text-xs font-bold">{t("posture.history.compareTitle")}</span>
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
             <X className="w-3.5 h-3.5" />
@@ -144,6 +146,7 @@ const CompareView = ({
 };
 
 const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
+  const { t } = useTranslation();
   const [diagnoses, setDiagnoses] = useState<DiagnosisRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -155,7 +158,6 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
   const handleDelete = async (d: DiagnosisRow) => {
     setDeletingId(d.id);
     try {
-      // 1) Delete DB row first with .select() to detect RLS silent rejections
       const { data, error } = await supabase
         .from("skeletal_diagnoses")
         .delete()
@@ -169,14 +171,13 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
       if (!data || data.length === 0) {
         console.warn("[skeletal_diagnoses] 0 rows deleted — RLS拒否またはデータ不在の可能性");
         toast({
-          title: "削除できませんでした",
-          description: "権限がないか、すでに削除されている可能性があります",
+          title: t("posture.history.toast.deleteFailed"),
+          description: t("posture.history.toast.deleteFailedDesc"),
           variant: "destructive",
         });
         return;
       }
 
-      // 2) DB削除成功後にストレージ画像を削除（失敗しても致命的ではない）
       if (d.image_url) {
         const { error: storageError } = await supabase.storage
           .from("posture-photos")
@@ -186,14 +187,13 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
         }
       }
 
-      // 3) ローカルstateを更新
       setDiagnoses((prev) => prev.filter((x) => x.id !== d.id));
       setCompareIds((prev) => prev.filter((x) => x !== d.id));
       if (expandedId === d.id) setExpandedId(null);
-      toast({ title: "削除しました", description: "骨格分析を削除しました" });
+      toast({ title: t("posture.history.toast.deleteSuccess"), description: t("posture.history.toast.deleteSuccessDesc") });
     } catch (e: any) {
       console.error("[skeletal_diagnoses] delete error:", e);
-      toast({ title: "削除に失敗しました", description: e?.message ?? "もう一度お試しください", variant: "destructive" });
+      toast({ title: t("posture.history.toast.deleteError"), description: e?.message ?? "もう一度お試しください", variant: "destructive" });
     } finally {
       setDeletingId(null);
     }
@@ -215,7 +215,6 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
     fetchData();
   }, [userId]);
 
-  // Fetch signed URL when expanding a card or selecting for compare
   useEffect(() => {
     const idsToFetch = new Set<string>();
     if (expandedId) idsToFetch.add(expandedId);
@@ -255,7 +254,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
     <section>
       <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
         <Bone className="w-3.5 h-3.5" />
-        骨格分析履歴
+        {t("posture.history.title")}
       </h2>
 
       {loading ? (
@@ -265,12 +264,11 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
       ) : diagnoses.length === 0 ? (
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground">まだ分析履歴はありません</p>
+            <p className="text-sm text-muted-foreground">{t("posture.history.noHistory")}</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {/* Compare toggle */}
           {diagnosesWithImages.length >= 2 && (
             <div className="flex justify-end">
               <Button
@@ -283,18 +281,17 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                 }}
               >
                 <ArrowLeftRight className="w-3 h-3 mr-1" />
-                {compareMode ? "比較を終了" : "ビフォーアフター比較"}
+                {compareMode ? t("posture.history.compareEnd") : t("posture.history.compareTitle")}
               </Button>
             </div>
           )}
 
           {compareMode && (
             <p className="text-[11px] text-muted-foreground text-center">
-              比較したい2つの分析を選んでください（{compareIds.length}/2 選択中）
+              {t("posture.history.compareHint", { selected: compareIds.length })}
             </p>
           )}
 
-          {/* Compare view */}
           {comparePair && (
             <CompareView
               items={comparePair}
@@ -306,26 +303,25 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
             />
           )}
 
-          {/* Score trend chart */}
           {diagnoses.length >= 2 && !compareMode && (
             <Card>
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5 text-accent" />
-                  <span className="text-xs font-bold">スコア推移</span>
+                  <span className="text-xs font-bold">{t("posture.history.scoreTrend")}</span>
                 </div>
                 <div className="flex gap-3 justify-center text-[10px]">
                   <span className="flex items-center gap-1">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "hsl(174, 65%, 50%)" }} />
-                    ストレート
+                    {t("posture.skeletal.types.straight.label")}
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "hsl(280, 45%, 55%)" }} />
-                    ウェーブ
+                    {t("posture.skeletal.types.wave.label")}
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "hsl(160, 40%, 45%)" }} />
-                    ナチュラル
+                    {t("posture.skeletal.types.natural.label")}
                   </span>
                 </div>
                 <ResponsiveContainer width="100%" height={160}>
@@ -376,7 +372,6 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                 }}
               >
                 <CardContent className="p-3">
-                  {/* Summary row */}
                   <div className="flex items-center gap-3">
                     {compareMode ? (
                       <div
@@ -397,7 +392,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-bold" style={{ color: info.color }}>
-                          {info.label}タイプ
+                          {t("posture.history.typeLabel", { label: info.label })}
                         </p>
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                           {d.confidence}%
@@ -414,14 +409,12 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                     )}
                   </div>
 
-                  {/* Expanded detail */}
                   {isExpanded && !compareMode && (
                     <div className="mt-3 pt-3 border-t border-border/50 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                      {/* Overlay photo */}
                       {d.image_url && (
                         <div className="rounded-lg overflow-hidden border border-border/30">
                           {signedUrls[d.id] ? (
-                            <img src={signedUrls[d.id]} alt="骨格オーバーレイ" className="w-full h-auto" />
+                            <img src={signedUrls[d.id]} alt={t("posture.history.imageAlt")} className="w-full h-auto" />
                           ) : (
                             <div className="flex items-center justify-center py-8 bg-muted/30">
                               <DumbbellLoader className="w-5 h-5 text-muted-foreground" />
@@ -430,13 +423,12 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                         </div>
                       )}
 
-                      {/* Score bars */}
                       <div className="space-y-1.5">
-                        {(["straight", "wave", "natural"] as const).map((t) => {
-                          const ti = TYPE_LABELS[t];
-                          const val = d.scores?.[t] ?? 0;
+                        {(["straight", "wave", "natural"] as const).map((tk) => {
+                          const ti = TYPE_LABELS[tk];
+                          const val = d.scores?.[tk] ?? 0;
                           return (
-                            <div key={t} className="flex items-center gap-2">
+                            <div key={tk} className="flex items-center gap-2">
                               <span className="text-[11px] font-medium w-16">{ti.label}</span>
                               <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                                 <div
@@ -450,32 +442,30 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                         })}
                       </div>
 
-                      {/* Metrics */}
                       {d.metrics && (
                         <div className="grid grid-cols-3 gap-2">
                           <div className="bg-muted/40 rounded-lg p-2 text-center">
-                            <p className="text-[10px] text-muted-foreground">肩/ヒップ比</p>
+                            <p className="text-[10px] text-muted-foreground">{t("posture.history.shoulderHipRatio")}</p>
                             <p className="text-sm font-bold">{d.metrics.shoulderHipRatio ?? "-"}</p>
                           </div>
                           <div className="bg-muted/40 rounded-lg p-2 text-center">
-                            <p className="text-[10px] text-muted-foreground">上半身比率</p>
+                            <p className="text-[10px] text-muted-foreground">{t("posture.history.upperBodyRatio")}</p>
                             <p className="text-sm font-bold">
                               {d.metrics.upperBodyRatio != null ? `${(d.metrics.upperBodyRatio * 100).toFixed(0)}%` : "-"}
                             </p>
                           </div>
                           <div className="bg-muted/40 rounded-lg p-2 text-center">
-                            <p className="text-[10px] text-muted-foreground">四肢/胴比</p>
+                            <p className="text-[10px] text-muted-foreground">{t("posture.history.limbTorsoRatio")}</p>
                             <p className="text-sm font-bold">{d.metrics.limbTorsoRatio ?? "-"}</p>
                           </div>
                         </div>
                       )}
 
-                      {/* Training recommendations */}
                       {tips.length > 0 && (
                         <div className="space-y-2">
                           <div className="flex items-center gap-1.5">
                             <Target className="w-3.5 h-3.5 text-accent" />
-                            <span className="text-[11px] font-bold">おすすめトレーニング</span>
+                            <span className="text-[11px] font-bold">{t("posture.history.trainingRecommendation")}</span>
                           </div>
                           {tips.map((tip, i) => (
                             <div key={i} className="flex items-start gap-2">
@@ -489,7 +479,6 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                         </div>
                       )}
 
-                      {/* Trainer-only delete */}
                       {allowDelete && (
                         <div className="pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
                           <AlertDialog>
@@ -505,23 +494,23 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                                 ) : (
                                   <Trash2 className="w-3.5 h-3.5 mr-1" />
                                 )}
-                                この分析を削除
+                                {t("posture.history.deleteButton")}
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>骨格分析を削除しますか？</AlertDialogTitle>
+                                <AlertDialogTitle>{t("posture.history.deleteTitle")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  {format(dt, "yyyy年M月d日 HH:mm", { locale: ja })}の分析結果と画像が完全に削除されます。この操作は取り消せません。
+                                  {t("posture.history.deleteDesc", { date: format(dt, "yyyy年M月d日 HH:mm", { locale: ja }) })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                                <AlertDialogCancel>{t("posture.history.deleteCancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDelete(d)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  削除する
+                                  {t("posture.history.deleteConfirm")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

@@ -6,6 +6,7 @@ import { PhotoTypeIcon, photoTypeLabel } from "./PhotoTypeIcon";
 import type { PhotoType, ProgressPhoto } from "@/hooks/useProgressPhotos";
 import { buildCompareImage, daysBetween } from "@/lib/progressPhotoShare";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -14,6 +15,8 @@ interface Props {
 }
 
 const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
+  const { t } = useTranslation();
+
   // List of distinct dates
   const dates = useMemo(() => {
     const s = new Set(photos.map((p) => p.taken_date));
@@ -47,7 +50,7 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
 
   const handleShare = async () => {
     if (!beforePhoto?.signed_url || !afterPhoto?.signed_url) {
-      toast.error("両方の写真がありません");
+      toast.error(t("progress.bothPhotosMissing"));
       return;
     }
     setSharing(true);
@@ -63,7 +66,7 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
       setShareUrl(url);
     } catch (e) {
       console.error(e);
-      toast.error("画像生成に失敗しました");
+      toast.error(t("progress.imageGenFailed"));
     } finally {
       setSharing(false);
     }
@@ -78,7 +81,7 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
   return (
     <div className="fixed inset-0 z-[60] bg-background flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h2 className="text-base font-bold">写真を比較</h2>
+        <h2 className="text-base font-bold">{t("progress.compareTitle")}</h2>
         <button onClick={handleClose} className="p-1 rounded-lg hover:bg-muted">
           <X className="w-5 h-5" />
         </button>
@@ -86,13 +89,13 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-md mx-auto w-full">
         {dates.length < 1 ? (
-          <p className="text-center text-sm text-muted-foreground py-8">写真がまだありません</p>
+          <p className="text-center text-sm text-muted-foreground py-8">{t("progress.noPhotos")}</p>
         ) : (
           <>
             {/* Date pickers */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-bold text-muted-foreground mb-1 block">ビフォー</label>
+                <label className="text-[10px] font-bold text-muted-foreground mb-1 block">{t("progress.beforeLabel")}</label>
                 <select
                   value={beforeDate}
                   onChange={(e) => setBeforeDate(e.target.value)}
@@ -104,7 +107,7 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-muted-foreground mb-1 block">アフター</label>
+                <label className="text-[10px] font-bold text-muted-foreground mb-1 block">{t("progress.afterLabel")}</label>
                 <select
                   value={afterDate}
                   onChange={(e) => setAfterDate(e.target.value)}
@@ -119,23 +122,23 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
 
             {/* Elapsed */}
             <div className="text-center text-sm font-bold text-accent">
-              経過日数：{elapsed}日間
+              {t("progress.elapsedDays", { days: elapsed })}
             </div>
 
             {/* Type tabs */}
             <div className="grid grid-cols-3 gap-2">
-              {(["front", "side", "back"] as PhotoType[]).map((t) => {
-                const active = photoType === t;
+              {(["front", "side", "back"] as PhotoType[]).map((tp) => {
+                const active = photoType === tp;
                 return (
                   <button
-                    key={t}
-                    onClick={() => setPhotoType(t)}
+                    key={tp}
+                    onClick={() => setPhotoType(tp)}
                     className={`h-10 rounded-lg border flex items-center justify-center gap-1.5 text-xs font-semibold transition ${
                       active ? "border-accent bg-accent/10 text-accent" : "border-input text-muted-foreground"
                     }`}
                   >
-                    <PhotoTypeIcon type={t} className="w-4 h-4" />
-                    {photoTypeLabel(t)}
+                    <PhotoTypeIcon type={tp} className="w-4 h-4" />
+                    {photoTypeLabel(tp)}
                   </button>
                 );
               })}
@@ -143,8 +146,8 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
 
             {/* Photos */}
             <div className="grid grid-cols-2 gap-2">
-              <PhotoCell label="Before" date={beforeDate} url={beforePhoto?.signed_url} />
-              <PhotoCell label="After" date={afterDate} url={afterPhoto?.signed_url} />
+              <PhotoCell label="Before" date={beforeDate} url={beforePhoto?.signed_url} noPhotoText={t("progress.noPhotoInCell")} />
+              <PhotoCell label="After" date={afterDate} url={afterPhoto?.signed_url} noPhotoText={t("progress.noPhotoInCell")} />
             </div>
 
             <Button
@@ -153,19 +156,19 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
               disabled={sharing || !beforePhoto || !afterPhoto}
               className="w-full"
             >
-              {sharing ? <DumbbellLoader className="w-4 h-4" /> : <><Share2 className="w-4 h-4" />シェア画像を作成</>}
+              {sharing ? <DumbbellLoader className="w-4 h-4" /> : <><Share2 className="w-4 h-4" />{t("progress.shareImage")}</>}
             </Button>
 
             {shareUrl && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground text-center">画像を長押しして保存できます</p>
-                <img src={shareUrl} alt="比較画像" className="w-full rounded-xl border" />
+                <p className="text-xs text-muted-foreground text-center">{t("progress.shareSaveHint")}</p>
+                <img src={shareUrl} alt={t("progress.compareImageAlt")} className="w-full rounded-xl border" />
                 <a
                   href={shareUrl}
                   download={`compare-${beforeDate}-${afterDate}.jpg`}
                   className="block w-full text-center py-2.5 rounded-xl bg-muted text-sm font-semibold"
                 >
-                  ダウンロード
+                  {t("progress.download")}
                 </a>
               </div>
             )}
@@ -176,7 +179,7 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
   );
 };
 
-const PhotoCell = ({ label, date, url }: { label: string; date: string; url?: string }) => (
+const PhotoCell = ({ label, date, url, noPhotoText }: { label: string; date: string; url?: string; noPhotoText: string }) => (
   <div className="space-y-1">
     <div className="text-[10px] font-bold text-muted-foreground flex items-center justify-between">
       <span>{label}</span>
@@ -186,7 +189,7 @@ const PhotoCell = ({ label, date, url }: { label: string; date: string; url?: st
       {url ? (
         <img src={url} alt={label} className="w-full h-full object-cover" />
       ) : (
-        <span className="text-xs text-muted-foreground">写真なし</span>
+        <span className="text-xs text-muted-foreground">{noPhotoText}</span>
       )}
     </div>
   </div>

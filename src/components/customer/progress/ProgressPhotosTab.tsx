@@ -9,10 +9,12 @@ import { PhotoTypeIcon, photoTypeLabel } from "./PhotoTypeIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTranslation } from "react-i18next";
 
 const TYPES: PhotoType[] = ["front", "side", "back"];
 
 const ProgressPhotosTab = () => {
+  const { t } = useTranslation();
   const { photos, loading, refetch } = useProgressPhotos();
   const [addOpen, setAddOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -28,14 +30,14 @@ const ProgressPhotosTab = () => {
   }, [photos]);
 
   const handleDelete = async (p: ProgressPhoto) => {
-    if (!confirm("この写真を削除しますか？")) return;
+    if (!confirm(t("progress.deleteConfirm"))) return;
     const { error } = await supabase.from("progress_photos").delete().eq("id", p.id);
     if (error) {
-      toast.error("削除に失敗しました");
+      toast.error(t("progress.deleteFailed"));
       return;
     }
     await supabase.storage.from("progress-photos").remove([p.photo_url]);
-    toast.success("削除しました");
+    toast.success(t("progress.deleteSuccess"));
     setViewer(null);
     refetch();
   };
@@ -59,11 +61,11 @@ const ProgressPhotosTab = () => {
           className="flex-1"
         >
           <ArrowLeftRight className="w-4 h-4" />
-          比較する
+          {t("progress.compare")}
         </Button>
         <Button variant="accent" size="sm" onClick={() => setAddOpen(true)} className="flex-1">
           <Plus className="w-4 h-4" />
-          写真を追加
+          {t("progress.addPhotoBtn")}
         </Button>
       </div>
 
@@ -71,9 +73,9 @@ const ProgressPhotosTab = () => {
         <Card>
           <CardContent className="p-8 text-center">
             <Camera className="w-10 h-10 mx-auto mb-2 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">最初の写真を撮影しましょう</p>
+            <p className="text-sm text-muted-foreground">{t("progress.emptyTitle")}</p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              定期的に記録するとビフォーアフターで比較できます
+              {t("progress.emptyDesc")}
             </p>
           </CardContent>
         </Card>
@@ -81,23 +83,23 @@ const ProgressPhotosTab = () => {
         <div className="space-y-3">
           {grouped.map(([date, items]) => {
             const d = new Date(date);
-            const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
-            const label = `${d.getMonth() + 1}月${d.getDate()}日（${dayNames[d.getDay()]}）`;
+            const dayNames = [t("progress.dow0"), t("progress.dow1"), t("progress.dow2"), t("progress.dow3"), t("progress.dow4"), t("progress.dow5"), t("progress.dow6")];
+            const label = t("progress.dateCardLabel", { month: d.getMonth() + 1, day: d.getDate(), dow: dayNames[d.getDay()] });
             return (
               <Card key={date} className="card-hover">
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-bold">{label}</span>
-                    <span className="text-[10px] text-muted-foreground">{items.length}枚</span>
+                    <span className="text-[10px] text-muted-foreground">{t("progress.photoCount", { count: items.length })}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    {TYPES.map((t) => {
-                      const p = items.find((x) => x.photo_type === t);
+                    {TYPES.map((tp) => {
+                      const p = items.find((x) => x.photo_type === tp);
                       return (
-                        <div key={t} className="space-y-1">
+                        <div key={tp} className="space-y-1">
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <PhotoTypeIcon type={t} className="w-3 h-3" />
-                            {photoTypeLabel(t)}
+                            <PhotoTypeIcon type={tp} className="w-3 h-3" />
+                            {photoTypeLabel(tp)}
                           </div>
                           <button
                             onClick={() => p && setViewer(p)}
@@ -105,9 +107,9 @@ const ProgressPhotosTab = () => {
                             className="aspect-[3/4] w-full rounded-xl bg-muted overflow-hidden flex items-center justify-center"
                           >
                             {p?.signed_url ? (
-                              <img src={p.signed_url} alt={photoTypeLabel(t)} className="w-full h-full object-cover" />
+                              <img src={p.signed_url} alt={photoTypeLabel(tp)} className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-[10px] text-muted-foreground/60">未登録</span>
+                              <span className="text-[10px] text-muted-foreground/60">{t("progress.notRegistered")}</span>
                             )}
                           </button>
                         </div>
@@ -132,7 +134,7 @@ const ProgressPhotosTab = () => {
               onClick={(e) => { e.stopPropagation(); handleDelete(viewer); }}
               className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold flex items-center gap-1"
             >
-              <Trash2 className="w-3.5 h-3.5" />削除
+              <Trash2 className="w-3.5 h-3.5" />{t("progress.delete")}
             </button>
           </div>
           <div className="flex-1 flex items-center justify-center p-4" onClick={() => setViewer(null)}>

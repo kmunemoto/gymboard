@@ -506,7 +506,7 @@ const TrainerSchedule = () => {
                               className="min-w-[112px]"
                             >
                               <Trash2 className="w-4 h-4" />
-                              {booking.isBlocked ? "解除" : "削除"}
+                              {booking.isBlocked ? t("schedule.release") : t("common.delete")}
                             </Button>
                           </div>
                         </CardContent>

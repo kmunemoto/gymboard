@@ -1337,7 +1337,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         <TabsContent value="meals" className="space-y-4">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Utensils className="w-3.5 h-3.5" />
-            食事記録
+            {t("clientDetail.mealsSection")}
           </h2>
           {loadingMeals ? (
             <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>

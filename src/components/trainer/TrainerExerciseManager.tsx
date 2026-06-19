@@ -283,7 +283,7 @@ const TrainerExerciseManager = () => {
                   </button>
                   <button
                     onClick={() => setDeleteTarget(ex)}
-                    aria-label="削除"
+                    aria-label={t("exercise.deleteAria")}
                     className="p-2 text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="w-4 h-4" />

@@ -29,8 +29,6 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 // ============================================================
 const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
 const isJune2026Date = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
-const JUNE_LOCK_MESSAGE =
-  "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。";
 // ============================================================
 
 

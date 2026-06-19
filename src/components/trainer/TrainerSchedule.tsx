@@ -462,7 +462,7 @@ const TrainerSchedule = () => {
                 <span className="text-xs font-bold uppercase">
                   {format(day, "M/d（E）", { locale: ja })}
                 </span>
-                {isToday && <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">今日</span>}
+                {isToday && <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">{t("common.today")}</span>}
               </div>
               {dayBookings.length > 0 ? (
                 <div className="space-y-1.5">

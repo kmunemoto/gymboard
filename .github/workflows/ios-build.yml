@@ -64,17 +64,17 @@ jobs:
           <plist version="1.0">
           <dict>
           <key>API_KEY</key>
-          <string>AIzaSyB8UmCsSZ9C6ePEr5f-Anf1XCovlgZbvQg</string>
+          <string>AIzaSyD_1mp-m8Z-VGqPDzKXBwyrtKm-IQEW-J0</string>
           <key>GCM_SENDER_ID</key>
-          <string>655937839767</string>
+          <string>94822199498</string>
           <key>PLIST_VERSION</key>
           <string>1</string>
           <key>BUNDLE_ID</key>
           <string>app.gymboard.mobile</string>
           <key>PROJECT_ID</key>
-          <string>gymboard-59570</string>
+          <string>gymboard-bc7f3</string>
           <key>STORAGE_BUCKET</key>
-          <string>gymboard-59570.firebasestorage.app</string>
+          <string>gymboard-bc7f3.firebasestorage.app</string>
           <key>IS_ADS_ENABLED</key>
           <false/>
           <key>IS_ANALYTICS_ENABLED</key>
@@ -86,7 +86,7 @@ jobs:
           <key>IS_SIGNIN_ENABLED</key>
           <true/>
           <key>GOOGLE_APP_ID</key>
-          <string>1:655937839767:ios:24127d2563fa75b9667fd2</string>
+          <string>1:94822199498:ios:6706990688013ee5958433</string>
           </dict>
           </plist>
           PLIST_EOF

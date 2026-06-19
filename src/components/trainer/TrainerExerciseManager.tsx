@@ -334,18 +334,18 @@ const TrainerExerciseManager = () => {
             <div className="space-y-4">
               <div>
                 <Label className="text-xs">
-                  種目名 <span className="text-destructive">*</span>
+                  {t("exercise.fieldName")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="例：ラテラルレイズ"
+                  placeholder={t("exercise.namePlaceholder")}
                   className="h-11 mt-1"
                 />
               </div>
               <div>
                 <Label className="text-xs">
-                  部位 <span className="text-destructive">*</span>
+                  {t("exercise.fieldPart")} <span className="text-destructive">*</span>
                 </Label>
                 <select
                   value={form.muscle_group}

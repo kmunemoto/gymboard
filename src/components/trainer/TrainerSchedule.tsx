@@ -691,9 +691,9 @@ const TrainerSchedule = () => {
       <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>時間帯をブロック</DialogTitle>
+            <DialogTitle>{t("schedule.blockDialogTitle")}</DialogTitle>
             <p className="text-sm text-muted-foreground pt-1">
-              選択した時間帯に予約が入らないようにブロックします。
+              {t("schedule.blockDialogDesc")}
             </p>
           </DialogHeader>
           <div className="space-y-4">

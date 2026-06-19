@@ -97,7 +97,7 @@ function restoreVars(text, vars) {
   return text.replace(/__VAR_(\d+)__/g, (_, i) => vars[Number(i)] ?? "");
 }
 
-async function translateBatch(entries, targetLangName) {
+async function translateBatch(entries, targetLangName, extraNote = "") {
   // entries: [{ key, text }]
   const prepared = entries.map(({ key, text }) => {
     const { protectedText, vars } = protectVars(String(text));
@@ -112,6 +112,7 @@ async function translateBatch(entries, targetLangName) {
     `- 自然で簡潔なUI表現にする。\n` +
     `- __VAR_数字__ のようなトークンは絶対に翻訳・変更せず、そのまま残す。\n` +
     `- 句読点や記号もUIに自然な形にする。\n` +
+    (extraNote ? `- ${extraNote}\n` : "") +
     `- 入力JSON配列の各要素に対し、同じ key と翻訳後の text を含むJSONを返す。\n` +
     `- 出力は { "items": [{ "key": "...", "text": "..." }, ...] } の形式のみ。説明文は不要。`;
 

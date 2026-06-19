@@ -1,11 +1,88 @@
 import { useState } from "react";
-import { ArrowLeft, X, Bell, CheckCheck } from "lucide-react";
+import { ArrowLeft, X, Bell, CheckCheck, ExternalLink, Smartphone } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
 import { useAnnouncements, type Announcement } from "@/hooks/useAnnouncements";
 import RenderIcon from "@/components/RenderIcon";
 import { Button } from "@/components/ui/button";
+import { openExternalUrl } from "@/lib/nativeBridge";
+
+const URL_REGEX = /(https?:\/\/[^\s　、。）」』]+)/g;
+
+type BodyNode =
+  | { type: "text"; value: string }
+  | { type: "appstore"; url: string }
+  | { type: "playstore"; url: string }
+  | { type: "link"; url: string };
+
+function parseBody(body: string): BodyNode[] {
+  const nodes: BodyNode[] = [];
+  const parts = body.split(URL_REGEX);
+  for (const part of parts) {
+    if (!part) continue;
+    if (URL_REGEX.test(part)) {
+      URL_REGEX.lastIndex = 0;
+      if (part.includes("apps.apple.com") || part.includes("itunes.apple.com")) {
+        nodes.push({ type: "appstore", url: part });
+      } else if (part.includes("play.google.com")) {
+        nodes.push({ type: "playstore", url: part });
+      } else {
+        nodes.push({ type: "link", url: part });
+      }
+    } else {
+      nodes.push({ type: "text", value: part });
+    }
+    URL_REGEX.lastIndex = 0;
+  }
+  return nodes;
+}
+
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function renderBodyWithLinks(body: string) {
+  const nodes = parseBody(body);
+  return nodes.map((n, i) => {
+    if (n.type === "text") {
+      return (
+        <span key={i} style={{ whiteSpace: "pre-wrap" }}>
+          {n.value}
+        </span>
+      );
+    }
+    if (n.type === "appstore" || n.type === "playstore") {
+      const label = n.type === "appstore" ? "App Storeで開く" : "Google Playで開く";
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => openExternalUrl(n.url)}
+          className="my-2 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-accent/40 bg-accent/5 text-accent text-sm font-semibold hover:bg-accent/10 transition-colors break-all"
+        >
+          <Smartphone className="w-4 h-4 shrink-0" />
+          <span className="break-all">{label}</span>
+        </button>
+      );
+    }
+    return (
+      <button
+        key={i}
+        type="button"
+        onClick={() => openExternalUrl(n.url)}
+        className="inline-flex items-center gap-1 text-accent underline underline-offset-2 break-all align-baseline"
+      >
+        <span className="break-all">{getDomain(n.url)}</span>
+        <ExternalLink className="w-3 h-3 shrink-0" />
+      </button>
+    );
+  });
+}
 
 interface Props {
   open: boolean;

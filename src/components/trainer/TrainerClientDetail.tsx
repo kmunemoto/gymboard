@@ -314,7 +314,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       if (data) {
         setWorkoutRecords(data.map((w: any) => ({
           ...w,
-          exercise_name: w.exercises?.name || "不明",
+          exercise_name: w.exercises?.name || t("common.unknown"),
           muscle_group: w.exercises?.muscle_group ?? null,
         })));
       }

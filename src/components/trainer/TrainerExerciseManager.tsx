@@ -305,7 +305,7 @@ const TrainerExerciseManager = () => {
       <button
         onClick={openAdd}
         className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full accent-gradient text-accent-foreground shadow-lg flex items-center justify-center"
-        aria-label="種目を追加"
+        aria-label={t("exercise.addAria")}
       >
         <Plus className="w-6 h-6" />
       </button>

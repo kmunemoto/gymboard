@@ -19,7 +19,10 @@ interface LanguageSwitcherProps {
 
 const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
   const { t } = useTranslation();
-  const currentLang = (i18n.resolvedLanguage || i18n.language || "ja").split("-")[0];
+  const rawLang = i18n.resolvedLanguage || i18n.language || "ja";
+  const currentLang = (SUPPORTED_LANGUAGES as readonly string[]).includes(rawLang)
+    ? rawLang
+    : rawLang.split("-")[0];
 
   const handleChange = (lng: SupportedLanguage) => {
     if (lng === currentLang) return;

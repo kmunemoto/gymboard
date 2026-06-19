@@ -9,8 +9,10 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTranslation } from "react-i18next";
 
 const TrainerNotificationSettings = () => {
+  const { t } = useTranslation();
   const {
     isSupported,
     isSubscribed,
@@ -54,36 +56,36 @@ const TrainerNotificationSettings = () => {
     const params = new URLSearchParams(window.location.search);
     const linkResult = params.get("line_link");
     if (linkResult === "success") {
-      toast.success("LINE連携が完了しました！");
+      toast.success(t("settings.line.linkSuccess"));
       refetch();
       window.history.replaceState({}, "", window.location.pathname);
     } else if (linkResult === "error") {
-      toast.error("LINE連携に失敗しました");
+      toast.error(t("settings.line.linkFailed"));
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [refetch]);
+  }, [refetch, t]);
 
   // Listen for Google Calendar callback
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "google-calendar-result") {
         if (e.data.success) {
-          toast.success("Googleカレンダー連携が完了しました！");
+          toast.success(t("settings.gcal.linkSuccess"));
           setGcalLinked(true);
         } else {
-          toast.error("Googleカレンダー連携に失敗しました");
+          toast.error(t("settings.gcal.linkFailed"));
         }
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, []);
+  }, [t]);
 
   const handleLineLink = async () => {
     if (!user) return;
     const { data, error } = await supabase.functions.invoke("line-auth-url", { body: {} });
     if (error || !data?.url) {
-      toast.error("LINE連携の開始に失敗しました");
+      toast.error(t("settings.line.startFailed"));
       return;
     }
     window.location.href = data.url;
@@ -97,16 +99,15 @@ const TrainerNotificationSettings = () => {
       .update({ line_user_id: null })
       .eq("user_id", user.id);
     if (error) {
-      toast.error("LINE連携の解除に失敗しました");
+      toast.error(t("settings.line.unlinkFailed"));
     } else {
-      toast.success("LINE連携を解除しました");
+      toast.success(t("settings.line.unlinked"));
       refetch();
     }
   };
 
   const handleGcalLink = async () => {
     if (!user) return;
-    // Open popup immediately to avoid browser popup blocker
     const popup = window.open("about:blank", "gcal-link", "width=500,height=700");
     try {
       const { data, error } = await supabase.functions.invoke("google-calendar-auth-url", {
@@ -114,19 +115,18 @@ const TrainerNotificationSettings = () => {
       });
       if (error || !data?.url) {
         popup?.close();
-        toast.error("Google認証URLの取得に失敗しました");
+        toast.error(t("settings.gcal.authUrlFailed"));
         return;
       }
       if (popup) {
         popup.location.href = data.url;
       } else {
-        // Fallback: redirect in same window
         window.location.href = data.url;
       }
     } catch (e) {
       popup?.close();
       console.error(e);
-      toast.error("エラーが発生しました");
+      toast.error(t("common.errorGeneric"));
     }
   };
 
@@ -137,9 +137,9 @@ const TrainerNotificationSettings = () => {
       .delete()
       .eq("user_id", user.id);
     if (error) {
-      toast.error("連携解除に失敗しました");
+      toast.error(t("settings.gcal.unlinkFailed"));
     } else {
-      toast.success("Googleカレンダー連携を解除しました");
+      toast.success(t("settings.gcal.unlinked"));
       setGcalLinked(false);
     }
   };
@@ -151,10 +151,10 @@ const TrainerNotificationSettings = () => {
         body: { action: "sync_all" },
       });
       if (error) throw error;
-      toast.success(`${data?.synced || 0}件の予約をGoogleカレンダーに同期しました`);
+      toast.success(t("settings.gcal.syncDone", { count: data?.synced || 0 }));
     } catch (e) {
       console.error(e);
-      toast.error("同期に失敗しました");
+      toast.error(t("settings.gcal.syncFailed"));
     }
     setSyncing(false);
   };
@@ -162,12 +162,12 @@ const TrainerNotificationSettings = () => {
   const handleTogglePush = async () => {
     if (isSubscribed) {
       const ok = await unsubscribe();
-      if (ok) toast.success("プッシュ通知を無効にしました");
-      else toast.error("通知の解除に失敗しました");
+      if (ok) toast.success(t("settings.notification.disabledToast"));
+      else toast.error(t("settings.notification.unsubFailed"));
     } else {
       const ok = await subscribe();
-      if (ok) toast.success("プッシュ通知を有効にしました！");
-      else toast.error("通知の許可が得られませんでした。ブラウザの設定を確認してください。");
+      if (ok) toast.success(t("settings.notification.enabledToast"));
+      else toast.error(t("settings.notification.permissionFailed"));
     }
   };
 
@@ -176,7 +176,7 @@ const TrainerNotificationSettings = () => {
     <div className="pb-20 md:pb-0">
       <h1 className="text-xl font-bold flex items-center gap-2 mb-6">
         <Settings className="w-5 h-5 text-accent" />
-        通知設定
+        {t("settings.notification.title")}
       </h1>
 
       <div className="space-y-4 max-w-lg">

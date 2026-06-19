@@ -1158,7 +1158,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 {exercises.map((ex, i) => (
                   <div key={i} className="rounded-xl border border-border p-3 bg-muted/30 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-muted-foreground">種目 {i + 1}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{t("clientDetail.exerciseNum", { n: i + 1 })}</span>
                       {exercises.length > 1 && (
                         <button onClick={() => removeExercise(i)} className="text-destructive hover:text-destructive/80 transition-colors p-1">
                           <Trash2 className="w-4 h-4" />

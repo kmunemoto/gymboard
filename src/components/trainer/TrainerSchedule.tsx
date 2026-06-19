@@ -118,7 +118,7 @@ const TrainerSchedule = () => {
     }
 
     if (checkSlotBlocked(bookings, proxyDateKey, proxyTime)) {
-      toast.error("すでに予約が入っています。別の時間を選んでください。");
+      toast.error(t("schedule.errorSlotTaken"));
       return;
     }
 

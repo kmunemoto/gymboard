@@ -253,12 +253,12 @@ const TrainerSchedule = () => {
     const { error } = await supabase.from("blocked_slots").insert(withTenant(row, tenantId) as any);
 
     if (error) {
-      toast.error("ブロックに失敗しました");
+      toast.error(t("schedule.blockFailed"));
       setSubmitting(false);
       return;
     }
 
-    toast.success(`${format(blockDate, "M/d")} ${blockStartTime}〜${blockEndTime} をブロックしました`);
+    toast.success(t("schedule.blockedToast", { date: format(blockDate, "M/d"), start: blockStartTime, end: blockEndTime }));
     setBlockDialogOpen(false);
     setBlockDate(undefined);
     setBlockStartTime("");

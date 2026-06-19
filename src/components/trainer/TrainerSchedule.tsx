@@ -514,7 +514,7 @@ const TrainerSchedule = () => {
                     ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground pl-1 mb-1">予約なし</p>
+                <p className="text-xs text-muted-foreground pl-1 mb-1">{t("schedule.noBookings")}</p>
               )}
             </div>
           );

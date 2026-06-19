@@ -45,6 +45,7 @@ const emptyForm: FormState = {
 };
 
 const TrainerExerciseManager = () => {
+  const { t } = useTranslation();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | MuscleGroup>("all");

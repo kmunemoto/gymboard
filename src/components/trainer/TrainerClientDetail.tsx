@@ -1217,7 +1217,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       <div key={si} className="space-y-1">
                         {ex.sets.length > 1 && (
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-muted-foreground">セット {si + 1}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground">{t("clientDetail.setNum", { n: si + 1 })}</span>
                             <button onClick={() => removeSet(i, si)} className="text-destructive/60 hover:text-destructive transition-colors p-0.5">
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -1225,11 +1225,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                         )}
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">重量 (kg)</label>
+                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">{t("clientDetail.weightUnit")}</label>
                             <Input type="number" step="0.5" placeholder="60" value={s.weight} onChange={(e) => updateExerciseSet(i, si, "weight", e.target.value)} className="h-11" />
                           </div>
                           <div>
-                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">回数 (rep)</label>
+                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">{t("clientDetail.repsUnit")}</label>
                             <Input type="number" placeholder="10" value={s.reps} onChange={(e) => updateExerciseSet(i, si, "reps", e.target.value)} className="h-11" />
                           </div>
                         </div>
@@ -1240,7 +1240,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       onClick={() => addSet(i)}
                       className="w-full text-xs text-accent font-medium py-1.5 rounded-lg border border-dashed border-accent/40 hover:bg-accent/5 transition-colors flex items-center justify-center gap-1"
                     >
-                      <Plus className="w-3 h-3" /> セットを追加
+                      <Plus className="w-3 h-3" /> {t("clientDetail.addSet")}
                     </button>
                   </div>
                 ))}

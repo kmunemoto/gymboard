@@ -247,7 +247,7 @@ const TrainerSchedule = () => {
       blocked_date: `${dateStr}T${blockStartTime}:00+09:00`,
       end_blocked_date: `${dateStr}T${blockEndTime}:00+09:00`,
       created_by: user.id,
-      reason: `ブロック（${blockStartTime}〜${blockEndTime}）`,
+      reason: t("schedule.blockReason", { start: blockStartTime, end: blockEndTime }),
     };
 
     const { error } = await supabase.from("blocked_slots").insert(withTenant(row, tenantId) as any);

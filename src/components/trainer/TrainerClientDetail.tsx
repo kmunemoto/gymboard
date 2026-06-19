@@ -1124,7 +1124,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                             <span key={r.id} className="text-xs bg-muted rounded-lg px-2 py-1 break-all">
                               {r.exercise_name} {setsData.map((s: any) => `${s.weight}kg×${s.reps}`).join(", ")}
                               {totalVolume > 0 && (
-                                <span className="ml-1.5 text-muted-foreground/70">総ボリューム {totalVolume}kg</span>
+                                <span className="ml-1.5 text-muted-foreground/70">{t("clientDetail.totalVolume", { volume: totalVolume })}</span>
                               )}
                             </span>
                           );
@@ -1135,7 +1135,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 ))}
               </div>
             ) : (
-              <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">記録なし</CardContent></Card>
+              <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">{t("clientDetail.noRecord")}</CardContent></Card>
             )}
           </section>
         </TabsContent>

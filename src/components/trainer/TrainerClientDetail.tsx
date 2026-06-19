@@ -1318,7 +1318,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                                 className="w-24 h-24 object-contain opacity-60 shrink-0 ml-2"
                               />
                             )}
-                            <button onClick={() => setDeleteTarget(r)} className="ml-auto p-1.5 rounded-lg hover:bg-destructive/10 transition-colors shrink-0" title="削除">
+                            <button onClick={() => setDeleteTarget(r)} className="ml-auto p-1.5 rounded-lg hover:bg-destructive/10 transition-colors shrink-0" title={t("common.delete")}>
                               <Trash2 className="w-3.5 h-3.5 text-destructive/70" />
                             </button>
                           </div>

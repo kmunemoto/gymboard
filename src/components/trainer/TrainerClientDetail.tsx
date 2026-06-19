@@ -1283,7 +1283,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
           ) : sortedDates.length > 0 && (
             <section>
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">過去の記録</h2>
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">{t("clientDetail.pastRecords")}</h2>
               <div className="space-y-2">
                 {sortedDates.map((date) => (
                   <Card key={date}>
@@ -1292,9 +1292,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                         <p className="text-xs font-bold text-muted-foreground">
                           {formatJST(date, "yyyy年M月d日（E）", { locale: ja })}
                         </p>
-                        <button onClick={() => openEdit(date)} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" title="この日の記録を編集">
+                        <button onClick={() => openEdit(date)} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" title={t("clientDetail.editAria")}>
                           <Pencil className="w-3.5 h-3.5" />
-                          <span>編集</span>
+                          <span>{t("common.edit")}</span>
                         </button>
                       </div>
                       <div className="space-y-1.5 overflow-hidden">

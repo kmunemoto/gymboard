@@ -161,16 +161,16 @@ const TrainingGrowthChart = ({ workoutRecords, loadingRecords }: { workoutRecord
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis yAxisId="w" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} unit="kg" domain={["dataMin - 5", "dataMax + 5"]} width={42} />
-                  <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} unit="回" width={38} />
+                  <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} unit={t("exercise.repsUnit")} width={38} />
                   <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "12px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: "11px" }} />
-                  <Line yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" strokeWidth={2.5} isAnimationActive={false} dot={{ r: 4, fill: "hsl(174, 65%, 50%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} activeDot={{ r: 6 }} name="重量(kg)" />
-                  <Line yAxisId="r" type="monotone" dataKey="reps" stroke="hsl(210, 40%, 58%)" strokeWidth={2} strokeDasharray="5 5" isAnimationActive={false} dot={{ r: 3, fill: "hsl(210, 40%, 58%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} name="回数" />
+                  <Line yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" strokeWidth={2.5} isAnimationActive={false} dot={{ r: 4, fill: "hsl(174, 65%, 50%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} activeDot={{ r: 6 }} name={t("clientDetail.weight")} />
+                  <Line yAxisId="r" type="monotone" dataKey="reps" stroke="hsl(210, 40%, 58%)" strokeWidth={2} strokeDasharray="5 5" isAnimationActive={false} dot={{ r: 3, fill: "hsl(210, 40%, 58%)", strokeWidth: 2, stroke: "hsl(var(--background))" }} name={t("clientDetail.reps")} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
             <div className="h-28 flex items-center justify-center text-sm text-muted-foreground">
-              {chartData.length === 0 ? "この種目の記録がありません" : "データが2件以上あるとグラフが表示されます"}
+              {chartData.length === 0 ? t("clientDetail.noExerciseRecord") : t("clientDetail.needTwoPoints")}
             </div>
           )}
 
@@ -178,11 +178,11 @@ const TrainingGrowthChart = ({ workoutRecords, loadingRecords }: { workoutRecord
             <div className="flex justify-center gap-6 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-0.5 rounded bg-[hsl(174,65%,50%)]" />
-                重量(kg)
+                {t("clientDetail.weight")}
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-0.5 rounded" style={{ borderTop: "2px dashed hsl(210,40%,58%)", height: 0 }} />
-                回数
+                {t("clientDetail.reps")}
               </div>
             </div>
           )}

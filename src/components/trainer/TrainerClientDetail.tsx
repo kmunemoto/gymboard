@@ -1358,15 +1358,15 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     {meal.analyzed ? (
                       <div className="p-3 space-y-2">
                         <div className="grid grid-cols-5 gap-1 text-center">
-                          <div><Flame className="w-3.5 h-3.5 mx-auto text-destructive" /><p className="text-[10px] text-muted-foreground">カロリー</p><p className="text-xs font-bold">{meal.calories ?? 0}</p></div>
-                          <div><Beef className="w-3.5 h-3.5 mx-auto text-accent" /><p className="text-[10px] text-muted-foreground">タンパク質</p><p className="text-xs font-bold">{meal.protein ?? 0}g</p></div>
-                          <div><Droplets className="w-3.5 h-3.5 mx-auto text-warning" /><p className="text-[10px] text-muted-foreground">脂質</p><p className="text-xs font-bold">{meal.fat ?? 0}g</p></div>
-                          <div><Wheat className="w-3.5 h-3.5 mx-auto text-info" /><p className="text-[10px] text-muted-foreground">炭水化物</p><p className="text-xs font-bold">{meal.carbs ?? 0}g</p></div>
-                          <div><Leaf className="w-3.5 h-3.5 mx-auto text-success" /><p className="text-[10px] text-muted-foreground">食物繊維</p><p className="text-xs font-bold">{meal.fiber ?? 0}g</p></div>
+                          <div><Flame className="w-3.5 h-3.5 mx-auto text-destructive" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutCalories")}</p><p className="text-xs font-bold">{meal.calories ?? 0}</p></div>
+                          <div><Beef className="w-3.5 h-3.5 mx-auto text-accent" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutProtein")}</p><p className="text-xs font-bold">{meal.protein ?? 0}g</p></div>
+                          <div><Droplets className="w-3.5 h-3.5 mx-auto text-warning" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutFat")}</p><p className="text-xs font-bold">{meal.fat ?? 0}g</p></div>
+                          <div><Wheat className="w-3.5 h-3.5 mx-auto text-info" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutCarbs")}</p><p className="text-xs font-bold">{meal.carbs ?? 0}g</p></div>
+                          <div><Leaf className="w-3.5 h-3.5 mx-auto text-success" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutFiber")}</p><p className="text-xs font-bold">{meal.fiber ?? 0}g</p></div>
                         </div>
                         {meal.feedback && (
                           <div className="bg-accent/10 rounded-lg p-2">
-                            <p className="text-[10px] font-bold text-accent mb-0.5">AIアドバイス</p>
+                            <p className="text-[10px] font-bold text-accent mb-0.5">{t("clientDetail.aiAdvice")}</p>
                             <p className="text-xs text-foreground leading-relaxed">{meal.feedback}</p>
                           </div>
                         )}
@@ -1374,7 +1374,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     ) : (
                       <div className="p-3 flex items-center gap-2 text-muted-foreground">
                         <DumbbellLoader className="w-4 h-4" />
-                        <span className="text-xs">AI分析中...</span>
+                        <span className="text-xs">{t("clientDetail.aiAnalyzing")}</span>
                       </div>
                     )}
                   </CardContent>

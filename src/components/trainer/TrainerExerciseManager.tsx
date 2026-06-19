@@ -69,7 +69,7 @@ const TrainerExerciseManager = () => {
       .order("sort_order" as any)
       .order("name");
     if (error) {
-      toast.error("種目の取得に失敗しました");
+      toast.error(t("exercise.fetchFailed"));
     } else {
       setExercises((data as any) || []);
     }

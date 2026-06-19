@@ -169,10 +169,10 @@ const TrainerAnnouncementManager = () => {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
           <Megaphone className="w-5 h-5 text-accent" />
-          お知らせ管理
+          {t("announcement.title")}
         </h1>
         <Button size="sm" onClick={openCreate} className="gap-1">
-          <Plus className="w-4 h-4" /> 新規作成
+          <Plus className="w-4 h-4" /> {t("announcement.newBtn")}
         </Button>
       </div>
 

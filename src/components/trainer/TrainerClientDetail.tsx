@@ -1078,13 +1078,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <AlertDialog open={!!deleteMeasurementTarget} onOpenChange={(open) => !open && setDeleteMeasurementTarget(null)}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>この記録を削除しますか？</AlertDialogTitle>
+                <AlertDialogTitle>{t("clientDetail.deleteRecordTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  削除した計測データは元に戻せません。
+                  {t("clientDetail.deleteMeasureDesc")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={async () => {
@@ -1094,7 +1094,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     }
                   }}
                 >
-                  削除する
+                  {t("common.deleteAction")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

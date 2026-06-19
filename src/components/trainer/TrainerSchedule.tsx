@@ -536,7 +536,7 @@ const TrainerSchedule = () => {
 
       {viewMode === "month" && (
         <div className="border rounded-xl bg-card p-8 text-center text-sm text-muted-foreground">
-          月間ビューは準備中です
+          {t("schedule.monthSoon")}
         </div>
       )}
 

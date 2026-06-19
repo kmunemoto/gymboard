@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Megaphone, Plus, Pencil, Trash2, Users, User as UserIcon, Clock, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -31,6 +32,7 @@ interface AnnouncementRow {
 }
 
 const TrainerAnnouncementManager = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profiles } = useAllCustomerProfiles();
   const [items, setItems] = useState<AnnouncementRow[]>([]);
@@ -114,9 +116,9 @@ const TrainerAnnouncementManager = () => {
 
   const handleSubmit = async () => {
     if (!user) return;
-    if (!title.trim() || !body.trim()) { toast.error("タイトルと本文を入力してください"); return; }
-    if (targetMode === "user" && !targetUserId) { toast.error("配信対象の顧客を選択してください"); return; }
-    if (scheduleMode === "later" && !publishedAt) { toast.error("配信日時を指定してください"); return; }
+    if (!title.trim() || !body.trim()) { toast.error(t("announcement.errTitleBody")); return; }
+    if (targetMode === "user" && !targetUserId) { toast.error(t("announcement.errTarget")); return; }
+    if (scheduleMode === "later" && !publishedAt) { toast.error(t("announcement.errSchedule")); return; }
 
     setSubmitting(true);
     const payload = {
@@ -134,8 +136,8 @@ const TrainerAnnouncementManager = () => {
       : await supabase.from("announcements").insert(withTenant({ ...payload, created_by: user.id }, tenantId) as any);
 
     setSubmitting(false);
-    if (error) { toast.error("保存に失敗しました: " + error.message); return; }
-    toast.success(editing ? "お知らせを更新しました" : "お知らせを配信しました");
+    if (error) { toast.error(t("announcement.saveFailed", { msg: error.message })); return; }
+    toast.success(editing ? t("announcement.updatedToast") : t("announcement.publishedToast"));
     setShowForm(false);
     resetForm();
     fetchAll();
@@ -146,16 +148,16 @@ const TrainerAnnouncementManager = () => {
     setDeleting(true);
     const { error } = await supabase.from("announcements").delete().eq("id", deleteId);
     setDeleting(false);
-    if (error) { toast.error("削除に失敗しました"); return; }
-    toast.success("削除しました");
+    if (error) { toast.error(t("announcement.deleteFailed")); return; }
+    toast.success(t("announcement.deletedToast"));
     setDeleteId(null);
     fetchAll();
   };
 
   const targetLabel = (target: string) => {
-    if (target === "all") return "全員";
+    if (target === "all") return t("announcement.targetAll");
     const p = profiles.find((p) => p.user_id === target);
-    return p?.display_name || "個別";
+    return p?.display_name || t("announcement.targetIndividual");
   };
 
   if (loading) {
@@ -167,15 +169,15 @@ const TrainerAnnouncementManager = () => {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
           <Megaphone className="w-5 h-5 text-accent" />
-          お知らせ管理
+          {t("announcement.title")}
         </h1>
         <Button size="sm" onClick={openCreate} className="gap-1">
-          <Plus className="w-4 h-4" /> 新規作成
+          <Plus className="w-4 h-4" /> {t("announcement.newBtn")}
         </Button>
       </div>
 
       {items.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">お知らせはまだありません</CardContent></Card>
+        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">{t("announcement.empty")}</CardContent></Card>
       ) : (
         <div className="space-y-2">
           {items.map((a) => {
@@ -192,11 +194,11 @@ const TrainerAnnouncementManager = () => {
                       <p className="font-bold text-sm break-all">{a.title}</p>
                       {scheduled ? (
                         <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                          <Clock className="w-3 h-3" />配信予約中
+                          <Clock className="w-3 h-3" />{t("announcement.scheduled")}
                         </span>
                       ) : (
                         <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                          <CheckCircle2 className="w-3 h-3" />配信済み
+                          <CheckCircle2 className="w-3 h-3" />{t("announcement.published")}
                         </span>
                       )}
                     </div>
@@ -206,15 +208,15 @@ const TrainerAnnouncementManager = () => {
                       {a.target === "all" ? <Users className="inline w-3 h-3 mr-0.5" /> : <UserIcon className="inline w-3 h-3 mr-0.5" />}
                       {targetLabel(a.target)}
                       <span className="mx-1.5">·</span>
-                      既読 {reads}人
+                      {t("announcement.readsCount", { count: reads })}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap break-all">{a.body}</p>
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label="編集">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={t("announcement.editAria")}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(a.id)} aria-label="削除">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(a.id)} aria-label={t("announcement.deleteAria")}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -232,28 +234,28 @@ const TrainerAnnouncementManager = () => {
             className="bg-background rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold">{editing ? "お知らせ編集" : "新規お知らせ"}</h2>
+            <h2 className="text-lg font-bold">{editing ? t("announcement.editTitle") : t("announcement.newTitle")}</h2>
 
             <div className="space-y-1.5">
-              <Label>タイトル</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="お知らせのタイトル" />
+              <Label>{t("announcement.fieldTitle")}</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("announcement.titlePlaceholder")} />
             </div>
 
             <div className="space-y-1.5">
-              <Label>本文</Label>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} placeholder="本文（改行はそのまま反映されます）" />
+              <Label>{t("announcement.fieldBody")}</Label>
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} placeholder={t("announcement.bodyPlaceholder")} />
             </div>
 
             <div className="space-y-1.5">
-              <Label>アイコン</Label>
+              <Label>{t("announcement.fieldIcon")}</Label>
               <IconPicker value={icon} onChange={setIcon} />
             </div>
 
             <div className="space-y-1.5">
-              <Label>配信対象</Label>
+              <Label>{t("announcement.fieldTarget")}</Label>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant={targetMode === "all" ? "default" : "outline"} onClick={() => setTargetMode("all")}>全員</Button>
-                <Button type="button" size="sm" variant={targetMode === "user" ? "default" : "outline"} onClick={() => setTargetMode("user")}>個別</Button>
+                <Button type="button" size="sm" variant={targetMode === "all" ? "default" : "outline"} onClick={() => setTargetMode("all")}>{t("announcement.targetAll")}</Button>
+                <Button type="button" size="sm" variant={targetMode === "user" ? "default" : "outline"} onClick={() => setTargetMode("user")}>{t("announcement.targetIndividual")}</Button>
               </div>
               {targetMode === "user" && (
                 <select
@@ -261,7 +263,7 @@ const TrainerAnnouncementManager = () => {
                   value={targetUserId}
                   onChange={(e) => setTargetUserId(e.target.value)}
                 >
-                  <option value="">顧客を選択…</option>
+                  <option value="">{t("announcement.selectClientPrompt")}</option>
                   {profiles.map((p) => (
                     <option key={p.user_id} value={p.user_id}>{p.display_name || p.user_id}</option>
                   ))}
@@ -270,10 +272,10 @@ const TrainerAnnouncementManager = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>配信日時</Label>
+              <Label>{t("announcement.fieldSchedule")}</Label>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant={scheduleMode === "now" ? "default" : "outline"} onClick={() => setScheduleMode("now")}>今すぐ</Button>
-                <Button type="button" size="sm" variant={scheduleMode === "later" ? "default" : "outline"} onClick={() => setScheduleMode("later")}>日時指定</Button>
+                <Button type="button" size="sm" variant={scheduleMode === "now" ? "default" : "outline"} onClick={() => setScheduleMode("now")}>{t("announcement.scheduleNow")}</Button>
+                <Button type="button" size="sm" variant={scheduleMode === "later" ? "default" : "outline"} onClick={() => setScheduleMode("later")}>{t("announcement.scheduleLater")}</Button>
               </div>
               {scheduleMode === "later" && (
                 <Input
@@ -286,10 +288,10 @@ const TrainerAnnouncementManager = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowForm(false)} disabled={submitting}>キャンセル</Button>
+              <Button variant="outline" onClick={() => setShowForm(false)} disabled={submitting}>{t("common.cancel")}</Button>
               <Button onClick={handleSubmit} disabled={submitting}>
                 {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-                {editing ? "更新" : "配信"}
+                {editing ? t("announcement.btnUpdate") : t("announcement.btnPublish")}
               </Button>
             </div>
           </div>
@@ -299,13 +301,13 @@ const TrainerAnnouncementManager = () => {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>お知らせを削除しますか？</AlertDialogTitle>
-            <AlertDialogDescription>この操作は取り消せません。</AlertDialogDescription>
+            <AlertDialogTitle>{t("announcement.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("announcement.deleteDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}削除
+              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}{t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

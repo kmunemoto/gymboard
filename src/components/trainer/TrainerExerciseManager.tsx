@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Pencil, Trash2, Dumbbell, Search, X, Save } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ const emptyForm: FormState = {
 };
 
 const TrainerExerciseManager = () => {
+  const { t } = useTranslation();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | MuscleGroup>("all");
@@ -67,7 +69,7 @@ const TrainerExerciseManager = () => {
       .order("sort_order" as any)
       .order("name");
     if (error) {
-      toast.error("種目の取得に失敗しました");
+      toast.error(t("exercise.fetchFailed"));
     } else {
       setExercises((data as any) || []);
     }
@@ -103,14 +105,14 @@ const TrainerExerciseManager = () => {
   const handleSave = async () => {
     const name = form.name.trim();
     if (!name) {
-      toast.error("種目名を入力してください");
+      toast.error(t("exercise.errEnterName"));
       return;
     }
     const dup = exercises.find(
       (e) => e.name === name && e.id !== editingId,
     );
     if (dup) {
-      toast.error("同じ名前の種目が既に存在します");
+      toast.error(t("exercise.errDuplicate"));
       return;
     }
     setSaving(true);
@@ -129,21 +131,21 @@ const TrainerExerciseManager = () => {
         .update(payload as any)
         .eq("id", editingId);
       if (error) {
-        toast.error("更新に失敗しました");
+        toast.error(t("exercise.updateFailed"));
         setSaving(false);
         return;
       }
-      toast.success("種目を更新しました");
+      toast.success(t("exercise.updatedToast"));
     } else {
       const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
       const tenantId = await fetchMyTenantId();
       const { error } = await supabase.from("exercises").insert(withTenant(payload, tenantId) as any);
       if (error) {
-        toast.error("追加に失敗しました");
+        toast.error(t("exercise.addFailed"));
         setSaving(false);
         return;
       }
-      toast.success(`「${name}」を追加しました`);
+      toast.success(t("exercise.addedToast", { name }));
     }
     await fetchExercises();
     await loadMuscleGroupMap(true);
@@ -158,11 +160,11 @@ const TrainerExerciseManager = () => {
       .delete()
       .eq("id", deleteTarget.id);
     if (error) {
-      toast.error("削除に失敗しました");
+      toast.error(t("exercise.deleteFailed"));
       return;
     }
     setExercises((prev) => prev.filter((e) => e.id !== deleteTarget.id));
-    toast.success(`「${deleteTarget.name}」を削除しました`);
+    toast.success(t("exercise.deletedToast", { name: deleteTarget.name }));
     setDeleteTarget(null);
   };
 
@@ -199,9 +201,9 @@ const TrainerExerciseManager = () => {
         <div className="w-9 h-9 rounded-xl accent-gradient flex items-center justify-center shrink-0">
           <Dumbbell className="w-4.5 h-4.5 text-accent-foreground" />
         </div>
-        <h1 className="text-lg font-bold">種目管理</h1>
+        <h1 className="text-lg font-bold">{t("exercise.title")}</h1>
         <span className="text-xs text-muted-foreground ml-1">
-          （{exercises.length}種目）
+          {t("exercise.countSuffix", { count: exercises.length })}
         </span>
         <Button
           onClick={openAdd}
@@ -209,7 +211,7 @@ const TrainerExerciseManager = () => {
           className="ml-auto gap-1 h-9"
         >
           <Plus className="w-4 h-4" />
-          追加
+          {t("exercise.addBtn")}
         </Button>
       </div>
 
@@ -217,7 +219,7 @@ const TrainerExerciseManager = () => {
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="種目名で検索"
+          placeholder={t("exercise.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 h-11"
@@ -238,7 +240,7 @@ const TrainerExerciseManager = () => {
                   : "bg-muted text-muted-foreground"
               }`}
             >
-              {g === "all" ? "すべて" : g}
+              {g === "all" ? t("common.all") : g}
             </button>
           );
         })}
@@ -248,7 +250,7 @@ const TrainerExerciseManager = () => {
       {grouped.map(({ group, items }) => (
         <section key={group}>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-            {group}（{items.length}）
+            {t("exercise.groupCount", { group, count: items.length })}
           </h2>
           <div className="space-y-1.5">
             {items.map((ex) => (
@@ -266,22 +268,22 @@ const TrainerExerciseManager = () => {
                       ex.default_reps != null ||
                       ex.default_sets != null) && (
                       <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                        {ex.default_weight != null && `${ex.default_weight}kg`}
-                        {ex.default_reps != null && ` × ${ex.default_reps}回`}
-                        {ex.default_sets != null && ` × ${ex.default_sets}set`}
+                        {ex.default_weight != null && `${ex.default_weight}${t("exercise.kgUnit")}`}
+                        {ex.default_reps != null && ` × ${ex.default_reps}${t("exercise.repsUnit")}`}
+                        {ex.default_sets != null && ` × ${ex.default_sets}${t("exercise.setsUnit")}`}
                       </div>
                     )}
                   </button>
                   <button
                     onClick={() => openEdit(ex)}
-                    aria-label="編集"
+                    aria-label={t("exercise.editAria")}
                     className="p-2 text-muted-foreground hover:text-foreground"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setDeleteTarget(ex)}
-                    aria-label="削除"
+                    aria-label={t("exercise.deleteAria")}
                     className="p-2 text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -295,7 +297,7 @@ const TrainerExerciseManager = () => {
 
       {filtered.length === 0 && (
         <div className="text-center text-sm text-muted-foreground py-12">
-          該当する種目がありません
+          {t("exercise.noResults")}
         </div>
       )}
 
@@ -303,7 +305,7 @@ const TrainerExerciseManager = () => {
       <button
         onClick={openAdd}
         className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full accent-gradient text-accent-foreground shadow-lg flex items-center justify-center"
-        aria-label="種目を追加"
+        aria-label={t("exercise.addAria")}
       >
         <Plus className="w-6 h-6" />
       </button>
@@ -319,12 +321,12 @@ const TrainerExerciseManager = () => {
           <div className="bg-background rounded-t-2xl p-5 max-h-[92vh] overflow-y-auto safe-area-bottom shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">
-                {editingId ? "種目を編集" : "種目を追加"}
+                {editingId ? t("exercise.editTitle") : t("exercise.addTitle")}
               </h2>
               <button
                 onClick={closeSheet}
                 className="p-2 -mr-2 text-muted-foreground"
-                aria-label="閉じる"
+                aria-label={t("exercise.closeAria")}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -332,18 +334,18 @@ const TrainerExerciseManager = () => {
             <div className="space-y-4">
               <div>
                 <Label className="text-xs">
-                  種目名 <span className="text-destructive">*</span>
+                  {t("exercise.fieldName")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="例：ラテラルレイズ"
+                  placeholder={t("exercise.namePlaceholder")}
                   className="h-11 mt-1"
                 />
               </div>
               <div>
                 <Label className="text-xs">
-                  部位 <span className="text-destructive">*</span>
+                  {t("exercise.fieldPart")} <span className="text-destructive">*</span>
                 </Label>
                 <select
                   value={form.muscle_group}
@@ -361,7 +363,7 @@ const TrainerExerciseManager = () => {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <Label className="text-xs">デフォルト重量</Label>
+                  <Label className="text-xs">{t("exercise.fieldDefaultWeight")}</Label>
                   <Input
                     type="number"
                     inputMode="decimal"
@@ -369,12 +371,12 @@ const TrainerExerciseManager = () => {
                     onChange={(e) =>
                       setForm({ ...form, default_weight: e.target.value })
                     }
-                    placeholder="kg"
+                    placeholder={t("exercise.kgUnit")}
                     className="h-11 mt-1"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">回数</Label>
+                  <Label className="text-xs">{t("exercise.fieldReps")}</Label>
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -382,12 +384,12 @@ const TrainerExerciseManager = () => {
                     onChange={(e) =>
                       setForm({ ...form, default_reps: e.target.value })
                     }
-                    placeholder="回"
+                    placeholder={t("exercise.repsUnit")}
                     className="h-11 mt-1"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">セット</Label>
+                  <Label className="text-xs">{t("exercise.fieldSets")}</Label>
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -395,17 +397,17 @@ const TrainerExerciseManager = () => {
                     onChange={(e) =>
                       setForm({ ...form, default_sets: e.target.value })
                     }
-                    placeholder="set"
+                    placeholder={t("exercise.setsUnit")}
                     className="h-11 mt-1"
                   />
                 </div>
               </div>
               <div>
-                <Label className="text-xs">メモ</Label>
+                <Label className="text-xs">{t("exercise.fieldNotes")}</Label>
                 <Textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="フォームの注意点など"
+                  placeholder={t("exercise.notesPlaceholder")}
                   rows={3}
                   className="mt-1"
                 />
@@ -420,7 +422,7 @@ const TrainerExerciseManager = () => {
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                保存
+                {t("common.save")}
               </Button>
             </div>
           </div>
@@ -437,10 +439,10 @@ const TrainerExerciseManager = () => {
             className="bg-background rounded-2xl p-5 w-full max-w-sm shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold mb-2">種目を削除</h3>
+            <h3 className="text-base font-bold mb-2">{t("exercise.deleteTitle")}</h3>
             <p className="text-sm text-muted-foreground mb-5">
-              「{deleteTarget.name}」を削除しますか？<br />
-              過去のトレーニング記録には影響しません。
+              {t("exercise.deleteDesc", { name: deleteTarget.name })}<br />
+              {t("exercise.deleteSubDesc")}
             </p>
             <div className="flex gap-2">
               <Button
@@ -448,14 +450,14 @@ const TrainerExerciseManager = () => {
                 onClick={() => setDeleteTarget(null)}
                 className="flex-1 h-11"
               >
-                キャンセル
+                {t("common.cancel")}
               </Button>
               <Button
                 variant="destructive"
                 onClick={confirmDelete}
                 className="flex-1 h-11"
               >
-                削除
+                {t("common.delete")}
               </Button>
             </div>
           </div>

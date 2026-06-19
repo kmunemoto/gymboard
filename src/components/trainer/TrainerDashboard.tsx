@@ -1,4 +1,5 @@
 import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
@@ -71,12 +72,13 @@ const getRevenueCycleStartDates = (
 };
 
 const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
+  const { t } = useTranslation();
   const { profiles, loading } = useAllCustomerProfiles();
   const { bookings, loading: bookingsLoading } = useAllBookings();
   const { unreadCount: counselingUnread } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
   const { plans: tenantPlans } = useTenant();
-  const trainerName = trainerProfile?.display_name || "トレーナー";
+  const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
   const todayBookings = bookings.filter(
@@ -136,7 +138,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
   const revenueData = getRecentMonths(today).map((monthStart) => {
     const monthKey = monthStart.slice(0, 7);
     const monthNumber = Number(monthStart.slice(5, 7));
-    return { month: `${monthNumber}月`, revenue: revenueByMonth.get(monthKey) || 0 };
+    return { month: t("dashboard.monthLabel", { month: monthNumber }), revenue: revenueByMonth.get(monthKey) || 0 };
   });
 
   if (loading || bookingsLoading) {
@@ -153,19 +155,19 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
       <div className="gym-gradient rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-accent/10 -translate-y-12 translate-x-12" />
         <div className="relative">
-          <p className="text-xs sm:text-sm opacity-75">ダッシュボード</p>
+          <p className="text-xs sm:text-sm opacity-75">{t("dashboard.title")}</p>
           <h1 className="text-lg sm:text-2xl font-bold mt-1">{trainerName}</h1>
-          <p className="text-xs sm:text-sm opacity-75 mt-1">{formatJST(new Date(), "yyyy年M月d日（E）")}</p>
+          <p className="text-xs sm:text-sm opacity-75 mt-1">{formatJST(new Date(), t("dashboard.dateFormat"))}</p>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
         {[
-          { label: '本日のセッション', value: `${todayBookings.length}件`, icon: CalendarDays, color: 'text-accent' },
-          { label: 'アクティブ顧客', value: `${profiles.length}名`, icon: Users, color: 'text-info' },
-          { label: '月間セッション', value: `${monthBookings.length}件`, icon: Clock, color: 'text-success' },
-          { label: '今月売上', value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
+          { label: t("dashboard.statTodaySessions"), value: t("dashboard.countUnit", { count: todayBookings.length }), icon: CalendarDays, color: 'text-accent' },
+          { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: profiles.length }), icon: Users, color: 'text-info' },
+          { label: t("dashboard.statMonthSessions"), value: t("dashboard.countUnit", { count: monthBookings.length }), icon: Clock, color: 'text-success' },
+          { label: t("dashboard.statMonthRevenue"), value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
         ].map((stat) => (
           <Card key={stat.label} className="card-hover">
             <CardContent className="p-3 sm:p-4">
@@ -182,12 +184,12 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
-            本日のスケジュール
+            {t("dashboard.todaySchedule")}
           </h2>
           {todayBookings.length === 0 ? (
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                本日の予約はありません
+                {t("dashboard.noTodayBookings")}
               </CardContent>
             </Card>
           ) : (
@@ -229,7 +231,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold">{b.startTime}</p>
-                        <p className="text-xs text-muted-foreground">60分</p>
+                        <p className="text-xs text-muted-foreground">{t("dashboard.minutes60")}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -243,10 +245,10 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <ClipboardList className="w-3.5 h-3.5" />
-            新規カウンセリング回答
+            {t("dashboard.counselingSection")}
             {counselingUnread > 0 && (
               <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 ml-1">
-                {counselingUnread}件
+                {t("dashboard.unreadCount", { count: counselingUnread })}
               </Badge>
             )}
           </h2>
@@ -257,7 +259,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
-            月別売上
+            {t("dashboard.revenueSection")}
           </h2>
           <Card>
             <CardContent className="p-3 sm:p-4">
@@ -266,9 +268,9 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
                   <BarChart data={revenueData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 10%, 92%)" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 10000}万`} width={40} />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 10000}${t("dashboard.monthMan")}`} width={40} />
                     <Tooltip
-                      formatter={(value: number) => [`¥${value.toLocaleString()}`, '売上']}
+                      formatter={(value: number) => [`¥${value.toLocaleString()}`, t("dashboard.revenueLabel")]}
                       contentStyle={{
                         background: 'hsl(0, 0%, 100%)',
                         border: 'none',

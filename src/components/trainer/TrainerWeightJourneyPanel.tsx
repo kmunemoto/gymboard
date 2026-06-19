@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ interface Journey {
 }
 
 const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
+  const { t } = useTranslation();
   const [journey, setJourney] = useState<Journey | null>(null);
   const [latestWeight, setLatestWeight] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,31 +77,30 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
 
   const handleSave = async () => {
     const s = parseFloat(startW);
-    const t = parseFloat(targetW);
-    if (!Number.isFinite(s) || !Number.isFinite(t)) {
-      toast.error("数値を入力してください");
+    const tn = parseFloat(targetW);
+    if (!Number.isFinite(s) || !Number.isFinite(tn)) {
+      toast.error(t("weightJourney.errNumber"));
       return;
     }
-    if (t >= s) {
-      toast.error("目標体重は開始体重より小さくしてください");
+    if (tn >= s) {
+      toast.error(t("weightJourney.errTarget"));
       return;
     }
     const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from("weight_journey" as any).upsert({
       user_id: clientId,
       start_weight: s,
-      target_weight: t,
+      target_weight: tn,
       is_active: true,
       created_by: user?.id,
     } as any, { onConflict: "user_id" });
     if (error) {
-      toast.error("設定に失敗しました: " + error.message);
+      toast.error(t("weightJourney.saveFailed", { msg: error.message }));
       return;
     }
-    toast.success("ダイエット目標を設定しました");
+    toast.success(t("weightJourney.savedToast"));
     setOpen(false);
     await fetch();
-    // Trigger immediate evaluation
     await supabase.rpc("check_weight_milestones" as any, { p_user_id: clientId });
   };
 
@@ -110,10 +111,10 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
       .update({ is_active: false } as any)
       .eq("id", journey.id);
     if (error) {
-      toast.error("リセットに失敗しました");
+      toast.error(t("weightJourney.resetFailed"));
       return;
     }
-    toast.success("目標をリセットしました");
+    toast.success(t("weightJourney.resetToast"));
     setResetOpen(false);
     await fetch();
   };
@@ -128,36 +129,36 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
     <div className="pt-2 border-t border-border space-y-2">
       <div className="flex items-center gap-2">
         <Mountain className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm font-medium">ダイエット目標</span>
+        <span className="text-sm font-medium">{t("weightJourney.title")}</span>
       </div>
 
       {!journey ? (
         <Button variant="outline" size="sm" onClick={handleOpen} className="w-full h-9 gap-1.5">
           <Target className="w-3.5 h-3.5" />
-          ダイエット目標を設定
+          {t("weightJourney.setBtn")}
         </Button>
       ) : (
         <Card className="border-accent/30">
           <CardContent className="p-3 space-y-2">
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-[10px] text-muted-foreground">開始</p>
+                <p className="text-[10px] text-muted-foreground">{t("weightJourney.start")}</p>
                 <p className="text-sm font-bold">{journey.start_weight.toFixed(1)}kg</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground">現在</p>
+                <p className="text-[10px] text-muted-foreground">{t("weightJourney.current")}</p>
                 <p className="text-sm font-bold text-accent">
-                  {latestWeight != null ? `${latestWeight.toFixed(1)}kg` : "未記録"}
+                  {latestWeight != null ? `${latestWeight.toFixed(1)}kg` : t("weightJourney.noWeight")}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground">目標</p>
+                <p className="text-[10px] text-muted-foreground">{t("weightJourney.target")}</p>
                 <p className="text-sm font-bold">{journey.target_weight.toFixed(1)}kg</p>
               </div>
             </div>
             <div className="text-xs text-center text-muted-foreground">
-              {lost > 0 ? `-${lost.toFixed(1)}kg` : "0.0kg"} / 目標 -{totalGoal.toFixed(1)}kg
-              <span className="ml-1.5 font-bold text-accent">（{progress.toFixed(0)}% 達成）</span>
+              {t("weightJourney.progressLine", { lost: lost > 0 ? `-${lost.toFixed(1)}kg` : "0.0kg", goal: totalGoal.toFixed(1) })}
+              <span className="ml-1.5 font-bold text-accent">{t("weightJourney.progressPct", { pct: progress.toFixed(0) })}</span>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div
@@ -172,7 +173,7 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
               className="w-full h-8 text-xs gap-1"
             >
               <RotateCcw className="w-3 h-3" />
-              目標をリセット
+              {t("weightJourney.resetBtn")}
             </Button>
           </CardContent>
         </Card>
@@ -181,33 +182,33 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>ダイエット目標を設定</DialogTitle>
+            <DialogTitle>{t("weightJourney.dialogTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">開始時体重 (kg)</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("weightJourney.fieldStart")}</label>
               <Input
                 type="number"
                 step="0.1"
                 value={startW}
                 onChange={(e) => setStartW(e.target.value)}
-                placeholder="例: 70.0"
+                placeholder={t("weightJourney.startPh")}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">目標体重 (kg)</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("weightJourney.fieldTarget")}</label>
               <Input
                 type="number"
                 step="0.1"
                 value={targetW}
                 onChange={(e) => setTargetW(e.target.value)}
-                placeholder="例: 60.0"
+                placeholder={t("weightJourney.targetPh")}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
-            <Button onClick={handleSave}>設定する</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
+            <Button onClick={handleSave}>{t("weightJourney.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -215,14 +216,14 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
       <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>目標をリセットしますか？</AlertDialogTitle>
+            <AlertDialogTitle>{t("weightJourney.resetTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              現在の目標を終了します。獲得済みのバッジやマイルストーン記録は保持されます。新しい目標を再設定できます。
+              {t("weightJourney.resetDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReset}>リセット</AlertDialogAction>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReset}>{t("weightJourney.resetConfirm")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

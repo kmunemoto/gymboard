@@ -301,13 +301,13 @@ const TrainerAnnouncementManager = () => {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>お知らせを削除しますか？</AlertDialogTitle>
-            <AlertDialogDescription>この操作は取り消せません。</AlertDialogDescription>
+            <AlertDialogTitle>{t("announcement.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("announcement.deleteDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}削除
+              {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}{t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

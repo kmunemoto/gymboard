@@ -1390,7 +1390,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         <TabsContent value="bookings">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
-            予約一覧
+            {t("clientDetail.bookingsSection")}
           </h2>
           {loadingBookings ? (
             <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>

@@ -177,7 +177,7 @@ const TrainerAnnouncementManager = () => {
       </div>
 
       {items.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">お知らせはまだありません</CardContent></Card>
+        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">{t("announcement.empty")}</CardContent></Card>
       ) : (
         <div className="space-y-2">
           {items.map((a) => {

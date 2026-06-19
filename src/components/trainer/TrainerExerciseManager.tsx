@@ -268,9 +268,9 @@ const TrainerExerciseManager = () => {
                       ex.default_reps != null ||
                       ex.default_sets != null) && (
                       <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                        {ex.default_weight != null && `${ex.default_weight}kg`}
-                        {ex.default_reps != null && ` × ${ex.default_reps}回`}
-                        {ex.default_sets != null && ` × ${ex.default_sets}set`}
+                        {ex.default_weight != null && `${ex.default_weight}${t("exercise.kgUnit")}`}
+                        {ex.default_reps != null && ` × ${ex.default_reps}${t("exercise.repsUnit")}`}
+                        {ex.default_sets != null && ` × ${ex.default_sets}${t("exercise.setsUnit")}`}
                       </div>
                     )}
                   </button>

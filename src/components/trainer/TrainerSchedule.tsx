@@ -567,13 +567,13 @@ const TrainerSchedule = () => {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">予約プラン</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelPlan")}</label>
               <select
                 value={proxyBookingType}
                 onChange={(e) => setProxyBookingType(e.target.value)}
                 className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
-                <option value="" disabled>選択してください</option>
+                <option value="" disabled>{t("schedule.selectPrompt")}</option>
                 <option value="初回無料体験">初回無料体験</option>
                 <option value="月4回">月4回</option>
                 <option value="月6回">月6回</option>

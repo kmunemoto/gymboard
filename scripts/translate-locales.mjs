@@ -35,6 +35,18 @@ const ONLY_LANG = langArgIdx >= 0 ? args[langArgIdx + 1] : null;
 const TARGETS = [
   { code: "en", name: "English" },
   { code: "ko", name: "Korean (한국어)" },
+  {
+    code: "zh-CN",
+    name: "Simplified Chinese (简体中文, Mainland China usage)",
+    extraNote:
+      "簡体字（Simplified Chinese characters）のみを使い、中国大陸で自然な表現・語彙にする。繁体字は絶対に使わない。",
+  },
+  {
+    code: "zh-TW",
+    name: "Traditional Chinese (繁體中文, Taiwan usage)",
+    extraNote:
+      "繁體字（Traditional Chinese characters）のみを使い、台湾で自然な表現・語彙にする。簡体字は絶対に使わない。",
+  },
 ].filter((t) => !ONLY_LANG || t.code === ONLY_LANG);
 
 const API_KEY = process.env.LOVABLE_API_KEY;

@@ -392,7 +392,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     );
   }
 
-  const displayName = profile?.display_name || "名前未設定";
+  const displayName = profile?.display_name || t("common.nameUnset");
   const initial = displayName[0];
 
   const getPrice = (planName: string): number => {

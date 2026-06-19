@@ -301,7 +301,10 @@
     "cancelledDescription": "予約キャンセル内容のご確認",
     "completeTitle": "予約が完了しました！",
     "completeDescription": "予約内容のご確認",
-    "shareText": "{{gym}}トレーニング"
+    "shareText": "{{gym}}トレーニング",
+    "juneLockMessage": "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。",
+    "customerFallback": "お客様",
+    "cancelDescWithTime": "{{date}} {{startTime}}〜{{endTime}} の予約をキャンセルします。"
   },
   "training": {
     "title": "記録",
@@ -318,5 +321,392 @@
     "exerciseCount": "{{count}}種目",
     "createShareImage": "シェア画像を作成",
     "repsSuffix": "回"
+  },
+  "meals": {
+    "title": "食事管理",
+    "subtitle": "写真を撮るだけでAIが自動分析",
+    "analyzing": "分析中...",
+    "addPhoto": "写真を追加",
+    "empty": "食事の写真を撮って記録を始めましょう",
+    "totalCalories": "合計カロリー",
+    "pfcGoal": "目標{{pct}}%",
+    "actualBalance": "実績バランス",
+    "goalLine": "▼ 目標ライン",
+    "mealPhotoAlt": "食事写真",
+    "aiAdvice": "AIアドバイス",
+    "aiAnalyzing": "AI分析中...",
+    "today": "今日 ({{label}})",
+    "yesterday": "昨日 ({{label}})",
+    "dateLabel": "{{m}}月{{d}}日",
+    "dishesBreakdown": "内訳を見る（{{count}}品）",
+    "nutrient": {
+      "calories": "カロリー",
+      "protein": "タンパク質",
+      "fat": "脂質",
+      "carbs": "炭水化物",
+      "fiber": "食物繊維"
+    },
+    "uploadDialog": {
+      "title": "食事の情報（任意）",
+      "mealType": "食事タイプ",
+      "quantityLabel": "量の補足（任意）",
+      "quantityPlaceholder": "例：大盛り、半分残した、2人前",
+      "quantityHint": "入力するとAIの推定精度が向上します",
+      "startAnalysis": "分析開始"
+    },
+    "deleteDialog": {
+      "title": "この食事記録を削除しますか？",
+      "description": "削除すると元に戻すことはできません。写真と分析データが完全に削除されます。",
+      "confirm": "削除する"
+    },
+    "editDateDialog": {
+      "title": "食事の日時を変更",
+      "date": "日付",
+      "time": "時間"
+    },
+    "toast": {
+      "uploadedAnalyzing": "写真をアップロードしました。AI分析中...",
+      "dummyResult": "ダミーの分析結果を表示しています",
+      "analysisComplete": "AI分析が完了しました！",
+      "uploadFailed": "アップロードに失敗しました",
+      "deleted": "食事記録を削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "datetimeChanged": "日時を変更しました",
+      "datetimeChangeFailed": "日時の変更に失敗しました"
+    }
+  },
+  "posture": {
+    "title": "姿勢・骨格診断",
+    "description": "全身写真をアップロードして、AIが姿勢と骨格タイプを分析します。",
+    "disclaimer": "※本機能はAIによる参考情報です。医療診断ではありません。",
+    "uploadPhoto": "写真をアップロード",
+    "takePhoto": "カメラで撮影",
+    "photoTip": "全身が映るよう、少し離れた位置から撮影してください。",
+    "imageAlt": "姿勢解析画像",
+    "modelLoading": "モデルを読み込み中...",
+    "analyzing": "解析中...",
+    "detectedPoints": "{{detected}} / {{total}} キーポイントを検出",
+    "redo": "やり直す",
+    "saveDone": "保存済み",
+    "saveInProgress": "保存中...",
+    "saveResult": "結果を保存",
+    "reanalyze": "再解析",
+    "toast": {
+      "modelFailed": "モデルの読み込みに失敗しました",
+      "imageInvalid": "画像ファイルを選択してください",
+      "imageFailed": "画像の読み込みに失敗しました",
+      "noPosture": "姿勢を検出できませんでした。全身が映った写真をお試しください。",
+      "analysisDone": "姿勢解析が完了しました",
+      "analysisFailed": "解析に失敗しました。もう一度お試しください。",
+      "saved": "骨格診断を保存しました",
+      "saveFailed": "保存に失敗しました: {{msg}}"
+    },
+    "feedback": {
+      "title": "姿勢フィードバック",
+      "scoreLabel": "姿勢スコア",
+      "scoreUnit": "点",
+      "scoreVeryGood": "とても良い姿勢です！",
+      "scoreGood": "良い姿勢です",
+      "scoreOk": "改善の余地があります",
+      "scoreBad": "姿勢に注意が必要です"
+    },
+    "skeletal": {
+      "title": "骨格タイプ診断",
+      "typeLabel": "{{label}}タイプ",
+      "traitsTitle": "{{label}}タイプの特徴",
+      "measureData": "計測データを見る",
+      "shoulderHipRatio": "肩/ヒップ比",
+      "upperBodyRatio": "上半身比率",
+      "limbTorsoRatio": "四肢/胴比",
+      "photoDisclaimer": "※写真の角度や撮影条件によって結果が変わる場合があります。",
+      "types": {
+        "straight": {
+          "label": "ストレート",
+          "desc": "筋肉のハリ感があり、立体感のある体型です。",
+          "traits": [
+            "骨格がしっかりしている",
+            "筋肉がつきやすい",
+            "上重心",
+            "直線的なラインが特徴"
+          ]
+        },
+        "wave": {
+          "label": "ウェーブ",
+          "desc": "柔らかく曲線的なラインが特徴の体型です。",
+          "traits": [
+            "脂肪がつきやすい",
+            "下重心",
+            "曲線的なラインが特徴",
+            "柔らかい質感"
+          ]
+        },
+        "natural": {
+          "label": "ナチュラル",
+          "desc": "骨感があり、フレームの大きい体型です。",
+          "traits": [
+            "骨格が大きい",
+            "関節が目立つ",
+            "直線的かつ立体感がある",
+            "筋肉・脂肪がつきにくい"
+          ]
+        }
+      }
+    },
+    "recommendation": {
+      "title": "トレーニング推奨",
+      "postureExerciseTitle": "姿勢改善エクササイズ",
+      "types": {
+        "straight": {
+          "summary": "ストレートタイプは筋肉量を活かした高負荷トレーニングが効果的です。体幹強化と下半身のバランス改善を重点的に行いましょう。",
+          "tips": [
+            {
+              "area": "体幹・腹筋",
+              "exercises": [
+                "プランク",
+                "デッドバグ",
+                "ケーブルクランチ"
+              ],
+              "reason": "体幹を強化し、姿勢の安定性を高めます。"
+            },
+            {
+              "area": "背中",
+              "exercises": [
+                "ラットプルダウン",
+                "シーテッドロウ"
+              ],
+              "reason": "背中の筋肉を鍛え、上半身のバランスを整えます。"
+            },
+            {
+              "area": "下半身",
+              "exercises": [
+                "スクワット",
+                "ヒップスラスト"
+              ],
+              "reason": "下半身を強化し、全身のバランスを改善します。"
+            }
+          ]
+        },
+        "wave": {
+          "summary": "ウェーブタイプは上半身と下半身のバランスを整えることが重要です。軽めの負荷で回数を多くこなしましょう。",
+          "tips": [
+            {
+              "area": "肩・上半身",
+              "exercises": [
+                "ショルダープレス",
+                "サイドレイズ",
+                "プッシュアップ"
+              ],
+              "reason": "上半身にボリュームをつけ、全体のバランスを整えます。"
+            },
+            {
+              "area": "下半身・ヒップ",
+              "exercises": [
+                "ブルガリアンスクワット",
+                "カーフレイズ"
+              ],
+              "reason": "下半身を引き締め、メリハリのあるラインを作ります。"
+            },
+            {
+              "area": "体幹",
+              "exercises": [
+                "ヒップリフト",
+                "サイドプランク"
+              ],
+              "reason": "体幹を安定させ、姿勢改善につなげます。"
+            }
+          ]
+        },
+        "natural": {
+          "summary": "ナチュラルタイプは全身をバランスよく鍛えることが大切です。柔軟性も意識して取り組みましょう。",
+          "tips": [
+            {
+              "area": "全身",
+              "exercises": [
+                "デッドリフト",
+                "ケトルベルスイング"
+              ],
+              "reason": "全身の連動性を高め、機能的な体づくりをします。"
+            },
+            {
+              "area": "胸・肩",
+              "exercises": [
+                "ベンチプレス",
+                "フェイスプル"
+              ],
+              "reason": "上半身に適度な筋肉をつけ、体型を整えます。"
+            },
+            {
+              "area": "柔軟性",
+              "exercises": [
+                "ヨガ",
+                "ダイナミックストレッチ"
+              ],
+              "reason": "関節の可動域を広げ、怪我を予防します。"
+            }
+          ]
+        }
+      },
+      "postureExercises": {
+        "straightNeck": {
+          "area": "頭部の前傾（ストレートネック）",
+          "exercises": [
+            "チンタック",
+            "頸部ストレッチ",
+            "フェイスプル"
+          ],
+          "reason": "頸部のアライメントを整え、ストレートネックを改善します。"
+        },
+        "roundedBack": {
+          "area": "猫背（胸椎の丸まり）",
+          "exercises": [
+            "胸椎モビリティ",
+            "フェイスプル",
+            "リバースフライ"
+          ],
+          "reason": "胸椎の可動性を高め、猫背姿勢を改善します。"
+        },
+        "pelvicTilt": {
+          "area": "骨盤の前傾/後傾",
+          "exercises": [
+            "ヒップフレクサーストレッチ",
+            "グルートブリッジ",
+            "プランク"
+          ],
+          "reason": "骨盤周辺の筋肉バランスを整え、正しいアライメントを取り戻します。"
+        }
+      }
+    },
+    "history": {
+      "title": "骨格分析履歴",
+      "noHistory": "まだ分析履歴はありません",
+      "noPhoto": "写真なし",
+      "compareTitle": "ビフォーアフター比較",
+      "compareEnd": "比較を終了",
+      "compareHint": "比較したい2つの分析を選んでください（{{selected}}/2 選択中）",
+      "scoreTrend": "スコア推移",
+      "typeLabel": "{{label}}タイプ",
+      "imageAlt": "骨格オーバーレイ",
+      "shoulderHipShort": "肩/ヒップ",
+      "upperBodyShort": "上半身",
+      "limbTorsoShort": "四肢/胴",
+      "shoulderHipRatio": "肩/ヒップ比",
+      "upperBodyRatio": "上半身比率",
+      "limbTorsoRatio": "四肢/胴比",
+      "trainingRecommendation": "おすすめトレーニング",
+      "deleteButton": "この分析を削除",
+      "deleteTitle": "骨格分析を削除しますか？",
+      "deleteDesc": "{{date}}の分析結果と画像が完全に削除されます。この操作は取り消せません。",
+      "deleteCancel": "キャンセル",
+      "deleteConfirm": "削除する",
+      "toast": {
+        "deleteSuccess": "削除しました",
+        "deleteSuccessDesc": "骨格分析を削除しました",
+        "deleteFailed": "削除できませんでした",
+        "deleteFailedDesc": "権限がないか、すでに削除されている可能性があります",
+        "deleteError": "削除に失敗しました"
+      }
+    }
+  },
+  "report": {
+    "title": "今回のレポート",
+    "back": "戻る",
+    "currentCycleBadge": "今回",
+    "trainingSummary": "トレーニングサマリー",
+    "visited": "来店済み",
+    "ofMaxSessions": "/{{max}}回",
+    "achieved": "達成！",
+    "remainingSessions": "あと{{count}}回！",
+    "scheduledSessions": "今回の予約予定",
+    "scheduledCount": "あと{{count}}回",
+    "prevDiff": "前回より{{diff}}回",
+    "weekStreak": "{{count}}週連続来店中！",
+    "weightChange": "体重・体脂肪の変化",
+    "weight": "体重",
+    "bodyFat": "体脂肪率",
+    "weightKg": "体重(kg)",
+    "muscleMassHint": "筋肉量が増えている可能性があります",
+    "trainingRecords": "トレーニング記録",
+    "noTrainingRecords": "トレーニング記録がまだありません",
+    "weightProgressChart": "主要種目の重量推移",
+    "setsRepsChange": "セット数 × 回数の変化",
+    "setsReps": "{{sets}}セット×{{reps}}回",
+    "totalVolume": "総ボリューム {{volume}}kg",
+    "mealSummary": "食事記録サマリー",
+    "recordDays": "記録日数",
+    "daysSuffix": "日",
+    "avgCalories": "平均カロリー",
+    "protein": "P (タンパク質)",
+    "fat": "F (脂質)",
+    "carbs": "C (炭水化物)",
+    "pfcProtein": "タンパク質",
+    "pfcFat": "脂質",
+    "pfcCarbs": "炭水化物",
+    "skeletalChange": "骨格診断の変化",
+    "skeletalType": "骨格タイプ: ",
+    "confidence": "信頼度: ",
+    "scoreChange": "スコアが{{diff}}点変化しました！",
+    "prevCycle": "前回",
+    "thisCycle": "今回",
+    "trainerComment": "トレーナーからのコメント",
+    "aiAdvice": "AIからのアドバイス",
+    "noData": "この期間のデータはまだありません。",
+    "adviceAchieved": "今回の目標回数を達成しました！素晴らしいです",
+    "advicePaceWeekly": "あと{{days}}日で{{sessions}}回の来店が必要です。週1ペースで達成できます！",
+    "advicePaceUp": "あと{{days}}日で{{sessions}}回の来店が必要です。ペースを上げていきましょう！",
+    "adviceRushDays": "残り{{days}}日で{{sessions}}回の来店が必要です。頑張りましょう！",
+    "adviceNoVisit": "今回はまだ来店がありません。一緒に頑張りましょう！",
+    "adviceWeightDown": "体重も順調に減少しています。この調子で続けましょう！",
+    "adviceWeightUp": "体重が少し増加していますが、筋肉量の増加の可能性もあります。",
+    "adviceMealGood": "食事記録もしっかりつけられていて素晴らしいです。",
+    "adviceMealMore": "食事記録をもう少しこまめにつけると、より効果的です。",
+    "adviceDefault": "コツコツ続けることが大切です。一緒に頑張りましょう！"
+  },
+  "progress": {
+    "typeFront": "正面",
+    "typeSide": "側面",
+    "typeBack": "背面",
+    "addPhoto": "写真を追加",
+    "dateLabel": "撮影日",
+    "typeLabel": "写真の種類",
+    "photoLabel": "写真",
+    "memoLabel": "メモ（任意）",
+    "memoPlaceholder": "体調や気づきなど",
+    "selectPhoto": "写真を選択",
+    "changePhoto": "変更",
+    "previewAlt": "プレビュー",
+    "save": "保存する",
+    "errNoPhoto": "写真を選択してください",
+    "uploadSuccess": "写真を追加しました",
+    "uploadFailed": "アップロードに失敗しました",
+    "compareTitle": "写真を比較",
+    "noPhotos": "写真がまだありません",
+    "beforeLabel": "ビフォー",
+    "afterLabel": "アフター",
+    "elapsedDays": "経過日数：{{days}}日間",
+    "shareImage": "シェア画像を作成",
+    "shareSaveHint": "画像を長押しして保存できます",
+    "compareImageAlt": "比較画像",
+    "download": "ダウンロード",
+    "noPhotoInCell": "写真なし",
+    "bothPhotosMissing": "両方の写真がありません",
+    "imageGenFailed": "画像生成に失敗しました",
+    "compare": "比較する",
+    "addPhotoBtn": "写真を追加",
+    "emptyTitle": "最初の写真を撮影しましょう",
+    "emptyDesc": "定期的に記録するとビフォーアフターで比較できます",
+    "photoCount": "{{count}}枚",
+    "dateCardLabel": "{{month}}月{{day}}日（{{dow}}）",
+    "dow0": "日",
+    "dow1": "月",
+    "dow2": "火",
+    "dow3": "水",
+    "dow4": "木",
+    "dow5": "金",
+    "dow6": "土",
+    "notRegistered": "未登録",
+    "deleteConfirm": "この写真を削除しますか？",
+    "deleteSuccess": "削除しました",
+    "deleteFailed": "削除に失敗しました",
+    "delete": "削除"
   }
 }

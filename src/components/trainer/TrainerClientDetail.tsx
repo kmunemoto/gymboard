@@ -1468,13 +1468,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       <div ref={chatEndRef} />
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">メッセージなし</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">{t("clientDetail.chatEmpty")}</p>
                   )}
                 </CardContent>
               </Card>
               <div className="flex items-end gap-2">
                 <textarea
-                  placeholder="メッセージを入力..."
+                  placeholder={t("clientDetail.chatPlaceholder")}
                   value={chatInput}
                   onChange={(e) => {
                     setChatInput(e.target.value);

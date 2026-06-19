@@ -610,9 +610,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       }
     }
     const { error } = await supabase.from("profiles").update({ plan: planName }).eq("user_id", clientId);
-    if (error) { toast.error("プラン変更に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.planChangeFailed")); return; }
     setClientPlan(planName);
-    toast.success(`${displayName}さんのプランを「${planName}」に変更しました`);
+    toast.success(t("clientDetail.planChangedToast", { name: displayName, plan: planName }));
   };
 
   const handleSaveGoal = async () => {
@@ -623,19 +623,19 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       .update({ training_goal: trimmed || null } as any)
       .eq("user_id", clientId);
     setSavingGoal(false);
-    if (error) { toast.error("目標の保存に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.goalSaveFailed")); return; }
     setTrainingGoal(trimmed);
     setEditingGoal(false);
-    toast.success("目標を保存しました");
+    toast.success(t("clientDetail.goalSavedToast"));
   };
 
 
 
   const handleCycleStartDateChange = async (newDate: string) => {
     const { error } = await supabase.from("profiles").update({ cycle_start_date: newDate || null }).eq("user_id", clientId);
-    if (error) { toast.error("起算日の更新に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.cycleUpdateFailed")); return; }
     setCycleStartDate(newDate);
-    toast.success("起算日を更新しました");
+    toast.success(t("clientDetail.cycleUpdatedToast"));
   };
 
   const handleResetCycleToToday = async () => {
@@ -645,9 +645,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
   const handleShowUsagePeriodToggle = async (checked: boolean) => {
     const { error } = await supabase.from("profiles").update({ show_usage_period: checked }).eq("user_id", clientId);
-    if (error) { toast.error("更新に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.updateFailed")); return; }
     setShowUsagePeriod(checked);
-    toast.success(checked ? "利用期間を表示にしました" : "利用期間を非表示にしました");
+    toast.success(checked ? t("clientDetail.shownToast") : t("clientDetail.hiddenToast"));
   };
 
   const handleGenderChange = async (g: "male" | "female") => {
@@ -661,16 +661,16 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       const { error: insErr } = await (supabase as any)
         .from("user_avatars")
         .insert({ user_id: clientId, gender: g });
-      if (insErr) { toast.error("性別の更新に失敗しました"); return; }
+      if (insErr) { toast.error(t("clientDetail.genderUpdateFailed")); return; }
     } else {
       const { error } = await (supabase as any)
         .from("user_avatars")
         .update({ gender: g })
         .eq("user_id", clientId);
-      if (error) { toast.error("性別の更新に失敗しました"); return; }
+      if (error) { toast.error(t("clientDetail.genderUpdateFailed")); return; }
     }
     setClientGender(g);
-    toast.success(g === "male" ? "性別を「男性」に設定しました" : "性別を「女性」に設定しました");
+    toast.success(g === "male" ? t("clientDetail.genderMaleToast") : t("clientDetail.genderFemaleToast"));
   };
 
   const openEdit = (dateKey: string) => {
@@ -704,10 +704,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     const { error } = await supabase.from("workouts").delete().eq("id", deleteTarget.id);
-    if (error) { toast.error("削除に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.errDelete")); return; }
     setWorkoutRecords(prev => prev.filter(r => r.id !== deleteTarget.id));
     setDeleteTarget(null);
-    toast.success("記録を削除しました");
+    toast.success(t("clientDetail.deletedToast"));
   };
 
 

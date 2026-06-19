@@ -698,7 +698,7 @@ const TrainerSchedule = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">日付</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelDate")}</label>
               <Calendar
                 mode="single"
                 selected={blockDate}

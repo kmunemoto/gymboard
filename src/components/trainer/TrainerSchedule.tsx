@@ -672,7 +672,7 @@ const TrainerSchedule = () => {
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full sm:w-auto">
-              キャンセル
+              {t("common.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -681,7 +681,7 @@ const TrainerSchedule = () => {
               className="w-full sm:w-auto"
             >
               {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-              {deleteTarget?.isBlocked ? "はい、解除する" : "はい、削除する"}
+              {deleteTarget?.isBlocked ? t("schedule.yesRelease") : t("schedule.yesDelete")}
             </Button>
           </DialogFooter>
         </DialogContent>

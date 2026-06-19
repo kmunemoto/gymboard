@@ -1198,7 +1198,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     {showNewExercise === i && (
                       <div className="flex gap-2">
                         <Input
-                          placeholder="新しい種目名を入力"
+                          placeholder={t("clientDetail.newExercisePh")}
                           value={newExName}
                           onChange={(e) => setNewExName(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") handleAddNewExercise(i); }}
@@ -1206,7 +1206,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                           autoFocus
                         />
                         <Button size="sm" variant="outline" className="h-11" onClick={() => handleAddNewExercise(i)}>
-                          確定
+                          {t("common.confirm")}
                         </Button>
                         <Button size="sm" variant="ghost" className="h-11" onClick={() => setShowNewExercise(null)}>
                           <X className="w-4 h-4" />

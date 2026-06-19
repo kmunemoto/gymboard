@@ -254,7 +254,7 @@ const CustomerSettings = () => {
         App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
         連携済みユーザーのデータ・通知ロジックには影響しない。
       */}
-      {false && (
+      {true && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <MessageCircle className="w-3.5 h-3.5" />

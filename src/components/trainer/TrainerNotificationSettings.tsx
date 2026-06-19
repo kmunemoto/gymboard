@@ -235,7 +235,7 @@ const TrainerNotificationSettings = () => {
           App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
           連携済みユーザーのデータ・通知ロジックには影響しない。
         */}
-        {false && (
+        {true && (
           <Card>
             <CardContent className="p-5">
               <div className="flex items-start gap-4">

@@ -1434,13 +1434,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         <TabsContent value="chat">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5" />
-            チャット
+            {t("clientDetail.chatSection")}
           </h2>
           {!isRegistered ? (
             <Card>
               <CardContent className="p-6 text-center space-y-2">
                 <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto" />
-                <p className="text-sm text-muted-foreground">この顧客はまだアプリに登録していないため、チャット機能は利用できません。</p>
+                <p className="text-sm text-muted-foreground">{t("clientDetail.chatNotRegistered")}</p>
               </CardContent>
             </Card>
           ) : loadingChat ? (

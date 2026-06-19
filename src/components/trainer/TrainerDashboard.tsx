@@ -72,12 +72,13 @@ const getRevenueCycleStartDates = (
 };
 
 const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
+  const { t } = useTranslation();
   const { profiles, loading } = useAllCustomerProfiles();
   const { bookings, loading: bookingsLoading } = useAllBookings();
   const { unreadCount: counselingUnread } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
   const { plans: tenantPlans } = useTenant();
-  const trainerName = trainerProfile?.display_name || "トレーナー";
+  const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
   const todayBookings = bookings.filter(

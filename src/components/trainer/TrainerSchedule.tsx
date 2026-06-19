@@ -36,6 +36,8 @@ const JUNE_LOCK_MESSAGE =
 
 
 const TrainerSchedule = () => {
+  const { t } = useTranslation();
+  const JUNE_LOCK_MESSAGE = t("booking.juneLockMessage");
   const { user } = useAuth();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(getJSTNow(), { weekStartsOn: 1 }));
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("week");

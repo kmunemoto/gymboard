@@ -148,8 +148,8 @@ const TrainerAnnouncementManager = () => {
     setDeleting(true);
     const { error } = await supabase.from("announcements").delete().eq("id", deleteId);
     setDeleting(false);
-    if (error) { toast.error("削除に失敗しました"); return; }
-    toast.success("削除しました");
+    if (error) { toast.error(t("announcement.deleteFailed")); return; }
+    toast.success(t("announcement.deletedToast"));
     setDeleteId(null);
     fetchAll();
   };

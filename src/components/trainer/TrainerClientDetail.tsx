@@ -1347,7 +1347,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Card key={meal.id} className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className="relative">
-                      <img src={meal.resolved_image_url || meal.image_url} alt="食事写真" className="w-full h-40 object-cover" />
+                      <img src={meal.resolved_image_url || meal.image_url} alt={t("clientDetail.mealPhotoAlt")} className="w-full h-40 object-cover" />
                       <div className="absolute top-2 left-2 bg-foreground/70 text-primary-foreground px-2 py-0.5 rounded-lg text-xs font-bold backdrop-blur-sm">
                         {meal.meal_type}
                       </div>

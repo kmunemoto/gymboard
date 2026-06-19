@@ -285,16 +285,16 @@ const TrainerSchedule = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-accent" />
-          予約管理
+          {t("schedule.title")}
         </h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setBlockDialogOpen(true)} className="gap-1.5">
             <Ban className="w-3.5 h-3.5" />
-            時間ブロック
+            {t("schedule.blockTime")}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setProxyDialogOpen(true)} className="gap-1.5">
             <Plus className="w-3.5 h-3.5" />
-            代理予約
+            {t("schedule.proxyBooking")}
           </Button>
         </div>
         <div className="flex items-center justify-center gap-1">

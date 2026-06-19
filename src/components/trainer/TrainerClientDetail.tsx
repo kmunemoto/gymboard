@@ -1039,7 +1039,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <section>
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5" />
-                計測記録一覧
+                {t("clientDetail.measurementList")}
               </h2>
               <Card>
                 <CardContent className="p-3 sm:p-4">

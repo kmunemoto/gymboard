@@ -32,6 +32,7 @@ interface AnnouncementRow {
 }
 
 const TrainerAnnouncementManager = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profiles } = useAllCustomerProfiles();
   const [items, setItems] = useState<AnnouncementRow[]>([]);

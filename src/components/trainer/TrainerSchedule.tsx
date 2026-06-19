@@ -214,13 +214,13 @@ const TrainerSchedule = () => {
     if (error) {
       console.error("Failed to delete booking:", error);
       const isPermissionError = error.code === "42501" || error.message?.includes("row-level security");
-      toast.error(isPermissionError ? "削除権限がありません" : "エラーが発生しました");
+      toast.error(isPermissionError ? t("schedule.permissionDenied") : t("common.errorGeneric"));
       setDeleting(false);
       return;
     }
 
     removeBooking(target.id);
-    toast.success("予約を削除しました");
+    toast.success(t("schedule.deletedToast"));
     setDeleting(false);
     setDeleteTarget(null);
   };

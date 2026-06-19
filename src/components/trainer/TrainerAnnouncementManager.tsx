@@ -116,9 +116,9 @@ const TrainerAnnouncementManager = () => {
 
   const handleSubmit = async () => {
     if (!user) return;
-    if (!title.trim() || !body.trim()) { toast.error("タイトルと本文を入力してください"); return; }
-    if (targetMode === "user" && !targetUserId) { toast.error("配信対象の顧客を選択してください"); return; }
-    if (scheduleMode === "later" && !publishedAt) { toast.error("配信日時を指定してください"); return; }
+    if (!title.trim() || !body.trim()) { toast.error(t("announcement.errTitleBody")); return; }
+    if (targetMode === "user" && !targetUserId) { toast.error(t("announcement.errTarget")); return; }
+    if (scheduleMode === "later" && !publishedAt) { toast.error(t("announcement.errSchedule")); return; }
 
     setSubmitting(true);
     const payload = {

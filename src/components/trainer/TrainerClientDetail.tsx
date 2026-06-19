@@ -1149,7 +1149,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <CardContent className="p-3 sm:p-4 space-y-4">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3" /> 日付
+                  <CalendarDays className="w-3 h-3" /> {t("clientDetail.dateLabel")}
                 </label>
                 <Input type="date" value={trainingDate} onChange={(e) => setTrainingDate(e.target.value)} className="w-full sm:w-48 h-11" />
               </div>

@@ -363,7 +363,7 @@ const TrainerExerciseManager = () => {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <Label className="text-xs">デフォルト重量</Label>
+                  <Label className="text-xs">{t("exercise.fieldDefaultWeight")}</Label>
                   <Input
                     type="number"
                     inputMode="decimal"
@@ -371,12 +371,12 @@ const TrainerExerciseManager = () => {
                     onChange={(e) =>
                       setForm({ ...form, default_weight: e.target.value })
                     }
-                    placeholder="kg"
+                    placeholder={t("exercise.kgUnit")}
                     className="h-11 mt-1"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">回数</Label>
+                  <Label className="text-xs">{t("exercise.fieldReps")}</Label>
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -384,12 +384,12 @@ const TrainerExerciseManager = () => {
                     onChange={(e) =>
                       setForm({ ...form, default_reps: e.target.value })
                     }
-                    placeholder="回"
+                    placeholder={t("exercise.repsUnit")}
                     className="h-11 mt-1"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">セット</Label>
+                  <Label className="text-xs">{t("exercise.fieldSets")}</Label>
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -397,17 +397,17 @@ const TrainerExerciseManager = () => {
                     onChange={(e) =>
                       setForm({ ...form, default_sets: e.target.value })
                     }
-                    placeholder="set"
+                    placeholder={t("exercise.setsUnit")}
                     className="h-11 mt-1"
                   />
                 </div>
               </div>
               <div>
-                <Label className="text-xs">メモ</Label>
+                <Label className="text-xs">{t("exercise.fieldNotes")}</Label>
                 <Textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="フォームの注意点など"
+                  placeholder={t("exercise.notesPlaceholder")}
                   rows={3}
                   className="mt-1"
                 />

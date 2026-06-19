@@ -725,7 +725,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       {/* Header */}
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 min-h-[44px]">
         <ArrowLeft className="w-4 h-4" />
-        顧客一覧に戻る
+        {t("clientDetail.backToList")}
       </button>
 
       <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">

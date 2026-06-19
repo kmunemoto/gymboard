@@ -1506,17 +1506,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>この記録を削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>{t("clientDetail.deleteRecordTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget && (() => {
                 const s = deleteTarget.sets || (deleteTarget.weight != null ? [{ set: 1, weight: deleteTarget.weight, reps: deleteTarget.reps }] : []);
-                return `${deleteTarget.exercise_name} ${s.map((x: any) => `${x.weight}kg×${x.reps}`).join(", ")} の記録を削除します。この操作は取り消せません。`;
+                return t("clientDetail.deleteWorkoutDesc", { name: deleteTarget.exercise_name, sets: s.map((x: any) => `${x.weight}kg×${x.reps}`).join(", ") });
               })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">削除する</AlertDialogAction>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t("common.deleteAction")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

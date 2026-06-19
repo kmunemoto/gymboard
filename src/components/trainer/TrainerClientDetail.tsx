@@ -145,7 +145,7 @@ const TrainingGrowthChart = ({ workoutRecords, loadingRecords }: { workoutRecord
         <CardContent className="p-3 sm:p-4 space-y-3">
           <Select value={selectedExercise} onValueChange={setSelectedExercise}>
             <SelectTrigger className="w-full h-11 text-sm font-medium">
-              <SelectValue placeholder="種目を選択" />
+              <SelectValue placeholder={t("clientDetail.selectExercise")} />
             </SelectTrigger>
             <SelectContent>
               {exerciseNames.map((name) => (

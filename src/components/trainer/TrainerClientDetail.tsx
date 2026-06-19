@@ -961,13 +961,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                         <YAxis yAxisId="w" tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} domain={['dataMin - 2', 'dataMax + 2']} unit="kg" width={38} />
                         <YAxis yAxisId="f" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} domain={['dataMin - 2', 'dataMax + 2']} unit="%" width={38} />
                         <Tooltip contentStyle={{ background: 'hsl(0,0%,100%)', border: 'none', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '11px' }} />
-                        <Area yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" fill={`url(#wg-${clientId})`} strokeWidth={2} name="体重(kg)" />
-                        <Area yAxisId="f" type="monotone" dataKey="bodyFat" stroke="hsl(210, 40%, 58%)" fill={`url(#fg-${clientId})`} strokeWidth={2} name="体脂肪率(%)" />
+                        <Area yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" fill={`url(#wg-${clientId})`} strokeWidth={2} name={t("clientDetail.weightSeries")} />
+                        <Area yAxisId="f" type="monotone" dataKey="bodyFat" stroke="hsl(210, 40%, 58%)" fill={`url(#fg-${clientId})`} strokeWidth={2} name={t("clientDetail.fatSeries")} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">データなし</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">{t("clientDetail.noData")}</p>
                 )}
               </CardContent>
             </Card>

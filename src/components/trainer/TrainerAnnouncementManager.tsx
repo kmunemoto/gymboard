@@ -155,9 +155,9 @@ const TrainerAnnouncementManager = () => {
   };
 
   const targetLabel = (target: string) => {
-    if (target === "all") return "全員";
+    if (target === "all") return t("announcement.targetAll");
     const p = profiles.find((p) => p.user_id === target);
-    return p?.display_name || "個別";
+    return p?.display_name || t("announcement.targetIndividual");
   };
 
   if (loading) {

@@ -199,12 +199,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     <div className="space-y-6 pb-24 md:pb-0 max-w-lg">
       <h2 className="text-lg sm:text-xl font-black flex items-center gap-2">
         <Settings className="w-5 h-5 text-accent" />
-        ジム設定
+        {t("settings.trainer.title")}
       </h2>
 
       {/* === 招待コード === */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">お客様の招待</h3>
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.invite")}</h3>
         <InviteCodeCard />
       </section>
 
@@ -212,7 +212,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       {/* === プラン管理 === */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プラン管理</h3>
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.planManage")}</h3>
         <TrainerPlanManager />
       </section>
 
@@ -220,7 +220,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       {/* === プラン・お支払い（GymBoard SaaS） === */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プラン・お支払い</h3>
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
         <TrainerBilling />
       </section>
 
@@ -231,11 +231,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       <Separator />
 
-
-
       {/* === プロフィール === */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">プロフィール</h3>
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.profileSection")}</h3>
 
         {/* トレーナー表示名 */}
         <Card>
@@ -245,15 +243,15 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 <User className="w-4 h-4 text-accent" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">トレーナー表示名</h3>
-                <p className="text-xs text-muted-foreground">ダッシュボードやチャット画面に表示されます</p>
+                <h3 className="font-bold text-sm">{t("settings.trainer.displayName")}</h3>
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.displayNameDesc")}</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="例：山本 太郎" className="flex-1" />
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("settings.trainer.displayNamePlaceholder")} className="flex-1" />
               <Button onClick={handleSaveName} disabled={savingName || !displayName.trim()} size="sm" className="h-10">
                 <Save className="w-4 h-4 mr-1" />
-                {savingName ? "保存中..." : "保存"}
+                {savingName ? t("common.saving") : t("common.save")}
               </Button>
             </div>
           </CardContent>
@@ -267,23 +265,23 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 <Image className="w-4 h-4 text-accent" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">ロゴ画像</h3>
-                <p className="text-xs text-muted-foreground">推奨: 200×200px以上、2MB以下</p>
+                <h3 className="font-bold text-sm">{t("settings.trainer.logo")}</h3>
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.logoDesc")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 shrink-0">
                 {tenant?.logo_url ? (
-                  <img src={tenant.logo_url} alt="ジムロゴ" className="w-full h-full object-contain" />
+                  <img src={tenant.logo_url} alt={t("settings.trainer.logoAlt")} className="w-full h-full object-contain" />
                 ) : (
-                  <span className="text-[10px] text-muted-foreground">未設定</span>
+                  <span className="text-[10px] text-muted-foreground">{t("common.notSet")}</span>
                 )}
               </div>
               <div className="flex gap-2 flex-1">
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
                 <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm" className="flex-1">
                   <Upload className="w-4 h-4 mr-1" />
-                  {uploading ? "処理中..." : tenant?.logo_url ? "変更" : "アップロード"}
+                  {uploading ? t("common.processing") : tenant?.logo_url ? t("settings.trainer.change") : t("settings.trainer.upload")}
                 </Button>
                 {tenant?.logo_url && (
                   <Button variant="destructive" onClick={handleDelete} disabled={uploading} size="sm">
@@ -298,13 +296,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       <Separator />
 
-      {/*
-        App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
-        連携済みユーザーのデータ・通知ロジックには影響しない。
-      */}
       {false && (
         <section className="space-y-3">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">外部サービス連携</h3>
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.external")}</h3>
 
           {/* Googleカレンダー */}
           <Card>
@@ -314,28 +308,28 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                   <Calendar className="w-4 h-4 text-blue-500" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-sm mb-0.5">Googleカレンダー連携</h3>
-                  <p className="text-xs text-muted-foreground mb-2">予約を自動的にGoogleカレンダーに登録します</p>
+                  <h3 className="font-bold text-sm mb-0.5">{t("settings.gcal.section")}</h3>
+                  <p className="text-xs text-muted-foreground mb-2">{t("settings.gcal.trainerDescription")}</p>
                   {gcalLoading ? (
                     <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
                   ) : gcalLinked ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-blue-500">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> 連携済み
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("settings.gcal.linkedShort")}
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <Button size="sm" variant="outline" onClick={handleSyncAll} disabled={syncing}>
                           {syncing ? <DumbbellLoader className="w-3.5 h-3.5 mr-1" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
-                          一括同期
+                          {t("settings.gcal.syncAllShort")}
                         </Button>
                         <Button size="sm" variant="outline" onClick={handleGcalUnlink}>
-                          <Unlink className="w-3.5 h-3.5 mr-1" /> 解除
+                          <Unlink className="w-3.5 h-3.5 mr-1" /> {t("settings.gcal.unlinkShort")}
                         </Button>
                       </div>
                     </div>
                   ) : (
                     <Button size="sm" onClick={handleGcalLink} className="bg-blue-500 hover:bg-blue-600 text-white">
-                      <Calendar className="w-4 h-4 mr-1" /> 連携する
+                      <Calendar className="w-4 h-4 mr-1" /> {t("settings.gcal.linkShort")}
                     </Button>
                   )}
                 </div>
@@ -351,20 +345,20 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                   <MessageCircle className="w-4 h-4 text-[#06C755]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-sm mb-0.5">LINE連携</h3>
-                  <p className="text-xs text-muted-foreground mb-2">新規予約・キャンセルなどの通知をLINEで受け取れます</p>
+                  <h3 className="font-bold text-sm mb-0.5">{t("settings.line.section")}</h3>
+                  <p className="text-xs text-muted-foreground mb-2">{t("settings.line.trainerShortDescription")}</p>
                   {isLineLinked ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-[#06C755]">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> 連携済み
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("settings.gcal.linkedShort")}
                       </div>
                       <Button size="sm" variant="outline" onClick={handleLineUnlink}>
-                        <Unlink className="w-3.5 h-3.5 mr-1" /> 解除
+                        <Unlink className="w-3.5 h-3.5 mr-1" /> {t("settings.gcal.unlinkShort")}
                       </Button>
                     </div>
                   ) : (
                     <Button size="sm" onClick={handleLineLink} className="bg-[#06C755] hover:bg-[#05b34c] text-white">
-                      <MessageCircle className="w-4 h-4 mr-1" /> 連携する
+                      <MessageCircle className="w-4 h-4 mr-1" /> {t("settings.gcal.linkShort")}
                     </Button>
                   )}
                 </div>
@@ -373,9 +367,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           </Card>
         </section>
       )}
-
-
-
 
       {/* === 使い方ガイド === */}
       <section className="space-y-3">
@@ -390,7 +381,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           onClick={onSignOut}
         >
           <LogOut className="w-4 h-4 mr-2" />
-          ログアウト
+          {t("settings.logout")}
         </Button>
         <DeleteAccountButton />
       </section>

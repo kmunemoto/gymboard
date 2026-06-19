@@ -806,13 +806,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       <section className="mb-4 sm:mb-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <CreditCard className="w-3.5 h-3.5" />
-          契約プラン
+          {t("clientDetail.sectionPlan")}
         </h2>
         <Card>
           <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
             {tenantPlans.length === 0 ? (
               <div className="text-sm text-muted-foreground py-2">
-                プランが登録されていません。ジム設定のプラン管理から追加してください。
+                {t("clientDetail.noPlans")}
               </div>
             ) : (
               <div>
@@ -822,13 +822,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   {!tenantPlans.some((p) => p.plan_name === clientPlan) && (
-                    <option value="" disabled>プランを選択</option>
+                    <option value="" disabled>{t("clientDetail.planSelectPrompt")}</option>
                   )}
                   {tenantPlans.map((p) => (
                     <option key={p.id} value={p.plan_name}>{p.plan_name}</option>
                   ))}
                 </select>
-                <p className="text-sm font-bold mt-2">月額: ¥{getPrice(clientPlan).toLocaleString()}</p>
+                <p className="text-sm font-bold mt-2">{t("clientDetail.monthlyPrice", { price: getPrice(clientPlan).toLocaleString() })}</p>
               </div>
             )}
 
@@ -836,7 +836,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <div className="pt-2 border-t border-border space-y-2">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">利用期間（起算日）</span>
+                <span className="text-sm font-medium">{t("clientDetail.cycleStart")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Input
@@ -847,17 +847,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 />
                 <Button variant="outline" size="sm" onClick={handleResetCycleToToday} className="shrink-0 h-9 text-xs gap-1">
                   <RotateCcw className="w-3 h-3" />
-                  今日にリセット
+                  {t("clientDetail.resetToToday")}
                 </Button>
               </div>
               {cycleStartDate && (
                 <p className="text-xs text-muted-foreground">
-                  有効期限：{format(addMonths(parseISO(cycleStartDate), 1), "yyyy年M月d日", { locale: ja })}
+                  {t("clientDetail.expiry", { date: format(addMonths(parseISO(cycleStartDate), 1), "yyyy年M月d日", { locale: ja }) })}
                   {(() => {
                     const remaining = differenceInDays(addMonths(parseISO(cycleStartDate), 1), getJSTNow());
-                    if (remaining < 0) return <span className="text-destructive font-bold ml-1">（期限切れ）</span>;
-                    if (remaining <= 3) return <span className="text-warning font-bold ml-1">（残り{remaining}日）</span>;
-                    return <span className="ml-1">（残り{remaining}日）</span>;
+                    if (remaining < 0) return <span className="text-destructive font-bold ml-1">{t("clientDetail.expired")}</span>;
+                    if (remaining <= 3) return <span className="text-warning font-bold ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
+                    return <span className="ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
                   })()}
                 </p>
               )}
@@ -867,11 +867,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">利用期間の表示</span>
+                <span className="text-sm font-medium">{t("clientDetail.showUsagePeriod")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold ${showUsagePeriod ? 'text-success' : 'text-muted-foreground'}`}>
-                  {showUsagePeriod ? '表示' : '非表示'}
+                  {showUsagePeriod ? t("clientDetail.shown") : t("clientDetail.hidden")}
                 </span>
                 <Switch checked={showUsagePeriod} onCheckedChange={handleShowUsagePeriodToggle} />
               </div>
@@ -880,9 +880,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             {/* Gender Setting */}
             <div className="pt-2 border-t border-border space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">性別</span>
+                <span className="text-sm font-medium">{t("clientDetail.gender")}</span>
                 {!clientGender && (
-                  <span className="text-xs text-muted-foreground">未設定</span>
+                  <span className="text-xs text-muted-foreground">{t("clientDetail.genderUnset")}</span>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -896,7 +896,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       : "border-input bg-background text-foreground hover:bg-muted"
                   )}
                 >
-                  男性
+                  {t("common.male")}
                 </button>
                 <button
                   type="button"
@@ -908,7 +908,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       : "border-input bg-background text-foreground hover:bg-muted"
                   )}
                 >
-                  女性
+                  {t("common.female")}
                 </button>
               </div>
             </div>

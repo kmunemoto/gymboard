@@ -105,14 +105,14 @@ const TrainerExerciseManager = () => {
   const handleSave = async () => {
     const name = form.name.trim();
     if (!name) {
-      toast.error("種目名を入力してください");
+      toast.error(t("exercise.errEnterName"));
       return;
     }
     const dup = exercises.find(
       (e) => e.name === name && e.id !== editingId,
     );
     if (dup) {
-      toast.error("同じ名前の種目が既に存在します");
+      toast.error(t("exercise.errDuplicate"));
       return;
     }
     setSaving(true);

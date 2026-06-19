@@ -1136,6 +1136,10 @@
     "chatSection": "チャット",
     "chatNotRegistered": "この顧客はまだアプリに登録していないため、チャット機能は利用できません。",
     "chatEmpty": "メッセージなし",
-    "chatPlaceholder": "メッセージを入力..."
+    "chatPlaceholder": "メッセージを入力...",
+    "categoryOther": "その他",
+    "monthlyPrice": "月額: ¥{{price}}",
+    "eventRewardDesc": "+{{exp}} EXP / +{{coins}}コイン{{badge}}",
+    "eventBadgeSuffix": " / 限定バッジ「{{badge}}」"
   }
 }

@@ -547,7 +547,7 @@ const TrainerSchedule = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">お客様</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelClient")}</label>
               <select
                 value={proxyClient}
                 onChange={(e) => {

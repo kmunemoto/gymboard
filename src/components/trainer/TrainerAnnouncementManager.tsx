@@ -136,8 +136,8 @@ const TrainerAnnouncementManager = () => {
       : await supabase.from("announcements").insert(withTenant({ ...payload, created_by: user.id }, tenantId) as any);
 
     setSubmitting(false);
-    if (error) { toast.error("保存に失敗しました: " + error.message); return; }
-    toast.success(editing ? "お知らせを更新しました" : "お知らせを配信しました");
+    if (error) { toast.error(t("announcement.saveFailed", { msg: error.message })); return; }
+    toast.success(editing ? t("announcement.updatedToast") : t("announcement.publishedToast"));
     setShowForm(false);
     resetForm();
     fetchAll();

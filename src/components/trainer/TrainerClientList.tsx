@@ -1,4 +1,5 @@
 import { Users, Search, ChevronRight, Sparkles, UserCheck, Trash2, CalendarDays } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ interface TrainerClientListProps {
 }
 
 const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
+  const { t } = useTranslation();
   const { profiles, loading, setProfiles } = useAllCustomerProfiles();
   const { plans: tenantPlans } = useTenant();
   const [search, setSearch] = useState("");
@@ -56,17 +58,17 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
     setDeleting(true);
     const { error } = await supabase.rpc("delete_customer_cascade", { _customer_id: deleteTarget });
     if (error) {
-      toast.error("削除に失敗しました");
+      toast.error(t("clientList.deleteFailed"));
       setDeleting(false);
       return;
     }
     setProfiles(prev => prev.filter(p => p.user_id !== deleteTarget));
     setDeleteTarget(null);
     setDeleting(false);
-    toast.success("顧客データを削除しました");
+    toast.success(t("clientList.deleteSuccess"));
   };
 
-  const deleteTargetName = profiles.find(p => p.user_id === deleteTarget)?.display_name || "この顧客";
+  const deleteTargetName = profiles.find(p => p.user_id === deleteTarget)?.display_name || t("clientList.deleteFallback");
 
   if (loading) {
     return (
@@ -81,15 +83,15 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
           <Users className="w-5 h-5 text-accent" />
-          顧客一覧
+          {t("clientList.title")}
         </h1>
-        <span className="text-sm text-muted-foreground">{profiles.length}名</span>
+        <span className="text-sm text-muted-foreground">{t("clientList.peopleUnit", { count: profiles.length })}</span>
       </div>
 
       <div className="relative mb-3 sm:mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="名前・プランで検索..."
+          placeholder={t("clientList.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 h-11"
@@ -98,9 +100,9 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
 
       <Tabs value={genderTab} onValueChange={(v) => setGenderTab(v as "all" | "male" | "female")} className="mb-3 sm:mb-4">
         <TabsList className="grid grid-cols-3 w-full h-9">
-          <TabsTrigger value="all" className="text-xs">全体（{searchFiltered.length}）</TabsTrigger>
-          <TabsTrigger value="male" className="text-xs">男性（{maleCount}）</TabsTrigger>
-          <TabsTrigger value="female" className="text-xs">女性（{femaleCount}）</TabsTrigger>
+          <TabsTrigger value="all" className="text-xs">{t("clientList.tabAll", { count: searchFiltered.length })}</TabsTrigger>
+          <TabsTrigger value="male" className="text-xs">{t("clientList.tabMale", { count: maleCount })}</TabsTrigger>
+          <TabsTrigger value="female" className="text-xs">{t("clientList.tabFemale", { count: femaleCount })}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -108,8 +110,8 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">まだ顧客が登録されていません</p>
-            <p className="text-xs mt-1">顧客がアカウントを作成すると、ここに表示されます</p>
+            <p className="text-sm">{t("clientList.emptyTitle")}</p>
+            <p className="text-xs mt-1">{t("clientList.emptyHelp")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -128,28 +130,28 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
                     {initial}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate">{c.display_name || "名前未設定"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{c.plan || "未契約"} {formatPrice(c.plan || "")}</p>
+                    <p className="font-bold text-sm truncate">{c.display_name || t("common.nameUnset")}</p>
+                    <p className="text-xs text-muted-foreground truncate">{c.plan || t("clientList.noPlan")} {formatPrice(c.plan || "")}</p>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       {c.trial_completed ? (
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
                           <UserCheck className="w-2.5 h-2.5" />
-                          既存顧客
+                          {t("clientList.existingClient")}
                         </Badge>
                       ) : (
                         <Badge className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-accent text-accent-foreground">
                           <Sparkles className="w-2.5 h-2.5" />
-                          初回体験
+                          {t("clientList.trialClient")}
                         </Badge>
                       )}
                       {nextBooking ? (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-primary border-primary/30">
                           <CalendarDays className="w-2.5 h-2.5" />
-                          次回 {nextBooking.dateStr}
+                          {t("clientList.nextBooking", { date: nextBooking.dateStr })}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-muted-foreground">
-                          予約なし
+                          {t("clientList.noBooking")}
                         </Badge>
                       )}
                     </div>
@@ -159,7 +161,7 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
                       <button
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         onClick={(e) => { e.stopPropagation(); setDeleteTarget(c.user_id); }}
-                        title="削除"
+                        title={t("clientList.deleteAria")}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -176,16 +178,16 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>顧客データの削除</AlertDialogTitle>
+            <AlertDialogTitle>{t("clientList.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              「{deleteTargetName}」さんのデータを完全に削除しますか？予約・トレーニング記録・食事記録・メッセージなど、すべてのデータが消去されます。この操作は元に戻せません。
+              {t("clientList.deleteDesc", { name: deleteTargetName })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteCustomer} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-              削除する
+              {t("common.deleteAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

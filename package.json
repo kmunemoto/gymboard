@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "translate": "node scripts/translate-locales.mjs",
+    "translate:force": "node scripts/translate-locales.mjs --force"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^7.5.0",

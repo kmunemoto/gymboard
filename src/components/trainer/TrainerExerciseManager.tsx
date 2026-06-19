@@ -439,10 +439,10 @@ const TrainerExerciseManager = () => {
             className="bg-background rounded-2xl p-5 w-full max-w-sm shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold mb-2">種目を削除</h3>
+            <h3 className="text-base font-bold mb-2">{t("exercise.deleteTitle")}</h3>
             <p className="text-sm text-muted-foreground mb-5">
-              「{deleteTarget.name}」を削除しますか？<br />
-              過去のトレーニング記録には影響しません。
+              {t("exercise.deleteDesc", { name: deleteTarget.name })}<br />
+              {t("exercise.deleteSubDesc")}
             </p>
             <div className="flex gap-2">
               <Button
@@ -450,14 +450,14 @@ const TrainerExerciseManager = () => {
                 onClick={() => setDeleteTarget(null)}
                 className="flex-1 h-11"
               >
-                キャンセル
+                {t("common.cancel")}
               </Button>
               <Button
                 variant="destructive"
                 onClick={confirmDelete}
                 className="flex-1 h-11"
               >
-                削除
+                {t("common.delete")}
               </Button>
             </div>
           </div>

@@ -9,6 +9,8 @@ const LANGUAGE_OPTIONS: { code: SupportedLanguage; nativeLabel: string; subLabel
   { code: "ja", nativeLabel: "日本語", subLabel: "Japanese" },
   { code: "en", nativeLabel: "English", subLabel: "英語" },
   { code: "ko", nativeLabel: "한국어", subLabel: "Korean" },
+  { code: "zh-CN", nativeLabel: "简体中文", subLabel: "Chinese (Simplified)" },
+  { code: "zh-TW", nativeLabel: "繁體中文", subLabel: "Chinese (Traditional)" },
 ];
 
 interface LanguageSwitcherProps {

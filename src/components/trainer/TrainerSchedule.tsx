@@ -136,7 +136,7 @@ const TrainerSchedule = () => {
     const endMin = hh * 60 + mm + 60;
     const proxyEndTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
-    toast.success(`${client?.display_name || "顧客"}さんの予約を追加しました（${format(proxyDate, "M/d")} ${proxyTime}）`);
+    toast.success(t("schedule.addedToast", { name: client?.display_name || t("schedule.clientFallback"), date: format(proxyDate, "M/d"), time: proxyTime }));
     setProxyDialogOpen(false);
     setProxyDate(undefined);
     setProxyTime("");

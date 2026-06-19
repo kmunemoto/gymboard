@@ -155,9 +155,9 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
       <div className="gym-gradient rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-accent/10 -translate-y-12 translate-x-12" />
         <div className="relative">
-          <p className="text-xs sm:text-sm opacity-75">ダッシュボード</p>
+          <p className="text-xs sm:text-sm opacity-75">{t("dashboard.title")}</p>
           <h1 className="text-lg sm:text-2xl font-bold mt-1">{trainerName}</h1>
-          <p className="text-xs sm:text-sm opacity-75 mt-1">{formatJST(new Date(), "yyyy年M月d日（E）")}</p>
+          <p className="text-xs sm:text-sm opacity-75 mt-1">{formatJST(new Date(), t("dashboard.dateFormat"))}</p>
         </div>
       </div>
 

@@ -79,16 +79,16 @@ const CustomerSettings = () => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "google-calendar-result") {
         if (e.data.success) {
-          toast.success("Googleカレンダー連携が完了しました！");
+          toast.success(t("settings.gcal.linkSuccess"));
           setGcalLinked(true);
         } else {
-          toast.error("Googleカレンダー連携に失敗しました");
+          toast.error(t("settings.gcal.linkFailed"));
         }
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, []);
+  }, [t]);
 
   const handleGcalLink = async () => {
     if (!user) return;
@@ -99,7 +99,7 @@ const CustomerSettings = () => {
       });
       if (error || !data?.url) {
         popup?.close();
-        toast.error("Google認証URLの取得に失敗しました");
+        toast.error(t("settings.gcal.authUrlFailed"));
         return;
       }
       if (popup) {
@@ -110,7 +110,7 @@ const CustomerSettings = () => {
     } catch (e) {
       popup?.close();
       console.error(e);
-      toast.error("エラーが発生しました");
+      toast.error(t("common.errorGeneric"));
     }
   };
 
@@ -121,9 +121,9 @@ const CustomerSettings = () => {
       .delete()
       .eq("user_id", user.id);
     if (error) {
-      toast.error("連携解除に失敗しました");
+      toast.error(t("settings.gcal.unlinkFailed"));
     } else {
-      toast.success("Googleカレンダー連携を解除しました");
+      toast.success(t("settings.gcal.unlinked"));
       setGcalLinked(false);
     }
   };
@@ -133,20 +133,20 @@ const CustomerSettings = () => {
     const params = new URLSearchParams(window.location.search);
     const linkResult = params.get("line_link");
     if (linkResult === "success") {
-      toast.success("LINE連携が完了しました！");
+      toast.success(t("settings.line.linkSuccess"));
       refetch();
       window.history.replaceState({}, "", window.location.pathname);
     } else if (linkResult === "error") {
-      toast.error("LINE連携に失敗しました");
+      toast.error(t("settings.line.linkFailed"));
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [refetch]);
+  }, [refetch, t]);
 
   const handleLineLink = async () => {
     if (!user) return;
     const { data, error } = await supabase.functions.invoke("line-auth-url", { body: {} });
     if (error || !data?.url) {
-      toast.error("LINE連携の開始に失敗しました");
+      toast.error(t("settings.line.startFailed"));
       return;
     }
     window.location.href = data.url;
@@ -160,9 +160,9 @@ const CustomerSettings = () => {
       .update({ line_user_id: null })
       .eq("user_id", user.id);
     if (error) {
-      toast.error("LINE連携の解除に失敗しました");
+      toast.error(t("settings.line.unlinkFailed"));
     } else {
-      toast.success("LINE連携を解除しました");
+      toast.success(t("settings.line.unlinked"));
       refetch();
     }
   };
@@ -172,9 +172,9 @@ const CustomerSettings = () => {
     setSaving(true);
     const { error } = await updateDisplayName(displayName);
     if (error) {
-      toast.error("保存に失敗しました");
+      toast.error(t("settings.profile_.saveFailed"));
     } else {
-      toast.success("プロフィールを更新しました");
+      toast.success(t("settings.profile_.updated"));
       setEditing(false);
     }
     setSaving(false);
@@ -188,7 +188,7 @@ const CustomerSettings = () => {
     );
   }
 
-  const currentPlan = profile?.plan || "未設定";
+  const currentPlan = profile?.plan || t("common.notSet");
 
   return (
     <div className="px-4 py-4 space-y-5 slide-up">
@@ -206,25 +206,25 @@ const CustomerSettings = () => {
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">名前</span>
+              <span className="text-sm text-muted-foreground">{t("settings.name")}</span>
               {editing ? (
                 <div className="flex items-center gap-2">
                   <Input
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     className="h-8 w-40 text-sm"
-                    placeholder="名前を入力"
+                    placeholder={t("settings.namePlaceholder")}
                   />
                   <Button size="sm" onClick={handleSaveName} disabled={saving || !displayName.trim()} className="h-8 text-xs">
-                    {saving ? <DumbbellLoader className="w-3 h-3" /> : "保存"}
+                    {saving ? <DumbbellLoader className="w-3 h-3" /> : t("common.save")}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setDisplayName(profile?.display_name || ""); }} className="h-8 text-xs">
-                    取消
+                    {t("common.cancelShort")}
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold">{profile?.display_name || "ゲスト"}</span>
+                  <span className="text-sm font-bold">{profile?.display_name || t("common.guest")}</span>
                   <button onClick={() => setEditing(true)} className="p-1 rounded hover:bg-muted transition-colors">
                     <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
@@ -232,7 +232,7 @@ const CustomerSettings = () => {
               )}
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">プラン</span>
+              <span className="text-sm text-muted-foreground">{t("settings.plan")}</span>
               <span className="text-sm font-bold">{currentPlan}</span>
             </div>
           </CardContent>
@@ -258,7 +258,7 @@ const CustomerSettings = () => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <MessageCircle className="w-3.5 h-3.5" />
-            LINE連携
+            {t("settings.line.section")}
           </h2>
           <Card>
             <CardContent className="p-4">
@@ -267,21 +267,21 @@ const CustomerSettings = () => {
                   <MessageCircle className={`w-4 h-4 ${isLineLinked ? "text-[#06C755]" : "text-muted-foreground"}`} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold">LINE通知</p>
+                  <p className="text-sm font-bold">{t("settings.line.notif")}</p>
                   <p className="text-[11px] text-muted-foreground mb-2">
-                    LINEアカウントと連携すると、予約確認やリマインド通知がLINEに届きます
+                    {t("settings.line.description")}
                   </p>
                   {isLineLinked ? (
                     <div className="space-y-2">
                       <div className="bg-[#06C755]/5 rounded-lg p-2 border border-[#06C755]/20">
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />
-                          LINE連携済み
+                          {t("settings.line.linked")}
                         </p>
                       </div>
                       <Button size="sm" variant="outline" onClick={handleLineUnlink} className="text-xs h-7">
                         <Unlink className="w-3 h-3 mr-1" />
-                        連携を解除
+                        {t("settings.line.unlink")}
                       </Button>
                     </div>
                   ) : (
@@ -291,7 +291,7 @@ const CustomerSettings = () => {
                       className="text-xs bg-[#06C755] hover:bg-[#06C755]/90 text-white"
                     >
                       <MessageCircle className="w-3.5 h-3.5 mr-1" />
-                      LINEと連携する
+                      {t("settings.line.link")}
                     </Button>
                   )}
                 </div>
@@ -303,14 +303,12 @@ const CustomerSettings = () => {
 
       {/*
         Googleカレンダー連携セクション（顧客向け）— Google OAuth審査中のため一時非表示。
-        審査通過後、この `false` を `true` に戻すだけで再有効化できます。
-        既に連携済みの顧客のトークン・通知ロジックには影響しません。
       */}
       {false && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5" />
-            Googleカレンダー連携
+            {t("settings.gcal.section")}
           </h2>
           <Card>
             <CardContent className="p-4">
@@ -319,9 +317,9 @@ const CustomerSettings = () => {
                   <Calendar className={`w-4 h-4 ${gcalLinked ? "text-blue-500" : "text-muted-foreground"}`} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold">Googleカレンダー連携</p>
+                  <p className="text-sm font-bold">{t("settings.gcal.section")}</p>
                   <p className="text-[11px] text-muted-foreground mb-2">
-                    予約が入ると自動的にGoogleカレンダーに登録されます。キャンセル時は自動削除されます。
+                    {t("settings.gcal.description")}
                   </p>
                   {gcalLoading ? (
                     <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
@@ -330,12 +328,12 @@ const CustomerSettings = () => {
                       <div className="bg-blue-500/5 rounded-lg p-2 border border-blue-500/20">
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
-                          Googleカレンダー連携済み
+                          {t("settings.gcal.linked")}
                         </p>
                       </div>
                       <Button size="sm" variant="outline" onClick={handleGcalUnlink} className="text-xs h-7">
                         <Unlink className="w-3 h-3 mr-1" />
-                        連携を解除
+                        {t("settings.gcal.unlink")}
                       </Button>
                     </div>
                   ) : (
@@ -345,7 +343,7 @@ const CustomerSettings = () => {
                       className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
                     >
                       <Calendar className="w-3.5 h-3.5 mr-1" />
-                      Googleカレンダーと連携する
+                      {t("settings.gcal.link")}
                     </Button>
                   )}
                 </div>
@@ -356,14 +354,13 @@ const CustomerSettings = () => {
       )}
 
       {/*
-        App Store審査のため一時的に非表示。外部カレンダー連携設定が整い次第、false を true に戻して再有効化する。
-        連携済みユーザーのデータ・通知ロジックには影響しない。
+        App Store審査のため一時的に非表示。
       */}
       {false && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Smartphone className="w-3.5 h-3.5" />
-            Appleカレンダー連携
+            {t("settings.apple.section")}
           </h2>
           <Card>
             <CardContent className="p-4">
@@ -372,37 +369,37 @@ const CustomerSettings = () => {
                   <Smartphone className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold">Appleカレンダー連携</p>
+                  <p className="text-sm font-bold">{t("settings.apple.section")}</p>
                   <p className="text-[11px] text-muted-foreground mb-2">
-                    一度連携すると、今後の予約がiPhoneの純正カレンダーに自動反映されます
+                    {t("settings.apple.description")}
                   </p>
                   <Button
                     size="sm"
                     onClick={() => {
                       try {
                         if (!profile?.calendar_token) {
-                          toast.error("カレンダートークンが見つかりません。ページを再読み込みしてください。");
+                          toast.error(t("settings.apple.tokenMissing"));
                           return;
                         }
                         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                         if (!supabaseUrl) {
-                          toast.error("カレンダー連携に失敗しました");
+                          toast.error(t("settings.apple.linkFailed"));
                           return;
                         }
                         const httpsUrl = `${supabaseUrl}/functions/v1/calendar-feed?token=${profile.calendar_token}`;
                         const webcalUrl = httpsUrl.replace(/^https:\/\//, "webcal://");
                         window.location.href = webcalUrl;
-                        toast.success("カレンダー購読画面が表示されます");
+                        toast.success(t("settings.apple.subscribing"));
                       } catch (err) {
                         console.error("Calendar link error:", err);
-                        toast.error("カレンダー連携に失敗しました");
+                        toast.error(t("settings.apple.linkFailed"));
                       }
                     }}
                     className="text-xs"
                     variant="outline"
                   >
                     <Smartphone className="w-3.5 h-3.5 mr-1" />
-                    Appleカレンダーと連携する
+                    {t("settings.apple.link")}
                   </Button>
                 </div>
               </div>
@@ -414,7 +411,7 @@ const CustomerSettings = () => {
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <History className="w-3.5 h-3.5" />
-          過去の受講履歴
+          {t("settings.history")}
         </h2>
 
         {bookingsLoading ? (
@@ -449,7 +446,7 @@ const CustomerSettings = () => {
               {pastBookings.length === 0 ? (
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-sm text-muted-foreground">まだ受講履歴はありません</p>
+                    <p className="text-sm text-muted-foreground">{t("settings.noHistory")}</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -494,7 +491,7 @@ const CustomerSettings = () => {
       <section className="pt-2 space-y-3">
         <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/10" onClick={signOut}>
           <LogOut className="w-4 h-4 mr-2" />
-          ログアウト
+          {t("settings.logout")}
         </Button>
         <DeleteAccountButton />
       </section>
@@ -502,15 +499,15 @@ const CustomerSettings = () => {
       {/* 規約・ポリシー（控えめなフッターリンク） */}
       <div className="pt-2 pb-4 flex flex-wrap items-center justify-center gap-2 text-[12px] text-muted-foreground/70">
         <Link to="/terms" className="px-2 py-1 hover:text-foreground transition-colors">
-          利用規約
+          {t("settings.terms")}
         </Link>
         <span aria-hidden="true">·</span>
         <Link to="/privacy" className="px-2 py-1 hover:text-foreground transition-colors">
-          プライバシーポリシー
+          {t("settings.privacy")}
         </Link>
         <span aria-hidden="true">·</span>
         <Link to="/tokushoho" className="px-2 py-1 hover:text-foreground transition-colors">
-          特定商取引法に基づく表記
+          {t("settings.tokushoho")}
         </Link>
       </div>
     </div>

@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, CreditCard } from "lucide-react";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTranslation } from "react-i18next";
 
 type PlanType = "subscription" | "ticket" | "period";
 
@@ -47,15 +48,16 @@ const emptyForm: FormState = {
   is_active: true,
 };
 
-const TYPE_LABELS: Record<PlanType, string> = {
-  subscription: "月額制",
-  ticket: "チケット制",
-  period: "期間制",
-};
-
 const TrainerPlanManager = () => {
+  const { t } = useTranslation();
   const { tenant } = useTenant();
   const tenantId = tenant?.id;
+
+  const TYPE_LABELS: Record<PlanType, string> = {
+    subscription: t("settings.plans.typeSubscription"),
+    ticket: t("settings.plans.typeTicket"),
+    period: t("settings.plans.typePeriod"),
+  };
 
   const [plans, setPlans] = useState<TenantPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,7 @@ const TrainerPlanManager = () => {
       .select("*")
       .eq("tenant_id", tenantId)
       .order("sort_order");
-    if (error) toast.error("プランの取得に失敗しました");
+    if (error) toast.error(t("settings.plans.fetchFailed"));
     setPlans((data as TenantPlan[]) || []);
     setLoading(false);
   };
@@ -106,7 +108,7 @@ const TrainerPlanManager = () => {
     if (!tenantId) return;
     const name = form.plan_name.trim();
     if (!name) {
-      toast.error("プラン名を入力してください");
+      toast.error(t("settings.plans.enterName"));
       return;
     }
     setSaving(true);
@@ -136,22 +138,22 @@ const TrainerPlanManager = () => {
         .update(payload)
         .eq("id", editing.id);
       if (error) {
-        toast.error("更新に失敗しました");
+        toast.error(t("settings.plans.updateFailed"));
         setSaving(false);
         return;
       }
-      toast.success("プランを更新しました");
+      toast.success(t("settings.plans.updated"));
     } else {
       const sort_order = (plans[plans.length - 1]?.sort_order ?? 0) + 1;
       const { error } = await supabase
         .from("tenant_plans")
         .insert({ ...payload, sort_order });
       if (error) {
-        toast.error("作成に失敗しました");
+        toast.error(t("settings.plans.addFailed"));
         setSaving(false);
         return;
       }
-      toast.success("プランを追加しました");
+      toast.success(t("settings.plans.added"));
     }
     setSaving(false);
     setDialogOpen(false);
@@ -167,7 +169,7 @@ const TrainerPlanManager = () => {
       .update({ is_active: next })
       .eq("id", plan.id);
     if (error) {
-      toast.error("切り替えに失敗しました");
+      toast.error(t("settings.plans.toggleFailed"));
       fetchPlans();
     }
   };
@@ -179,7 +181,7 @@ const TrainerPlanManager = () => {
       .select("id", { count: "exact", head: true })
       .eq("plan_id", deleteTarget.id);
     if ((count ?? 0) > 0) {
-      toast.error("このプランは使用中のため削除できません");
+      toast.error(t("settings.plans.inUse"));
       setDeleteTarget(null);
       return;
     }
@@ -188,9 +190,9 @@ const TrainerPlanManager = () => {
       .delete()
       .eq("id", deleteTarget.id);
     if (error) {
-      toast.error("削除に失敗しました");
+      toast.error(t("settings.plans.deleteFailed"));
     } else {
-      toast.success("プランを削除しました");
+      toast.success(t("settings.plans.deleted"));
       fetchPlans();
     }
     setDeleteTarget(null);
@@ -208,7 +210,7 @@ const TrainerPlanManager = () => {
       ) : plans.length === 0 ? (
         <Card>
           <CardContent className="p-4 text-center text-sm text-muted-foreground">
-            プランがまだ登録されていません
+            {t("settings.plans.empty")}
           </CardContent>
         </Card>
       ) : (
@@ -228,8 +230,8 @@ const TrainerPlanManager = () => {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     ¥{plan.price.toLocaleString()}
-                    {plan.max_sessions != null && ` / ${plan.max_sessions}回`}
-                    {plan.validity_days != null && ` / ${plan.validity_days}日`}
+                    {plan.max_sessions != null && ` / ${t("settings.plans.sessionsSuffix", { count: plan.max_sessions })}`}
+                    {plan.validity_days != null && ` / ${t("settings.plans.daysSuffix", { count: plan.validity_days })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -247,7 +249,7 @@ const TrainerPlanManager = () => {
                 </div>
               </div>
               <div className="flex items-center justify-between pl-12">
-                <Label className="text-xs text-muted-foreground">有効</Label>
+                <Label className="text-xs text-muted-foreground">{t("settings.plans.enabledLabel")}</Label>
                 <Switch
                   checked={plan.is_active}
                   onCheckedChange={(v) => toggleActive(plan, v)}
@@ -260,72 +262,72 @@ const TrainerPlanManager = () => {
 
       <Button onClick={openCreate} variant="outline" className="w-full h-10" disabled={!tenantId}>
         <Plus className="w-4 h-4 mr-1" />
-        プランを追加
+        {t("settings.plans.addBtn")}
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "プランを編集" : "プランを追加"}</DialogTitle>
+            <DialogTitle>{editing ? t("settings.plans.editTitle") : t("settings.plans.addTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>プラン名</Label>
+              <Label>{t("settings.plans.name")}</Label>
               <Input
                 value={form.plan_name}
                 onChange={(e) => setForm({ ...form, plan_name: e.target.value })}
                 maxLength={50}
-                placeholder="例：月4回コース"
+                placeholder={t("settings.plans.namePlaceholder")}
               />
             </div>
             <div>
-              <Label>タイプ</Label>
+              <Label>{t("settings.plans.type")}</Label>
               <select
                 value={form.plan_type}
                 onChange={(e) => setForm({ ...form, plan_type: e.target.value as PlanType })}
                 className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
               >
-                <option value="subscription">月額制（月X回）</option>
-                <option value="ticket">チケット制（X回分・有効期限あり）</option>
-                <option value="period">期間制（X日間通い放題）</option>
+                <option value="subscription">{t("settings.plans.typeSubscriptionLong")}</option>
+                <option value="ticket">{t("settings.plans.typeTicketLong")}</option>
+                <option value="period">{t("settings.plans.typePeriodLong")}</option>
               </select>
             </div>
             {showMaxSessions && (
               <div>
-                <Label>{form.plan_type === "subscription" ? "月の上限回数" : "総回数"}</Label>
+                <Label>{form.plan_type === "subscription" ? t("settings.plans.monthlyLimit") : t("settings.plans.total")}</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
                   value={form.max_sessions}
                   onChange={(e) => setForm({ ...form, max_sessions: e.target.value })}
-                  placeholder="例：4"
+                  placeholder={t("settings.plans.sessionsPlaceholder")}
                 />
               </div>
             )}
             <div>
-              <Label>料金（円）</Label>
+              <Label>{t("settings.plans.price")}</Label>
               <Input
                 type="number"
                 inputMode="numeric"
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
-                placeholder="例：30000"
+                placeholder={t("settings.plans.pricePlaceholder")}
               />
             </div>
             {showValidity && (
               <div>
-                <Label>有効期限（日間）</Label>
+                <Label>{t("settings.plans.validity")}</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
                   value={form.validity_days}
                   onChange={(e) => setForm({ ...form, validity_days: e.target.value })}
-                  placeholder="例：30"
+                  placeholder={t("settings.plans.validityPlaceholder")}
                 />
               </div>
             )}
             <div className="flex items-center justify-between pt-1">
-              <Label>有効にする</Label>
+              <Label>{t("settings.plans.enable")}</Label>
               <Switch
                 checked={form.is_active}
                 onCheckedChange={(v) => setForm({ ...form, is_active: v })}
@@ -334,11 +336,11 @@ const TrainerPlanManager = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-              キャンセル
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving && <DumbbellLoader className="w-4 h-4 mr-1" />}
-              {editing ? "更新" : "追加"}
+              {editing ? t("settings.plans.update") : t("settings.plans.addAction")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -347,15 +349,15 @@ const TrainerPlanManager = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>プランを削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>{t("settings.plans.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              「{deleteTarget?.plan_name}」を削除します。この操作は取り消せません。
+              {t("settings.plans.deleteDesc", { name: deleteTarget?.plan_name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              削除する
+              {t("settings.plans.deleteConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

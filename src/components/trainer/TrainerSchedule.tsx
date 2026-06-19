@@ -627,7 +627,7 @@ const TrainerSchedule = () => {
                         }`}
                       >
                         {slot.time}
-                        {slot.blocked && <span className="block text-[9px] text-destructive/70">満枠</span>}
+                        {slot.blocked && <span className="block text-[9px] text-destructive/70">{t("schedule.slotFull")}</span>}
                       </button>
                     ));
                   })()}

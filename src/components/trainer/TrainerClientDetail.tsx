@@ -1248,12 +1248,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
               <Button variant="outline" size="sm" onClick={addExercise} className="w-full gap-1.5 h-11">
                 <Plus className="w-3.5 h-3.5" />
-                種目を追加する
+                {t("clientDetail.addExercise")}
               </Button>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">メモ</label>
-                <Textarea placeholder="フォームの注意点、次回への引き継ぎなど..." value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} />
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.memo")}</label>
+                <Textarea placeholder={t("clientDetail.memoPh")} value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} />
               </div>
             </CardContent>
           </Card>
@@ -1262,19 +1262,19 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             {editingDate && (
               <Button variant="outline" size="lg" onClick={cancelEdit} className="gap-2 w-full sm:w-auto">
                 <X className="w-4 h-4" />
-                編集をキャンセル
+                {t("clientDetail.cancelEdit")}
               </Button>
             )}
             <Button variant="accent" size="lg" onClick={handleSave} disabled={saving} className="gap-2 w-full sm:w-auto">
               {saving ? <DumbbellLoader className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {editingDate ? "変更を保存" : "記録を保存"}
+              {editingDate ? t("clientDetail.saveChanges") : t("clientDetail.saveRecord")}
             </Button>
           </div>
 
           {editingDate && (
             <div className="rounded-lg bg-accent/10 border border-accent/30 px-4 py-2 text-sm text-accent font-medium flex items-center gap-2">
               <Pencil className="w-4 h-4" />
-              編集モード：{formatJST(editingDate, "yyyy年M月d日（E）", { locale: ja })}の記録を編集中
+              {t("clientDetail.editMode", { date: formatJST(editingDate, "yyyy年M月d日（E）", { locale: ja }) })}
             </div>
           )}
 

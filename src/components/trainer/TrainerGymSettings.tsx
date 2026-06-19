@@ -17,12 +17,14 @@ import DeleteAccountButton from "@/components/DeleteAccountButton";
 import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTranslation } from "react-i18next";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
 }
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
+  const { t } = useTranslation();
   const { tenant, refetch: refetchTenant } = useTenant();
   const { user } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
@@ -65,24 +67,24 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "line-link-result") {
         if (e.data.success) {
-          toast.success("LINE連携が完了しました！");
+          toast.success(t("settings.line.linkSuccess"));
           refetchProfile();
         } else {
-          toast.error("LINE連携に失敗しました");
+          toast.error(t("settings.line.linkFailed"));
         }
       }
       if (e.data?.type === "google-calendar-result") {
         if (e.data.success) {
-          toast.success("Googleカレンダー連携が完了しました！");
+          toast.success(t("settings.gcal.linkSuccess"));
           setGcalLinked(true);
         } else {
-          toast.error("Googleカレンダー連携に失敗しました");
+          toast.error(t("settings.gcal.linkFailed"));
         }
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [refetchProfile]);
+  }, [refetchProfile, t]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -92,22 +94,20 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       .from("profiles")
       .update({ display_name: displayName.trim() })
       .eq("user_id", user.id);
-    if (error) toast.error("名前の保存に失敗しました");
-    else toast.success("表示名を更新しました");
+    if (error) toast.error(t("settings.trainer.saveFailed"));
+    else toast.success(t("settings.trainer.displayNameUpdated"));
     setSavingName(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("画像ファイルを選択してください"); return; }
-    if (file.size > 2 * 1024 * 1024) { toast.error("ファイルサイズは2MB以下にしてください"); return; }
-    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
+    if (!file.type.startsWith("image/")) { toast.error(t("settings.trainer.selectImage")); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error(t("settings.trainer.fileTooLarge")); return; }
+    if (!tenant) { toast.error(t("settings.trainer.tenantUnavailable")); return; }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
-      // Tenant-scoped folder path. RLS requires the first folder segment
-      // to match the trainer's own tenant_id.
       const filePath = `${tenant.id}/logo_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from("gym-assets").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
@@ -115,10 +115,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       const url = `${urlData.publicUrl}?t=${Date.now()}`;
       const { error: updateError } = await supabase.from("tenants").update({ logo_url: url }).eq("id", tenant.id);
       if (updateError) throw updateError;
-      toast.success("ロゴを更新しました");
+      toast.success(t("settings.trainer.logoUpdated"));
       refetchTenant();
     } catch (err: any) {
-      toast.error(err.message || "アップロードに失敗しました");
+      toast.error(err.message || t("settings.trainer.uploadFailed"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -126,10 +126,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   };
 
   const handleDelete = async () => {
-    if (!tenant) { toast.error("テナント情報が取得できません"); return; }
+    if (!tenant) { toast.error(t("settings.trainer.tenantUnavailable")); return; }
     setUploading(true);
     try {
-      // List only this tenant's folder, then delete its logo files.
       const folder = tenant.id;
       const { data: files } = await supabase.storage.from("gym-assets").list(folder);
       if (files && files.length > 0) {
@@ -138,10 +137,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       }
       const { error: updateError } = await supabase.from("tenants").update({ logo_url: null }).eq("id", tenant.id);
       if (updateError) throw updateError;
-      toast.success("ロゴを削除しました");
+      toast.success(t("settings.trainer.logoDeleted"));
       refetchTenant();
     } catch (err: any) {
-      toast.error(err.message || "削除に失敗しました");
+      toast.error(err.message || t("settings.trainer.deleteFailed"));
     } finally {
       setUploading(false);
     }
@@ -151,7 +150,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (!user) return;
     const { data, error } = await supabase.functions.invoke("line-auth-url", { body: {} });
     if (error || !data?.url) {
-      toast.error("LINE連携の開始に失敗しました");
+      toast.error(t("settings.line.startFailed"));
       return;
     }
     window.open(data.url, "line-link", "width=500,height=700");
@@ -161,8 +160,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const handleLineUnlink = async () => {
     if (!user) return;
     const { error } = await supabase.from("profiles").update({ line_user_id: null }).eq("user_id", user.id);
-    if (error) toast.error("LINE連携の解除に失敗しました");
-    else { toast.success("LINE連携を解除しました"); refetchProfile(); }
+    if (error) toast.error(t("settings.line.unlinkFailed"));
+    else { toast.success(t("settings.line.unlinked")); refetchProfile(); }
   };
 
   const handleGcalLink = async () => {
@@ -170,17 +169,17 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     const popup = window.open("about:blank", "gcal-link", "width=500,height=700");
     try {
       const { data, error } = await supabase.functions.invoke("google-calendar-auth-url", { body: { user_id: user.id } });
-      if (error || !data?.url) { popup?.close(); toast.error("Google認証URLの取得に失敗しました"); return; }
+      if (error || !data?.url) { popup?.close(); toast.error(t("settings.gcal.authUrlFailed")); return; }
       if (popup) popup.location.href = data.url;
       else window.location.href = data.url;
-    } catch (e) { popup?.close(); toast.error("エラーが発生しました"); }
+    } catch (e) { popup?.close(); toast.error(t("common.errorGeneric")); }
   };
 
   const handleGcalUnlink = async () => {
     if (!user) return;
     const { error } = await supabase.from("google_calendar_tokens" as any).delete().eq("user_id", user.id);
-    if (error) toast.error("連携解除に失敗しました");
-    else { toast.success("Googleカレンダー連携を解除しました"); setGcalLinked(false); }
+    if (error) toast.error(t("settings.gcal.unlinkFailed"));
+    else { toast.success(t("settings.gcal.unlinked")); setGcalLinked(false); }
   };
 
   const handleSyncAll = async () => {
@@ -188,8 +187,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     try {
       const { data, error } = await supabase.functions.invoke("google-calendar-sync", { body: { action: "sync_all" } });
       if (error) throw error;
-      toast.success(`${data?.synced || 0}件の予約をGoogleカレンダーに同期しました`);
-    } catch (e) { toast.error("同期に失敗しました"); }
+      toast.success(t("settings.gcal.syncDone", { count: data?.synced || 0 }));
+    } catch (e) { toast.error(t("settings.gcal.syncFailed")); }
     setSyncing(false);
   };
 

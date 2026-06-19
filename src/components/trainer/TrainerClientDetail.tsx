@@ -938,7 +938,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5" />
-              体重・体脂肪率推移
+              {t("clientDetail.weightChart")}
             </h2>
              <Card>
               <CardContent className="p-3 sm:p-4">

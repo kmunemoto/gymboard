@@ -172,7 +172,7 @@
     },
     "billing": {
       "currentPlan": "現在のプラン",
-      "customers": "お客様 {{count}}",
+      "customers": "お客様 {{limit}}",
       "monthly": "月額",
       "yearly": "年額",
       "yearlyBadge": "2ヶ月分お得",

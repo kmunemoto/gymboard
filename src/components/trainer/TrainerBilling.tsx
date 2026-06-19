@@ -153,7 +153,7 @@ const TrainerBilling = () => {
             </div>
             <div className="flex items-center gap-1.5 text-sm">
               <Users className="w-4 h-4 text-muted-foreground" />
-              <span>{t("settings.billing.customers", { count: formatLimit(currentCard.maxCustomers) })}</span>
+              <span>{t("settings.billing.customers", { limit: formatLimit(currentCard.maxCustomers) })}</span>
             </div>
           </CardContent>
         </Card>
@@ -208,7 +208,7 @@ const TrainerBilling = () => {
                   </div>
                   <div className="flex items-center gap-1.5 text-xs">
                     <Check className="w-3.5 h-3.5 text-accent" />
-                    {t("settings.billing.customers", { count: formatLimit(card.maxCustomers) })}
+                    {t("settings.billing.customers", { limit: formatLimit(card.maxCustomers) })}
                   </div>
                 </CardContent>
               </Card>
@@ -315,7 +315,7 @@ const TrainerBilling = () => {
                 <ul className="space-y-1 text-xs">
                   <li className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-accent" />
-                    {t("settings.billing.customers", { count: formatLimit(card.maxCustomers) })}
+                    {t("settings.billing.customers", { limit: formatLimit(card.maxCustomers) })}
                   </li>
                 </ul>
                 {isFree ? (

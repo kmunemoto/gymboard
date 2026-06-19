@@ -184,12 +184,12 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
-            本日のスケジュール
+            {t("dashboard.todaySchedule")}
           </h2>
           {todayBookings.length === 0 ? (
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                本日の予約はありません
+                {t("dashboard.noTodayBookings")}
               </CardContent>
             </Card>
           ) : (

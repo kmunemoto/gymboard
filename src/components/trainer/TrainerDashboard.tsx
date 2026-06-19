@@ -259,7 +259,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
-            月別売上
+            {t("dashboard.revenueSection")}
           </h2>
           <Card>
             <CardContent className="p-3 sm:p-4">
@@ -268,9 +268,9 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
                   <BarChart data={revenueData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 10%, 92%)" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 10000}万`} width={40} />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 10000}${t("dashboard.monthMan")}`} width={40} />
                     <Tooltip
-                      formatter={(value: number) => [`¥${value.toLocaleString()}`, '売上']}
+                      formatter={(value: number) => [`¥${value.toLocaleString()}`, t("dashboard.revenueLabel")]}
                       contentStyle={{
                         background: 'hsl(0, 0%, 100%)',
                         border: 'none',

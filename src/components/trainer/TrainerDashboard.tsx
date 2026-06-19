@@ -164,10 +164,10 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
         {[
-          { label: '本日のセッション', value: `${todayBookings.length}件`, icon: CalendarDays, color: 'text-accent' },
-          { label: 'アクティブ顧客', value: `${profiles.length}名`, icon: Users, color: 'text-info' },
-          { label: '月間セッション', value: `${monthBookings.length}件`, icon: Clock, color: 'text-success' },
-          { label: '今月売上', value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
+          { label: t("dashboard.statTodaySessions"), value: t("dashboard.countUnit", { count: todayBookings.length }), icon: CalendarDays, color: 'text-accent' },
+          { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: profiles.length }), icon: Users, color: 'text-info' },
+          { label: t("dashboard.statMonthSessions"), value: t("dashboard.countUnit", { count: monthBookings.length }), icon: Clock, color: 'text-success' },
+          { label: t("dashboard.statMonthRevenue"), value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
         ].map((stat) => (
           <Card key={stat.label} className="card-hover">
             <CardContent className="p-3 sm:p-4">

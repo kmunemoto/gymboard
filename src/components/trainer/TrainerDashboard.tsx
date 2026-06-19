@@ -231,7 +231,7 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold">{b.startTime}</p>
-                        <p className="text-xs text-muted-foreground">60分</p>
+                        <p className="text-xs text-muted-foreground">{t("dashboard.minutes60")}</p>
                       </div>
                     </CardContent>
                   </Card>

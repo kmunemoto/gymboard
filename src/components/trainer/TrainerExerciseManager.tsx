@@ -201,9 +201,9 @@ const TrainerExerciseManager = () => {
         <div className="w-9 h-9 rounded-xl accent-gradient flex items-center justify-center shrink-0">
           <Dumbbell className="w-4.5 h-4.5 text-accent-foreground" />
         </div>
-        <h1 className="text-lg font-bold">種目管理</h1>
+        <h1 className="text-lg font-bold">{t("exercise.title")}</h1>
         <span className="text-xs text-muted-foreground ml-1">
-          （{exercises.length}種目）
+          {t("exercise.countSuffix", { count: exercises.length })}
         </span>
         <Button
           onClick={openAdd}
@@ -211,7 +211,7 @@ const TrainerExerciseManager = () => {
           className="ml-auto gap-1 h-9"
         >
           <Plus className="w-4 h-4" />
-          追加
+          {t("exercise.addBtn")}
         </Button>
       </div>
 

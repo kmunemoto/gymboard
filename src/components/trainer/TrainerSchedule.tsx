@@ -166,12 +166,12 @@ const TrainerSchedule = () => {
     if (target.isBlocked) {
       const { error } = await supabase.from("blocked_slots").delete().eq("id", target.id);
       if (error) {
-        toast.error("ブロック解除に失敗しました");
+        toast.error(t("schedule.releaseFailed"));
         setDeleting(false);
         return;
       }
       removeBooking(target.id);
-      toast.success("ブロックを解除しました");
+      toast.success(t("schedule.releasedToast"));
       setDeleting(false);
       setDeleteTarget(null);
       return;

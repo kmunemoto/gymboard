@@ -655,11 +655,11 @@ const TrainerSchedule = () => {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}>
         <DialogContent className="max-w-[90vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{deleteTarget?.isBlocked ? "ブロックを解除しますか？" : "予約を削除しますか？"}</DialogTitle>
+            <DialogTitle>{deleteTarget?.isBlocked ? t("schedule.releaseTitle") : t("schedule.deleteTitle")}</DialogTitle>
             <p className="text-sm text-muted-foreground pt-1">
               {deleteTarget?.isBlocked
-                ? `${deleteTarget.date} ${deleteTarget.startTime} のブロックを解除します。この時間帯に予約が入れられるようになります。`
-                : deleteTarget && `${deleteTarget.clientName}さんの予約（${deleteTarget.date} ${deleteTarget.startTime}）を削除します。本当にこの予約を削除しますか？元に戻すことはできません。`
+                ? t("schedule.releaseDesc", { date: deleteTarget.date, time: deleteTarget.startTime })
+                : deleteTarget && t("schedule.deleteDesc", { name: deleteTarget.clientName, date: deleteTarget.date, time: deleteTarget.startTime })
               }
             </p>
             {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約は案内バナー */}

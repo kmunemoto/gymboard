@@ -127,6 +127,29 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `insert failed: ${msg}`, code: insErr.code }, 500);
     }
 
+    // 体験予約が入ったことをトレーナーにプッシュ通知(fire-and-forget)
+    const newTrialId = inserted?.id;
+    if (newTrialId) {
+      try {
+        const pushRes = await fetch(`${SUPABASE_URL}/functions/v1/send-push-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SERVICE_ROLE,
+            "Authorization": `Bearer ${SERVICE_ROLE}`,
+          },
+          body: JSON.stringify({
+            purpose: "trial_booking",
+            trial_booking_id: newTrialId,
+          }),
+        });
+        const pushText = await pushRes.text();
+        console.log(`[trial-push] status=${pushRes.status} body=${pushText}`);
+      } catch (e) {
+        console.error("[trial-push] failed:", e instanceof Error ? e.message : String(e));
+      }
+    }
+
     return json({
       ok: true,
       action: "inserted",

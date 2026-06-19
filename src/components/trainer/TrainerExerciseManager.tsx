@@ -250,7 +250,7 @@ const TrainerExerciseManager = () => {
       {grouped.map(({ group, items }) => (
         <section key={group}>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-            {group}（{items.length}）
+            {t("exercise.groupCount", { group, count: items.length })}
           </h2>
           <div className="space-y-1.5">
             {items.map((ex) => (

@@ -339,7 +339,7 @@ const TrainerSchedule = () => {
             }`}
           >
             {m.label}
-            {m.key === "month" && <span className="ml-1 text-[9px]">(準備中)</span>}
+            {m.key === "month" && <span className="ml-1 text-[9px]">{t("schedule.modeMonthSoon")}</span>}
           </button>
         ))}
       </div>

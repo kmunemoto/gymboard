@@ -3,7 +3,7 @@
  * 翻訳ファイル自動生成スクリプト
  *
  * src/locales/ja.json を読み込み、欠けているキーだけを翻訳して
- * en.json / ko.json に書き出します。
+ * en.json / ko.json / zh-CN.json / zh-TW.json に書き出します。
  *
  * 使い方:
  *   LOVABLE_API_KEY=xxxx node scripts/translate-locales.mjs        # 差分のみ翻訳
@@ -35,6 +35,18 @@ const ONLY_LANG = langArgIdx >= 0 ? args[langArgIdx + 1] : null;
 const TARGETS = [
   { code: "en", name: "English" },
   { code: "ko", name: "Korean (한국어)" },
+  {
+    code: "zh-CN",
+    name: "Simplified Chinese (简体中文, Mainland China usage)",
+    extraNote:
+      "簡体字（Simplified Chinese characters）のみを使い、中国大陸で自然な表現・語彙にする。繁体字は絶対に使わない。",
+  },
+  {
+    code: "zh-TW",
+    name: "Traditional Chinese (繁體中文, Taiwan usage)",
+    extraNote:
+      "繁體字（Traditional Chinese characters）のみを使い、台湾で自然な表現・語彙にする。簡体字は絶対に使わない。",
+  },
 ].filter((t) => !ONLY_LANG || t.code === ONLY_LANG);
 
 const API_KEY = process.env.LOVABLE_API_KEY;
@@ -85,7 +97,7 @@ function restoreVars(text, vars) {
   return text.replace(/__VAR_(\d+)__/g, (_, i) => vars[Number(i)] ?? "");
 }
 
-async function translateBatch(entries, targetLangName) {
+async function translateBatch(entries, targetLangName, extraNote = "") {
   // entries: [{ key, text }]
   const prepared = entries.map(({ key, text }) => {
     const { protectedText, vars } = protectVars(String(text));
@@ -100,6 +112,7 @@ async function translateBatch(entries, targetLangName) {
     `- 自然で簡潔なUI表現にする。\n` +
     `- __VAR_数字__ のようなトークンは絶対に翻訳・変更せず、そのまま残す。\n` +
     `- 句読点や記号もUIに自然な形にする。\n` +
+    (extraNote ? `- ${extraNote}\n` : "") +
     `- 入力JSON配列の各要素に対し、同じ key と翻訳後の text を含むJSONを返す。\n` +
     `- 出力は { "items": [{ "key": "...", "text": "..." }, ...] } の形式のみ。説明文は不要。`;
 
@@ -175,7 +188,7 @@ async function processLang(target, jaFlat) {
     const chunk = todo.slice(i, i + CHUNK_SIZE);
     process.stdout.write(`  [${target.code}] ${i + chunk.length}/${todo.length} ...`);
     try {
-      const translations = await translateBatch(chunk, target.name);
+      const translations = await translateBatch(chunk, target.name, target.extraNote);
       for (const { key } of chunk) {
         if (translations[key] != null) {
           setNested(output, key, translations[key]);

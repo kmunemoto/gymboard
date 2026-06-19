@@ -9,6 +9,8 @@ const LANGUAGE_OPTIONS: { code: SupportedLanguage; nativeLabel: string; subLabel
   { code: "ja", nativeLabel: "日本語", subLabel: "Japanese" },
   { code: "en", nativeLabel: "English", subLabel: "英語" },
   { code: "ko", nativeLabel: "한국어", subLabel: "Korean" },
+  { code: "zh-CN", nativeLabel: "简体中文", subLabel: "Chinese (Simplified)" },
+  { code: "zh-TW", nativeLabel: "繁體中文", subLabel: "Chinese (Traditional)" },
 ];
 
 interface LanguageSwitcherProps {
@@ -17,7 +19,10 @@ interface LanguageSwitcherProps {
 
 const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
   const { t } = useTranslation();
-  const currentLang = (i18n.resolvedLanguage || i18n.language || "ja").split("-")[0];
+  const rawLang = i18n.resolvedLanguage || i18n.language || "ja";
+  const currentLang = (SUPPORTED_LANGUAGES as readonly string[]).includes(rawLang)
+    ? rawLang
+    : rawLang.split("-")[0];
 
   const handleChange = (lng: SupportedLanguage) => {
     if (lng === currentLang) return;
@@ -46,7 +51,7 @@ const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
               <p className="text-[11px] text-muted-foreground mb-3">
                 {t("settings.languageDescription")}
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {SUPPORTED_LANGUAGES.map((code) => {
                   const opt = LANGUAGE_OPTIONS.find((o) => o.code === code)!;
                   const active = currentLang === code;

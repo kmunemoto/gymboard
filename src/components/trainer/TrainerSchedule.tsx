@@ -543,7 +543,7 @@ const TrainerSchedule = () => {
       <Dialog open={proxyDialogOpen} onOpenChange={setProxyDialogOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>代理予約</DialogTitle>
+            <DialogTitle>{t("schedule.proxyDialogTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>

@@ -219,7 +219,7 @@ const TrainerExerciseManager = () => {
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="種目名で検索"
+          placeholder={t("exercise.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 h-11"

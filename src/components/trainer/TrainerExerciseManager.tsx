@@ -422,7 +422,7 @@ const TrainerExerciseManager = () => {
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                保存
+                {t("common.save")}
               </Button>
             </div>
           </div>

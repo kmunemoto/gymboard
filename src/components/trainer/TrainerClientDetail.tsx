@@ -1170,12 +1170,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       onChange={(e) => handleSelectExercise(i, e.target.value)}
                       className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     >
-                      <option value="" disabled>種目を選択</option>
+                      <option value="" disabled>{t("clientDetail.selectExercisePrompt")}</option>
                       {(() => {
                         const cats = Array.from(
                           new Set(
                             exerciseMasters.map(
-                              (e: any) => e.muscle_group || e.category || "その他",
+                              (e: any) => e.muscle_group || e.category || t("clientDetail.categoryOther"),
                             ),
                           ),
                         );
@@ -1193,7 +1193,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                           );
                         });
                       })()}
-                      <option value="__new__">＋ 新しい種目を追加</option>
+                      <option value="__new__">{t("clientDetail.addNewExercise")}</option>
                     </select>
                     {showNewExercise === i && (
                       <div className="flex gap-2">

@@ -321,9 +321,9 @@ const TrainerSchedule = () => {
       {/* 表示モード切替 */}
       <div className="flex items-center gap-1 mb-3 p-1 bg-muted/40 rounded-lg w-fit">
         {([
-          { key: "day", label: "日別" },
-          { key: "week", label: "週間" },
-          { key: "month", label: "月間" },
+          { key: "day", label: t("schedule.modeDay") },
+          { key: "week", label: t("schedule.modeWeek") },
+          { key: "month", label: t("schedule.modeMonth") },
         ] as const).map((m) => (
           <button
             key={m.key}

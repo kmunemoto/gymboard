@@ -314,7 +314,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       if (data) {
         setWorkoutRecords(data.map((w: any) => ({
           ...w,
-          exercise_name: w.exercises?.name || "不明",
+          exercise_name: w.exercises?.name || t("common.unknown"),
           muscle_group: w.exercises?.muscle_group ?? null,
         })));
       }
@@ -392,7 +392,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     );
   }
 
-  const displayName = profile?.display_name || "名前未設定";
+  const displayName = profile?.display_name || t("common.nameUnset");
   const initial = displayName[0];
 
   const getPrice = (planName: string): number => {
@@ -464,11 +464,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     if (!newExName.trim()) return;
     const { data, error } = await supabase
       .from("exercises")
-      .insert({ name: newExName.trim(), category: "その他" })
+      .insert({ name: newExName.trim(), category: t("clientDetail.categoryOther") })
       .select()
       .single();
     if (error) {
-      toast.error("種目の追加に失敗しました");
+      toast.error(t("clientDetail.addExerciseFailed"));
       return;
     }
     setExerciseMasters(prev => [...prev, data]);
@@ -477,20 +477,20 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setExercises(updated);
     setShowNewExercise(null);
     setNewExName("");
-    toast.success(`「${data.name}」をマスターに追加しました`);
+    toast.success(t("clientDetail.addedToMaster", { name: data.name }));
   };
 
   const handleSave = async () => {
     const validEntries = exercises.filter(ex => ex.exerciseId && ex.sets.some(s => s.weight && s.reps));
     if (validEntries.length === 0) {
-      toast.error("種目・重量・回数をすべて入力してください");
+      toast.error(t("clientDetail.errFillAll"));
       return;
     }
     setSaving(true);
 
     const { fetchMyTenantId } = await import("@/lib/tenantHelper");
     const tenantId = await fetchMyTenantId();
-    if (!tenantId) { toast.error("テナントが見つかりません"); setSaving(false); return; }
+    if (!tenantId) { toast.error(t("clientDetail.errNoTenant")); setSaving(false); return; }
 
     const rows = validEntries.map(ex => ({
       user_id: clientId,
@@ -510,31 +510,31 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     if (editingDate) {
       // Edit mode: delete old records, insert new ones
       const { error: delErr } = await supabase.from("workouts").delete().in("id", editingRecordIds);
-      if (delErr) { toast.error("更新に失敗しました"); setSaving(false); return; }
+      if (delErr) { toast.error(t("clientDetail.errUpdate")); setSaving(false); return; }
       const { data, error } = await supabase.from("workouts").insert(rows as any).select("*, exercises(name)");
-      if (error) { toast.error("更新に失敗しました"); setSaving(false); return; }
-      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || "不明" }));
+      if (error) { toast.error(t("clientDetail.errUpdate")); setSaving(false); return; }
+      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || t("common.unknown") }));
       setWorkoutRecords(prev => [...newRecords, ...prev.filter(r => !editingRecordIds.includes(r.id))]);
       setEditingDate(null);
       setEditingRecordIds([]);
-      toast.success("記録を更新しました");
+      toast.success(t("clientDetail.updatedToast"));
     } else {
       // New mode: insert
       const { data, error } = await supabase.from("workouts").insert(rows as any).select("*, exercises(name)");
-      if (error) { toast.error("保存に失敗しました"); setSaving(false); return; }
-      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || "不明" }));
+      if (error) { toast.error(t("clientDetail.errSave")); setSaving(false); return; }
+      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || t("common.unknown") }));
       setWorkoutRecords(prev => [...newRecords, ...prev]);
-      toast.success("記録を保存しました", { description: `${displayName}さんのトレーニング記録を保存しました` });
+      toast.success(t("clientDetail.savedToast"), { description: t("clientDetail.savedDesc", { name: displayName }) });
     }
 
     // Evaluate today's missions for this customer (fire-and-forget UI feedback via toast)
     try {
       const result = await evaluateAndAwardMissions(clientId, trainingDate);
       for (const m of result.newlyCompleted) {
-        toast.success(`ミッション達成！${m.name}`, { description: `+${m.exp} EXP` });
+        toast.success(t("clientDetail.missionAchieved", { name: m.name }), { description: t("clientDetail.missionExp", { exp: m.exp }) });
       }
       if (result.bonusAwarded) {
-        toast.success("全ミッションコンプリート！", { description: "+50 EXP ボーナス！" });
+        toast.success(t("clientDetail.missionAllComplete"), { description: t("clientDetail.missionBonus") });
       }
     } catch (e) {
       // non-fatal
@@ -572,7 +572,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       if (vol > 0) {
         const r = await applyRaidDamage(clientId, trainingDate, vol);
         if (r?.defeated) {
-          toast.success("レイドボス撃破！", { description: "全員に報酬を配布しました！" });
+          toast.success(t("clientDetail.raidDefeated"), { description: t("clientDetail.raidDefeatedDesc") });
         }
       }
     } catch (e) {
@@ -583,8 +583,8 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     try {
       const ev = await updateEventProgress(clientId);
       for (const c of (ev?.completed_events || [])) {
-        toast.success(`イベント完走！${c.event_name}`, {
-          description: `+${c.reward_exp} EXP / +${c.reward_coins}コイン${c.badge_name ? ` / 限定バッジ「${c.badge_name}」` : ""}`,
+        toast.success(t("clientDetail.eventComplete", { name: c.event_name }), {
+          description: t("clientDetail.eventRewardDesc", { exp: c.reward_exp, coins: c.reward_coins, badge: c.badge_name ? t("clientDetail.eventBadgeSuffix", { badge: c.badge_name }) : "" }),
         });
       }
     } catch (e) {
@@ -610,9 +610,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       }
     }
     const { error } = await supabase.from("profiles").update({ plan: planName }).eq("user_id", clientId);
-    if (error) { toast.error("プラン変更に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.planChangeFailed")); return; }
     setClientPlan(planName);
-    toast.success(`${displayName}さんのプランを「${planName}」に変更しました`);
+    toast.success(t("clientDetail.planChangedToast", { name: displayName, plan: planName }));
   };
 
   const handleSaveGoal = async () => {
@@ -623,19 +623,19 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       .update({ training_goal: trimmed || null } as any)
       .eq("user_id", clientId);
     setSavingGoal(false);
-    if (error) { toast.error("目標の保存に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.goalSaveFailed")); return; }
     setTrainingGoal(trimmed);
     setEditingGoal(false);
-    toast.success("目標を保存しました");
+    toast.success(t("clientDetail.goalSavedToast"));
   };
 
 
 
   const handleCycleStartDateChange = async (newDate: string) => {
     const { error } = await supabase.from("profiles").update({ cycle_start_date: newDate || null }).eq("user_id", clientId);
-    if (error) { toast.error("起算日の更新に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.cycleUpdateFailed")); return; }
     setCycleStartDate(newDate);
-    toast.success("起算日を更新しました");
+    toast.success(t("clientDetail.cycleUpdatedToast"));
   };
 
   const handleResetCycleToToday = async () => {
@@ -645,9 +645,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
   const handleShowUsagePeriodToggle = async (checked: boolean) => {
     const { error } = await supabase.from("profiles").update({ show_usage_period: checked }).eq("user_id", clientId);
-    if (error) { toast.error("更新に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.updateFailed")); return; }
     setShowUsagePeriod(checked);
-    toast.success(checked ? "利用期間を表示にしました" : "利用期間を非表示にしました");
+    toast.success(checked ? t("clientDetail.shownToast") : t("clientDetail.hiddenToast"));
   };
 
   const handleGenderChange = async (g: "male" | "female") => {
@@ -661,16 +661,16 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       const { error: insErr } = await (supabase as any)
         .from("user_avatars")
         .insert({ user_id: clientId, gender: g });
-      if (insErr) { toast.error("性別の更新に失敗しました"); return; }
+      if (insErr) { toast.error(t("clientDetail.genderUpdateFailed")); return; }
     } else {
       const { error } = await (supabase as any)
         .from("user_avatars")
         .update({ gender: g })
         .eq("user_id", clientId);
-      if (error) { toast.error("性別の更新に失敗しました"); return; }
+      if (error) { toast.error(t("clientDetail.genderUpdateFailed")); return; }
     }
     setClientGender(g);
-    toast.success(g === "male" ? "性別を「男性」に設定しました" : "性別を「女性」に設定しました");
+    toast.success(g === "male" ? t("clientDetail.genderMaleToast") : t("clientDetail.genderFemaleToast"));
   };
 
   const openEdit = (dateKey: string) => {
@@ -704,10 +704,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     const { error } = await supabase.from("workouts").delete().eq("id", deleteTarget.id);
-    if (error) { toast.error("削除に失敗しました"); return; }
+    if (error) { toast.error(t("clientDetail.errDelete")); return; }
     setWorkoutRecords(prev => prev.filter(r => r.id !== deleteTarget.id));
     setDeleteTarget(null);
-    toast.success("記録を削除しました");
+    toast.success(t("clientDetail.deletedToast"));
   };
 
 
@@ -725,7 +725,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       {/* Header */}
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 min-h-[44px]">
         <ArrowLeft className="w-4 h-4" />
-        顧客一覧に戻る
+        {t("clientDetail.backToList")}
       </button>
 
       <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -742,7 +742,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       <section className="mb-4 sm:mb-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <Target className="w-3.5 h-3.5" />
-          目標・トレーニング目的
+          {t("clientDetail.sectionGoal")}
         </h2>
         {editingGoal ? (
           <Card>
@@ -750,18 +750,18 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               <Textarea
                 value={goalDraft}
                 onChange={(e) => setGoalDraft(e.target.value)}
-                placeholder="例: 体脂肪率15%以下、姿勢改善・肩こり解消、フルマラソン完走、健康維持・筋力アップ"
+                placeholder={t("clientDetail.goalPlaceholder")}
                 rows={4}
                 className="text-sm resize-none break-all"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => { setEditingGoal(false); setGoalDraft(trainingGoal); }} disabled={savingGoal} className="h-8 text-xs">
-                  取消
+                  {t("common.cancelShort")}
                 </Button>
                 <Button size="sm" onClick={handleSaveGoal} disabled={savingGoal} className="h-8 text-xs gap-1">
                   <Save className="w-3 h-3" />
-                  {savingGoal ? "保存中..." : "保存"}
+                  {savingGoal ? t("common.saving") : t("common.save")}
                 </Button>
               </div>
             </CardContent>
@@ -781,7 +781,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   <p className="text-sm font-medium whitespace-pre-wrap break-all leading-relaxed">{trainingGoal}</p>
                   <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
                     <Pencil className="w-3 h-3" />
-                    タップして編集
+                    {t("clientDetail.goalTapEdit")}
                   </p>
                 </div>
               </CardContent>
@@ -790,10 +790,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         ) : (
           <Card className="border-dashed">
             <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-3">
-              <span className="text-sm text-muted-foreground">目標が未設定です</span>
+              <span className="text-sm text-muted-foreground">{t("clientDetail.goalEmpty")}</span>
               <Button size="sm" variant="outline" onClick={() => { setGoalDraft(""); setEditingGoal(true); }} className="h-8 text-xs gap-1 shrink-0">
                 <Plus className="w-3 h-3" />
-                目標を設定
+                {t("clientDetail.goalSetBtn")}
               </Button>
             </CardContent>
           </Card>
@@ -806,13 +806,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       <section className="mb-4 sm:mb-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <CreditCard className="w-3.5 h-3.5" />
-          契約プラン
+          {t("clientDetail.sectionPlan")}
         </h2>
         <Card>
           <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
             {tenantPlans.length === 0 ? (
               <div className="text-sm text-muted-foreground py-2">
-                プランが登録されていません。ジム設定のプラン管理から追加してください。
+                {t("clientDetail.noPlans")}
               </div>
             ) : (
               <div>
@@ -822,13 +822,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   {!tenantPlans.some((p) => p.plan_name === clientPlan) && (
-                    <option value="" disabled>プランを選択</option>
+                    <option value="" disabled>{t("clientDetail.planSelectPrompt")}</option>
                   )}
                   {tenantPlans.map((p) => (
                     <option key={p.id} value={p.plan_name}>{p.plan_name}</option>
                   ))}
                 </select>
-                <p className="text-sm font-bold mt-2">月額: ¥{getPrice(clientPlan).toLocaleString()}</p>
+                <p className="text-sm font-bold mt-2">{t("clientDetail.monthlyPrice", { price: getPrice(clientPlan).toLocaleString() })}</p>
               </div>
             )}
 
@@ -836,7 +836,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <div className="pt-2 border-t border-border space-y-2">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">利用期間（起算日）</span>
+                <span className="text-sm font-medium">{t("clientDetail.cycleStart")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Input
@@ -847,17 +847,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 />
                 <Button variant="outline" size="sm" onClick={handleResetCycleToToday} className="shrink-0 h-9 text-xs gap-1">
                   <RotateCcw className="w-3 h-3" />
-                  今日にリセット
+                  {t("clientDetail.resetToToday")}
                 </Button>
               </div>
               {cycleStartDate && (
                 <p className="text-xs text-muted-foreground">
-                  有効期限：{format(addMonths(parseISO(cycleStartDate), 1), "yyyy年M月d日", { locale: ja })}
+                  {t("clientDetail.expiry", { date: format(addMonths(parseISO(cycleStartDate), 1), "yyyy年M月d日", { locale: ja }) })}
                   {(() => {
                     const remaining = differenceInDays(addMonths(parseISO(cycleStartDate), 1), getJSTNow());
-                    if (remaining < 0) return <span className="text-destructive font-bold ml-1">（期限切れ）</span>;
-                    if (remaining <= 3) return <span className="text-warning font-bold ml-1">（残り{remaining}日）</span>;
-                    return <span className="ml-1">（残り{remaining}日）</span>;
+                    if (remaining < 0) return <span className="text-destructive font-bold ml-1">{t("clientDetail.expired")}</span>;
+                    if (remaining <= 3) return <span className="text-warning font-bold ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
+                    return <span className="ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
                   })()}
                 </p>
               )}
@@ -867,11 +867,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">利用期間の表示</span>
+                <span className="text-sm font-medium">{t("clientDetail.showUsagePeriod")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold ${showUsagePeriod ? 'text-success' : 'text-muted-foreground'}`}>
-                  {showUsagePeriod ? '表示' : '非表示'}
+                  {showUsagePeriod ? t("clientDetail.shown") : t("clientDetail.hidden")}
                 </span>
                 <Switch checked={showUsagePeriod} onCheckedChange={handleShowUsagePeriodToggle} />
               </div>
@@ -880,9 +880,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             {/* Gender Setting */}
             <div className="pt-2 border-t border-border space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">性別</span>
+                <span className="text-sm font-medium">{t("clientDetail.gender")}</span>
                 {!clientGender && (
-                  <span className="text-xs text-muted-foreground">未設定</span>
+                  <span className="text-xs text-muted-foreground">{t("clientDetail.genderUnset")}</span>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -896,7 +896,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       : "border-input bg-background text-foreground hover:bg-muted"
                   )}
                 >
-                  男性
+                  {t("common.male")}
                 </button>
                 <button
                   type="button"
@@ -908,7 +908,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       : "border-input bg-background text-foreground hover:bg-muted"
                   )}
                 >
-                  女性
+                  {t("common.female")}
                 </button>
               </div>
             </div>
@@ -922,15 +922,15 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       {/* Tabbed sections */}
       <Tabs defaultValue="training" className="space-y-4">
         <TabsList className="grid grid-cols-7 w-full">
-          <TabsTrigger value="overview" className="text-[10px] sm:text-xs px-1">概要</TabsTrigger>
-          <TabsTrigger value="training" className="text-[10px] sm:text-xs px-1">記録</TabsTrigger>
-          <TabsTrigger value="meals" className="text-[10px] sm:text-xs px-1">食事</TabsTrigger>
-          <TabsTrigger value="bookings" className="text-[10px] sm:text-xs px-1">予約</TabsTrigger>
-          <TabsTrigger value="skeletal" className="text-[10px] sm:text-xs px-1">骨格</TabsTrigger>
+          <TabsTrigger value="overview" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabOverview")}</TabsTrigger>
+          <TabsTrigger value="training" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabTraining")}</TabsTrigger>
+          <TabsTrigger value="meals" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabMeals")}</TabsTrigger>
+          <TabsTrigger value="bookings" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabBookings")}</TabsTrigger>
+          <TabsTrigger value="skeletal" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabSkeletal")}</TabsTrigger>
           {MONTHLY_REPORT_ENABLED && (
-            <TabsTrigger value="report" className="text-[10px] sm:text-xs px-1">月報</TabsTrigger>
+            <TabsTrigger value="report" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabReport")}</TabsTrigger>
           )}
-          <TabsTrigger value="chat" className="text-[10px] sm:text-xs px-1">チャット</TabsTrigger>
+          <TabsTrigger value="chat" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabChat")}</TabsTrigger>
         </TabsList>
 
         {/* Overview */}
@@ -938,7 +938,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5" />
-              体重・体脂肪率推移
+              {t("clientDetail.weightChart")}
             </h2>
              <Card>
               <CardContent className="p-3 sm:p-4">
@@ -961,13 +961,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                         <YAxis yAxisId="w" tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} domain={['dataMin - 2', 'dataMax + 2']} unit="kg" width={38} />
                         <YAxis yAxisId="f" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} domain={['dataMin - 2', 'dataMax + 2']} unit="%" width={38} />
                         <Tooltip contentStyle={{ background: 'hsl(0,0%,100%)', border: 'none', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '11px' }} />
-                        <Area yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" fill={`url(#wg-${clientId})`} strokeWidth={2} name="体重(kg)" />
-                        <Area yAxisId="f" type="monotone" dataKey="bodyFat" stroke="hsl(210, 40%, 58%)" fill={`url(#fg-${clientId})`} strokeWidth={2} name="体脂肪率(%)" />
+                        <Area yAxisId="w" type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" fill={`url(#wg-${clientId})`} strokeWidth={2} name={t("clientDetail.weightSeries")} />
+                        <Area yAxisId="f" type="monotone" dataKey="bodyFat" stroke="hsl(210, 40%, 58%)" fill={`url(#fg-${clientId})`} strokeWidth={2} name={t("clientDetail.fatSeries")} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">データなし</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">{t("clientDetail.noData")}</p>
                 )}
               </CardContent>
             </Card>
@@ -979,17 +979,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Weight className="w-3.5 h-3.5" />
-              計測データ入力
+              {t("clientDetail.measurementInput")}
             </h2>
             <Card>
               <CardContent className="p-3 sm:p-4 space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">計測日</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.measureDate")}</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full h-11 justify-start text-left font-normal", !measurementDate && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : "日付を選択"}
+                        {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : t("clientDetail.selectDate")}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1006,11 +1006,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">体重 (kg)</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.weightKg")}</label>
                     <Input type="number" step="0.1" placeholder={latestMeasurement?.weight?.toString() || "73.5"} value={bodyWeight} onChange={(e) => setBodyWeight(e.target.value)} className="h-11" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">体脂肪率 (%)</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.bodyFatPct")}</label>
                     <Input type="number" step="0.1" placeholder={latestMeasurement?.body_fat?.toString() || "18.0"} value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} className="h-11" />
                   </div>
                 </div>
@@ -1028,7 +1028,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   }}
                 >
                   {savingMeasurement ? <DumbbellLoader className="w-4 h-4 mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-                  計測データを保存
+                  {t("clientDetail.saveMeasurement")}
                 </Button>
               </CardContent>
             </Card>
@@ -1039,7 +1039,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <section>
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5" />
-                計測記録一覧
+                {t("clientDetail.measurementList")}
               </h2>
               <Card>
                 <CardContent className="p-3 sm:p-4">
@@ -1078,13 +1078,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <AlertDialog open={!!deleteMeasurementTarget} onOpenChange={(open) => !open && setDeleteMeasurementTarget(null)}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>この記録を削除しますか？</AlertDialogTitle>
+                <AlertDialogTitle>{t("clientDetail.deleteRecordTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  削除した計測データは元に戻せません。
+                  {t("clientDetail.deleteMeasureDesc")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={async () => {
@@ -1094,7 +1094,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     }
                   }}
                 >
-                  削除する
+                  {t("common.deleteAction")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -1104,7 +1104,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Dumbbell className="w-3.5 h-3.5" />
-              最近のトレーニング記録
+              {t("clientDetail.recentTraining")}
             </h2>
             {loadingRecords ? (
               <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
@@ -1124,7 +1124,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                             <span key={r.id} className="text-xs bg-muted rounded-lg px-2 py-1 break-all">
                               {r.exercise_name} {setsData.map((s: any) => `${s.weight}kg×${s.reps}`).join(", ")}
                               {totalVolume > 0 && (
-                                <span className="ml-1.5 text-muted-foreground/70">総ボリューム {totalVolume}kg</span>
+                                <span className="ml-1.5 text-muted-foreground/70">{t("clientDetail.totalVolume", { volume: totalVolume })}</span>
                               )}
                             </span>
                           );
@@ -1135,7 +1135,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 ))}
               </div>
             ) : (
-              <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">記録なし</CardContent></Card>
+              <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">{t("clientDetail.noRecord")}</CardContent></Card>
             )}
           </section>
         </TabsContent>
@@ -1149,7 +1149,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <CardContent className="p-3 sm:p-4 space-y-4">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3" /> 日付
+                  <CalendarDays className="w-3 h-3" /> {t("clientDetail.dateLabel")}
                 </label>
                 <Input type="date" value={trainingDate} onChange={(e) => setTrainingDate(e.target.value)} className="w-full sm:w-48 h-11" />
               </div>
@@ -1158,7 +1158,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 {exercises.map((ex, i) => (
                   <div key={i} className="rounded-xl border border-border p-3 bg-muted/30 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-muted-foreground">種目 {i + 1}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{t("clientDetail.exerciseNum", { n: i + 1 })}</span>
                       {exercises.length > 1 && (
                         <button onClick={() => removeExercise(i)} className="text-destructive hover:text-destructive/80 transition-colors p-1">
                           <Trash2 className="w-4 h-4" />
@@ -1170,12 +1170,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       onChange={(e) => handleSelectExercise(i, e.target.value)}
                       className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     >
-                      <option value="" disabled>種目を選択</option>
+                      <option value="" disabled>{t("clientDetail.selectExercisePrompt")}</option>
                       {(() => {
                         const cats = Array.from(
                           new Set(
                             exerciseMasters.map(
-                              (e: any) => e.muscle_group || e.category || "その他",
+                              (e: any) => e.muscle_group || e.category || t("clientDetail.categoryOther"),
                             ),
                           ),
                         );
@@ -1193,12 +1193,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                           );
                         });
                       })()}
-                      <option value="__new__">＋ 新しい種目を追加</option>
+                      <option value="__new__">{t("clientDetail.addNewExercise")}</option>
                     </select>
                     {showNewExercise === i && (
                       <div className="flex gap-2">
                         <Input
-                          placeholder="新しい種目名を入力"
+                          placeholder={t("clientDetail.newExercisePh")}
                           value={newExName}
                           onChange={(e) => setNewExName(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") handleAddNewExercise(i); }}
@@ -1206,7 +1206,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                           autoFocus
                         />
                         <Button size="sm" variant="outline" className="h-11" onClick={() => handleAddNewExercise(i)}>
-                          確定
+                          {t("common.confirm")}
                         </Button>
                         <Button size="sm" variant="ghost" className="h-11" onClick={() => setShowNewExercise(null)}>
                           <X className="w-4 h-4" />
@@ -1217,7 +1217,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       <div key={si} className="space-y-1">
                         {ex.sets.length > 1 && (
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-muted-foreground">セット {si + 1}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground">{t("clientDetail.setNum", { n: si + 1 })}</span>
                             <button onClick={() => removeSet(i, si)} className="text-destructive/60 hover:text-destructive transition-colors p-0.5">
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -1225,11 +1225,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                         )}
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">重量 (kg)</label>
+                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">{t("clientDetail.weightUnit")}</label>
                             <Input type="number" step="0.5" placeholder="60" value={s.weight} onChange={(e) => updateExerciseSet(i, si, "weight", e.target.value)} className="h-11" />
                           </div>
                           <div>
-                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">回数 (rep)</label>
+                            <label className="text-[10px] font-semibold text-muted-foreground mb-0.5 block">{t("clientDetail.repsUnit")}</label>
                             <Input type="number" placeholder="10" value={s.reps} onChange={(e) => updateExerciseSet(i, si, "reps", e.target.value)} className="h-11" />
                           </div>
                         </div>
@@ -1240,7 +1240,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       onClick={() => addSet(i)}
                       className="w-full text-xs text-accent font-medium py-1.5 rounded-lg border border-dashed border-accent/40 hover:bg-accent/5 transition-colors flex items-center justify-center gap-1"
                     >
-                      <Plus className="w-3 h-3" /> セットを追加
+                      <Plus className="w-3 h-3" /> {t("clientDetail.addSet")}
                     </button>
                   </div>
                 ))}
@@ -1248,12 +1248,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
               <Button variant="outline" size="sm" onClick={addExercise} className="w-full gap-1.5 h-11">
                 <Plus className="w-3.5 h-3.5" />
-                種目を追加する
+                {t("clientDetail.addExercise")}
               </Button>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">メモ</label>
-                <Textarea placeholder="フォームの注意点、次回への引き継ぎなど..." value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} />
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("clientDetail.memo")}</label>
+                <Textarea placeholder={t("clientDetail.memoPh")} value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} />
               </div>
             </CardContent>
           </Card>
@@ -1262,19 +1262,19 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             {editingDate && (
               <Button variant="outline" size="lg" onClick={cancelEdit} className="gap-2 w-full sm:w-auto">
                 <X className="w-4 h-4" />
-                編集をキャンセル
+                {t("clientDetail.cancelEdit")}
               </Button>
             )}
             <Button variant="accent" size="lg" onClick={handleSave} disabled={saving} className="gap-2 w-full sm:w-auto">
               {saving ? <DumbbellLoader className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {editingDate ? "変更を保存" : "記録を保存"}
+              {editingDate ? t("clientDetail.saveChanges") : t("clientDetail.saveRecord")}
             </Button>
           </div>
 
           {editingDate && (
             <div className="rounded-lg bg-accent/10 border border-accent/30 px-4 py-2 text-sm text-accent font-medium flex items-center gap-2">
               <Pencil className="w-4 h-4" />
-              編集モード：{formatJST(editingDate, "yyyy年M月d日（E）", { locale: ja })}の記録を編集中
+              {t("clientDetail.editMode", { date: formatJST(editingDate, "yyyy年M月d日（E）", { locale: ja }) })}
             </div>
           )}
 
@@ -1283,7 +1283,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
           ) : sortedDates.length > 0 && (
             <section>
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">過去の記録</h2>
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">{t("clientDetail.pastRecords")}</h2>
               <div className="space-y-2">
                 {sortedDates.map((date) => (
                   <Card key={date}>
@@ -1292,9 +1292,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                         <p className="text-xs font-bold text-muted-foreground">
                           {formatJST(date, "yyyy年M月d日（E）", { locale: ja })}
                         </p>
-                        <button onClick={() => openEdit(date)} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" title="この日の記録を編集">
+                        <button onClick={() => openEdit(date)} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" title={t("clientDetail.editAria")}>
                           <Pencil className="w-3.5 h-3.5" />
-                          <span>編集</span>
+                          <span>{t("common.edit")}</span>
                         </button>
                       </div>
                       <div className="space-y-1.5 overflow-hidden">
@@ -1318,7 +1318,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                                 className="w-24 h-24 object-contain opacity-60 shrink-0 ml-2"
                               />
                             )}
-                            <button onClick={() => setDeleteTarget(r)} className="ml-auto p-1.5 rounded-lg hover:bg-destructive/10 transition-colors shrink-0" title="削除">
+                            <button onClick={() => setDeleteTarget(r)} className="ml-auto p-1.5 rounded-lg hover:bg-destructive/10 transition-colors shrink-0" title={t("common.delete")}>
                               <Trash2 className="w-3.5 h-3.5 text-destructive/70" />
                             </button>
                           </div>
@@ -1337,7 +1337,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         <TabsContent value="meals" className="space-y-4">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Utensils className="w-3.5 h-3.5" />
-            食事記録
+            {t("clientDetail.mealsSection")}
           </h2>
           {loadingMeals ? (
             <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
@@ -1347,7 +1347,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Card key={meal.id} className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className="relative">
-                      <img src={meal.resolved_image_url || meal.image_url} alt="食事写真" className="w-full h-40 object-cover" />
+                      <img src={meal.resolved_image_url || meal.image_url} alt={t("clientDetail.mealPhotoAlt")} className="w-full h-40 object-cover" />
                       <div className="absolute top-2 left-2 bg-foreground/70 text-primary-foreground px-2 py-0.5 rounded-lg text-xs font-bold backdrop-blur-sm">
                         {meal.meal_type}
                       </div>
@@ -1358,15 +1358,15 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     {meal.analyzed ? (
                       <div className="p-3 space-y-2">
                         <div className="grid grid-cols-5 gap-1 text-center">
-                          <div><Flame className="w-3.5 h-3.5 mx-auto text-destructive" /><p className="text-[10px] text-muted-foreground">カロリー</p><p className="text-xs font-bold">{meal.calories ?? 0}</p></div>
-                          <div><Beef className="w-3.5 h-3.5 mx-auto text-accent" /><p className="text-[10px] text-muted-foreground">タンパク質</p><p className="text-xs font-bold">{meal.protein ?? 0}g</p></div>
-                          <div><Droplets className="w-3.5 h-3.5 mx-auto text-warning" /><p className="text-[10px] text-muted-foreground">脂質</p><p className="text-xs font-bold">{meal.fat ?? 0}g</p></div>
-                          <div><Wheat className="w-3.5 h-3.5 mx-auto text-info" /><p className="text-[10px] text-muted-foreground">炭水化物</p><p className="text-xs font-bold">{meal.carbs ?? 0}g</p></div>
-                          <div><Leaf className="w-3.5 h-3.5 mx-auto text-success" /><p className="text-[10px] text-muted-foreground">食物繊維</p><p className="text-xs font-bold">{meal.fiber ?? 0}g</p></div>
+                          <div><Flame className="w-3.5 h-3.5 mx-auto text-destructive" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutCalories")}</p><p className="text-xs font-bold">{meal.calories ?? 0}</p></div>
+                          <div><Beef className="w-3.5 h-3.5 mx-auto text-accent" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutProtein")}</p><p className="text-xs font-bold">{meal.protein ?? 0}g</p></div>
+                          <div><Droplets className="w-3.5 h-3.5 mx-auto text-warning" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutFat")}</p><p className="text-xs font-bold">{meal.fat ?? 0}g</p></div>
+                          <div><Wheat className="w-3.5 h-3.5 mx-auto text-info" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutCarbs")}</p><p className="text-xs font-bold">{meal.carbs ?? 0}g</p></div>
+                          <div><Leaf className="w-3.5 h-3.5 mx-auto text-success" /><p className="text-[10px] text-muted-foreground">{t("clientDetail.nutFiber")}</p><p className="text-xs font-bold">{meal.fiber ?? 0}g</p></div>
                         </div>
                         {meal.feedback && (
                           <div className="bg-accent/10 rounded-lg p-2">
-                            <p className="text-[10px] font-bold text-accent mb-0.5">AIアドバイス</p>
+                            <p className="text-[10px] font-bold text-accent mb-0.5">{t("clientDetail.aiAdvice")}</p>
                             <p className="text-xs text-foreground leading-relaxed">{meal.feedback}</p>
                           </div>
                         )}
@@ -1374,7 +1374,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     ) : (
                       <div className="p-3 flex items-center gap-2 text-muted-foreground">
                         <DumbbellLoader className="w-4 h-4" />
-                        <span className="text-xs">AI分析中...</span>
+                        <span className="text-xs">{t("clientDetail.aiAnalyzing")}</span>
                       </div>
                     )}
                   </CardContent>
@@ -1382,7 +1382,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               ))}
             </div>
           ) : (
-            <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">食事記録なし</CardContent></Card>
+            <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">{t("clientDetail.noMeals")}</CardContent></Card>
           )}
         </TabsContent>
 
@@ -1390,7 +1390,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         <TabsContent value="bookings">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
-            予約一覧
+            {t("clientDetail.bookingsSection")}
           </h2>
           {loadingBookings ? (
             <div className="flex justify-center py-8"><DumbbellLoader className="w-5 h-5 text-accent" /></div>
@@ -1416,7 +1416,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               ))}
             </div>
           ) : (
-            <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">予約なし</CardContent></Card>
+            <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">{t("clientDetail.noBookings")}</CardContent></Card>
           )}
         </TabsContent>
 
@@ -1434,13 +1434,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         <TabsContent value="chat">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5" />
-            チャット
+            {t("clientDetail.chatSection")}
           </h2>
           {!isRegistered ? (
             <Card>
               <CardContent className="p-6 text-center space-y-2">
                 <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto" />
-                <p className="text-sm text-muted-foreground">この顧客はまだアプリに登録していないため、チャット機能は利用できません。</p>
+                <p className="text-sm text-muted-foreground">{t("clientDetail.chatNotRegistered")}</p>
               </CardContent>
             </Card>
           ) : loadingChat ? (
@@ -1468,13 +1468,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       <div ref={chatEndRef} />
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">メッセージなし</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">{t("clientDetail.chatEmpty")}</p>
                   )}
                 </CardContent>
               </Card>
               <div className="flex items-end gap-2">
                 <textarea
-                  placeholder="メッセージを入力..."
+                  placeholder={t("clientDetail.chatPlaceholder")}
                   value={chatInput}
                   onChange={(e) => {
                     setChatInput(e.target.value);
@@ -1506,17 +1506,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>この記録を削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>{t("clientDetail.deleteRecordTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget && (() => {
                 const s = deleteTarget.sets || (deleteTarget.weight != null ? [{ set: 1, weight: deleteTarget.weight, reps: deleteTarget.reps }] : []);
-                return `${deleteTarget.exercise_name} ${s.map((x: any) => `${x.weight}kg×${x.reps}`).join(", ")} の記録を削除します。この操作は取り消せません。`;
+                return t("clientDetail.deleteWorkoutDesc", { name: deleteTarget.exercise_name, sets: s.map((x: any) => `${x.weight}kg×${x.reps}`).join(", ") });
               })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">削除する</AlertDialogAction>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t("common.deleteAction")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

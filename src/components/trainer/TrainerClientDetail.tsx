@@ -464,11 +464,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     if (!newExName.trim()) return;
     const { data, error } = await supabase
       .from("exercises")
-      .insert({ name: newExName.trim(), category: "その他" })
+      .insert({ name: newExName.trim(), category: t("clientDetail.categoryOther") })
       .select()
       .single();
     if (error) {
-      toast.error("種目の追加に失敗しました");
+      toast.error(t("clientDetail.addExerciseFailed"));
       return;
     }
     setExerciseMasters(prev => [...prev, data]);
@@ -477,7 +477,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setExercises(updated);
     setShowNewExercise(null);
     setNewExName("");
-    toast.success(`「${data.name}」をマスターに追加しました`);
+    toast.success(t("clientDetail.addedToMaster", { name: data.name }));
   };
 
   const handleSave = async () => {

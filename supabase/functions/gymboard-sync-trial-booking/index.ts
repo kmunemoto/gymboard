@@ -148,6 +148,81 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.error("[trial-push] failed:", e instanceof Error ? e.message : String(e));
       }
+
+      // 体験予約メール通知 (fire-and-forget) — INSERT失敗時は到達しない
+      try {
+        const jstOffset = 9 * 60 * 60 * 1000;
+        const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
+        const bd = new Date(booking_date);
+        const jstBd = new Date(bd.getTime() + jstOffset);
+        const dateStr = `${jstBd.getUTCMonth() + 1}月${jstBd.getUTCDate()}日（${dowChars[jstBd.getUTCDay()]}）`;
+        const startMin = jstBd.getUTCHours() * 60 + jstBd.getUTCMinutes();
+        const endMin = startMin + 60;
+        const fmt = (m: number) =>
+          `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        const timeStr = `${fmt(startMin)}〜${fmt(endMin)}`;
+
+        const invokeEmail = async (payload: Record<string, unknown>) => {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SERVICE_ROLE,
+              "Authorization": `Bearer ${SERVICE_ROLE}`,
+            },
+            body: JSON.stringify(payload),
+          });
+          const t = await res.text();
+          console.log(`[trial-email] template=${payload.templateName} status=${res.status} body=${t}`);
+        };
+
+        // 1) お客様宛 (guest_contact がメールアドレスの場合のみ)
+        if (guest_contact.includes("@")) {
+          invokeEmail({
+            templateName: "trial-booking-confirmation",
+            recipientEmail: guest_contact,
+            idempotencyKey: `trial-confirm-${newTrialId}`,
+            templateData: {
+              customerName: guest_name,
+              bookingDate: dateStr,
+              bookingTime: timeStr,
+            },
+          }).catch((e) =>
+            console.error("[trial-email] customer failed:", e instanceof Error ? e.message : String(e)),
+          );
+        } else {
+          console.log("[trial-email] skip customer (guest_contact is not email)");
+        }
+
+        // 2) トレーナー宛
+        try {
+          const { data: trainerRoles } = await admin.rpc("get_trainer_ids");
+          const trainerId = (trainerRoles as Array<{ user_id: string }> | null)?.[0]?.user_id;
+          if (trainerId) {
+            invokeEmail({
+              templateName: "new-booking-notification",
+              recipientEmail: "_resolve_trainer_",
+              idempotencyKey: `trial-notify-${newTrialId}`,
+              templateData: {
+                customerName: `${guest_name}（初回無料体験）`,
+                bookingDate: dateStr,
+                bookingTime: timeStr,
+                planName: "初回無料体験",
+                dashboardUrl: "https://gymboard.lovable.app",
+                trainerUserId: trainerId,
+              },
+            }).catch((e) =>
+              console.error("[trial-email] trainer failed:", e instanceof Error ? e.message : String(e)),
+            );
+          } else {
+            console.log("[trial-email] no trainer found via get_trainer_ids");
+          }
+        } catch (e) {
+          console.error("[trial-email] trainer resolve failed:", e instanceof Error ? e.message : String(e));
+        }
+      } catch (e) {
+        console.error("[trial-email] failed:", e instanceof Error ? e.message : String(e));
+      }
     }
 
     return json({

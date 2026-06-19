@@ -16,6 +16,7 @@ import MuscleGroupBadge from "./MuscleGroupBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { getCycleWindow as getSharedCycleWindow } from "@/lib/courseProgress";
+import { useTranslation } from "react-i18next";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
 
@@ -23,17 +24,13 @@ interface Props {
   onBack: () => void;
 }
 
-/**
- * Given a cycle_start_date and a target date, find the cycle window containing that date.
- * 共通の courseProgress.getCycleWindow に統一（アニバーサリー日は前サイクル最終日として扱う）。
- */
 const getCycleWindow = (cycleStartDate: string, targetDate: Date) => {
   const w = getSharedCycleWindow(cycleStartDate, targetDate);
-  // 共通関数は null 不可ケースを想定するため、ここでは必ず値が返る前提
   return w ?? { start: parseISO(cycleStartDate), end: addDays(addMonths(parseISO(cycleStartDate), 1), 1) };
 };
 
 const CustomerMonthlyReport = ({ onBack }: Props) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profile } = useProfile();
   const { plans: tenantPlans } = useTenant();
@@ -43,7 +40,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     return m;
   }, [tenantPlans]);
   const { currentStreak, bestStreak } = useStreak(user?.id);
-  const [cycleOffset, setCycleOffset] = useState(0); // 0 = current cycle, -1 = previous, etc.
+  const [cycleOffset, setCycleOffset] = useState(0);
   const [bookings, setBookings] = useState<any[]>([]);
   const [measurements, setMeasurements] = useState<any[]>([]);
   const [meals, setMeals] = useState<any[]>([]);
@@ -57,10 +54,8 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
 
   const cycleStartDate = profile?.cycle_start_date;
 
-  // Compute current cycle window then apply offset
   const { cycleStart, cycleEnd, prevCycleStart, prevCycleEnd, isCurrentCycle } = useMemo(() => {
     if (!cycleStartDate) {
-      // Fallback to calendar month if no cycle_start_date
       const now = getJSTNow();
       const base = new Date(now.getFullYear(), now.getMonth(), 1);
       const shifted = addMonths(base, cycleOffset);
@@ -78,7 +73,6 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       start: addMonths(currentCycle.start, cycleOffset),
       end: addMonths(currentCycle.end, cycleOffset),
     };
-    // prev cycle: アニバーサリー日（shifted.start の前日）を含むサイクル
     const prevRef = addDays(shifted.start, -1);
     const prev = getCycleWindow(cycleStartDate, prevRef);
     return {
@@ -100,7 +94,6 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       const ceStr = cycleEnd.toISOString();
       const pcsStr = prevCycleStart.toISOString();
       const pceStr = prevCycleEnd.toISOString();
-      // For monthly_reports, use month as the first day of the cycle
       const monthStr = format(cycleStart, "yyyy-MM-dd");
 
       const [bRes, mRes, mlRes, dRes, pdRes, pbRes, wRes, pwRes, tcRes] = await Promise.all([
@@ -143,7 +136,6 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
   const remainingDays = Math.max(0, differenceInDays(cycleEnd, getJSTNow()));
   const remainingSessions = Math.max(0, maxSessions - sessionCount);
 
-  // Measurements
   const firstM = measurements.length > 0 ? measurements[0] : null;
   const lastM = measurements.length > 0 ? measurements[measurements.length - 1] : null;
   const weightChange = firstM && lastM && firstM.weight != null && lastM.weight != null ? (lastM.weight - firstM.weight) : null;
@@ -154,7 +146,6 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     return { date: `${d.getMonth() + 1}/${d.getDate()}`, weight: m.weight, bodyFat: m.body_fat };
   });
 
-  // Meals
   const analyzedMeals = meals.filter(m => m.analyzed);
   const mealDays = new Set(meals.map(m => formatJST(m.created_at, "yyyy-MM-dd"))).size;
   const avgCalories = analyzedMeals.length > 0 ? Math.round(analyzedMeals.reduce((s, m) => s + (m.calories || 0), 0) / analyzedMeals.length) : null;
@@ -163,16 +154,14 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
   const avgCarbs = analyzedMeals.length > 0 ? Math.round(analyzedMeals.reduce((s, m) => s + (m.carbs || 0), 0) / analyzedMeals.length * 10) / 10 : null;
 
   const pfcData = avgProtein != null && avgFat != null && avgCarbs != null ? [
-    { name: "タンパク質", value: avgProtein },
-    { name: "脂質", value: avgFat },
-    { name: "炭水化物", value: avgCarbs },
+    { name: t("report.pfcProtein"), value: avgProtein },
+    { name: t("report.pfcFat"), value: avgFat },
+    { name: t("report.pfcCarbs"), value: avgCarbs },
   ] : null;
 
-  // Skeletal
   const latestDiag = diagnoses.length > 0 ? diagnoses[diagnoses.length - 1] : null;
   const prevDiag = prevDiagnoses.length > 0 ? prevDiagnoses[0] : null;
 
-  // Training records
   type WorkoutRow = { exercise_name: string; workout_date: string; sets: { weight: number; reps: number }[] };
   const normalize = (rows: any[]): WorkoutRow[] => rows.map((w) => {
     const sets = (w.sets && Array.isArray(w.sets) && w.sets.length > 0)
@@ -185,7 +174,6 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     const cur = normalize(workouts);
     const prev = normalize(prevWorkouts);
 
-    // Per-exercise: latest & prev max weight, sets×reps representative
     const exMap = new Map<string, WorkoutRow[]>();
     cur.forEach(w => {
       const arr = exMap.get(w.exercise_name) || [];
@@ -194,13 +182,11 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     });
 
     const summary = Array.from(exMap.entries()).map(([name, rows]) => {
-      // sort by date asc
       rows.sort((a, b) => a.workout_date.localeCompare(b.workout_date));
       const maxWeightOf = (r: WorkoutRow) => r.sets.reduce((m, s) => Math.max(m, s.weight), 0);
       const latestRow = rows[rows.length - 1];
       const latestWeight = maxWeightOf(latestRow);
 
-      // prev = previous record in current cycle if multiple, else last from prev cycle
       let prevWeight: number | null = null;
       let prevSetsRepsRow: WorkoutRow | null = null;
       if (rows.length > 1) {
@@ -216,8 +202,10 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         }
       }
 
-      const setsRepsLatest = `${latestRow.sets.length}セット×${Math.max(...latestRow.sets.map(s => s.reps))}回`;
-      const setsRepsPrev = prevSetsRepsRow ? `${prevSetsRepsRow.sets.length}セット×${Math.max(...prevSetsRepsRow.sets.map(s => s.reps))}回` : null;
+      const setsRepsLatest = t("report.setsReps", { sets: latestRow.sets.length, reps: Math.max(...latestRow.sets.map(s => s.reps)) });
+      const setsRepsPrev = prevSetsRepsRow
+        ? t("report.setsReps", { sets: prevSetsRepsRow.sets.length, reps: Math.max(...prevSetsRepsRow.sets.map(s => s.reps)) })
+        : null;
       const totalVolumeLatest = latestRow.sets.reduce((sum, s) => sum + (Number(s.weight) || 0) * (Number(s.reps) || 0), 0);
 
       return {
@@ -233,9 +221,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       };
     }).sort((a, b) => b.count - a.count);
 
-    // Top 3 by record count for chart
     const top3 = summary.slice(0, 3);
-    // Build chart data merged by date
     const dateSet = new Set<string>();
     top3.forEach(s => s.history.forEach(h => dateSet.add(h.date)));
     const dates = Array.from(dateSet).sort();
@@ -250,44 +236,43 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     });
 
     return { summary, top3, chartData };
-  }, [workouts, prevWorkouts]);
+  }, [workouts, prevWorkouts, t]);
 
   const hasWorkouts = trainingSummary.summary.length > 0;
   const TRAINING_COLORS = ["hsl(174, 65%, 50%)", "hsl(174, 55%, 38%)", "hsl(190, 60%, 55%)"];
 
-  // AI advice - cycle-aware
   const generateAdvice = () => {
     const parts: string[] = [];
 
     if (maxSessions > 0 && achieveRate >= 100) {
-      parts.push("今回の目標回数を達成しました！素晴らしいです");
+      parts.push(t("report.adviceAchieved"));
     } else if (maxSessions > 0 && isCurrentCycle && remainingSessions > 0 && remainingDays > 0) {
       const pace = remainingDays / remainingSessions;
       if (pace >= 7) {
-        parts.push(`あと${remainingDays}日で${remainingSessions}回の来店が必要です。週1ペースで達成できます！`);
+        parts.push(t("report.advicePaceWeekly", { days: remainingDays, sessions: remainingSessions }));
       } else if (pace >= 3) {
-        parts.push(`あと${remainingDays}日で${remainingSessions}回の来店が必要です。ペースを上げていきましょう！`);
+        parts.push(t("report.advicePaceUp", { days: remainingDays, sessions: remainingSessions }));
       } else {
-        parts.push(`残り${remainingDays}日で${remainingSessions}回の来店が必要です。頑張りましょう！`);
+        parts.push(t("report.adviceRushDays", { days: remainingDays, sessions: remainingSessions }));
       }
     } else if (sessionCount === 0) {
-      parts.push("今回はまだ来店がありません。一緒に頑張りましょう！");
+      parts.push(t("report.adviceNoVisit"));
     }
 
     if (weightChange != null && weightChange < -0.5) {
-      parts.push("体重も順調に減少しています。この調子で続けましょう！");
+      parts.push(t("report.adviceWeightDown"));
     } else if (weightChange != null && weightChange > 0.5) {
-      parts.push("体重が少し増加していますが、筋肉量の増加の可能性もあります。");
+      parts.push(t("report.adviceWeightUp"));
     }
 
     if (mealDays > cycleDays * 0.7) {
-      parts.push("食事記録もしっかりつけられていて素晴らしいです。");
+      parts.push(t("report.adviceMealGood"));
     } else if (mealDays > 0 && mealDays < cycleDays * 0.3) {
-      parts.push("食事記録をもう少しこまめにつけると、より効果的です。");
+      parts.push(t("report.adviceMealMore"));
     }
 
     if (parts.length === 0) {
-      parts.push("コツコツ続けることが大切です。一緒に頑張りましょう！");
+      parts.push(t("report.adviceDefault"));
     }
 
     return parts.join(" ");
@@ -299,7 +284,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     return (
       <div className="px-4 py-4">
         <Button variant="ghost" size="sm" onClick={onBack} className="mb-4">
-          <ArrowLeft className="w-4 h-4 mr-1" /> 戻る
+          <ArrowLeft className="w-4 h-4 mr-1" /> {t("report.back")}
         </Button>
         <div className="flex items-center justify-center py-20">
           <DumbbellLoader className="w-6 h-6 text-accent" />
@@ -320,7 +305,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <h1 className="text-lg font-bold flex-1 text-center">今回のレポート</h1>
+        <h1 className="text-lg font-bold flex-1 text-center">{t("report.title")}</h1>
         <div className="w-8" />
       </div>
 
@@ -332,7 +317,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         <div className="flex items-center gap-2">
           <span className="text-base font-bold">{periodLabel}</span>
           {isCurrentCycle && (
-            <Badge variant="secondary" className="text-xs">今回</Badge>
+            <Badge variant="secondary" className="text-xs">{t("report.currentCycleBadge")}</Badge>
           )}
         </div>
         <Button variant="ghost" size="icon" onClick={() => setCycleOffset(o => o + 1)} disabled={!canGoNext}>
@@ -345,22 +330,22 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Award className="w-3.5 h-3.5" />
-            トレーニングサマリー
+            {t("report.trainingSummary")}
           </h2>
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">来店済み</span>
+                <span className="text-sm font-medium">{t("report.visited")}</span>
                 <span className="text-2xl font-extrabold">
                   {sessionCount}
-                  {maxSessions > 0 && <span className="text-sm font-normal text-muted-foreground">/{maxSessions}回</span>}
+                  {maxSessions > 0 && <span className="text-sm font-normal text-muted-foreground">{t("report.ofMaxSessions", { max: maxSessions })}</span>}
                 </span>
               </div>
               {maxSessions > 0 && (
                 <>
                   <Progress value={achieveRate} className="h-2.5" />
                   <p className="text-sm font-bold text-center">
-                    {achieveRate >= 100 ? "達成！" : `あと${remainingSessions}回！`}
+                    {achieveRate >= 100 ? t("report.achieved") : t("report.remainingSessions", { count: remainingSessions })}
                   </p>
                 </>
               )}
@@ -368,20 +353,20 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
                     <CalendarDays className="w-3.5 h-3.5" />
-                    今回の予約予定
+                    {t("report.scheduledSessions")}
                   </span>
-                  <span className="text-sm font-bold">あと{scheduledBookings.length}回</span>
+                  <span className="text-sm font-bold">{t("report.scheduledCount", { count: scheduledBookings.length })}</span>
                 </div>
               )}
               {sessionDiff !== 0 && (
                 <p className="text-xs text-muted-foreground text-center">
-                  前回より{sessionDiff > 0 ? `+${sessionDiff}` : sessionDiff}回
+                  {t("report.prevDiff", { diff: sessionDiff > 0 ? `+${sessionDiff}` : sessionDiff })}
                 </p>
               )}
               {currentStreak > 0 && isCurrentCycle && (
                 <div className="flex items-center justify-center gap-1.5 pt-1">
                   <Flame className="w-4 h-4 text-orange-500" />
-                  <span className="text-sm font-bold">{currentStreak}週連続来店中！</span>
+                  <span className="text-sm font-bold">{t("report.weekStreak", { count: currentStreak })}</span>
                 </div>
               )}
             </CardContent>
@@ -394,13 +379,13 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <TrendingDown className="w-3.5 h-3.5" />
-            体重・体脂肪の変化
+            {t("report.weightChange")}
           </h2>
           <Card>
             <CardContent className="p-4 space-y-3">
               {firstM && lastM && firstM.weight != null && lastM.weight != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">体重</span>
+                  <span className="text-sm">{t("report.weight")}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{firstM.weight}kg → {lastM.weight}kg</span>
                     <span className={`text-xs font-bold flex items-center gap-0.5 ${weightChange! < 0 ? 'text-success' : weightChange! > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -412,7 +397,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
               )}
               {firstM && lastM && firstM.body_fat != null && lastM.body_fat != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">体脂肪率</span>
+                  <span className="text-sm">{t("report.bodyFat")}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{firstM.body_fat}% → {lastM.body_fat}%</span>
                     <span className={`text-xs font-bold flex items-center gap-0.5 ${fatChange! < 0 ? 'text-success' : fatChange! > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -423,7 +408,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
                 </div>
               )}
               {weightChange != null && weightChange > 0 && (
-                <p className="text-xs text-muted-foreground">筋肉量が増えている可能性があります</p>
+                <p className="text-xs text-muted-foreground">{t("report.muscleMassHint")}</p>
               )}
               {measurementChartData.length > 1 && (
                 <div className="h-32">
@@ -438,7 +423,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} />
                       <YAxis domain={['dataMin - 0.5', 'dataMax + 0.5']} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={32} />
                       <Tooltip contentStyle={{ background: 'hsl(0,0%,100%)', border: 'none', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', fontSize: '11px' }} />
-                      <Area type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" strokeWidth={2} fill="url(#rptWeightG)" isAnimationActive={false} dot={{ r: 3, fill: "hsl(174, 65%, 50%)", strokeWidth: 1, stroke: "hsl(0,0%,100%)" }} name="体重(kg)" />
+                      <Area type="monotone" dataKey="weight" stroke="hsl(174, 65%, 50%)" strokeWidth={2} fill="url(#rptWeightG)" isAnimationActive={false} dot={{ r: 3, fill: "hsl(174, 65%, 50%)", strokeWidth: 1, stroke: "hsl(0,0%,100%)" }} name={t("report.weightKg")} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -452,12 +437,12 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <Dumbbell className="w-3.5 h-3.5" />
-          トレーニング記録
+          {t("report.trainingRecords")}
         </h2>
         {!hasWorkouts ? (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              トレーニング記録がまだありません
+              {t("report.noTrainingRecords")}
             </CardContent>
           </Card>
         ) : (
@@ -493,7 +478,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
               {/* Top 3 chart */}
               {trainingSummary.chartData.length > 1 && trainingSummary.top3.length > 0 && (
                 <div className="pt-2 border-t border-border/60">
-                  <p className="text-xs text-muted-foreground mb-2">主要種目の重量推移</p>
+                  <p className="text-xs text-muted-foreground mb-2">{t("report.weightProgressChart")}</p>
                   <div className="h-44">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={trainingSummary.chartData}>
@@ -513,7 +498,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
 
               {/* Sets x reps changes */}
               <div className="pt-2 border-t border-border/60 space-y-1">
-                <p className="text-xs text-muted-foreground mb-1.5">セット数 × 回数の変化</p>
+                <p className="text-xs text-muted-foreground mb-1.5">{t("report.setsRepsChange")}</p>
                 {trainingSummary.summary.map((s) => (
                   <div key={s.name} className="flex items-center justify-between text-xs">
                     <span className="font-medium flex items-center gap-1.5 min-w-0">
@@ -527,7 +512,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
                         <span className="font-bold text-foreground">{s.setsRepsLatest}</span>
                       )}
                       {s.totalVolumeLatest > 0 && (
-                        <span className="ml-2 text-muted-foreground/70">総ボリューム {s.totalVolumeLatest}kg</span>
+                        <span className="ml-2 text-muted-foreground/70">{t("report.totalVolume", { volume: s.totalVolumeLatest })}</span>
                       )}
                     </span>
                   </div>
@@ -543,32 +528,32 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Utensils className="w-3.5 h-3.5" />
-            食事記録サマリー
+            {t("report.mealSummary")}
           </h2>
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm">記録日数</span>
-                <span className="text-base font-bold">{mealDays}/{cycleDays}日</span>
+                <span className="text-sm">{t("report.recordDays")}</span>
+                <span className="text-base font-bold">{mealDays}/{cycleDays}{t("report.daysSuffix")}</span>
               </div>
               {avgCalories != null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">平均カロリー</span>
+                  <span className="text-sm">{t("report.avgCalories")}</span>
                   <span className="text-base font-bold">{avgCalories}kcal</span>
                 </div>
               )}
               {avgProtein != null && (
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <p className="text-xs text-muted-foreground">P (タンパク質)</p>
+                    <p className="text-xs text-muted-foreground">{t("report.protein")}</p>
                     <p className="text-sm font-bold">{avgProtein}g</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">F (脂質)</p>
+                    <p className="text-xs text-muted-foreground">{t("report.fat")}</p>
                     <p className="text-sm font-bold">{avgFat}g</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">C (炭水化物)</p>
+                    <p className="text-xs text-muted-foreground">{t("report.carbs")}</p>
                     <p className="text-sm font-bold">{avgCarbs}g</p>
                   </div>
                 </div>
@@ -597,26 +582,29 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Bone className="w-3.5 h-3.5" />
-            骨格診断の変化
+            {t("report.skeletalChange")}
           </h2>
           <Card>
             <CardContent className="p-4 space-y-2">
-              <p className="text-sm">骨格タイプ: <span className="font-bold">{latestDiag.skeletal_type}</span></p>
-              <p className="text-sm">信頼度: <span className="font-bold">{latestDiag.confidence}%</span></p>
-              {prevDiag && latestDiag.confidence !== prevDiag.confidence && (
-                <p className="text-sm text-accent font-bold">
-                  スコアが{latestDiag.confidence - prevDiag.confidence > 0 ? '+' : ''}{latestDiag.confidence - prevDiag.confidence}点変化しました！
-                </p>
-              )}
+              <p className="text-sm">{t("report.skeletalType")}<span className="font-bold">{latestDiag.skeletal_type}</span></p>
+              <p className="text-sm">{t("report.confidence")}<span className="font-bold">{latestDiag.confidence}%</span></p>
+              {prevDiag && latestDiag.confidence !== prevDiag.confidence && (() => {
+                const scoreDiff = latestDiag.confidence - prevDiag.confidence;
+                return (
+                  <p className="text-sm text-accent font-bold">
+                    {t("report.scoreChange", { diff: scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff })}
+                  </p>
+                );
+              })()}
               {latestDiag.image_url && prevDiag?.image_url && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground mb-1">前回</p>
-                    <img src={prevDiag.image_url} alt="前期" className="rounded-lg w-full aspect-[3/4] object-cover" />
+                    <p className="text-xs text-muted-foreground mb-1">{t("report.prevCycle")}</p>
+                    <img src={prevDiag.image_url} alt={t("report.prevCycle")} className="rounded-lg w-full aspect-[3/4] object-cover" />
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground mb-1">今回</p>
-                    <img src={latestDiag.image_url} alt="今回" className="rounded-lg w-full aspect-[3/4] object-cover" />
+                    <p className="text-xs text-muted-foreground mb-1">{t("report.thisCycle")}</p>
+                    <img src={latestDiag.image_url} alt={t("report.thisCycle")} className="rounded-lg w-full aspect-[3/4] object-cover" />
                   </div>
                 </div>
               )}
@@ -630,7 +618,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5" />
-            トレーナーからのコメント
+            {t("report.trainerComment")}
           </h2>
           <Card className="border-l-4 border-l-accent">
             <CardContent className="p-4">
@@ -644,7 +632,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5" />
-          AIからのアドバイス
+          {t("report.aiAdvice")}
         </h2>
         <Card className="gym-gradient text-primary-foreground">
           <CardContent className="p-4">
@@ -657,7 +645,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       {!hasTraining && !hasMeasurements && !hasMeals && !hasDiagnosis && !hasWorkouts && (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            この期間のデータはまだありません。
+            {t("report.noData")}
           </CardContent>
         </Card>
       )}

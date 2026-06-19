@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Megaphone, Plus, Pencil, Trash2, Users, User as UserIcon, Clock, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";

@@ -192,9 +192,9 @@ const TrainerNotificationSettings = () => {
                   <Calendar className="w-5 h-5 text-blue-500" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-sm mb-1">Googleカレンダー連携</h3>
+                  <h3 className="font-bold text-sm mb-1">{t("settings.gcal.section")}</h3>
                   <p className="text-xs text-muted-foreground mb-3">
-                    予約が入ると自動的にGoogleカレンダーに登録されます。キャンセル時は自動削除されます。
+                    {t("settings.gcal.description")}
                   </p>
                   {gcalLoading ? (
                     <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
@@ -202,16 +202,16 @@ const TrainerNotificationSettings = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-xs font-bold text-blue-500">
                         <CheckCircle2 className="w-4 h-4" />
-                        Googleカレンダー連携済み
+                        {t("settings.gcal.linked")}
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <Button size="sm" variant="outline" onClick={handleSyncAll} disabled={syncing}>
                           {syncing ? <DumbbellLoader className="w-3.5 h-3.5 mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
-                          既存予約を一括同期
+                          {t("settings.gcal.syncAll")}
                         </Button>
                         <Button size="sm" variant="outline" onClick={handleGcalUnlink}>
                           <Unlink className="w-3.5 h-3.5 mr-1.5" />
-                          連携を解除
+                          {t("settings.gcal.unlink")}
                         </Button>
                       </div>
                     </div>
@@ -222,7 +222,7 @@ const TrainerNotificationSettings = () => {
                       className="bg-blue-500 hover:bg-blue-600 text-white"
                     >
                       <Calendar className="w-4 h-4 mr-1.5" />
-                      Googleカレンダーと連携する
+                      {t("settings.gcal.link")}
                     </Button>
                   )}
                 </div>
@@ -231,10 +231,6 @@ const TrainerNotificationSettings = () => {
           </Card>
         )}
 
-        {/*
-          App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
-          連携済みユーザーのデータ・通知ロジックには影響しない。
-        */}
         {true && (
           <Card>
             <CardContent className="p-5">
@@ -243,19 +239,19 @@ const TrainerNotificationSettings = () => {
                   <MessageCircle className="w-5 h-5 text-[#06C755]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-sm mb-1">LINE連携</h3>
+                  <h3 className="font-bold text-sm mb-1">{t("settings.line.section")}</h3>
                   <p className="text-xs text-muted-foreground mb-3">
-                    LINEと連携すると、新規予約・キャンセルなどの通知をLINEで受け取れます。
+                    {t("settings.line.trainerDescription")}
                   </p>
                   {isLineLinked ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-xs font-bold text-[#06C755]">
                         <CheckCircle2 className="w-4 h-4" />
-                        LINE連携済み
+                        {t("settings.line.linked")}
                       </div>
                       <Button size="sm" variant="outline" onClick={handleLineUnlink}>
                         <Unlink className="w-3.5 h-3.5 mr-1.5" />
-                        連携を解除
+                        {t("settings.line.unlink")}
                       </Button>
                     </div>
                   ) : (
@@ -265,7 +261,7 @@ const TrainerNotificationSettings = () => {
                       className="bg-[#06C755] hover:bg-[#05b34c] text-white"
                     >
                       <MessageCircle className="w-4 h-4 mr-1.5" />
-                      LINEと連携する
+                      {t("settings.line.link")}
                     </Button>
                   )}
                 </div>
@@ -286,41 +282,39 @@ const TrainerNotificationSettings = () => {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-sm mb-1">プッシュ通知</h3>
+                <h3 className="font-bold text-sm mb-1">{t("settings.notification.push")}</h3>
                 <p className="text-xs text-muted-foreground mb-3 break-all">
-                  アプリを開いていない時でも、予約・キャンセル・体験予約・メッセージの通知をスマートフォンに届けます。
+                  {t("settings.notification.pushDesc")}
                 </p>
                 {!isSupported ? (
-                  <p className="text-xs text-muted-foreground">このデバイスはプッシュ通知に対応していません。</p>
+                  <p className="text-xs text-muted-foreground">{t("settings.notification.notSupported")}</p>
                 ) : pushLoading ? (
                   <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
                 ) : isSubscribed ? (
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-accent flex items-center gap-1">
                       <BellRing className="w-3.5 h-3.5" />
-                      プッシュ通知は有効です
+                      {t("settings.notification.enabled")}
                     </span>
                     <Button size="sm" variant="outline" onClick={handleTogglePush}>
-                      通知を無効にする
+                      {t("settings.notification.disable")}
                     </Button>
                   </div>
                 ) : permission === "denied" ? (
                   <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                     <div className="text-xs text-muted-foreground break-all">
-                      {isNative ? (
-                        <>
-                          通知が拒否されています。{platform === "ios" ? "iPhoneの「設定」→「ジムボード」→「通知」" : "端末の「設定」→「アプリ」→「ジムボード」→「通知」"}から許可してください。
-                        </>
-                      ) : (
-                        <>通知が拒否されています。ブラウザのサイト設定から通知を許可してください。</>
-                      )}
+                      {isNative
+                        ? (platform === "ios"
+                            ? t("settings.notification.deniedIos")
+                            : t("settings.notification.deniedAndroid"))
+                        : t("settings.notification.deniedWeb")}
                     </div>
                   </div>
                 ) : (
                   <Button size="sm" onClick={handleTogglePush}>
                     <Bell className="w-4 h-4 mr-1.5" />
-                    プッシュ通知を許可する
+                    {t("settings.notification.allow")}
                   </Button>
                 )}
               </div>
@@ -328,23 +322,23 @@ const TrainerNotificationSettings = () => {
 
             {isSubscribed && (
               <div className="mt-4 pt-4 border-t border-border">
-                <p className="text-xs font-bold mb-2">受け取る通知</p>
+                <p className="text-xs font-bold mb-2">{t("settings.notification.receiveTitle")}</p>
                 <ul className="space-y-1.5">
                   <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Check className="w-3.5 h-3.5 text-accent shrink-0" />
-                    新しい予約
+                    {t("settings.notification.receiveBooking")}
                   </li>
                   <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Check className="w-3.5 h-3.5 text-accent shrink-0" />
-                    予約キャンセル
+                    {t("settings.notification.receiveCancel")}
                   </li>
                   <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Check className="w-3.5 h-3.5 text-accent shrink-0" />
-                    新しい体験予約
+                    {t("settings.notification.receiveTrial")}
                   </li>
                   <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Check className="w-3.5 h-3.5 text-accent shrink-0" />
-                    お客様からのメッセージ
+                    {t("settings.notification.receiveMessage")}
                   </li>
                 </ul>
               </div>

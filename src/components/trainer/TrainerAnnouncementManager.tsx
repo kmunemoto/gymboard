@@ -288,10 +288,10 @@ const TrainerAnnouncementManager = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowForm(false)} disabled={submitting}>キャンセル</Button>
+              <Button variant="outline" onClick={() => setShowForm(false)} disabled={submitting}>{t("common.cancel")}</Button>
               <Button onClick={handleSubmit} disabled={submitting}>
                 {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-                {editing ? "更新" : "配信"}
+                {editing ? t("announcement.btnUpdate") : t("announcement.btnPublish")}
               </Button>
             </div>
           </div>

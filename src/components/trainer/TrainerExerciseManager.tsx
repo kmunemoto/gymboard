@@ -240,7 +240,7 @@ const TrainerExerciseManager = () => {
                   : "bg-muted text-muted-foreground"
               }`}
             >
-              {g === "all" ? "すべて" : g}
+              {g === "all" ? t("common.all") : g}
             </button>
           );
         })}

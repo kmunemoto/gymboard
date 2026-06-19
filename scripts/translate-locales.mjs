@@ -3,7 +3,7 @@
  * 翻訳ファイル自動生成スクリプト
  *
  * src/locales/ja.json を読み込み、欠けているキーだけを翻訳して
- * en.json / ko.json に書き出します。
+ * en.json / ko.json / zh-CN.json / zh-TW.json に書き出します。
  *
  * 使い方:
  *   LOVABLE_API_KEY=xxxx node scripts/translate-locales.mjs        # 差分のみ翻訳

@@ -19,10 +19,10 @@ type BodyNode =
 function parseBody(body: string): BodyNode[] {
   const nodes: BodyNode[] = [];
   const parts = body.split(URL_REGEX);
+  const isUrl = (s: string) => /^https?:\/\//.test(s);
   for (const part of parts) {
     if (!part) continue;
-    if (URL_REGEX.test(part)) {
-      URL_REGEX.lastIndex = 0;
+    if (isUrl(part)) {
       if (part.includes("apps.apple.com") || part.includes("itunes.apple.com")) {
         nodes.push({ type: "appstore", url: part });
       } else if (part.includes("play.google.com")) {
@@ -33,7 +33,6 @@ function parseBody(body: string): BodyNode[] {
     } else {
       nodes.push({ type: "text", value: part });
     }
-    URL_REGEX.lastIndex = 0;
   }
   return nodes;
 }

@@ -111,9 +111,15 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-background flex flex-col w-full max-w-md mx-auto">
+    <div
+      className="fixed inset-0 z-[60] bg-background flex flex-col w-full max-w-md mx-auto overflow-hidden"
+      style={{ height: "100vh", minHeight: "100dvh", maxHeight: "100dvh" }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+      >
         {selected ? (
           <button onClick={() => setSelected(null)} className="flex items-center gap-1 text-sm text-foreground">
             <ArrowLeft className="w-4 h-4" /> 戻る
@@ -131,7 +137,10 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="flex-1 overflow-y-auto overscroll-contain"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)", WebkitOverflowScrolling: "touch" }}
+      >
         {loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">読み込み中…</div>
         ) : selected ? (
@@ -147,8 +156,8 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
                 </p>
               </div>
             </div>
-            <div className="text-sm text-foreground leading-relaxed pt-2" style={{ whiteSpace: "pre-wrap" }}>
-              {selected.body}
+            <div className="text-sm text-foreground leading-relaxed pt-2 break-all" style={{ whiteSpace: "pre-wrap" }}>
+              {renderBodyWithLinks(selected.body)}
             </div>
             {(selected.image_url || selected.image_url2) && (
               <div className="mt-2 flex justify-center gap-3 flex-wrap">
@@ -160,6 +169,9 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
                 )}
               </div>
             )}
+            <p className="text-xs text-muted-foreground pt-4 border-t border-border/60 mt-4">
+              文章のご不明な点は、セッションの際にトレーナーにお気軽にお尋ねください。
+            </p>
           </div>
         ) : items.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground">お知らせはありません</div>

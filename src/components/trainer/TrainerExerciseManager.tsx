@@ -297,7 +297,7 @@ const TrainerExerciseManager = () => {
 
       {filtered.length === 0 && (
         <div className="text-center text-sm text-muted-foreground py-12">
-          該当する種目がありません
+          {t("exercise.noResults")}
         </div>
       )}
 

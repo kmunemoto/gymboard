@@ -108,7 +108,7 @@ const TrainerSchedule = () => {
 
   const handleProxyBook = async () => {
     if (!proxyDate || !proxyTime || !proxyClient || !proxyBookingType) {
-      toast.error("日付・時間・お客様・プランを選択してください");
+      toast.error(t("schedule.errorSelectAll"));
       return;
     }
     // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可

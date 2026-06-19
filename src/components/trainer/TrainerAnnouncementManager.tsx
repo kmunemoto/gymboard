@@ -194,11 +194,11 @@ const TrainerAnnouncementManager = () => {
                       <p className="font-bold text-sm break-all">{a.title}</p>
                       {scheduled ? (
                         <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                          <Clock className="w-3 h-3" />配信予約中
+                          <Clock className="w-3 h-3" />{t("announcement.scheduled")}
                         </span>
                       ) : (
                         <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                          <CheckCircle2 className="w-3 h-3" />配信済み
+                          <CheckCircle2 className="w-3 h-3" />{t("announcement.published")}
                         </span>
                       )}
                     </div>
@@ -208,15 +208,15 @@ const TrainerAnnouncementManager = () => {
                       {a.target === "all" ? <Users className="inline w-3 h-3 mr-0.5" /> : <UserIcon className="inline w-3 h-3 mr-0.5" />}
                       {targetLabel(a.target)}
                       <span className="mx-1.5">·</span>
-                      既読 {reads}人
+                      {t("announcement.readsCount", { count: reads })}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap break-all">{a.body}</p>
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label="編集">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={t("announcement.editAria")}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(a.id)} aria-label="削除">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(a.id)} aria-label={t("announcement.deleteAria")}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>

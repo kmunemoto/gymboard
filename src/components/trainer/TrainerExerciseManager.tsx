@@ -131,21 +131,21 @@ const TrainerExerciseManager = () => {
         .update(payload as any)
         .eq("id", editingId);
       if (error) {
-        toast.error("更新に失敗しました");
+        toast.error(t("exercise.updateFailed"));
         setSaving(false);
         return;
       }
-      toast.success("種目を更新しました");
+      toast.success(t("exercise.updatedToast"));
     } else {
       const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
       const tenantId = await fetchMyTenantId();
       const { error } = await supabase.from("exercises").insert(withTenant(payload, tenantId) as any);
       if (error) {
-        toast.error("追加に失敗しました");
+        toast.error(t("exercise.addFailed"));
         setSaving(false);
         return;
       }
-      toast.success(`「${name}」を追加しました`);
+      toast.success(t("exercise.addedToast", { name }));
     }
     await fetchExercises();
     await loadMuscleGroupMap(true);

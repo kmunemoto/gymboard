@@ -737,7 +737,7 @@ const TrainerSchedule = () => {
                           }`}
                         >
                           {slot.time}
-                          {slot.blocked && <span className="block text-[9px] text-destructive/70">使用中</span>}
+                          {slot.blocked && <span className="block text-[9px] text-destructive/70">{t("schedule.slotInUse")}</span>}
                         </button>
                       ));
                     })()}

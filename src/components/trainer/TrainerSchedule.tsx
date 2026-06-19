@@ -375,7 +375,7 @@ const TrainerSchedule = () => {
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    <th className="p-3 text-xs font-bold text-muted-foreground w-16">時間</th>
+                    <th className="p-3 text-xs font-bold text-muted-foreground w-16">{t("schedule.headerTime")}</th>
                     {weekDays.map((day) => {
                       const isToday = isSameDay(day, getJSTNow());
                       return (

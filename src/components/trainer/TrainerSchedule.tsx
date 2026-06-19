@@ -230,13 +230,13 @@ const TrainerSchedule = () => {
     const dateStr = format(blockDate, "yyyy-MM-dd");
 
     if (blockEndTime <= blockStartTime) {
-      toast.error("終了時間は開始時間より後にしてください");
+      toast.error(t("schedule.blockEndAfterStart"));
       return;
     }
 
     // Check if the range overlaps with any existing booking/block
     if (checkSlotBlocked(bookings, dateStr, blockStartTime, blockEndTime)) {
-      toast.error("この時間帯にはすでに予約またはブロックが入っています");
+      toast.error(t("schedule.blockOverlap"));
       return;
     }
 

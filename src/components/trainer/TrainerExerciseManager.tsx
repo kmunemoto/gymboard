@@ -276,7 +276,7 @@ const TrainerExerciseManager = () => {
                   </button>
                   <button
                     onClick={() => openEdit(ex)}
-                    aria-label="編集"
+                    aria-label={t("exercise.editAria")}
                     className="p-2 text-muted-foreground hover:text-foreground"
                   >
                     <Pencil className="w-4 h-4" />

@@ -188,7 +188,7 @@ async function processLang(target, jaFlat) {
     const chunk = todo.slice(i, i + CHUNK_SIZE);
     process.stdout.write(`  [${target.code}] ${i + chunk.length}/${todo.length} ...`);
     try {
-      const translations = await translateBatch(chunk, target.name);
+      const translations = await translateBatch(chunk, target.name, target.extraNote);
       for (const { key } of chunk) {
         if (translations[key] != null) {
           setNested(output, key, translations[key]);

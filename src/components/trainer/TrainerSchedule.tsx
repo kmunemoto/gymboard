@@ -313,7 +313,7 @@ const TrainerSchedule = () => {
             className="ml-1 h-8 px-2 text-xs"
             onClick={() => setWeekStart(startOfWeek(getJSTNow(), { weekStartsOn: 1 }))}
           >
-            今日
+            {t("common.today")}
           </Button>
         </div>
       </div>

@@ -1382,7 +1382,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               ))}
             </div>
           ) : (
-            <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">食事記録なし</CardContent></Card>
+            <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">{t("clientDetail.noMeals")}</CardContent></Card>
           )}
         </TabsContent>
 

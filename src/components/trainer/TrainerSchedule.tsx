@@ -478,7 +478,7 @@ const TrainerSchedule = () => {
                               {booking.isBlocked ? "—" : booking.clientName[0]}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate">{booking.isBlocked ? "ブロック" : booking.clientName}</p>
+                              <p className="text-sm font-bold truncate">{booking.isBlocked ? t("schedule.blockedLabel") : booking.clientName}</p>
                               <p className="text-xs text-muted-foreground">{booking.startTime}〜{booking.endTime}</p>
                               {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{booking.booking_type}</p>}
                               {!booking.isBlocked && (() => {

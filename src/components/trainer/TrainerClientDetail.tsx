@@ -102,6 +102,7 @@ interface MealRecord {
 }
 
 const TrainingGrowthChart = ({ workoutRecords, loadingRecords }: { workoutRecords: WorkoutRecord[]; loadingRecords: boolean }) => {
+  const { t } = useTranslation();
   const exerciseNames = useMemo(() => {
     const names = new Set<string>();
     workoutRecords.forEach((w) => { if (w.exercise_name) names.add(w.exercise_name); });

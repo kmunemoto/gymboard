@@ -601,7 +601,7 @@ const TrainerSchedule = () => {
             </div>
             {proxyDate && (
               <div id="proxy-time-slots-section" className="scroll-mt-4">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">開始時間</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelStartTime")}</label>
                 <div className="grid grid-cols-4 gap-1.5 max-h-48 overflow-y-auto">
                   {(() => {
                     const slots: { time: string; blocked: boolean }[] = [];

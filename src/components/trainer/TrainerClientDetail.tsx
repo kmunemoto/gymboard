@@ -483,14 +483,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const handleSave = async () => {
     const validEntries = exercises.filter(ex => ex.exerciseId && ex.sets.some(s => s.weight && s.reps));
     if (validEntries.length === 0) {
-      toast.error("種目・重量・回数をすべて入力してください");
+      toast.error(t("clientDetail.errFillAll"));
       return;
     }
     setSaving(true);
 
     const { fetchMyTenantId } = await import("@/lib/tenantHelper");
     const tenantId = await fetchMyTenantId();
-    if (!tenantId) { toast.error("テナントが見つかりません"); setSaving(false); return; }
+    if (!tenantId) { toast.error(t("clientDetail.errNoTenant")); setSaving(false); return; }
 
     const rows = validEntries.map(ex => ({
       user_id: clientId,
@@ -510,31 +510,31 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     if (editingDate) {
       // Edit mode: delete old records, insert new ones
       const { error: delErr } = await supabase.from("workouts").delete().in("id", editingRecordIds);
-      if (delErr) { toast.error("更新に失敗しました"); setSaving(false); return; }
+      if (delErr) { toast.error(t("clientDetail.errUpdate")); setSaving(false); return; }
       const { data, error } = await supabase.from("workouts").insert(rows as any).select("*, exercises(name)");
-      if (error) { toast.error("更新に失敗しました"); setSaving(false); return; }
-      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || "不明" }));
+      if (error) { toast.error(t("clientDetail.errUpdate")); setSaving(false); return; }
+      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || t("common.unknown") }));
       setWorkoutRecords(prev => [...newRecords, ...prev.filter(r => !editingRecordIds.includes(r.id))]);
       setEditingDate(null);
       setEditingRecordIds([]);
-      toast.success("記録を更新しました");
+      toast.success(t("clientDetail.updatedToast"));
     } else {
       // New mode: insert
       const { data, error } = await supabase.from("workouts").insert(rows as any).select("*, exercises(name)");
-      if (error) { toast.error("保存に失敗しました"); setSaving(false); return; }
-      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || "不明" }));
+      if (error) { toast.error(t("clientDetail.errSave")); setSaving(false); return; }
+      const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || t("common.unknown") }));
       setWorkoutRecords(prev => [...newRecords, ...prev]);
-      toast.success("記録を保存しました", { description: `${displayName}さんのトレーニング記録を保存しました` });
+      toast.success(t("clientDetail.savedToast"), { description: t("clientDetail.savedDesc", { name: displayName }) });
     }
 
     // Evaluate today's missions for this customer (fire-and-forget UI feedback via toast)
     try {
       const result = await evaluateAndAwardMissions(clientId, trainingDate);
       for (const m of result.newlyCompleted) {
-        toast.success(`ミッション達成！${m.name}`, { description: `+${m.exp} EXP` });
+        toast.success(t("clientDetail.missionAchieved", { name: m.name }), { description: t("clientDetail.missionExp", { exp: m.exp }) });
       }
       if (result.bonusAwarded) {
-        toast.success("全ミッションコンプリート！", { description: "+50 EXP ボーナス！" });
+        toast.success(t("clientDetail.missionAllComplete"), { description: t("clientDetail.missionBonus") });
       }
     } catch (e) {
       // non-fatal
@@ -572,7 +572,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       if (vol > 0) {
         const r = await applyRaidDamage(clientId, trainingDate, vol);
         if (r?.defeated) {
-          toast.success("レイドボス撃破！", { description: "全員に報酬を配布しました！" });
+          toast.success(t("clientDetail.raidDefeated"), { description: t("clientDetail.raidDefeatedDesc") });
         }
       }
     } catch (e) {
@@ -583,8 +583,8 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     try {
       const ev = await updateEventProgress(clientId);
       for (const c of (ev?.completed_events || [])) {
-        toast.success(`イベント完走！${c.event_name}`, {
-          description: `+${c.reward_exp} EXP / +${c.reward_coins}コイン${c.badge_name ? ` / 限定バッジ「${c.badge_name}」` : ""}`,
+        toast.success(t("clientDetail.eventComplete", { name: c.event_name }), {
+          description: t("clientDetail.eventRewardDesc", { exp: c.reward_exp, coins: c.reward_coins, badge: c.badge_name ? t("clientDetail.eventBadgeSuffix", { badge: c.badge_name }) : "" }),
         });
       }
     } catch (e) {

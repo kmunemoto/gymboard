@@ -14,6 +14,9 @@ const PwaInstallBanner = () => {
   const [isIos, setIsIos] = useState(false);
 
   useEffect(() => {
+    // Native app: skip PWA install banner entirely
+    if (Capacitor.isNativePlatform()) return;
+
     // Don't show if already installed as standalone
     if (window.matchMedia("(display-mode: standalone)").matches) return;
 

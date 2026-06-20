@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
         booking_type: normalizeBookingType(n.booking_type ?? null),
         status: n.status ?? "confirmed",
         google_event_id: n.google_event_id ?? null,
+        source: "salute_sync",
       };
       if (n.created_at) insertRow.created_at = n.created_at;
 
@@ -181,6 +182,7 @@ Deno.serve(async (req) => {
           booking_type: normalizeBookingType(n.booking_type ?? null),
           status: n.status ?? "confirmed",
           google_event_id: n.google_event_id ?? null,
+          source: "salute_sync",
         };
         if (n.created_at) insertRow.created_at = n.created_at;
         const { data: inserted, error: insErr } = await admin

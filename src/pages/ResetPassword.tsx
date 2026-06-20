@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import gymboardLogo from "@/assets/gymboard-logo.png";
 
 const VERIFY_TIMEOUT_MS = 10_000;
 
 const ResetPassword = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [ready, setReady] = useState(false);
@@ -27,14 +29,9 @@ const ResetPassword = () => {
 
     const expire = (msg?: string) => {
       setLinkExpired(true);
-      setError(
-        msg ||
-          "リンクの有効期限が切れています。お手数ですがもう一度パスワードリセットをやり直してください。",
-      );
+      setError(msg || t("resetPassword.errExpiredDefault"));
     };
 
-    // Listen for PASSWORD_RECOVERY in case Supabase parses a hash-based link
-    // (legacy/implicit flow) before we get a chance to inspect URL params.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setReady(true);
@@ -45,7 +42,6 @@ const ResetPassword = () => {
 
     (async () => {
       try {
-        // 1) token_hash flow (new): /reset-password?token_hash=...&type=recovery
         const tokenHash = searchParams.get("token_hash");
         const typeParam = searchParams.get("type");
         if (tokenHash) {
@@ -66,7 +62,6 @@ const ResetPassword = () => {
           return;
         }
 
-        // 2) PKCE flow (?code=...) — only works in same browser that initiated
         const code = searchParams.get("code");
         if (code) {
           timer = window.setTimeout(() => {
@@ -82,14 +77,12 @@ const ResetPassword = () => {
           return;
         }
 
-        // 3) Implicit/hash flow — supabase-js handles it; check existing session
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           setReady(true);
           return;
         }
 
-        // 4) Wait a short while for PASSWORD_RECOVERY from a hash, then give up
         timer = window.setTimeout(() => {
           if (!ready) expire();
         }, VERIFY_TIMEOUT_MS);
@@ -109,7 +102,7 @@ const ResetPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      toast.error("パスワードは6文字以上にしてください");
+      toast.error(t("resetPassword.errPasswordTooShort"));
       return;
     }
     setLoading(true);
@@ -123,8 +116,8 @@ const ResetPassword = () => {
       const msg = err.message || "";
       setError(
         msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("invalid")
-          ? "リンクの有効期限が切れています。もう一度パスワードリセットを行ってください。"
-          : `エラーが発生しました: ${msg}`,
+          ? t("resetPassword.errExpiredOnSubmit")
+          : t("resetPassword.errGeneric", { message: msg }),
       );
     } finally {
       setLoading(false);
@@ -135,8 +128,8 @@ const ResetPassword = () => {
     <div className="min-h-screen bg-background flex flex-col justify-start px-4 py-8 overflow-y-auto">
       <div className="w-full max-w-md space-y-6 slide-up mx-auto my-auto">
         <div className="text-center flex flex-col items-center gap-1">
-          <img src={gymboardLogo} alt="ジムボード" className="h-20 w-auto object-contain" />
-          <h1 className="text-2xl font-bold tracking-tight mt-1">新しいパスワードの設定</h1>
+          <img src={gymboardLogo} alt={t("resetPassword.logoAlt")} className="h-20 w-auto object-contain" />
+          <h1 className="text-2xl font-bold tracking-tight mt-1">{t("resetPassword.title")}</h1>
         </div>
 
         <Card>
@@ -144,11 +137,9 @@ const ResetPassword = () => {
             {done ? (
               <div className="space-y-4 text-center">
                 <CheckCircle2 className="w-12 h-12 text-accent mx-auto" />
-                <p className="text-sm">
-                  パスワードを変更しました。新しいパスワードでログインしてください。
-                </p>
+                <p className="text-sm">{t("resetPassword.doneMessage")}</p>
                 <Button variant="accent" className="w-full" onClick={() => navigate("/auth")}>
-                  ログインへ
+                  {t("resetPassword.toLogin")}
                 </Button>
               </div>
             ) : linkExpired ? (
@@ -159,22 +150,20 @@ const ResetPassword = () => {
                   className="w-full"
                   onClick={() => navigate("/auth?mode=forgot")}
                 >
-                  パスワードリセットをやり直す
+                  {t("resetPassword.retryReset")}
                 </Button>
                 <Link
                   to="/auth"
                   className="text-sm text-muted-foreground hover:text-foreground underline block"
                 >
-                  ログインへ戻る
+                  {t("resetPassword.backToLogin")}
                 </Link>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  新しいパスワードを入力してください（6文字以上）。
-                </p>
+                <p className="text-sm text-muted-foreground">{t("resetPassword.intro")}</p>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">新しいパスワード</label>
+                  <label className="text-sm font-bold">{t("resetPassword.labelNewPassword")}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
@@ -182,7 +171,7 @@ const ResetPassword = () => {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="6文字以上"
+                      placeholder={t("resetPassword.placeholder")}
                       minLength={6}
                       className="w-full bg-secondary rounded-xl pl-10 pr-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
                     />
@@ -190,7 +179,7 @@ const ResetPassword = () => {
                       type="button"
                       onClick={() => setShow((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={show ? "パスワードを隠す" : "パスワードを表示"}
+                      aria-label={show ? t("resetPassword.hidePassword") : t("resetPassword.showPassword")}
                     >
                       {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -199,9 +188,7 @@ const ResetPassword = () => {
 
                 {error && <p className="text-xs text-destructive font-medium">{error}</p>}
                 {!ready && !error && (
-                  <p className="text-xs text-muted-foreground">
-                    リンクを確認しています…
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("resetPassword.verifyingLink")}</p>
                 )}
 
                 <Button
@@ -210,12 +197,12 @@ const ResetPassword = () => {
                   className="w-full"
                   disabled={loading || !ready}
                 >
-                  {loading ? "処理中..." : "パスワードを変更する"}
+                  {loading ? t("resetPassword.processing") : t("resetPassword.submit")}
                 </Button>
 
                 <div className="text-center">
                   <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground underline">
-                    ログインへ戻る
+                    {t("resetPassword.backToLogin")}
                   </Link>
                 </div>
               </form>

@@ -226,9 +226,13 @@ Deno.serve(async (req) => {
         }
 
         // 6b) GymBoard 側の status/source を補正
+        // 6b) GymBoard 側 source を NULL に戻す（all_delete モード）／cancelled+salute_sync 補正（fix モード）
+        const updatePayload = allDelete
+          ? { source: null as unknown as string }
+          : { status: "cancelled", source: "salute_sync" };
         const { error: upErr } = await admin
           .from("bookings")
-          .update({ status: "cancelled", source: "salute_sync" })
+          .update(updatePayload)
           .eq("id", t.id)
           .eq("tenant_id", TENANT_ID);
 

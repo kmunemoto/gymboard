@@ -34,7 +34,7 @@ export function useMeasurements(userId: string | undefined) {
     async (date: string, weight: number | null, bodyFat: number | null) => {
       if (!userId) return false;
       if (weight == null && bodyFat == null) {
-        toast.error("体重または体脂肪率を入力してください");
+        toast.error(i18n.t("hooks.enterWeightOrFat"));
         return false;
       }
 
@@ -48,7 +48,7 @@ export function useMeasurements(userId: string | undefined) {
           .update({ weight, body_fat: bodyFat })
           .eq("id", existing.id);
         if (error) {
-          toast.error("更新に失敗しました");
+          toast.error(i18n.t("hooks.updateFailed"));
           return false;
         }
       } else {
@@ -58,13 +58,13 @@ export function useMeasurements(userId: string | undefined) {
           .from("user_measurements")
           .insert(withTenant({ user_id: userId, measured_date: date, weight, body_fat: bodyFat }, tenantId) as any);
         if (error) {
-          toast.error("保存に失敗しました");
+          toast.error(i18n.t("hooks.saveFailed"));
           return false;
         }
       }
 
       await fetchMeasurements();
-      toast.success("計測データを保存しました");
+      toast.success(i18n.t("hooks.measurementSaved"));
       // Evaluate weight journey milestones (no-op when none set)
       try {
         const { data: res } = await supabase.rpc("check_weight_milestones" as any, { p_user_id: userId });
@@ -87,11 +87,11 @@ export function useMeasurements(userId: string | undefined) {
         .delete()
         .eq("id", id);
       if (error) {
-        toast.error("削除に失敗しました");
+        toast.error(i18n.t("hooks.deleteFailed"));
         return false;
       }
       await fetchMeasurements();
-      toast.success("計測データを削除しました");
+      toast.success(i18n.t("hooks.measurementDeleted"));
       return true;
     },
     [fetchMeasurements]

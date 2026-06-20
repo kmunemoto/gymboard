@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       tenant_id: TENANT_ID,
-      mode: fix ? "fix" : "report_only",
+      mode: allDelete ? "all_delete" : fix ? "fix" : "report_only",
       salute_export_attempts: attempts,
       salute_export_chosen_variant: chosenVariant,
       salute_total_used: chosen.length,

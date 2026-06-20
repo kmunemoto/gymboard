@@ -13,6 +13,7 @@ import { getMuscleGroup } from "@/lib/muscleGroup";
 import { computeTitles } from "@/lib/titleSystem";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
+import i18n from "@/lib/i18n";
 
 export interface AvatarRow {
   total_exp: number;

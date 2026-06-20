@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import i18n from "@/lib/i18n";
 
 export interface TenantLimitStatus {
   customer_count: number;

@@ -194,8 +194,10 @@ Deno.serve(async (req) => {
 
     // 6) fix モード: salute_cancelled に該当する GymBoard 予約を処理
     const fixResults: Array<Record<string, unknown>> = [];
-    if (fix) {
-      const targets = classified.filter((r) => r.classification === "salute_cancelled");
+    if (fix || allDelete) {
+      const targets = allDelete
+        ? classified
+        : classified.filter((r) => r.classification === "salute_cancelled");
       for (const t of targets) {
         // 6a) delete を Salute へ送信 (external_bookings から消す)
         const payload = {

@@ -238,7 +238,7 @@ export const createBooking = async (
   const tenantId = await fetchMyTenantId();
   const { data, error } = await supabase
     .from("bookings")
-    .insert(withTenant({ user_id: userId, booking_date: bookingDate, booking_type: bookingType }, tenantId) as any)
+    .insert(withTenant({ user_id: userId, booking_date: bookingDate, booking_type: bookingType, source: "gymboard" }, tenantId) as any)
     .select()
     .single();
 

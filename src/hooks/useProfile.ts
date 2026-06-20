@@ -39,13 +39,14 @@ export const useProfile = () => {
   const refetch = () => setRefreshKey((k) => k + 1);
 
   const updateDisplayName = async (nextDisplayName: string) => {
+    const { default: i18n } = await import("@/lib/i18n");
     if (!user) {
-      return { error: new Error("ログイン情報が見つかりません") };
+      return { error: new Error(i18n.t("hooks.loginInfoNotFound")) };
     }
 
     const trimmedName = nextDisplayName.trim();
     if (!trimmedName) {
-      return { error: new Error("名前を入力してください") };
+      return { error: new Error(i18n.t("hooks.enterName")) };
     }
 
     const { data: updatedRow, error: updateError } = await supabase

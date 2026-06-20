@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Plus, Trash2, Upload, Copy } from "lucide-react";
+import { Check, Plus, Trash2, Upload, Copy, PartyPopper } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,32 +23,34 @@ interface PlanInput {
 }
 
 const PRESET_COLORS = ["#3FB6AC", "#6366F1", "#F59E0B", "#EC4899", "#10B981"];
-const BUSINESS_OPTIONS: { value: BusinessType; label: string }[] = [
-  { value: "personal_gym", label: "パーソナルジム" },
-  { value: "pilates", label: "ピラティス" },
-  { value: "yoga", label: "ヨガ" },
-  { value: "seitai", label: "整体・整骨院" },
-  { value: "other", label: "その他" },
-];
 const START_HOURS = Array.from({ length: 6 }, (_, i) => `${String(7 + i).padStart(2, "0")}:00`);
 const END_HOURS = Array.from({ length: 7 }, (_, i) => `${String(17 + i).padStart(2, "0")}:00`);
 const SLOT_OPTIONS = [30, 45, 60, 90, 120];
-const CUTOFF_OPTIONS: { value: string; label: string; type: CutoffType; hours?: number }[] = [
-  { value: "prev_day", label: "前日まで", type: "prev_day" },
-  { value: "2h", label: "当日2時間前まで", type: "hours_before", hours: 2 },
-  { value: "1h", label: "当日1時間前まで", type: "hours_before", hours: 1 },
-  { value: "none", label: "制限なし", type: "hours_before", hours: 0 },
-];
 
 const Onboarding = () => {
+  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  const BUSINESS_OPTIONS: { value: BusinessType; label: string }[] = [
+    { value: "personal_gym", label: t("onboarding.businessPersonalGym") },
+    { value: "pilates", label: t("onboarding.businessPilates") },
+    { value: "yoga", label: t("onboarding.businessYoga") },
+    { value: "seitai", label: t("onboarding.businessSeitai") },
+    { value: "other", label: t("onboarding.businessOther") },
+  ];
+
+  const CUTOFF_OPTIONS: { value: string; label: string; type: CutoffType; hours?: number }[] = [
+    { value: "prev_day", label: t("onboarding.cutoffPrevDay"), type: "prev_day" },
+    { value: "2h", label: t("onboarding.cutoff2h"), type: "hours_before", hours: 2 },
+    { value: "1h", label: t("onboarding.cutoff1h"), type: "hours_before", hours: 1 },
+    { value: "none", label: t("onboarding.cutoffNone"), type: "hours_before", hours: 0 },
+  ];
 
   const [step, setStep] = useState(1);
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Step 1
   const [gymName, setGymName] = useState("");
   const [businessType, setBusinessType] = useState<BusinessType>("personal_gym");
   const [address, setAddress] = useState("");
@@ -57,20 +60,16 @@ const Onboarding = () => {
   const [logoUrl, setLogoUrl] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
-  // Step 2
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("21:00");
   const [slotDuration, setSlotDuration] = useState(60);
   const [cutoffValue, setCutoffValue] = useState("prev_day");
   const [primaryColor, setPrimaryColor] = useState("#3FB6AC");
 
-  // Step 3
   const [plans, setPlans] = useState<PlanInput[]>([]);
 
-  // Step 4
   const [createdTenant, setCreatedTenant] = useState<{ id: string; invite_code: string } | null>(null);
 
-  // Redirect guards
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -103,9 +102,9 @@ const Onboarding = () => {
       if (error) throw error;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setLogoUrl(data.publicUrl);
-      toast({ title: "ロゴをアップロードしました" });
+      toast({ title: t("onboarding.toastLogoUploaded") });
     } catch (err: any) {
-      toast({ title: "アップロード失敗", description: err.message, variant: "destructive" });
+      toast({ title: t("onboarding.toastUploadFailed"), description: err.message, variant: "destructive" });
     } finally {
       setUploadingLogo(false);
     }
@@ -151,7 +150,7 @@ const Onboarding = () => {
         })
         .select("id")
         .single();
-      if (tErr || !tenant) throw tErr || new Error("テナント作成失敗");
+      if (tErr || !tenant) throw tErr || new Error(t("onboarding.errTenantCreateFailed"));
 
       const validPlans = plans
         .map((p, idx) => ({
@@ -174,13 +173,13 @@ const Onboarding = () => {
         user_id: user.id,
         role: "owner",
         status: "active",
-        display_name: gymName.trim() + " オーナー",
+        display_name: gymName.trim() + t("onboarding.ownerSuffix"),
       });
       if (mErr) throw mErr;
 
       await supabase
         .from("profiles")
-        .update({ display_name: gymName.trim() + " オーナー" })
+        .update({ display_name: gymName.trim() + t("onboarding.ownerSuffix") })
         .eq("user_id", user.id);
 
       await supabase
@@ -191,7 +190,7 @@ const Onboarding = () => {
       setCreatedTenant({ id: tenant.id, invite_code: (inviteCode as string) ?? "" });
       setStep(4);
     } catch (err: any) {
-      toast({ title: "登録失敗", description: err.message, variant: "destructive" });
+      toast({ title: t("onboarding.toastRegisterFailed"), description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -208,7 +207,6 @@ const Onboarding = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-md mx-auto px-4 py-8" style={{ overflowX: "hidden" }}>
-        {/* Stepper */}
         <div className="flex items-center justify-center gap-2 mb-6">
           {[1, 2, 3, 4].map((n) => (
             <div key={n} className="flex items-center gap-2">
@@ -232,15 +230,15 @@ const Onboarding = () => {
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <h1 className="text-xl font-bold mb-1">ジムボードへようこそ！</h1>
-                <p className="text-sm text-muted-foreground">まずはジムの基本情報を入力してください。</p>
+                <h1 className="text-xl font-bold mb-1">{t("onboarding.step1Title")}</h1>
+                <p className="text-sm text-muted-foreground">{t("onboarding.step1Sub")}</p>
               </div>
               <div>
-                <Label>ジム名 <span className="text-destructive">*</span></Label>
-                <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="パーソナルジム○○" maxLength={100} />
+                <Label>{t("onboarding.fieldGymName")} <span className="text-destructive">*</span></Label>
+                <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder={t("onboarding.gymNamePlaceholder")} maxLength={100} />
               </div>
               <div>
-                <Label>業種 <span className="text-destructive">*</span></Label>
+                <Label>{t("onboarding.fieldBusinessType")} <span className="text-destructive">*</span></Label>
                 <select
                   value={businessType}
                   onChange={(e) => setBusinessType(e.target.value as BusinessType)}
@@ -252,28 +250,28 @@ const Onboarding = () => {
                 </select>
               </div>
               <div>
-                <Label>住所</Label>
-                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="東京都渋谷区..." maxLength={200} />
+                <Label>{t("onboarding.fieldAddress")}</Label>
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t("onboarding.addressPlaceholder")} maxLength={200} />
               </div>
               <div>
-                <Label>電話番号</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="090-XXXX-XXXX" maxLength={20} />
+                <Label>{t("onboarding.fieldPhone")}</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t("onboarding.phonePlaceholder")} maxLength={20} />
               </div>
               <div>
-                <Label>メールアドレス</Label>
+                <Label>{t("onboarding.fieldEmail")}</Label>
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" maxLength={255} />
               </div>
               <div>
-                <Label>ホームページURL</Label>
+                <Label>{t("onboarding.fieldWebsite")}</Label>
                 <Input value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://..." maxLength={500} />
               </div>
               <div>
-                <Label>ロゴ画像</Label>
+                <Label>{t("onboarding.fieldLogo")}</Label>
                 <div className="flex items-center gap-3 mt-1">
-                  {logoUrl && <img src={logoUrl} alt="logo" className="w-12 h-12 rounded-md object-cover border" />}
+                  {logoUrl && <img src={logoUrl} alt={t("onboarding.logoAlt")} className="w-12 h-12 rounded-md object-cover border" />}
                   <label className="flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background text-sm cursor-pointer hover:bg-muted">
                     <Upload className="w-4 h-4" />
-                    {uploadingLogo ? "アップロード中..." : logoUrl ? "変更" : "アップロード"}
+                    {uploadingLogo ? t("onboarding.uploading") : logoUrl ? t("onboarding.change") : t("onboarding.upload")}
                     <input
                       type="file"
                       accept="image/*"
@@ -284,7 +282,7 @@ const Onboarding = () => {
                 </div>
               </div>
               <div className="pt-4 flex justify-end">
-                <Button onClick={() => setStep(2)} disabled={!step1Valid}>次へ →</Button>
+                <Button onClick={() => setStep(2)} disabled={!step1Valid}>{t("onboarding.next")}</Button>
               </div>
             </div>
           )}
@@ -292,37 +290,37 @@ const Onboarding = () => {
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <h1 className="text-xl font-bold mb-1">営業設定</h1>
-                <p className="text-sm text-muted-foreground">営業時間と予約の設定を行います。</p>
+                <h1 className="text-xl font-bold mb-1">{t("onboarding.step2Title")}</h1>
+                <p className="text-sm text-muted-foreground">{t("onboarding.step2Sub")}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>営業開始時間</Label>
+                  <Label>{t("onboarding.fieldStart")}</Label>
                   <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
                     {START_HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
                 <div>
-                  <Label>営業終了時間</Label>
+                  <Label>{t("onboarding.fieldEnd")}</Label>
                   <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
                     {END_HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <Label>1セッションの長さ</Label>
+                <Label>{t("onboarding.fieldSlotDuration")}</Label>
                 <select value={slotDuration} onChange={(e) => setSlotDuration(parseInt(e.target.value))} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                  {SLOT_OPTIONS.map((m) => <option key={m} value={m}>{m}分</option>)}
+                  {SLOT_OPTIONS.map((m) => <option key={m} value={m}>{t("onboarding.slotMinutes", { n: m })}</option>)}
                 </select>
               </div>
               <div>
-                <Label>予約締切</Label>
+                <Label>{t("onboarding.fieldCutoff")}</Label>
                 <select value={cutoffValue} onChange={(e) => setCutoffValue(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
                   {CUTOFF_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
-                <Label>アプリのテーマカラー</Label>
+                <Label>{t("onboarding.fieldThemeColor")}</Label>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   {PRESET_COLORS.map((c) => (
                     <button
@@ -343,8 +341,8 @@ const Onboarding = () => {
                 </div>
               </div>
               <div className="pt-4 flex justify-between">
-                <Button variant="outline" onClick={() => setStep(1)}>← 戻る</Button>
-                <Button onClick={() => setStep(3)} disabled={!step2Valid}>次へ →</Button>
+                <Button variant="outline" onClick={() => setStep(1)}>{t("onboarding.back")}</Button>
+                <Button onClick={() => setStep(3)} disabled={!step2Valid}>{t("onboarding.next")}</Button>
               </div>
             </div>
           )}
@@ -352,59 +350,59 @@ const Onboarding = () => {
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <h1 className="text-xl font-bold mb-1">プラン設定</h1>
-                <p className="text-sm text-muted-foreground">お客様向けのプランを設定してください。後からいつでも追加・変更できます。</p>
+                <h1 className="text-xl font-bold mb-1">{t("onboarding.step3Title")}</h1>
+                <p className="text-sm text-muted-foreground">{t("onboarding.step3Sub")}</p>
               </div>
               {plans.map((p, i) => (
                 <div key={i} className="border rounded-lg p-3 space-y-3 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">プラン {i + 1}</span>
-                    <button onClick={() => removePlan(i)} className="text-destructive p-1" aria-label="削除">
+                    <span className="text-sm font-semibold">{t("onboarding.planLabel", { n: i + 1 })}</span>
+                    <button onClick={() => removePlan(i)} className="text-destructive p-1" aria-label={t("onboarding.deleteAria")}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                   <div>
-                    <Label>プラン名</Label>
-                    <Input value={p.name} onChange={(e) => updatePlan(i, { name: e.target.value })} placeholder="月4回プラン" maxLength={50} />
+                    <Label>{t("onboarding.fieldPlanName")}</Label>
+                    <Input value={p.name} onChange={(e) => updatePlan(i, { name: e.target.value })} placeholder={t("onboarding.planNamePlaceholder")} maxLength={50} />
                   </div>
                   <div>
-                    <Label>タイプ</Label>
+                    <Label>{t("onboarding.fieldPlanType")}</Label>
                     <select
                       value={p.type}
                       onChange={(e) => updatePlan(i, { type: e.target.value as PlanType })}
                       className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     >
-                      <option value="subscription">月額制（月X回）</option>
-                      <option value="ticket">チケット制（X回分、有効期限あり）</option>
-                      <option value="period">期間制（X日間通い放題）</option>
+                      <option value="subscription">{t("onboarding.planTypeSubscription")}</option>
+                      <option value="ticket">{t("onboarding.planTypeTicket")}</option>
+                      <option value="period">{t("onboarding.planTypePeriod")}</option>
                     </select>
                   </div>
                   {p.type !== "period" && (
                     <div>
-                      <Label>{p.type === "subscription" ? "月の上限回数" : "総回数"}</Label>
+                      <Label>{p.type === "subscription" ? t("onboarding.fieldMonthlyLimit") : t("onboarding.fieldTotalSessions")}</Label>
                       <Input type="number" inputMode="numeric" value={p.maxSessions} onChange={(e) => updatePlan(i, { maxSessions: e.target.value })} />
                     </div>
                   )}
                   <div>
-                    <Label>料金（円）</Label>
+                    <Label>{t("onboarding.fieldPrice")}</Label>
                     <Input type="number" inputMode="numeric" value={p.price} onChange={(e) => updatePlan(i, { price: e.target.value })} />
                   </div>
                   {(p.type === "ticket" || p.type === "period") && (
                     <div>
-                      <Label>{p.type === "ticket" ? "有効期限（日間）" : "期間（日間）"}</Label>
+                      <Label>{p.type === "ticket" ? t("onboarding.fieldValidityTicket") : t("onboarding.fieldValidityPeriod")}</Label>
                       <Input type="number" inputMode="numeric" value={p.validityDays} onChange={(e) => updatePlan(i, { validityDays: e.target.value })} />
                     </div>
                   )}
                 </div>
               ))}
               <Button variant="outline" onClick={addPlan} disabled={plans.length >= 10} className="w-full">
-                <Plus className="w-4 h-4 mr-1" /> プランを追加
+                <Plus className="w-4 h-4 mr-1" /> {t("onboarding.addPlan")}
               </Button>
               <div className="pt-4 flex justify-between">
-                <Button variant="outline" onClick={() => setStep(2)}>← 戻る</Button>
+                <Button variant="outline" onClick={() => setStep(2)}>{t("onboarding.back")}</Button>
                 <Button onClick={handleComplete} disabled={submitting}>
                   {submitting && <DumbbellLoader className="w-4 h-4 mr-2" />}
-                  登録する
+                  {t("onboarding.register")}
                 </Button>
               </div>
             </div>
@@ -412,13 +410,16 @@ const Onboarding = () => {
 
           {step === 4 && createdTenant && (
             <div className="space-y-5 text-center">
-              <div className="text-4xl">🎉</div>
-              <h1 className="text-xl font-bold">ジムの登録が完了しました！</h1>
+              <PartyPopper className="w-10 h-10 mx-auto text-accent" />
+              <h1 className="text-xl font-bold">{t("onboarding.step4Title")}</h1>
               <div className="text-2xl font-bold text-accent break-all">{gymName}</div>
               <div className="space-y-2">
-                <div className="text-sm text-muted-foreground">招待コード</div>
+                <div className="text-sm text-muted-foreground">{t("onboarding.inviteCodeLabel")}</div>
                 <div className="text-3xl font-mono font-bold tracking-wider break-all">{createdTenant.invite_code}</div>
-                <p className="text-sm text-muted-foreground">このコードをお客様にお伝えください。<br />お客様はアプリでこのコードを入力するだけで、あなたのジムに参加できます。</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("onboarding.inviteNote")}<br />
+                  {t("onboarding.inviteNote2")}
+                </p>
               </div>
               <div className="space-y-2">
                 <Button
@@ -426,10 +427,10 @@ const Onboarding = () => {
                   className="w-full"
                   onClick={() => {
                     navigator.clipboard.writeText(createdTenant.invite_code);
-                    toast({ title: "招待コードをコピーしました" });
+                    toast({ title: t("onboarding.toastCodeCopied") });
                   }}
                 >
-                  <Copy className="w-4 h-4 mr-1" /> 招待コードをコピー
+                  <Copy className="w-4 h-4 mr-1" /> {t("onboarding.copyCode")}
                 </Button>
                 <Button
                   variant="outline"
@@ -437,14 +438,14 @@ const Onboarding = () => {
                   onClick={() => {
                     const link = `${window.location.origin}/join/${createdTenant.invite_code}`;
                     navigator.clipboard.writeText(link);
-                    toast({ title: "招待リンクをコピーしました" });
+                    toast({ title: t("onboarding.toastLinkCopied") });
                   }}
                 >
-                  <Copy className="w-4 h-4 mr-1" /> 招待リンクをコピー
+                  <Copy className="w-4 h-4 mr-1" /> {t("onboarding.copyLink")}
                 </Button>
               </div>
               <Button className="w-full" onClick={() => navigate("/", { replace: true })}>
-                管理画面へ進む →
+                {t("onboarding.goDashboard")}
               </Button>
             </div>
           )}

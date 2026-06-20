@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, MapPin, CheckCircle2 } from "lucide-react";
+import { Search, MapPin, CheckCircle2, Dumbbell, PartyPopper } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ interface FoundTenant {
 }
 
 const JoinGym = () => {
+  const { t } = useTranslation();
   const { code: codeParam } = useParams<{ code?: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -32,7 +34,6 @@ const JoinGym = () => {
   const [displayName, setDisplayName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Auth + membership check
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -48,14 +49,13 @@ const JoinGym = () => {
         .limit(1)
         .maybeSingle();
       if (data) {
-        const gymName = (data.tenants as any)?.gym_name ?? "あるジム";
+        const gymName = (data.tenants as any)?.gym_name ?? t("joinGym.fallbackGymName");
         setExistingMembership({ gym_name: gymName });
       }
       setChecking(false);
     })();
-  }, [user, authLoading, navigate, codeParam]);
+  }, [user, authLoading, navigate, codeParam, t]);
 
-  // Auto-search if code in URL
   useEffect(() => {
     if (!checking && codeParam && !tenant && !error && !existingMembership) {
       handleSearch(codeParam);
@@ -66,7 +66,7 @@ const JoinGym = () => {
   const handleSearch = async (raw: string) => {
     const cleaned = raw.replace(/-/g, "").trim().toLowerCase();
     if (!cleaned) {
-      setError("招待コードを入力してください");
+      setError(t("joinGym.errEmptyCode"));
       return;
     }
     setSearching(true);
@@ -77,12 +77,12 @@ const JoinGym = () => {
       if (rpcErr) throw rpcErr;
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) {
-        setError("招待コードが見つかりません。トレーナーに確認してください。");
+        setError(t("joinGym.errCodeNotFound"));
       } else {
         setTenant(row as FoundTenant);
       }
     } catch (err: any) {
-      setError(err.message || "検索に失敗しました");
+      setError(err.message || t("joinGym.errSearchFailed"));
     } finally {
       setSearching(false);
     }
@@ -91,14 +91,13 @@ const JoinGym = () => {
   const handleJoin = async () => {
     if (!user || !tenant) return;
     if (!displayName.trim()) {
-      toast({ title: "表示名を入力してください", variant: "destructive" });
+      toast({ title: t("joinGym.toastEmptyName"), variant: "destructive" });
       return;
     }
     setSubmitting(true);
     try {
       const name = displayName.trim();
 
-      // 1. プロフィールの表示名を先に保存（upsert: 行が無くても作成）
       const { error: pErr } = await supabase
         .from("profiles")
         .upsert(
@@ -107,7 +106,6 @@ const JoinGym = () => {
         );
       if (pErr) throw pErr;
 
-      // 2. テナントメンバー登録（upsert: 再参加でも重複エラーにならない）
       const { error: mErr } = await supabase
         .from("tenant_members")
         .upsert(
@@ -122,10 +120,10 @@ const JoinGym = () => {
         );
       if (mErr) throw mErr;
 
-      toast({ title: `${tenant.gym_name}に参加しました！` });
+      toast({ title: t("joinGym.toastJoined", { name: tenant.gym_name }) });
       navigate("/", { replace: true });
     } catch (err: any) {
-      toast({ title: "参加に失敗しました", description: err.message, variant: "destructive" });
+      toast({ title: t("joinGym.toastJoinFailed"), description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -145,8 +143,8 @@ const JoinGym = () => {
     <div className="min-h-screen bg-background">
       <div className="max-w-md mx-auto px-4 py-8" style={{ overflowX: "hidden" }}>
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">ジムボード</h1>
-          <p className="text-sm text-muted-foreground mt-1">ジムに参加する</p>
+          <h1 className="text-2xl font-bold">{t("joinGym.appTitle")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("joinGym.subtitle")}</p>
         </div>
 
         <div className="bg-card border rounded-2xl shadow-sm p-6 space-y-4">
@@ -154,26 +152,22 @@ const JoinGym = () => {
             <div className="text-center space-y-4">
               <CheckCircle2 className="w-12 h-12 mx-auto text-accent" />
               <p className="text-base font-semibold break-all">
-                既に「{existingMembership.gym_name}」に参加しています
+                {t("joinGym.existingTitle", { name: existingMembership.gym_name })}
               </p>
-              <p className="text-sm text-muted-foreground">
-                ※ Phase 1では1ユーザー1ジムまでです。
-              </p>
+              <p className="text-sm text-muted-foreground">{t("joinGym.existingNote")}</p>
               <Button className="w-full" onClick={() => navigate("/", { replace: true })}>
-                ホームに戻る
+                {t("joinGym.backHome")}
               </Button>
             </div>
           ) : step === "search" && !tenant ? (
             <>
-              <p className="text-sm text-muted-foreground">
-                トレーナーから受け取った招待コードを入力してください。
-              </p>
+              <p className="text-sm text-muted-foreground">{t("joinGym.intro")}</p>
               <div>
-                <Label>招待コード</Label>
+                <Label>{t("joinGym.labelCode")}</Label>
                 <Input
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="XXXX-XXXX"
+                  placeholder={t("joinGym.codePlaceholder")}
                   className="text-center text-lg tracking-widest font-mono"
                   maxLength={20}
                   autoCapitalize="none"
@@ -183,7 +177,7 @@ const JoinGym = () => {
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button onClick={() => handleSearch(code)} disabled={searching} className="w-full">
                 {searching ? <DumbbellLoader className="w-4 h-4 mr-2" /> : <Search className="w-4 h-4 mr-2" />}
-                検索
+                {t("joinGym.search")}
               </Button>
             </>
           ) : tenant && step === "search" ? (
@@ -192,8 +186,8 @@ const JoinGym = () => {
                 {tenant.logo_url ? (
                   <img src={tenant.logo_url} alt={tenant.gym_name} className="w-20 h-20 mx-auto rounded-xl object-cover border" />
                 ) : (
-                  <div className="w-20 h-20 mx-auto rounded-xl flex items-center justify-center text-3xl" style={{ background: accent ? `${accent}20` : undefined }}>
-                    🏋️
+                  <div className="w-20 h-20 mx-auto rounded-xl flex items-center justify-center" style={{ background: accent ? `${accent}20` : undefined }}>
+                    <Dumbbell className="w-10 h-10 text-accent" />
                   </div>
                 )}
                 <h2 className="text-xl font-bold break-all">{tenant.gym_name}</h2>
@@ -203,36 +197,36 @@ const JoinGym = () => {
                   </p>
                 )}
               </div>
-              <p className="text-sm text-center">このジムに参加しますか？</p>
+              <p className="text-sm text-center">{t("joinGym.confirmJoin")}</p>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setTenant(null); setCode(""); }}>
-                  別のコード
+                  {t("joinGym.otherCode")}
                 </Button>
                 <Button
                   className="flex-1"
                   style={accent ? { background: accent, color: "#fff" } : undefined}
                   onClick={() => setStep("join")}
                 >
-                  参加する
+                  {t("joinGym.join")}
                 </Button>
               </div>
             </div>
           ) : step === "join" && tenant ? (
             <div className="space-y-4">
               <div className="text-center space-y-2">
-                <div className="text-3xl">🎉</div>
-                <p className="font-bold break-all">「{tenant.gym_name}」に参加します</p>
+                <PartyPopper className="w-8 h-8 mx-auto text-accent" />
+                <p className="font-bold break-all">{t("joinGym.joiningTitle", { name: tenant.gym_name })}</p>
                 <p className="text-sm text-muted-foreground">
-                  あなたの表示名を設定してください。<br />
-                  （トレーナーに表示される名前です）
+                  {t("joinGym.joiningHint1")}<br />
+                  {t("joinGym.joiningHint2")}
                 </p>
               </div>
               <div>
-                <Label>表示名</Label>
+                <Label>{t("joinGym.labelDisplayName")}</Label>
                 <Input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="山田 太郎"
+                  placeholder={t("joinGym.displayNamePlaceholder")}
                   maxLength={50}
                 />
               </div>
@@ -243,10 +237,10 @@ const JoinGym = () => {
                 onClick={handleJoin}
               >
                 {submitting && <DumbbellLoader className="w-4 h-4 mr-2" />}
-                アプリを始める →
+                {t("joinGym.start")}
               </Button>
               <Button variant="ghost" className="w-full" onClick={() => setStep("search")}>
-                戻る
+                {t("joinGym.back")}
               </Button>
             </div>
           ) : null}

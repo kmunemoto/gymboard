@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Dumbbell, Mail, Lock, User, Shield } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import gymboardLogo from "@/assets/gymboard-logo.png";
@@ -17,6 +18,7 @@ import { getAuthCallbackUrl } from "@/lib/nativeBridge";
 const EMAIL_CALLBACK_URL = getAuthCallbackUrl();
 
 const Auth = () => {
+  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [loginTarget, setLoginTarget] = useState<LoginTarget>("customer");
@@ -49,12 +51,6 @@ const Auth = () => {
     if (mode === "forgot") {
       setLoading(true);
       try {
-        // Always send users to the published web URL — native (capacitor://)
-        // and preview origins are NOT in Supabase's Redirect URLs allow list,
-        // so using window.location.origin causes Supabase to fall back to
-        // Site URL (Lovable platform login screen).
-        // /reset-password handles both the implicit-hash (#access_token&type=recovery)
-        // and PKCE (?code=) flows via onAuthStateChange + setSession.
         const redirectTo = "https://gymboard.lovable.app/reset-password";
         await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       } catch (err: any) {
@@ -67,11 +63,11 @@ const Auth = () => {
     }
     if (mode === "signup") {
       if (password.length < 6) {
-        toast.error("パスワードは6文字以上にしてください");
+        toast.error(t("auth.errPasswordTooShort"));
         return;
       }
       if (password !== passwordConfirm) {
-        toast.error("パスワードが一致しません");
+        toast.error(t("auth.errPasswordMismatchToast"));
         return;
       }
     }
@@ -93,37 +89,26 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        // Email confirmation is required. Supabase returns a user without a
-        // session in this case; the trainer role is assigned post-confirmation
-        // by AuthContext (which calls signup-trainer once the user signs in
-        // with a confirmed email and `user_metadata.role === "trainer"`).
         if (!authData.session) {
-          toast.success(
-            "確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。",
-            { duration: 8000 },
-          );
-          // Reset sensitive fields and switch back to login mode so the user
-          // can sign in after confirming.
+          toast.success(t("auth.signupEmailSent"), { duration: 8000 });
           setPassword("");
           setPasswordConfirm("");
           setMode("login");
           return;
         }
 
-        // Fallback path: email confirmation is disabled and a session already
-        // exists. Promote to trainer immediately if requested.
         if (isTrainer) {
           const { data: roleData, error: roleError } = await supabase.functions.invoke(
             "signup-trainer",
             { body: {} },
           );
           if (roleError || (roleData && (roleData as any).error)) {
-            const msg = (roleData as any)?.error || roleError?.message || "トレーナー登録に失敗しました。";
+            const msg = (roleData as any)?.error || roleError?.message || t("auth.errTrainerSignupFailed");
             throw new Error(msg);
           }
         }
 
-        toast.success("アカウントを作成しました。");
+        toast.success(t("auth.signupCompleted"));
         navigate(redirectParam || (isTrainer ? "/onboarding" : "/join"));
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -136,25 +121,25 @@ const Auth = () => {
     } catch (err: any) {
       const msg = err.message || "";
       console.error("Auth error:", msg);
-      const jaMessage =
+      const localized =
         msg.includes("Invalid login credentials")
-          ? "メールアドレスまたはパスワードが正しくありません。入力内容をご確認ください。"
+          ? t("auth.errInvalidCredentials")
         : msg.includes("Email not confirmed")
-          ? "メールアドレスが未確認です。受信トレイをご確認ください。"
+          ? t("auth.errEmailNotConfirmed")
         : msg.includes("User already registered")
-          ? "このメールアドレスは既に登録されています。"
+          ? t("auth.errUserAlreadyRegistered")
         : msg.includes("Password should be at least")
-          ? "パスワードは6文字以上で入力してください。"
+          ? t("auth.errPasswordPolicy")
         : msg.includes("Unable to validate email")
-          ? "有効なメールアドレスを入力してください。"
+          ? t("auth.errInvalidEmail")
         : msg.includes("Email rate limit exceeded")
-          ? "送信回数の上限に達しました。しばらく時間をおいてお試しください。"
+          ? t("auth.errRateLimit")
         : (msg.includes("password") && msg.includes("breach"))
-          ? "このパスワードは過去に漏洩が確認されています。別のパスワードをお試しください。"
+          ? t("auth.errPasswordBreached")
         : (msg.toLowerCase().includes("weak") || msg.toLowerCase().includes("easy to guess"))
-          ? "このパスワードは推測されやすいため、より複雑なパスワード（英数字の組み合わせなど）をお試しください。"
-        : `エラーが発生しました: ${msg}`;
-      toast.error(jaMessage);
+          ? t("auth.errPasswordWeak")
+        : t("auth.errGeneric", { message: msg });
+      toast.error(localized);
     } finally {
       setLoading(false);
     }
@@ -163,17 +148,15 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col justify-start px-4 py-8 overflow-y-auto">
       <div className="w-full max-w-md space-y-6 slide-up mx-auto my-auto">
-        {/* Logo & Title */}
         <div className="text-center flex flex-col items-center gap-1">
-          <img src={gymboardLogo} alt="ジムボード" className="h-20 w-auto object-contain" />
-          <h1 className="text-2xl font-bold tracking-tight mt-1">ジムボード</h1>
-          <p className="text-xs text-muted-foreground">パーソナルジム・ピラティス予約管理</p>
+          <img src={gymboardLogo} alt={t("auth.logoAlt")} className="h-20 w-auto object-contain" />
+          <h1 className="text-2xl font-bold tracking-tight mt-1">{t("auth.appTitle")}</h1>
+          <p className="text-xs text-muted-foreground">{t("auth.appTagline")}</p>
           <p className="text-sm text-muted-foreground mt-2">
-            {mode === "login" ? "アカウントにログイン" : mode === "signup" ? "新規アカウント作成" : "パスワードの再設定"}
+            {mode === "login" ? t("auth.modeLogin") : mode === "signup" ? t("auth.modeSignup") : t("auth.modeForgot")}
           </p>
         </div>
 
-        {/* Login target tabs */}
         <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
           <button
             type="button"
@@ -183,7 +166,7 @@ const Auth = () => {
             }`}
           >
             <Dumbbell className="w-4 h-4" />
-            お客様
+            {t("auth.tabCustomer")}
           </button>
           <button
             type="button"
@@ -193,7 +176,7 @@ const Auth = () => {
             }`}
           >
             <Shield className="w-4 h-4" />
-            ジムオーナー
+            {t("auth.tabTrainer")}
           </button>
         </div>
 
@@ -202,27 +185,21 @@ const Auth = () => {
             {mode === "forgot" ? (
               forgotSent ? (
                 <div className="space-y-4 text-center">
-                  <p className="text-sm leading-relaxed">
-                    メールを送信しました。届いたメール内のリンクからパスワードを再設定してください。
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    メールが届かない場合は、迷惑メールフォルダをご確認ください。
-                  </p>
+                  <p className="text-sm leading-relaxed">{t("auth.forgotSentTitle")}</p>
+                  <p className="text-xs text-muted-foreground">{t("auth.forgotSentNote")}</p>
                   <button
                     type="button"
                     onClick={() => { setMode("login"); setForgotSent(false); }}
                     className="text-sm text-accent hover:underline transition-colors font-medium"
                   >
-                    ログインへ戻る
+                    {t("auth.backToLogin")}
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    ご登録のメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。
-                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{t("auth.forgotIntro")}</p>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold">メールアドレス</label>
+                    <label className="text-sm font-bold">{t("auth.labelEmail")}</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
@@ -230,13 +207,13 @@ const Auth = () => {
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="mail@example.com"
+                        placeholder={t("auth.emailPlaceholder")}
                         className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
                       />
                     </div>
                   </div>
                   <Button type="submit" variant="accent" className="w-full" disabled={loading}>
-                    {loading ? "処理中..." : "送信する"}
+                    {loading ? t("common.processing") : t("auth.submitSend")}
                   </Button>
                   <div className="text-center">
                     <button
@@ -244,7 +221,7 @@ const Auth = () => {
                       onClick={() => setMode("login")}
                       className="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
                     >
-                      ログインへ戻る
+                      {t("auth.backToLogin")}
                     </button>
                   </div>
                 </form>
@@ -253,14 +230,14 @@ const Auth = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === "signup" && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">お名前</label>
+                  <label className="text-sm font-bold">{t("auth.labelName")}</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="お名前"
+                      placeholder={t("auth.namePlaceholder")}
                       className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
                     />
                   </div>
@@ -268,7 +245,7 @@ const Auth = () => {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-sm font-bold">メールアドレス</label>
+                <label className="text-sm font-bold">{t("auth.labelEmail")}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
@@ -276,14 +253,14 @@ const Auth = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="mail@example.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-bold">パスワード</label>
+                <label className="text-sm font-bold">{t("auth.labelPassword")}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
@@ -291,13 +268,13 @@ const Auth = () => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="6文字以上"
+                    placeholder={t("auth.passwordPlaceholder")}
                     minLength={6}
                     className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
                   />
                 </div>
                 {mode === "signup" && (
-                  <p className="text-xs text-muted-foreground mt-1">※パスワードは6文字以上で、推測されにくいものを設定してください</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("auth.signupPasswordHint")}</p>
                 )}
                 {mode === "login" && (
                   <div className="text-right pt-1">
@@ -306,7 +283,7 @@ const Auth = () => {
                       onClick={() => setMode("forgot")}
                       className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
                     >
-                      パスワードをお忘れの方はこちら
+                      {t("auth.forgotLink")}
                     </button>
                   </div>
                 )}
@@ -314,7 +291,7 @@ const Auth = () => {
 
               {mode === "signup" && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">パスワード（確認用）</label>
+                  <label className="text-sm font-bold">{t("auth.labelPasswordConfirm")}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
@@ -322,7 +299,7 @@ const Auth = () => {
                       required
                       value={passwordConfirm}
                       onChange={(e) => setPasswordConfirm(e.target.value)}
-                      placeholder="6文字以上"
+                      placeholder={t("auth.passwordPlaceholder")}
                       minLength={6}
                       className={`w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 transition-all placeholder:text-muted-foreground ${
                         passwordMismatch ? "ring-2 ring-destructive/50 focus:ring-destructive/50" : "focus:ring-accent/30"
@@ -330,13 +307,13 @@ const Auth = () => {
                     />
                   </div>
                   {passwordMismatch && (
-                    <p className="text-xs text-destructive font-medium">パスワードが一致しません</p>
+                    <p className="text-xs text-destructive font-medium">{t("auth.passwordMismatch")}</p>
                   )}
                 </div>
               )}
 
               <Button type="submit" variant="accent" className="w-full" disabled={loading || passwordMismatch}>
-                {loading ? "処理中..." : mode === "login" ? "ログイン" : "アカウント作成"}
+                {loading ? t("common.processing") : mode === "login" ? t("auth.submitLogin") : t("auth.submitSignup")}
               </Button>
             </form>
             )}
@@ -349,9 +326,7 @@ const Auth = () => {
                   onClick={() => setMode(mode === "login" ? "signup" : "login")}
                   className="text-sm text-accent hover:underline transition-colors font-medium"
                 >
-                  {mode === "login"
-                    ? "ジムオーナーの方はこちらから新規登録"
-                    : "すでにアカウントをお持ちの方はこちら"}
+                  {mode === "login" ? t("auth.switchToTrainerSignup") : t("auth.switchToLoginExisting")}
                 </button>
               ) : (
                 <button
@@ -359,9 +334,7 @@ const Auth = () => {
                   onClick={() => setMode(mode === "login" ? "signup" : "login")}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {mode === "login"
-                    ? "アカウントをお持ちでない方はこちら"
-                    : "すでにアカウントをお持ちの方はこちら"}
+                  {mode === "login" ? t("auth.switchToSignupCustomer") : t("auth.switchToLoginExisting")}
                 </button>
               )}
             </div>
@@ -371,14 +344,14 @@ const Auth = () => {
 
         <div className="text-center text-xs text-muted-foreground">
           {mode === "signup" && (
-            <p className="mb-2">アカウント作成により、以下に同意したものとみなされます。</p>
+            <p className="mb-2">{t("auth.signupAgreement")}</p>
           )}
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-            <Link to="/terms" className="hover:text-accent underline transition-colors">利用規約</Link>
+            <Link to="/terms" className="hover:text-accent underline transition-colors">{t("auth.linkTerms")}</Link>
             <span>·</span>
-            <Link to="/privacy" className="hover:text-accent underline transition-colors">プライバシーポリシー</Link>
+            <Link to="/privacy" className="hover:text-accent underline transition-colors">{t("auth.linkPrivacy")}</Link>
             <span>·</span>
-            <Link to="/tokushoho" className="hover:text-accent underline transition-colors">特定商取引法に基づく表記</Link>
+            <Link to="/tokushoho" className="hover:text-accent underline transition-colors">{t("auth.linkTokushoho")}</Link>
           </div>
         </div>
       </div>

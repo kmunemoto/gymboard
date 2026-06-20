@@ -1,17 +1,22 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail, Settings, Trash2, AlertCircle, Database } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-const BackLink = () => (
-  <Link
-    to="/"
-    className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent/80 transition-colors font-bold"
-  >
-    <ArrowLeft className="w-4 h-4" />
-    アプリに戻る
-  </Link>
-);
+const BackLink = () => {
+  const { t } = useTranslation();
+  return (
+    <Link
+      to="/"
+      className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent/80 transition-colors font-bold"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      {t("deleteAccount.backToApp")}
+    </Link>
+  );
+};
 
 const DeleteAccount = () => {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-3xl mx-auto px-5 py-8 sm:px-8 sm:py-12 leading-relaxed">
@@ -20,38 +25,32 @@ const DeleteAccount = () => {
         </div>
 
         <header className="mb-10">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">アカウントの削除について</h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            ジムボード / gymboardアプリ
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{t("deleteAccount.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-2">{t("deleteAccount.appSubtitle")}</p>
         </header>
 
         <article className="space-y-10 text-[15px]">
           <section>
-            <p>
-              gymboardアプリでは、お客様ご自身でアカウントを削除いただけます。以下の方法のいずれかでお手続きください。
-            </p>
+            <p>{t("deleteAccount.intro")}</p>
           </section>
 
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3 flex items-center gap-2">
               <Settings className="w-5 h-5 text-accent" />
-              アプリ内で削除する方法
+              {t("deleteAccount.inAppTitle")}
             </h2>
             <ol className="list-decimal pl-6 space-y-2">
-              <li>gymboardアプリにログインします。</li>
-              <li>画面下部のメニューから「設定」を開きます。</li>
-              <li>設定画面の最下部にある「アカウントを削除する」ボタンをタップします。</li>
-              <li>確認ダイアログで「削除する」を選択すると、アカウントが削除されます。</li>
+              <li>{t("deleteAccount.inAppStep1")}</li>
+              <li>{t("deleteAccount.inAppStep2")}</li>
+              <li>{t("deleteAccount.inAppStep3")}</li>
+              <li>{t("deleteAccount.inAppStep4")}</li>
             </ol>
 
             <div className="mt-4 bg-card border rounded-xl p-4 flex gap-3">
               <AlertCircle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-bold mb-1">ジムオーナーの方へ</p>
-                <p>
-                  ジムオーナーのアカウントは、ジムの登録が残っている状態では削除できません。先にジムを削除いただくか、別のオーナーへ引き継いだ後にアカウント削除をお願いいたします。
-                </p>
+                <p className="font-bold mb-1">{t("deleteAccount.ownerTitle")}</p>
+                <p>{t("deleteAccount.ownerBody")}</p>
               </div>
             </div>
           </section>
@@ -59,13 +58,11 @@ const DeleteAccount = () => {
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3 flex items-center gap-2">
               <Mail className="w-5 h-5 text-accent" />
-              アプリにアクセスできない場合
+              {t("deleteAccount.noAccessTitle")}
             </h2>
-            <p className="mb-3">
-              アプリをアンインストール済みの場合や、ログインできない場合は、下記メールアドレス宛にアカウント削除のリクエストをお送りください。ご本人確認のうえ、運営にて削除対応をいたします。
-            </p>
+            <p className="mb-3">{t("deleteAccount.noAccessBody")}</p>
             <div className="bg-card border rounded-xl p-4 space-y-1">
-              <p className="text-sm font-bold">アカウント削除リクエスト送信先</p>
+              <p className="text-sm font-bold">{t("deleteAccount.requestLabel")}</p>
               <p className="text-sm">
                 <a
                   href="mailto:k.munemoto@kyoto-salute.com?subject=gymboard%20アカウント削除リクエスト"
@@ -74,53 +71,49 @@ const DeleteAccount = () => {
                   k.munemoto@kyoto-salute.com
                 </a>
               </p>
-              <p className="text-xs text-muted-foreground pt-2">
-                件名「gymboard アカウント削除リクエスト」とし、ご登録のお名前・メールアドレスを本文に記載してください。
-              </p>
+              <p className="text-xs text-muted-foreground pt-2">{t("deleteAccount.requestNote")}</p>
             </div>
           </section>
 
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3 flex items-center gap-2">
               <Database className="w-5 h-5 text-accent" />
-              削除されるデータ
+              {t("deleteAccount.dataTitle")}
             </h2>
-            <p className="mb-3">アカウント削除時には、以下のデータが削除または匿名化されます。</p>
+            <p className="mb-3">{t("deleteAccount.dataIntro")}</p>
             <ul className="list-disc pl-6 space-y-1">
-              <li>プロフィール情報（氏名、メールアドレス、電話番号、生年月日、性別など）</li>
-              <li>身体情報（身長、体重、体脂肪率など）</li>
-              <li>予約情報・キャンセル履歴</li>
-              <li>トレーニング記録</li>
-              <li>食事記録および食事画像</li>
-              <li>姿勢分析の結果および姿勢画像</li>
-              <li>トレーナー・お客様間のメッセージ</li>
-              <li>カウンセリング情報、健康情報</li>
-              <li>Google連携情報、LINE連携情報</li>
+              <li>{t("deleteAccount.dataItem1")}</li>
+              <li>{t("deleteAccount.dataItem2")}</li>
+              <li>{t("deleteAccount.dataItem3")}</li>
+              <li>{t("deleteAccount.dataItem4")}</li>
+              <li>{t("deleteAccount.dataItem5")}</li>
+              <li>{t("deleteAccount.dataItem6")}</li>
+              <li>{t("deleteAccount.dataItem7")}</li>
+              <li>{t("deleteAccount.dataItem8")}</li>
+              <li>{t("deleteAccount.dataItem9")}</li>
             </ul>
-            <p className="mt-3 text-sm text-muted-foreground">
-              法令上または業務上必要な保存期間を除き、合理的な期間内にデータを削除または匿名化いたします。一度削除されたデータの復元はできません。
-            </p>
+            <p className="mt-3 text-sm text-muted-foreground">{t("deleteAccount.dataNote")}</p>
           </section>
 
           <section>
             <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-accent pl-3 flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-accent" />
-              ご注意
+              {t("deleteAccount.noticeTitle")}
             </h2>
             <ul className="list-disc pl-6 space-y-2">
-              <li>アカウントを削除すると、再度同じデータを利用することはできません。</li>
-              <li>有料プランをご利用中の場合、削除前に解約手続きをお済ませください。</li>
-              <li>ご不明な点は、上記メールアドレスまでお問い合わせください。</li>
+              <li>{t("deleteAccount.noticeItem1")}</li>
+              <li>{t("deleteAccount.noticeItem2")}</li>
+              <li>{t("deleteAccount.noticeItem3")}</li>
             </ul>
           </section>
         </article>
 
         <footer className="mt-12 pt-6 border-t text-sm text-muted-foreground space-y-2">
-          <p>最終更新日：2026年5月22日</p>
+          <p>{t("deleteAccount.updatedDate")}</p>
           <div className="pt-4 flex flex-wrap gap-4">
             <BackLink />
             <Link to="/privacy" className="text-sm text-accent hover:text-accent/80 transition-colors font-bold">
-              プライバシーポリシーはこちら →
+              {t("deleteAccount.linkToPrivacy")}
             </Link>
           </div>
         </footer>

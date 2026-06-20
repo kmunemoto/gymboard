@@ -1551,5 +1551,164 @@
     "displayNamePlaceholder": "山田 太郎",
     "start": "アプリを始める →",
     "back": "戻る"
+  },
+  "hooks": {
+    "loginInfoNotFound": "ログイン情報が見つかりません",
+    "enterName": "名前を入力してください",
+    "enterWeightOrFat": "体重または体脂肪率を入力してください",
+    "updateFailed": "更新に失敗しました",
+    "saveFailed": "保存に失敗しました",
+    "measurementSaved": "計測データを保存しました",
+    "deleteFailed": "削除に失敗しました",
+    "measurementDeleted": "計測データを削除しました",
+    "favoriteSaveFailed": "お気に入りの保存に失敗しました",
+    "planLimitCustomer": "現在ジムがプラン上限を超えているため、新しい記録を作成できません。トレーナーにご確認ください。",
+    "planLimitTrainer": "ジムが現在プラン上限を超えています。オーナーにご確認ください。",
+    "planLimitGeneric": "プランの上限を超えているため、この操作はできません。プランをアップグレードするか、顧客数を上限以下にしてください。"
+  },
+  "muscleGroups": {
+    "chest": "胸",
+    "back": "背中",
+    "shoulders": "肩",
+    "legs": "脚",
+    "biceps": "二頭筋",
+    "triceps": "三頭筋",
+    "abs": "腹筋",
+    "core": "体幹",
+    "arms": "腕",
+    "other": "その他"
+  },
+  "titles": {
+    "chest_master": {
+      "name": "胸板の鬼",
+      "condition": "胸トレが全体の40%以上"
+    },
+    "back_master": {
+      "name": "背中の鬼",
+      "condition": "背中トレが全体の40%以上"
+    },
+    "leg_master": {
+      "name": "脚の王",
+      "condition": "脚トレが全体の40%以上"
+    },
+    "shoulder_master": {
+      "name": "肩メロン",
+      "condition": "肩トレが全体の40%以上"
+    },
+    "arm_master": {
+      "name": "腕自慢",
+      "condition": "腕トレが全体の40%以上"
+    },
+    "early_bird": {
+      "name": "朝活の達人",
+      "condition": "午前セッションが70%以上"
+    },
+    "night_owl": {
+      "name": "夜型トレーニー",
+      "condition": "19時以降セッションが70%以上"
+    },
+    "consistency_king": {
+      "name": "継続の王",
+      "condition": "12週連続来店"
+    },
+    "volume_monster": {
+      "name": "ボリュームモンスター",
+      "condition": "月間総挙上量10万kg以上"
+    },
+    "all_rounder_title": {
+      "name": "オールラウンダー",
+      "condition": "毎月5部位以上を3ヶ月連続"
+    },
+    "boss_slayer": {
+      "name": "ボスハンター",
+      "condition": "レイドボス3回撃破に貢献"
+    },
+    "mission_addict": {
+      "name": "ミッション中毒",
+      "condition": "デイリーミッション累計50回達成"
+    },
+    "combo_master": {
+      "name": "コンボマスター",
+      "condition": "5コンボ以上を3回達成"
+    },
+    "core_oni": {
+      "name": "コアの鬼",
+      "condition": "体幹トレが全体の40%以上"
+    },
+    "weekend_warrior": {
+      "name": "週末戦士",
+      "condition": "土日のセッションが60%以上"
+    },
+    "iron_man": {
+      "name": "鉄人",
+      "condition": "累計200セッション以上"
+    },
+    "gacha_master": {
+      "name": "ガチャマスター",
+      "condition": "ガチャ累計50回以上"
+    },
+    "raid_slayer": {
+      "name": "レイドスレイヤー",
+      "condition": "レイドボス5回撃破に貢献"
+    },
+    "streaker": {
+      "name": "ストリーカー",
+      "condition": "最大コンボ10回以上"
+    },
+    "record_child": {
+      "name": "記録の申し子",
+      "condition": "自己ベスト累計30回以上"
+    },
+    "legend_title": {
+      "name": "レジェンド",
+      "condition": "アバターレベル50到達"
+    },
+    "collector": {
+      "name": "コレクター",
+      "condition": "バッジ10個取得"
+    },
+    "badge_master": {
+      "name": "バッジマスター",
+      "condition": "バッジ20個取得"
+    },
+    "complete_road": {
+      "name": "コンプリートへの道",
+      "condition": "バッジ30個取得"
+    },
+    "legend_collector": {
+      "name": "レジェンドコレクター",
+      "condition": "全バッジ制覇"
+    },
+    "liberator": {
+      "name": "解放者",
+      "condition": "王国復興クエスト ステージ1クリア"
+    },
+    "harbor_guardian": {
+      "name": "港の守り手",
+      "condition": "王国復興クエスト ステージ3クリア"
+    },
+    "spirit_ally": {
+      "name": "精霊の盟友",
+      "condition": "王国復興クエスト ステージ5クリア"
+    },
+    "sky_pioneer": {
+      "name": "天空の開拓者",
+      "condition": "王国復興クエスト ステージ7クリア"
+    },
+    "kingdom_hero": {
+      "name": "王国の英雄",
+      "condition": "王国復興クエスト 全ステージクリア"
+    },
+    "goal_achiever": {
+      "name": "ゴール達成者",
+      "condition": "目標体重を達成"
+    }
+  },
+  "ranks": {
+    "rookie": "ルーキー",
+    "regular": "レギュラー",
+    "athlete": "アスリート",
+    "elite": "エリート",
+    "legend": "レジェンド"
   }
 }

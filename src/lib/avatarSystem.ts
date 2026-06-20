@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 export type RankKey = "rookie" | "regular" | "athlete" | "elite" | "legend";
 export type Gender = "male" | "female";
 export type HairColor = "orange" | "black" | "brown" | "blonde" | "pink" | "silver";
@@ -8,6 +10,13 @@ export interface RankInfo {
   image: string;
   color: string;
 }
+
+/**
+ * Translate a rank's display name. Falls back to the Japanese default
+ * returned by getRankInfo when no translation key is found.
+ */
+export const getRankLabel = (rankKey: RankKey, t: TFunction, fallback?: string): string =>
+  t(`ranks.${rankKey}`, { defaultValue: fallback ?? rankKey });
 
 export type AchievementRarity = "normal" | "rare" | "epic";
 

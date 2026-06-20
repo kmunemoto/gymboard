@@ -13,6 +13,7 @@ import { getMuscleGroup } from "@/lib/muscleGroup";
 import { computeTitles } from "@/lib/titleSystem";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
+import i18n from "@/lib/i18n";
 
 export interface AvatarRow {
   total_exp: number;
@@ -321,7 +322,7 @@ export const useAvatar = (autoSync = true) => {
     const trimmed = badges.slice(0, 3);
     const { error } = await supabase.rpc("set_featured_badges" as any, { p_badges: trimmed });
     if (error) {
-      toast.error("お気に入りの保存に失敗しました", { description: error.message });
+      toast.error(i18n.t("hooks.favoriteSaveFailed"), { description: error.message });
       return;
     }
     await refetch();

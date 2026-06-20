@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import i18n from "@/lib/i18n";
 
 export interface TenantLimitStatus {
   customer_count: number;
@@ -53,10 +54,10 @@ export function isPlanLimitError(err: unknown): boolean {
 
 export function planLimitMessage(role: string | null | undefined): string {
   if (role === "customer") {
-    return "現在ジムがプラン上限を超えているため、新しい記録を作成できません。トレーナーにご確認ください。";
+    return i18n.t("hooks.planLimitCustomer");
   }
   if (role === "trainer") {
-    return "ジムが現在プラン上限を超えています。オーナーにご確認ください。";
+    return i18n.t("hooks.planLimitTrainer");
   }
-  return "プランの上限を超えているため、この操作はできません。プランをアップグレードするか、顧客数を上限以下にしてください。";
+  return i18n.t("hooks.planLimitGeneric");
 }

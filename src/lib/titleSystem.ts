@@ -1,8 +1,28 @@
+import type { TFunction } from "i18next";
+
 export interface TitleDef {
   key: string;
   name: string;
   condition: string;
 }
+
+/**
+ * Translate a title's display name/condition via i18n.
+ * Falls back to the Japanese default in the TITLES array when no key is provided.
+ * Translation keys follow `titles.<key>.name` / `titles.<key>.condition`.
+ */
+export const getTitleLabel = (
+  key: string | null | undefined,
+  t: TFunction,
+): { name: string; condition: string } | null => {
+  if (!key) return null;
+  const def = TITLES.find((x) => x.key === key);
+  if (!def) return null;
+  return {
+    name: t(`titles.${key}.name`, { defaultValue: def.name }),
+    condition: t(`titles.${key}.condition`, { defaultValue: def.condition }),
+  };
+};
 
 export const TITLES: TitleDef[] = [
   { key: "chest_master", name: "胸板の鬼", condition: "胸トレが全体の40%以上" },

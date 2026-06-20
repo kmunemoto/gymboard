@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const fix = url.searchParams.get("fix") === "1" && req.method === "POST";
+    const allDelete = url.searchParams.get("all_delete") === "1" && req.method === "POST";
 
     const saluteBase = SALUTE_URL_BASE.replace(/\/$/, "");
     const exportUrl = `${saluteBase}/functions/v1/salute-export-bookings`;
@@ -193,8 +194,10 @@ Deno.serve(async (req) => {
 
     // 6) fix モード: salute_cancelled に該当する GymBoard 予約を処理
     const fixResults: Array<Record<string, unknown>> = [];
-    if (fix) {
-      const targets = classified.filter((r) => r.classification === "salute_cancelled");
+    if (fix || allDelete) {
+      const targets = allDelete
+        ? classified
+        : classified.filter((r) => r.classification === "salute_cancelled");
       for (const t of targets) {
         // 6a) delete を Salute へ送信 (external_bookings から消す)
         const payload = {
@@ -223,9 +226,13 @@ Deno.serve(async (req) => {
         }
 
         // 6b) GymBoard 側の status/source を補正
+        // 6b) GymBoard 側 source を NULL に戻す（all_delete モード）／cancelled+salute_sync 補正（fix モード）
+        const updatePayload = allDelete
+          ? { source: null as unknown as string }
+          : { status: "cancelled", source: "salute_sync" };
         const { error: upErr } = await admin
           .from("bookings")
-          .update({ status: "cancelled", source: "salute_sync" })
+          .update(updatePayload)
           .eq("id", t.id)
           .eq("tenant_id", TENANT_ID);
 
@@ -242,7 +249,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       tenant_id: TENANT_ID,
-      mode: fix ? "fix" : "report_only",
+      mode: allDelete ? "all_delete" : fix ? "fix" : "report_only",
       salute_export_attempts: attempts,
       salute_export_chosen_variant: chosenVariant,
       salute_total_used: chosen.length,

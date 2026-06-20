@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const AuthCallback = () => {
+  const { t } = useTranslation();
   const hasHandledRef = useRef(false);
 
   useEffect(() => {
@@ -16,7 +18,6 @@ const AuthCallback = () => {
       const type = params.get("type");
       const next = params.get("next");
 
-      // Case 1: Email confirmation / magic link / recovery via token_hash (verifyOtp flow)
       if (tokenHash && type) {
         try {
           const { error } = await supabase.auth.verifyOtp({
@@ -28,7 +29,6 @@ const AuthCallback = () => {
             window.location.replace(`/auth?error=${encodeURIComponent(error.message)}`);
             return;
           }
-          // Recovery → password reset page
           if (type === "recovery") {
             window.location.replace("/reset-password");
             return;
@@ -42,7 +42,6 @@ const AuthCallback = () => {
         }
       }
 
-      // Case 2: OAuth / PKCE code exchange
       if (code) {
         try {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -67,7 +66,6 @@ const AuthCallback = () => {
         }
       }
 
-      // Case 3: Implicit flow tokens in URL hash
       const hash = window.location.hash.startsWith("#")
         ? window.location.hash.slice(1)
         : window.location.hash;
@@ -95,7 +93,6 @@ const AuthCallback = () => {
         }
       }
 
-      // Nothing recognizable — go back to auth
       window.location.replace("/auth");
     };
 
@@ -106,7 +103,7 @@ const AuthCallback = () => {
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center space-y-4">
         <DumbbellLoader className="w-8 h-8 text-accent mx-auto" />
-        <p className="text-sm text-muted-foreground">認証処理中...</p>
+        <p className="text-sm text-muted-foreground">{t("authCallback.processing")}</p>
       </div>
     </div>
   );

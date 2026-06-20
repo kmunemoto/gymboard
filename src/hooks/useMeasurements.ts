@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import i18n from "@/lib/i18n";
 
 export interface Measurement {
   id: string;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 import { X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

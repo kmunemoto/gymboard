@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const fix = url.searchParams.get("fix") === "1" && req.method === "POST";
+    const allDelete = url.searchParams.get("all_delete") === "1" && req.method === "POST";
 
     const saluteBase = SALUTE_URL_BASE.replace(/\/$/, "");
     const exportUrl = `${saluteBase}/functions/v1/salute-export-bookings`;

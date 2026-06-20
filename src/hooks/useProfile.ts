@@ -89,7 +89,10 @@ export const useProfile = () => {
   };
 
   const updateGameMode = async (enabled: boolean) => {
-    if (!user) return { error: new Error("ログイン情報が見つかりません") };
+    if (!user) {
+      const { default: i18n } = await import("@/lib/i18n");
+      return { error: new Error(i18n.t("hooks.loginInfoNotFound")) };
+    }
     const { error } = await supabase
       .from("profiles")
       .update({ game_mode_enabled: enabled } as any)

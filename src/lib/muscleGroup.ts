@@ -1,4 +1,33 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { TFunction } from "i18next";
+
+/**
+ * Map a Japanese muscle group label (as stored in DB / returned by getMuscleGroup)
+ * to its i18n key under `muscleGroups.*`. Unknown labels fall back to "other".
+ */
+const MUSCLE_GROUP_I18N_KEY: Record<string, string> = {
+  "胸": "chest",
+  "背中": "back",
+  "肩": "shoulders",
+  "脚": "legs",
+  "二頭筋": "biceps",
+  "三頭筋": "triceps",
+  "腹筋": "abs",
+  "体幹": "core",
+  "腕": "arms",
+  "その他": "other",
+};
+
+/**
+ * Translate a muscle-group label (e.g. "胸") to the active locale.
+ * Falls back to the original label when no mapping/translation exists,
+ * so callers can pass arbitrary DB-derived values safely.
+ */
+export const translateMuscleGroupLabel = (label: string, t: TFunction): string => {
+  const k = MUSCLE_GROUP_I18N_KEY[label];
+  if (!k) return label;
+  return t(`muscleGroups.${k}`, { defaultValue: label });
+};
 
 /**
  * Map exercise name to a muscle group (Japanese label).

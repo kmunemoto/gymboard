@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Clock, Check, User, CalendarPlus, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,10 @@ interface PublicTenant {
 }
 
 const TrialBooking = () => {
+  const { t } = useTranslation();
   const { tenantId } = useParams<{ tenantId?: string }>();
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
-  const gymName = tenant?.gym_name || "ジムボード";
+  const gymName = tenant?.gym_name || t("trialBooking.defaultGymName");
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -43,8 +45,6 @@ const TrialBooking = () => {
   const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string } | null>(null);
   const [existingBookings, setExistingBookings] = useState<TrialSlotBooking[]>([]);
 
-  // Fetch tenant info: use the URL :tenantId, or fall back to the oldest
-  // active tenant for the legacy `/trial` link.
   useEffect(() => {
     (async () => {
       if (tenantId) {
@@ -54,16 +54,13 @@ const TrialBooking = () => {
         if (row) setTenant(row as PublicTenant);
         return;
       }
-      // No URL param — pick the default tenant (legacy single-gym mode)
       const { data } = await supabase.rpc("get_default_tenant_public" as any);
       const row = Array.isArray(data) ? data[0] : data;
       if (row) setTenant(row as PublicTenant);
     })();
   }, [tenantId]);
 
-  // Fetch all existing bookings via secure RPC (no PII exposed)
   const fetchExistingSlots = useCallback(async () => {
-    // Fetch slots for upcoming 60 days using the secure RPC
     const slots: TrialSlotBooking[] = [];
     const today = getJSTNow();
     const promises = [];
@@ -97,8 +94,8 @@ const TrialBooking = () => {
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
   const isSlotBlocked = (date: string, time: string): boolean => {
-    const timeToMin = (t: string) => {
-      const [h, m] = t.split(":").map(Number);
+    const timeToMin = (s: string) => {
+      const [h, m] = s.split(":").map(Number);
       return h * 60 + m;
     };
     const newMin = timeToMin(time);
@@ -111,7 +108,6 @@ const TrialBooking = () => {
   };
 
   const isSlotWithin24Hours = (date: string, time: string): boolean => {
-    // Real UTC instant comparison — JST offset baked into the slot ISO string.
     const slotInstant = new Date(`${date}T${time}:00+09:00`).getTime();
     return slotInstant - Date.now() < 24 * 60 * 60 * 1000;
   };
@@ -133,13 +129,13 @@ const TrialBooking = () => {
 
   const handleSubmit = async () => {
     if (!guestName.trim()) {
-      toast.error("お名前を入力してください");
+      toast.error(t("trialBooking.errEmptyName"));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!guestEmail.trim() || !emailRegex.test(guestEmail.trim())) {
-      toast.error("正しいメールアドレスを入力してください");
-      setEmailError("正しいメールアドレスを入力してください");
+      toast.error(t("trialBooking.errInvalidEmail"));
+      setEmailError(t("trialBooking.errInvalidEmail"));
       return;
     }
     if (!selectedDate || !selectedSlot) return;
@@ -155,12 +151,9 @@ const TrialBooking = () => {
     const insertedBooking = { id: bookingId, booking_date: bookingDate };
 
     try {
-      // tenant_id is required by RLS. Prefer URL param; fall back to the
-      // currently-loaded tenant (set above). If neither is set, this is an
-      // invalid trial link — abort.
       const insertTenantId = tenantId || tenant?.id;
       if (!insertTenantId) {
-        toast.error("予約リンクが無効です。ジムの担当者にお問い合わせください。");
+        toast.error(t("trialBooking.errInvalidLink"));
         setSubmitting(false);
         return;
       }
@@ -173,29 +166,18 @@ const TrialBooking = () => {
       } as any);
 
       if (error) {
-        console.error("Trial booking failed:", {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          error,
-        });
-        toast.error("予約に失敗しました。もう一度お試しください。");
+        console.error("Trial booking failed:", error);
+        toast.error(t("trialBooking.errBookingFailed"));
         setSubmitting(false);
         return;
       }
     } catch (error: any) {
-      console.error("Trial booking failed:", {
-        message: error?.message,
-        code: error?.code,
-        error,
-      });
-      toast.error("予約に失敗しました。もう一度お試しください。");
+      console.error("Trial booking failed:", error);
+      toast.error(t("trialBooking.errBookingFailed"));
       setSubmitting(false);
       return;
     }
 
-    // Sync to Google Calendar (fire-and-forget)
     if (insertedBooking) {
       supabase.functions.invoke("google-calendar-sync", {
         body: {
@@ -225,7 +207,6 @@ const TrialBooking = () => {
 
     const formattedDate = format(selectedDate, "M月d日（E）", { locale: ja });
 
-    // Fire-and-forget: send booking confirmation email to customer
     (async () => {
       try {
         await supabase.functions.invoke("send-transactional-email", {
@@ -245,14 +226,19 @@ const TrialBooking = () => {
       }
     })();
 
-    // Fire-and-forget: notify trainer via LINE
     (async () => {
       try {
         const { data: trainerRoles } = await supabase.rpc("get_trainer_ids");
         const trainerId = trainerRoles?.[0]?.user_id;
         if (!trainerId) return;
 
-        const message = `【${gymName}】🎉 新規の体験予約が入りました！\n\n・お名前：${guestName.trim()} 様\n・日時：${formattedDate} ${slot.time}〜${endTime}\n\nアプリの予約管理画面から詳細を確認してください。`;
+        const message = t("trialBooking.lineNewBooking", {
+          gym: gymName,
+          name: guestName.trim(),
+          date: formattedDate,
+          start: slot.time,
+          end: endTime,
+        });
 
         await supabase.functions.invoke("send-line-message", {
           body: { user_id: trainerId, message },
@@ -262,7 +248,6 @@ const TrialBooking = () => {
       }
     })();
 
-    // Fire-and-forget: notify trainer via email
     (async () => {
       try {
         const { data: trainerRoles } = await supabase.rpc("get_trainer_ids");
@@ -275,10 +260,10 @@ const TrialBooking = () => {
             recipientEmail: "_resolve_trainer_",
             idempotencyKey: `trial-notify-${guestEmail.trim()}-${bookingDate}`,
             templateData: {
-              customerName: `🆕 ${guestName.trim()}（初回無料体験）`,
+              customerName: `🆕 ${t("trialBooking.notifTrainerSubject", { name: guestName.trim() })}`,
               bookingDate: formattedDate,
               bookingTime: `${slot.time}〜${endTime}`,
-              planName: "初回無料体験",
+              planName: t("trialBooking.trialPlanName"),
               dashboardUrl: window.location.origin,
               trainerUserId: trainerId,
             },
@@ -289,15 +274,14 @@ const TrialBooking = () => {
       }
     })();
 
-    // Fire-and-forget: notify trainers via web push (anon-allowed via purpose)
     (async () => {
       try {
         await supabase.functions.invoke("send-push-notification", {
           body: {
             purpose: "trial_booking",
             trial_booking_id: bookingId,
-            title: "初回体験の申し込み",
-            body: `${guestName.trim()}さんから初回無料体験のお申し込みがありました`,
+            title: t("trialBooking.pushTitle"),
+            body: t("trialBooking.pushBody", { name: guestName.trim() }),
             url: "/",
             tag: `trial-${bookingId}`,
           },
@@ -315,10 +299,10 @@ const TrialBooking = () => {
       const endClean = completedInfo.rawEndTime.replace(":", "") + "00";
       const params = new URLSearchParams({
         action: "TEMPLATE",
-        text: `【初回無料体験】${gymName}`,
+        text: t("trialBooking.calendarTitleTrial", { gym: gymName }),
         dates: `${dateClean}T${startClean}/${dateClean}T${endClean}`,
         ctz: "Asia/Tokyo",
-        details: "初回無料体験（カウンセリング＋トレーニング）。\n当日は動きやすい服装でお越しください。\nご不明な点がございましたらお気軽にお問い合わせください。",
+        details: t("trialBooking.calendarDescription"),
         location: gymName,
       });
       return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -348,9 +332,9 @@ const TrialBooking = () => {
         `DTSTAMP:${dtstamp}`,
         `DTSTART;TZID=Asia/Tokyo:${dateClean}T${startClean}`,
         `DTEND;TZID=Asia/Tokyo:${dateClean}T${endClean}`,
-        `SUMMARY:【${gymName}】初回無料体験`,
-        "LOCATION:（ジム設定に依存）",
-        "DESCRIPTION:カウンセリング＋トレーニング体験（計60分）\\n動きやすい服装でお越しください。",
+        `SUMMARY:${t("trialBooking.icsSummary", { gym: gymName })}`,
+        `LOCATION:${t("trialBooking.icsLocation")}`,
+        `DESCRIPTION:${t("trialBooking.icsDescription")}`,
         "END:VEVENT",
         "END:VCALENDAR",
       ].join("\r\n");
@@ -373,15 +357,13 @@ const TrialBooking = () => {
               <Check className="w-8 h-8 text-accent-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">ご予約を受け付けました！</h1>
-              <p className="text-sm text-muted-foreground mt-2">
-                初回無料体験のご予約ありがとうございます。
-              </p>
+              <h1 className="text-xl font-bold">{t("trialBooking.completedTitle")}</h1>
+              <p className="text-sm text-muted-foreground mt-2">{t("trialBooking.completedThanks")}</p>
             </div>
             <div className="bg-accent/10 rounded-xl p-4 space-y-1">
               <p className="text-sm font-bold">{completedInfo.date}</p>
-              <p className="text-sm">{completedInfo.time}（60分）</p>
-              <p className="text-xs text-muted-foreground mt-2">カウンセリング＋トレーニング体験</p>
+              <p className="text-sm">{completedInfo.time}{t("trialBooking.completedMinutes")}</p>
+              <p className="text-xs text-muted-foreground mt-2">{t("trialBooking.completedSubtitle")}</p>
             </div>
             <a
               href={calendarUrl}
@@ -390,7 +372,7 @@ const TrialBooking = () => {
               className="inline-flex items-center justify-center gap-2 w-full h-12 rounded-xl text-base font-semibold border-2 border-primary text-foreground bg-background hover:bg-secondary transition-all duration-200"
             >
               <CalendarPlus className="w-5 h-5" />
-              Googleカレンダーに登録
+              {t("trialBooking.addGoogleCal")}
             </a>
             <button
               type="button"
@@ -398,11 +380,11 @@ const TrialBooking = () => {
               className="inline-flex items-center justify-center gap-2 w-full h-12 rounded-xl text-base font-semibold border-2 border-primary text-foreground bg-background hover:bg-secondary transition-all duration-200"
             >
               <CalendarPlus className="w-5 h-5" />
-              Appleカレンダーに登録
+              {t("trialBooking.addAppleCal")}
             </button>
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>当日は動きやすい服装でお越しください。</p>
-              <p>ご不明な点がございましたらお気軽にお問い合わせください。</p>
+              <p>{t("trialBooking.noteWearable")}</p>
+              <p>{t("trialBooking.noteContact")}</p>
             </div>
             <div className="flex justify-center pt-2">
               <GymLogo size="sm" />
@@ -416,46 +398,41 @@ const TrialBooking = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="gym-gradient p-6 text-center text-primary-foreground relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-accent/10 -translate-y-10 translate-x-10" />
         <div className="relative space-y-2">
           <div className="flex justify-center">
             <GymLogo size="lg" />
           </div>
-          <h1 className="text-xl font-bold">初回無料体験</h1>
-          <p className="text-sm opacity-80">カウンセリング＋トレーニング（計60分）</p>
+          <h1 className="text-xl font-bold">{t("trialBooking.headerTitle")}</h1>
+          <p className="text-sm opacity-80">{t("trialBooking.headerSub")}</p>
         </div>
       </div>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-5">
-        {/* Info banner */}
         <Card className="border-l-4 border-l-accent bg-accent/5">
           <CardContent className="p-4 flex items-start gap-3">
             <Sparkles className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-sm">完全無料・手ぶらOK</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                初めての方限定の無料体験です。プロのトレーナーがマンツーマンでサポートいたします。
-              </p>
+              <p className="font-bold text-sm">{t("trialBooking.infoTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("trialBooking.infoBody")}</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* STEP 1: Guest info */}
         <section className="slide-up">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <User className="w-3.5 h-3.5" />
-            STEP 1 — お客様情報
+            {t("trialBooking.step1")}
           </h2>
           <div className="space-y-3">
             <div>
               <Label htmlFor="guest-name" className="text-sm font-medium">
-                お名前 <span className="text-destructive">*</span>
+                {t("trialBooking.labelName")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="guest-name"
-                placeholder="例：山田 太郎"
+                placeholder={t("trialBooking.namePlaceholder")}
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 className="mt-1"
@@ -463,12 +440,12 @@ const TrialBooking = () => {
             </div>
             <div>
               <Label htmlFor="guest-contact" className="text-sm font-medium">
-                メールアドレス <span className="text-destructive">*</span>
+                {t("trialBooking.labelEmail")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="guest-contact"
                 type="email"
-                placeholder="例：example@mail.com"
+                placeholder={t("trialBooking.emailPlaceholder")}
                 value={guestEmail}
                 onChange={(e) => {
                   setGuestEmail(e.target.value);
@@ -483,13 +460,12 @@ const TrialBooking = () => {
           </div>
         </section>
 
-        {/* STEP 2: Date & time */}
         <section className="slide-up">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
-            STEP 2 — 希望日時を選択
+            {t("trialBooking.step2")}
           </h2>
-          <p className="text-xs text-muted-foreground/70 mb-2">※ご予約は24時間前までにお願いいたします</p>
+          <p className="text-xs text-muted-foreground/70 mb-2">{t("trialBooking.step2Note")}</p>
 
           <Card>
             <CardContent className="p-3 flex justify-center">
@@ -508,7 +484,6 @@ const TrialBooking = () => {
                   const yyyyMMdd = format(date, "yyyy-MM-dd");
                   const latestSlot = new Date(`${yyyyMMdd}T20:15:00+09:00`);
                   if (latestSlot.getTime() - Date.now() < 24 * 60 * 60 * 1000) return true;
-                  // 1ヶ月先までのみ予約可能
                   const maxDate = new Date();
                   maxDate.setMonth(maxDate.getMonth() + 1);
                   return date.getTime() > maxDate.getTime();
@@ -522,7 +497,7 @@ const TrialBooking = () => {
             <div id="trial-time-slots" className="mt-4 slide-up">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" />
-                {format(selectedDate, "M月d日（E）", { locale: ja })} の空き枠
+                {t("trialBooking.dateOpenSlots", { date: format(selectedDate, "M月d日（E）", { locale: ja }) })}
               </h3>
               <div className="grid grid-cols-4 gap-1.5">
                 {slots.map((slot) => (
@@ -546,7 +521,7 @@ const TrialBooking = () => {
                   >
                     <span>{slot.time}</span>
                     {!slot.available && (
-                      <span className="block text-[9px] text-destructive/70 font-medium">満枠</span>
+                      <span className="block text-[9px] text-destructive/70 font-medium">{t("trialBooking.slotFull")}</span>
                     )}
                     {selectedSlot === slot.id && (
                       <Check className="w-2.5 h-2.5 absolute top-0.5 right-0.5" />
@@ -562,14 +537,14 @@ const TrialBooking = () => {
                     〜
                     <span className="font-bold">
                       {(() => {
-                        const t = slots.find((s) => s.id === selectedSlot)?.time;
-                        if (!t) return "";
-                        const [h, m] = t.split(":").map(Number);
-                        const end = h * 60 + m + 60;
+                        const time = slots.find((s) => s.id === selectedSlot)?.time;
+                        if (!time) return "";
+                        const [hh, mm] = time.split(":").map(Number);
+                        const end = hh * 60 + mm + 60;
                         return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
                       })()}
                     </span>
-                    （60分）
+                    {t("trialBooking.minutesParen")}
                   </p>
                   <Button
                     variant="accent"
@@ -579,7 +554,7 @@ const TrialBooking = () => {
                     disabled={submitting || !guestName.trim() || !guestEmail.trim()}
                   >
                     {submitting ? <DumbbellLoader className="w-4 h-4 mr-2" /> : null}
-                    無料体験を予約する
+                    {t("trialBooking.submitBooking")}
                   </Button>
                 </div>
               )}

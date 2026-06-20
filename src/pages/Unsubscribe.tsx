@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, XCircle, MailX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -12,6 +13,7 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 type Status = "loading" | "valid" | "already" | "invalid" | "success" | "error";
 
 const Unsubscribe = () => {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const token = params.get("token");
   const [status, setStatus] = useState<Status>("loading");
@@ -51,33 +53,33 @@ const Unsubscribe = () => {
           {status === "valid" && (
             <>
               <MailX className="w-10 h-10 mx-auto text-muted-foreground" />
-              <h1 className="text-lg font-bold">メール配信の停止</h1>
-              <p className="text-sm text-muted-foreground">今後のメール通知の配信を停止しますか？</p>
+              <h1 className="text-lg font-bold">{t("unsubscribe.titlePrompt")}</h1>
+              <p className="text-sm text-muted-foreground">{t("unsubscribe.promptBody")}</p>
               <Button onClick={handleUnsubscribe} disabled={submitting} className="w-full">
                 {submitting && <DumbbellLoader className="w-4 h-4 mr-2" />}
-                配信を停止する
+                {t("unsubscribe.submit")}
               </Button>
             </>
           )}
           {status === "success" && (
             <>
               <CheckCircle className="w-10 h-10 mx-auto text-success" />
-              <h1 className="text-lg font-bold">配信を停止しました</h1>
-              <p className="text-sm text-muted-foreground">今後メール通知は届きません。</p>
+              <h1 className="text-lg font-bold">{t("unsubscribe.titleSuccess")}</h1>
+              <p className="text-sm text-muted-foreground">{t("unsubscribe.successBody")}</p>
             </>
           )}
           {status === "already" && (
             <>
               <CheckCircle className="w-10 h-10 mx-auto text-muted-foreground" />
-              <h1 className="text-lg font-bold">すでに停止済みです</h1>
-              <p className="text-sm text-muted-foreground">このメールアドレスの配信はすでに停止されています。</p>
+              <h1 className="text-lg font-bold">{t("unsubscribe.titleAlready")}</h1>
+              <p className="text-sm text-muted-foreground">{t("unsubscribe.alreadyBody")}</p>
             </>
           )}
           {(status === "invalid" || status === "error") && (
             <>
               <XCircle className="w-10 h-10 mx-auto text-destructive" />
-              <h1 className="text-lg font-bold">エラー</h1>
-              <p className="text-sm text-muted-foreground">無効なリンクです。メール内のリンクを再度お試しください。</p>
+              <h1 className="text-lg font-bold">{t("unsubscribe.titleError")}</h1>
+              <p className="text-sm text-muted-foreground">{t("unsubscribe.errorBody")}</p>
             </>
           )}
         </CardContent>

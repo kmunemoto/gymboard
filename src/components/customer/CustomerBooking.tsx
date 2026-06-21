@@ -431,23 +431,29 @@ const CustomerBooking = () => {
                               {planLabel(b.booking_type)}
                             </Badge>
                             {(() => {
-                              const progress = getBookingProgressIndex(
-                                b.id,
-                                profile?.cycle_start_date,
-                                profile?.plan,
-                                bookingsForProgress,
-                              );
-                              if (!progress || progress.isUnconfigured) return null;
-                              return (
-                                <CourseProgressBadge
-                                  index={progress.index}
-                                  total={progress.total}
-                                  isUnlimited={progress.isUnlimited}
-                                  isUnconfigured={progress.isUnconfigured}
-                                  isOverflow={progress.isOverflow}
-                                />
-                              );
+                              try {
+                                const progress = getBookingProgressIndex(
+                                  b.id,
+                                  profile?.cycle_start_date,
+                                  profile?.plan,
+                                  bookingsForProgress,
+                                );
+                                if (!progress || progress.isUnconfigured) return null;
+                                return (
+                                  <CourseProgressBadge
+                                    index={progress.index}
+                                    total={progress.total}
+                                    isUnlimited={progress.isUnlimited}
+                                    isUnconfigured={progress.isUnconfigured}
+                                    isOverflow={progress.isOverflow}
+                                  />
+                                );
+                              } catch (e) {
+                                console.warn("[CustomerBooking] progress badge failed", e);
+                                return null;
+                              }
                             })()}
+
                           </div>
                         </div>
                       </div>

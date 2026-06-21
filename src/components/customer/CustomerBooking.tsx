@@ -308,6 +308,18 @@ const CustomerBooking = () => {
     return bookingDateTime > new Date();
   });
 
+  // 各予約の「今回 n/m 回目」算出用に BookingForProgress 形式へ変換
+  // NOTE: hooks must run before any early return below to satisfy Rules of Hooks
+  const bookingsForProgress: BookingForProgress[] = useMemo(
+    () =>
+      myBookings.map((b) => ({
+        id: b.id,
+        booking_date: `${b.date}T${b.startTime}:00+09:00`,
+        status: b.status,
+      })),
+    [myBookings],
+  );
+
   const cancelDescription = cancelTarget
     ? t("booking.cancelDescWithTime", { date: formatJST(`${cancelTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }), startTime: cancelTarget.startTime, endTime: cancelTarget.endTime })
     : t("booking.cancelDescDefault");
@@ -322,16 +334,6 @@ const CustomerBooking = () => {
 
   const planLabel = (type: string) => planLabelMap[type] || type;
 
-  // 各予約の「今回 n/m 回目」算出用に BookingForProgress 形式へ変換
-  const bookingsForProgress: BookingForProgress[] = useMemo(
-    () =>
-      myBookings.map((b) => ({
-        id: b.id,
-        booking_date: `${b.date}T${b.startTime}:00+09:00`,
-        status: b.status,
-      })),
-    [myBookings],
-  );
 
   // Current cycle / plan summary (mirrors home screen logic)
   const currentPlan = profile?.plan;
@@ -429,23 +431,29 @@ const CustomerBooking = () => {
                               {planLabel(b.booking_type)}
                             </Badge>
                             {(() => {
-                              const progress = getBookingProgressIndex(
-                                b.id,
-                                profile?.cycle_start_date,
-                                profile?.plan,
-                                bookingsForProgress,
-                              );
-                              if (!progress || progress.isUnconfigured) return null;
-                              return (
-                                <CourseProgressBadge
-                                  index={progress.index}
-                                  total={progress.total}
-                                  isUnlimited={progress.isUnlimited}
-                                  isUnconfigured={progress.isUnconfigured}
-                                  isOverflow={progress.isOverflow}
-                                />
-                              );
+                              try {
+                                const progress = getBookingProgressIndex(
+                                  b.id,
+                                  profile?.cycle_start_date,
+                                  profile?.plan,
+                                  bookingsForProgress,
+                                );
+                                if (!progress || progress.isUnconfigured) return null;
+                                return (
+                                  <CourseProgressBadge
+                                    index={progress.index}
+                                    total={progress.total}
+                                    isUnlimited={progress.isUnlimited}
+                                    isUnconfigured={progress.isUnconfigured}
+                                    isOverflow={progress.isOverflow}
+                                  />
+                                );
+                              } catch (e) {
+                                console.warn("[CustomerBooking] progress badge failed", e);
+                                return null;
+                              }
                             })()}
+
                           </div>
                         </div>
                       </div>

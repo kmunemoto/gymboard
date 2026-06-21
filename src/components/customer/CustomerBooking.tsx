@@ -424,9 +424,29 @@ const CustomerBooking = () => {
                           <p className="text-xs text-muted-foreground">
                             {b.startTime}〜{b.endTime}
                           </p>
-                          <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 h-4">
-                            {planLabel(b.booking_type)}
-                          </Badge>
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                              {planLabel(b.booking_type)}
+                            </Badge>
+                            {(() => {
+                              const progress = getBookingProgressIndex(
+                                b.id,
+                                profile?.cycle_start_date,
+                                profile?.plan,
+                                bookingsForProgress,
+                              );
+                              if (!progress || progress.isUnconfigured) return null;
+                              return (
+                                <CourseProgressBadge
+                                  index={progress.index}
+                                  total={progress.total}
+                                  isUnlimited={progress.isUnlimited}
+                                  isUnconfigured={progress.isUnconfigured}
+                                  isOverflow={progress.isOverflow}
+                                />
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">

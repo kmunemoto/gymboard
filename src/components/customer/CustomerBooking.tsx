@@ -322,6 +322,17 @@ const CustomerBooking = () => {
 
   const planLabel = (type: string) => planLabelMap[type] || type;
 
+  // 各予約の「今回 n/m 回目」算出用に BookingForProgress 形式へ変換
+  const bookingsForProgress: BookingForProgress[] = useMemo(
+    () =>
+      myBookings.map((b) => ({
+        id: b.id,
+        booking_date: `${b.date}T${b.startTime}:00+09:00`,
+        status: b.status,
+      })),
+    [myBookings],
+  );
+
   // Current cycle / plan summary (mirrors home screen logic)
   const currentPlan = profile?.plan;
   const hasPlan = !!currentPlan && currentPlan !== "初回無料体験";

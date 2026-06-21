@@ -17,7 +17,8 @@ import { sendBookingNotification } from "@/lib/bookingNotification";
 import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
-import { getCycleWindow } from "@/lib/courseProgress";
+import { getCycleWindow, getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import CourseProgressBadge from "@/components/trainer/CourseProgressBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
@@ -321,6 +322,17 @@ const CustomerBooking = () => {
 
   const planLabel = (type: string) => planLabelMap[type] || type;
 
+  // 各予約の「今回 n/m 回目」算出用に BookingForProgress 形式へ変換
+  const bookingsForProgress: BookingForProgress[] = useMemo(
+    () =>
+      myBookings.map((b) => ({
+        id: b.id,
+        booking_date: `${b.date}T${b.startTime}:00+09:00`,
+        status: b.status,
+      })),
+    [myBookings],
+  );
+
   // Current cycle / plan summary (mirrors home screen logic)
   const currentPlan = profile?.plan;
   const hasPlan = !!currentPlan && currentPlan !== "初回無料体験";
@@ -412,9 +424,29 @@ const CustomerBooking = () => {
                           <p className="text-xs text-muted-foreground">
                             {b.startTime}〜{b.endTime}
                           </p>
-                          <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 h-4">
-                            {planLabel(b.booking_type)}
-                          </Badge>
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                              {planLabel(b.booking_type)}
+                            </Badge>
+                            {(() => {
+                              const progress = getBookingProgressIndex(
+                                b.id,
+                                profile?.cycle_start_date,
+                                profile?.plan,
+                                bookingsForProgress,
+                              );
+                              if (!progress || progress.isUnconfigured) return null;
+                              return (
+                                <CourseProgressBadge
+                                  index={progress.index}
+                                  total={progress.total}
+                                  isUnlimited={progress.isUnlimited}
+                                  isUnconfigured={progress.isUnconfigured}
+                                  isOverflow={progress.isOverflow}
+                                />
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">

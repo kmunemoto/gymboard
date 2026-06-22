@@ -302,6 +302,7 @@ export type Database = {
           end_blocked_date: string
           id: string
           reason: string | null
+          source: string | null
           tenant_id: string | null
         }
         Insert: {
@@ -311,6 +312,7 @@ export type Database = {
           end_blocked_date: string
           id?: string
           reason?: string | null
+          source?: string | null
           tenant_id?: string | null
         }
         Update: {
@@ -320,6 +322,7 @@ export type Database = {
           end_blocked_date?: string
           id?: string
           reason?: string | null
+          source?: string | null
           tenant_id?: string | null
         }
         Relationships: [

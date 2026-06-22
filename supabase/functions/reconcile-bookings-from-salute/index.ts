@@ -224,6 +224,18 @@ Deno.serve(async (req) => {
       // 同日重複制約には引っ掛からない (overlap は salute_sync 例外) ので順序問題は無いが
       // 念のため削除を先にする。
       for (const d of toDelete) {
+        // 6月の source=NULL (legacy) は guard により直接 DELETE できない。
+        // 先に source='salute_sync' に昇格させてから削除する (どちらも guard 例外)。
+        if (d.source === null) {
+          const { error: upErr } = await admin
+            .from("bookings")
+            .update({ source: "salute_sync" })
+            .eq("id", d.id);
+          if (upErr) {
+            deleteErrors.push({ id: d.id, step: "promote_null_source", error: upErr.message });
+            continue;
+          }
+        }
         const { error } = await admin
           .from("bookings")
           .delete()

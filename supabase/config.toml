@@ -19,3 +19,5 @@ project_id = "rrbfwitprzuevzytykrq"
     verify_jwt = false
   [functions.salute-migration-check]
     verify_jwt = false
+  [functions.reconcile-bookings-from-salute]
+    verify_jwt = false

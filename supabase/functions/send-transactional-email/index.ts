@@ -21,6 +21,19 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * 非ASCII文字をHTML数値文字参照に変換し、SMTPの行折り返しが
+ * UTF-8マルチバイト文字の途中で発生して起きる文字化け（例: "パ"→"ã\x83\x91"）を防止する。
+ * auth-email-hook と同等の保護を transactional 系メールにも適用する。
+ */
+function escapeNonAsciiToEntities(html: string): string {
+  return Array.from(html).map(ch => {
+    const code = ch.codePointAt(0)!
+    return code > 127 ? `&#${code};` : ch
+  }).join('')
+}
+
+
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {
   const bytes = new Uint8Array(32)

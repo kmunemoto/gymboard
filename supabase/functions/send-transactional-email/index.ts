@@ -21,6 +21,19 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * 非ASCII文字をHTML数値文字参照に変換し、SMTPの行折り返しが
+ * UTF-8マルチバイト文字の途中で発生して起きる文字化け（例: "パ"→"ã\x83\x91"）を防止する。
+ * auth-email-hook と同等の保護を transactional 系メールにも適用する。
+ */
+function escapeNonAsciiToEntities(html: string): string {
+  return Array.from(html).map(ch => {
+    const code = ch.codePointAt(0)!
+    return code > 127 ? `&#${code};` : ch
+  }).join('')
+}
+
+
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -389,13 +402,20 @@ Deno.serve(async (req) => {
   }
 
   // 4. Render React Email template to HTML and plain text
-  const html = await renderAsync(
-    React.createElement(template.component, templateData)
+  // pretty:true で改行を入れて、SMTPの固定バイト幅折り返しが
+  // マルチバイトUTF-8文字の途中に入り文字化けする問題を回避する。
+  // さらに非ASCII文字をHTML数値文字参照に変換して二重に保護する
+  // （auth-email-hook と同等）。
+  const rawHtml = await renderAsync(
+    React.createElement(template.component, templateData),
+    { pretty: true }
   )
+  const html = escapeNonAsciiToEntities(rawHtml)
   const plainText = await renderAsync(
     React.createElement(template.component, templateData),
     { plainText: true }
   )
+
 
   // Resolve subject — supports static string or dynamic function
   const resolvedSubject =

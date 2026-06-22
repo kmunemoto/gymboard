@@ -402,13 +402,20 @@ Deno.serve(async (req) => {
   }
 
   // 4. Render React Email template to HTML and plain text
-  const html = await renderAsync(
-    React.createElement(template.component, templateData)
+  // pretty:true で改行を入れて、SMTPの固定バイト幅折り返しが
+  // マルチバイトUTF-8文字の途中に入り文字化けする問題を回避する。
+  // さらに非ASCII文字をHTML数値文字参照に変換して二重に保護する
+  // （auth-email-hook と同等）。
+  const rawHtml = await renderAsync(
+    React.createElement(template.component, templateData),
+    { pretty: true }
   )
+  const html = escapeNonAsciiToEntities(rawHtml)
   const plainText = await renderAsync(
     React.createElement(template.component, templateData),
     { plainText: true }
   )
+
 
   // Resolve subject — supports static string or dynamic function
   const resolvedSubject =

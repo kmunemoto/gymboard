@@ -164,19 +164,44 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1-D) GymBoard 側 salute_sync 予約集合 G
+    // 1-D) GymBoard 側 管理対象集合 G
+    // - 通常: source='salute_sync' のみ
+    // - 6月 (2026-06-01 〜 2026-06-30 JST = 2026-05-31T15:00Z 〜 2026-06-30T15:00Z UTC):
+    //   guard により GymBoard 発の正規予約は存在し得ない。よって source=NULL も
+    //   ミラー対象に含め、Salute に無いものは削除する。
+    //   source='gymboard' は6月でも対象外 (保護・報告のみ)。
+    const JUNE_START_UTC = "2026-05-31T15:00:00+00:00";
+    const JUNE_END_UTC = "2026-06-30T15:00:00+00:00";
+    const orFilter =
+      "source.eq.salute_sync,and(source.is.null,booking_date.gte." +
+      JUNE_START_UTC + ",booking_date.lt." + JUNE_END_UTC + ")";
     const { data: gbRows, error: gbErr } = await admin
       .from("bookings")
       .select("id, user_id, booking_date, booking_type, status, source")
       .eq("tenant_id", TENANT_ID)
-      .eq("source", "salute_sync")
-      .gte("booking_date", fromDate);
+      .gte("booking_date", fromDate)
+      .or(orFilter);
     if (gbErr) return json({ ok: false, step: "fetch_gb_bookings", error: gbErr.message }, 200);
-    const existingMap = new Map<string, { id: string; user_id: string; booking_date: string }>();
+
+    // 6月の source='gymboard' (本来あり得ないが、あれば保護・報告のみ)
+    const { data: juneGymboardPreserved } = await admin
+      .from("bookings")
+      .select("id, user_id, booking_date")
+      .eq("tenant_id", TENANT_ID)
+      .eq("source", "gymboard")
+      .gte("booking_date", JUNE_START_UTC)
+      .lt("booking_date", JUNE_END_UTC);
+
+    const existingMap = new Map<string, { id: string; user_id: string; booking_date: string; source: string | null }>();
     for (const b of gbRows ?? []) {
       const ts = normalizeTs(b.booking_date as string);
       const key = `${b.user_id}|${ts}`;
-      existingMap.set(key, { id: b.id as string, user_id: b.user_id as string, booking_date: b.booking_date as string });
+      existingMap.set(key, {
+        id: b.id as string,
+        user_id: b.user_id as string,
+        booking_date: b.booking_date as string,
+        source: (b.source as string | null) ?? null,
+      });
     }
 
     // 1-E) 差分
@@ -184,7 +209,7 @@ Deno.serve(async (req) => {
     for (const [k, v] of desiredMap) {
       if (!existingMap.has(k)) toInsert.push(v);
     }
-    const toDelete: { id: string; user_id: string; booking_date: string }[] = [];
+    const toDelete: { id: string; user_id: string; booking_date: string; source: string | null }[] = [];
     for (const [k, v] of existingMap) {
       if (!desiredMap.has(k)) toDelete.push(v);
     }
@@ -199,6 +224,18 @@ Deno.serve(async (req) => {
       // 同日重複制約には引っ掛からない (overlap は salute_sync 例外) ので順序問題は無いが
       // 念のため削除を先にする。
       for (const d of toDelete) {
+        // 6月の source=NULL (legacy) は guard により直接 DELETE できない。
+        // 先に source='salute_sync' に昇格させてから削除する (どちらも guard 例外)。
+        if (d.source === null) {
+          const { error: upErr } = await admin
+            .from("bookings")
+            .update({ source: "salute_sync" })
+            .eq("id", d.id);
+          if (upErr) {
+            deleteErrors.push({ id: d.id, step: "promote_null_source", error: upErr.message });
+            continue;
+          }
+        }
         const { error } = await admin
           .from("bookings")
           .delete()
@@ -337,7 +374,10 @@ Deno.serve(async (req) => {
         salute_total: saluteBookings.length,
         skipped_unmapped_user: skippedUnmapped,
         skipped_cancelled: skippedCancelled,
-        gymboard_salute_sync_total: existingMap.size,
+        gymboard_managed_total: existingMap.size,
+        june_legacy_null_source_in_delete: toDelete.filter((x) => x.source === null).length,
+        june_gymboard_source_preserved: (juneGymboardPreserved ?? []).length,
+        june_gymboard_source_preserved_rows: juneGymboardPreserved ?? [],
         to_insert: toInsert.map((x) => ({
           user_id: x.user_id,
           salute_user_id: x.salute_user_id,
@@ -349,6 +389,7 @@ Deno.serve(async (req) => {
           id: x.id,
           user_id: x.user_id,
           booking_date: x.booking_date,
+          source: x.source,
         })),
         applied: dryRun ? null : { inserted: bookingsInserted, deleted: bookingsDeleted, insert_errors: insertErrors, delete_errors: deleteErrors },
       },

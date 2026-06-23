@@ -1188,7 +1188,11 @@
     "errRateLimit": "送信回数の上限に達しました。しばらく時間をおいてお試しください。",
     "errPasswordBreached": "このパスワードは過去に漏洩が確認されています。別のパスワードをお試しください。",
     "errPasswordWeak": "このパスワードは推測されやすいため、より複雑なパスワード（英数字の組み合わせなど）をお試しください。",
-    "errGeneric": "エラーが発生しました: {{message}}"
+    "errGeneric": "エラーが発生しました: {{message}}",
+    "socialDivider": "or",
+    "socialApple": "Sign in with Apple",
+    "socialGoogle": "Sign in with Google",
+    "socialError": "Sign-in failed. Please try again."
   },
   "authCallback": {
     "processing": "Authenticating..."

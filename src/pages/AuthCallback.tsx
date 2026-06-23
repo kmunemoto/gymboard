@@ -57,7 +57,9 @@ const AuthCallback = () => {
               await new Promise((resolve) => window.setTimeout(resolve, 250));
             }
           }
-          window.location.replace("/");
+          const dest = sessionStorage.getItem("postAuthRedirect");
+          sessionStorage.removeItem("postAuthRedirect");
+          window.location.replace(dest || next || "/");
           return;
         } catch (err) {
           console.error("[AuthCallback] Unexpected error:", err);

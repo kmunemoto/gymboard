@@ -8,6 +8,7 @@ import { Dumbbell, Mail, Lock, User, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import SocialAuthButtons from "@/components/SocialAuthButtons";
 import gymboardLogo from "@/assets/gymboard-logo.png";
 
 type AuthMode = "login" | "signup" | "forgot";
@@ -316,6 +317,13 @@ const Auth = () => {
                 {loading ? t("common.processing") : mode === "login" ? t("auth.submitLogin") : t("auth.submitSignup")}
               </Button>
             </form>
+            )}
+
+            {/* ソーシャルログインは顧客タブのみ表示。トレーナーはロール付与のためメール登録を使う。 */}
+            {!isTrainer && mode !== "forgot" && (
+              <div className="mt-5">
+                <SocialAuthButtons redirectParam={redirectParam} />
+              </div>
             )}
 
             {mode !== "forgot" && (

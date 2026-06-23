@@ -19,6 +19,20 @@ if (Capacitor.isNativePlatform()) {
       window.history.back();
     }
   });
+
+  // OAuth / メール確認のディープリンク（app.gymboard.mobile://auth/callback?...）を受け取り、
+  // アプリ内ブラウザを閉じて既存の /auth/callback 処理にクエリ・ハッシュを引き継ぐ。
+  CapApp.addListener("appUrlOpen", async ({ url }) => {
+    if (!url || !url.includes("auth/callback")) return;
+    try {
+      const parsed = new URL(url);
+      const { Browser } = await import("@capacitor/browser");
+      Browser.close().catch(() => {});
+      window.location.href = `/auth/callback${parsed.search}${parsed.hash}`;
+    } catch (e) {
+      console.warn("appUrlOpen handling failed:", e);
+    }
+  });
 }
 
 const showAppUpdateBanner = () => {

@@ -12,6 +12,12 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
+  // 本番ビルドでは console.log / debug / info を除去する。
+  // 障害調査に使う console.error / warn は残す。
+  esbuild:
+    mode === "production"
+      ? { pure: ["console.log", "console.debug", "console.info"] }
+      : {},
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {

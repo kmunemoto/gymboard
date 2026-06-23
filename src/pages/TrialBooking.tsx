@@ -171,7 +171,7 @@ const TrialBooking = () => {
         setSubmitting(false);
         return;
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Trial booking failed:", error);
       toast.error(t("trialBooking.errBookingFailed"));
       setSubmitting(false);

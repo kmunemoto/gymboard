@@ -191,7 +191,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
       setCompareIds((prev) => prev.filter((x) => x !== d.id));
       if (expandedId === d.id) setExpandedId(null);
       toast({ title: t("posture.history.toast.deleteSuccess"), description: t("posture.history.toast.deleteSuccessDesc") });
-    } catch (e: any) {
+    } catch (e) {
       console.error("[skeletal_diagnoses] delete error:", e);
       toast({ title: t("posture.history.toast.deleteError"), description: e?.message ?? "もう一度お試しください", variant: "destructive" });
     } finally {

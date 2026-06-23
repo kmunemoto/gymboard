@@ -8,6 +8,7 @@ import { Dumbbell, Mail, Lock, User, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import SocialAuthButtons from "@/components/SocialAuthButtons";
 import gymboardLogo from "@/assets/gymboard-logo.png";
 
 type AuthMode = "login" | "signup" | "forgot";
@@ -53,7 +54,7 @@ const Auth = () => {
       try {
         const redirectTo = "https://gymboard.lovable.app/reset-password";
         await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-      } catch (err: any) {
+      } catch (err) {
         console.warn("resetPasswordForEmail error (suppressed):", err?.message);
       } finally {
         setForgotSent(true);
@@ -118,7 +119,7 @@ const Auth = () => {
         if (error) throw error;
         navigate(redirectParam || "/");
       }
-    } catch (err: any) {
+    } catch (err) {
       const msg = err.message || "";
       console.error("Auth error:", msg);
       const localized =
@@ -316,6 +317,17 @@ const Auth = () => {
                 {loading ? t("common.processing") : mode === "login" ? t("auth.submitLogin") : t("auth.submitSignup")}
               </Button>
             </form>
+            )}
+
+            {/* ソーシャルログインは顧客・トレーナー両タブで表示。
+                トレーナータブの場合は OAuth 後に signup-trainer で trainer ロールを付与する。 */}
+            {mode !== "forgot" && (
+              <div className="mt-5">
+                <SocialAuthButtons
+                  redirectParam={redirectParam}
+                  intendedRole={isTrainer ? "trainer" : "customer"}
+                />
+              </div>
             )}
 
             {mode !== "forgot" && (

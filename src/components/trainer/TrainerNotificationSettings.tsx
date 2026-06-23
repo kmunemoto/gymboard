@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_ENABLED } from "@/lib/featureFlags";
 
 const TrainerNotificationSettings = () => {
   const { t } = useTranslation();
@@ -180,11 +181,8 @@ const TrainerNotificationSettings = () => {
       </h1>
 
       <div className="space-y-4 max-w-lg">
-        {/*
-          App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
-          連携済みユーザーのデータ・通知ロジックには影響しない。
-        */}
-        {false && (
+        {/* Googleカレンダー連携セクション。表示可否は featureFlags.ts で一元管理。 */}
+        {GOOGLE_CALENDAR_ENABLED && (
           <Card>
             <CardContent className="p-5">
               <div className="flex items-start gap-4">
@@ -231,7 +229,8 @@ const TrainerNotificationSettings = () => {
           </Card>
         )}
 
-        {true && (
+        {/* LINE連携セクション。表示可否は featureFlags.ts で一元管理。 */}
+        {LINE_INTEGRATION_ENABLED && (
           <Card>
             <CardContent className="p-5">
               <div className="flex items-start gap-4">

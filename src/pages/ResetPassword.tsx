@@ -112,7 +112,7 @@ const ResetPassword = () => {
       if (error) throw error;
       setDone(true);
       await supabase.auth.signOut();
-    } catch (err: any) {
+    } catch (err) {
       const msg = err.message || "";
       setError(
         msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("invalid")

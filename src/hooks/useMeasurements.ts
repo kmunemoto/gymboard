@@ -65,16 +65,13 @@ export function useMeasurements(userId: string | undefined) {
 
       await fetchMeasurements();
       toast.success(i18n.t("hooks.measurementSaved"));
-      // Evaluate weight journey milestones (no-op when none set)
+      // Evaluate weight journey milestones (no-op when none set).
+      // バッジ解放トーストは現状非表示のため、RPCの評価のみ行う。
       try {
-        const { data: res } = await supabase.rpc("check_weight_milestones" as any, { p_user_id: userId });
-        const granted = (res as any)?.granted as any[] | undefined;
-        if (granted && granted.length > 0) {
-          for (const g of granted) {
-            // toast suppressed: badge unlock notifications hidden
-          }
-        }
-      } catch {}
+        await supabase.rpc("check_weight_milestones" as any, { p_user_id: userId });
+      } catch (e) {
+        console.error("check_weight_milestones failed", e);
+      }
       return true;
     },
     [userId, measurements, fetchMeasurements]

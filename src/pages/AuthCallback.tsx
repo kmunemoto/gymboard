@@ -11,6 +11,18 @@ const AuthCallback = () => {
     if (hasHandledRef.current) return;
     hasHandledRef.current = true;
 
+    // トレーナータブから OAuth した場合、ここで trainer ロールを付与する。
+    // OAuth はメール確認済みのため signup-trainer を呼べる（付与は冪等）。
+    // 既存トレーナーの再ログインでも重複は無視されるので安全。
+    const finalizePendingRole = async () => {
+      const pendingRole = sessionStorage.getItem("pendingOAuthRole");
+      sessionStorage.removeItem("pendingOAuthRole");
+      if (pendingRole === "trainer") {
+        const { error } = await supabase.functions.invoke("signup-trainer", { body: {} });
+        if (error) console.warn("[AuthCallback] signup-trainer failed:", error.message);
+      }
+    };
+
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
@@ -57,7 +69,10 @@ const AuthCallback = () => {
               await new Promise((resolve) => window.setTimeout(resolve, 250));
             }
           }
-          window.location.replace("/");
+          await finalizePendingRole();
+          const dest = sessionStorage.getItem("postAuthRedirect");
+          sessionStorage.removeItem("postAuthRedirect");
+          window.location.replace(dest || next || "/");
           return;
         } catch (err) {
           console.error("[AuthCallback] Unexpected error:", err);
@@ -88,7 +103,10 @@ const AuthCallback = () => {
             window.location.replace("/reset-password");
             return;
           }
-          window.location.replace("/");
+          await finalizePendingRole();
+          const dest = sessionStorage.getItem("postAuthRedirect");
+          sessionStorage.removeItem("postAuthRedirect");
+          window.location.replace(dest || "/");
           return;
         }
       }

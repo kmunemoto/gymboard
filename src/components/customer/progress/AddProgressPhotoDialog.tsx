@@ -77,7 +77,7 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
       reset();
       onUploaded();
       onClose();
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
       toast.error(t("progress.uploadFailed"));
     } finally {

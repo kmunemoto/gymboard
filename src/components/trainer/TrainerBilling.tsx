@@ -95,7 +95,7 @@ const TrainerBilling = () => {
         throw new Error(serverError || error?.message || t("settings.billing.checkoutFailed"));
       }
       navigateTopLevel(data.url);
-    } catch (e: any) {
+    } catch (e) {
       console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || t("settings.billing.genericError"));
     } finally {
@@ -126,7 +126,7 @@ const TrainerBilling = () => {
         throw new Error(serverError || error?.message || t("settings.billing.portalFailed"));
       }
       navigateTopLevel(data.url);
-    } catch (e: any) {
+    } catch (e) {
       console.error("gymboard-customer-portal failed:", e);
       toast.error(e?.message || t("settings.billing.genericError"));
     } finally {

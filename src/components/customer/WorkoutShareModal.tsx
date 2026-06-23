@@ -163,7 +163,9 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
       // Wait for fonts before drawing text
       try {
         await (document as any).fonts?.ready;
-      } catch {}
+      } catch {
+        // フォント読み込み待ちが失敗してもデフォルトフォントで描画を継続する
+      }
 
       const W = 1080;
       const H = 1920;

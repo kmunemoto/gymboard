@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import PushNotificationSection from "./PushNotificationSection";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_ENABLED, APPLE_CONNECTION_ENABLED } from "@/lib/featureFlags";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();
@@ -250,11 +251,8 @@ const CustomerSettings = () => {
 
 
 
-      {/*
-        App Store審査のため一時的に非表示。LINE/Googleカレンダー連携の外部設定が整い次第、false を true に戻して再有効化する。
-        連携済みユーザーのデータ・通知ロジックには影響しない。
-      */}
-      {true && (
+      {/* LINE連携セクション。表示可否は featureFlags.ts で一元管理。 */}
+      {LINE_INTEGRATION_ENABLED && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <MessageCircle className="w-3.5 h-3.5" />
@@ -302,9 +300,9 @@ const CustomerSettings = () => {
       )}
 
       {/*
-        Googleカレンダー連携セクション（顧客向け）— Google OAuth審査中のため一時非表示。
+        Googleカレンダー連携セクション（顧客向け）。表示可否は featureFlags.ts で一元管理。
       */}
-      {false && (
+      {GOOGLE_CALENDAR_ENABLED && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5" />
@@ -353,10 +351,8 @@ const CustomerSettings = () => {
         </section>
       )}
 
-      {/*
-        App Store審査のため一時的に非表示。
-      */}
-      {false && (
+      {/* Apple連携セクション。表示可否は featureFlags.ts で一元管理。 */}
+      {APPLE_CONNECTION_ENABLED && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Smartphone className="w-3.5 h-3.5" />

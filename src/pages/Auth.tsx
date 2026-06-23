@@ -53,7 +53,7 @@ const Auth = () => {
       try {
         const redirectTo = "https://gymboard.lovable.app/reset-password";
         await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-      } catch (err: any) {
+      } catch (err) {
         console.warn("resetPasswordForEmail error (suppressed):", err?.message);
       } finally {
         setForgotSent(true);
@@ -118,7 +118,7 @@ const Auth = () => {
         if (error) throw error;
         navigate(redirectParam || "/");
       }
-    } catch (err: any) {
+    } catch (err) {
       const msg = err.message || "";
       console.error("Auth error:", msg);
       const localized =

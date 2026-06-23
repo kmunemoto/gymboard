@@ -81,7 +81,7 @@ const JoinGym = () => {
       } else {
         setTenant(row as FoundTenant);
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message || t("joinGym.errSearchFailed"));
     } finally {
       setSearching(false);
@@ -122,7 +122,7 @@ const JoinGym = () => {
 
       toast({ title: t("joinGym.toastJoined", { name: tenant.gym_name }) });
       navigate("/", { replace: true });
-    } catch (err: any) {
+    } catch (err) {
       toast({ title: t("joinGym.toastJoinFailed"), description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);

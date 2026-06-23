@@ -18,6 +18,7 @@ import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
+import { GOOGLE_CALENDAR_ENABLED } from "@/lib/featureFlags";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -117,7 +118,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       if (updateError) throw updateError;
       toast.success(t("settings.trainer.logoUpdated"));
       refetchTenant();
-    } catch (err: any) {
+    } catch (err) {
       toast.error(err.message || t("settings.trainer.uploadFailed"));
     } finally {
       setUploading(false);
@@ -139,7 +140,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       if (updateError) throw updateError;
       toast.success(t("settings.trainer.logoDeleted"));
       refetchTenant();
-    } catch (err: any) {
+    } catch (err) {
       toast.error(err.message || t("settings.trainer.deleteFailed"));
     } finally {
       setUploading(false);
@@ -296,7 +297,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       <Separator />
 
-      {false && (
+      {/* Googleカレンダー連携セクション。表示可否は featureFlags.ts で一元管理。 */}
+      {GOOGLE_CALENDAR_ENABLED && (
         <section className="space-y-3">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.external")}</h3>
 

@@ -363,7 +363,7 @@ const CustomerPosture = () => {
       if (error) throw error;
       setSaved(true);
       toast.success(t("posture.toast.saved"));
-    } catch (e: any) {
+    } catch (e) {
       console.error("Save diagnosis error:", e);
       const msg = e?.message || e?.error_description || "不明なエラー";
       toast.error(t("posture.toast.saveFailed", { msg }));

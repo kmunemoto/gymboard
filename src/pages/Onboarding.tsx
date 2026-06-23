@@ -103,7 +103,7 @@ const Onboarding = () => {
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setLogoUrl(data.publicUrl);
       toast({ title: t("onboarding.toastLogoUploaded") });
-    } catch (err: any) {
+    } catch (err) {
       toast({ title: t("onboarding.toastUploadFailed"), description: err.message, variant: "destructive" });
     } finally {
       setUploadingLogo(false);
@@ -189,7 +189,7 @@ const Onboarding = () => {
       const { data: inviteCode } = await supabase.rpc("get_my_tenant_invite_code");
       setCreatedTenant({ id: tenant.id, invite_code: (inviteCode as string) ?? "" });
       setStep(4);
-    } catch (err: any) {
+    } catch (err) {
       toast({ title: t("onboarding.toastRegisterFailed"), description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);

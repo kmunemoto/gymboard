@@ -20,9 +20,11 @@ const GoogleLogo = () => (
 
 interface SocialAuthButtonsProps {
   redirectParam?: string | null;
+  // OAuth 後に付与したいロール。trainer の場合は AuthCallback で signup-trainer を呼ぶ。
+  intendedRole?: "customer" | "trainer";
 }
 
-const SocialAuthButtons = ({ redirectParam }: SocialAuthButtonsProps) => {
+const SocialAuthButtons = ({ redirectParam, intendedRole = "customer" }: SocialAuthButtonsProps) => {
   const { t } = useTranslation();
   const [pending, setPending] = useState<OAuthProvider | null>(null);
 
@@ -33,6 +35,8 @@ const SocialAuthButtons = ({ redirectParam }: SocialAuthButtonsProps) => {
       if (redirectParam) {
         sessionStorage.setItem("postAuthRedirect", redirectParam);
       }
+      // ロール意図を OAuth ラウンドトリップ間で引き継ぐ（同一オリジンの sessionStorage は往復後も保持される）。
+      sessionStorage.setItem("pendingOAuthRole", intendedRole);
       await signInWithOAuthProvider(provider);
       // Web ではこの後フルリダイレクトが発生する。ネイティブはブラウザ復帰まで待機。
     } catch (err) {

@@ -319,10 +319,14 @@ const Auth = () => {
             </form>
             )}
 
-            {/* ソーシャルログインは顧客タブのみ表示。トレーナーはロール付与のためメール登録を使う。 */}
-            {!isTrainer && mode !== "forgot" && (
+            {/* ソーシャルログインは顧客・トレーナー両タブで表示。
+                トレーナータブの場合は OAuth 後に signup-trainer で trainer ロールを付与する。 */}
+            {mode !== "forgot" && (
               <div className="mt-5">
-                <SocialAuthButtons redirectParam={redirectParam} />
+                <SocialAuthButtons
+                  redirectParam={redirectParam}
+                  intendedRole={isTrainer ? "trainer" : "customer"}
+                />
               </div>
             )}
 

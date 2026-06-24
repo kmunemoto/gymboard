@@ -1866,5 +1866,20 @@
     "lastMonth": "上月",
     "monthsAgo": "{{count}} 個月前",
     "noRecords": "暫無訓練記錄"
+  },
+  "monthlyComment": {
+    "saveFailed": "儲存失敗",
+    "saved": "已儲存月度評語",
+    "title": "月度評語",
+    "placeholder": "輸入本月給客戶的評語...",
+    "update": "更新",
+    "save": "儲存"
+  },
+  "trainerMessages": {
+    "title": "訊息",
+    "noCustomers": "尚無已註冊的客戶",
+    "noMessagePreview": "無訊息",
+    "noHistory": "無訊息記錄",
+    "selectConversation": "請從左側列表中選擇對話"
   }
 }

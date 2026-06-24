@@ -1866,5 +1866,20 @@
     "lastMonth": "지난달",
     "monthsAgo": "{{count}}개월 전",
     "noRecords": "트레이닝 기록이 없습니다"
+  },
+  "monthlyComment": {
+    "saveFailed": "저장에 실패했습니다",
+    "saved": "월간 코멘트를 저장했습니다",
+    "title": "월간 코멘트",
+    "placeholder": "이번 달 고객에게 보낼 코멘트를 입력...",
+    "update": "업데이트",
+    "save": "저장"
+  },
+  "trainerMessages": {
+    "title": "메시지",
+    "noCustomers": "아직 등록된 고객이 없습니다",
+    "noMessagePreview": "메시지 없음",
+    "noHistory": "메시지 기록이 없습니다",
+    "selectConversation": "왼쪽 목록에서 대화를 선택해 주세요"
   }
 }

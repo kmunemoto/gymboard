@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { MessageCircle, Send, ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ interface CustomerInfo {
 }
 
 const TrainerMessages = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [customers, setCustomers] = useState<CustomerInfo[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -111,7 +113,7 @@ const TrainerMessages = () => {
     <div className="pb-24 md:pb-0">
       <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2 mb-4 sm:mb-6">
         <MessageCircle className="w-5 h-5 text-accent" />
-        メッセージ
+        {t("trainerMessages.title")}
       </h1>
 
       <div className="md:grid md:grid-cols-[320px_1fr] md:gap-4 md:h-[calc(100vh-180px)]">
@@ -120,7 +122,7 @@ const TrainerMessages = () => {
           <CardContent className="p-0">
             <div className="divide-y divide-border">
               {sortedCustomers.length === 0 && (
-                <p className="p-4 text-sm text-muted-foreground">顧客がまだ登録されていません</p>
+                <p className="p-4 text-sm text-muted-foreground">{t("trainerMessages.noCustomers")}</p>
               )}
               {sortedCustomers.map((cust) => {
                 const unread = unreadCounts[cust.user_id] || 0;
@@ -143,13 +145,13 @@ const TrainerMessages = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline">
-                        <p className="font-bold text-sm truncate">{cust.display_name || "顧客"}</p>
+                        <p className="font-bold text-sm truncate">{cust.display_name || t("common.customer")}</p>
                         <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
                           {last?.time || ""}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {last?.content || "メッセージなし"}
+                        {last?.content || t("trainerMessages.noMessagePreview")}
                       </p>
                     </div>
                   </button>
@@ -170,14 +172,14 @@ const TrainerMessages = () => {
               <div className="w-8 h-8 rounded-lg gym-gradient flex items-center justify-center text-primary-foreground font-bold text-xs">
                 {selected?.avatar_initial}
               </div>
-              <p className="font-bold text-sm">{selected?.display_name || "顧客"}</p>
+              <p className="font-bold text-sm">{selected?.display_name || t("common.customer")}</p>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground text-sm mt-8">
-                  メッセージ履歴がありません
+                  {t("trainerMessages.noHistory")}
                 </div>
               )}
               {messages.map((msg) => {
@@ -205,7 +207,7 @@ const TrainerMessages = () => {
             {/* Input */}
             <div className="p-2 sm:p-3 border-t border-border flex gap-2">
               <textarea
-                placeholder="メッセージを入力..."
+                placeholder={t("customerChat.inputPlaceholder")}
                 value={newMsg}
                 onChange={(e) => {
                   setNewMsg(e.target.value);
@@ -233,7 +235,7 @@ const TrainerMessages = () => {
           <Card className="hidden md:flex items-center justify-center">
             <div className="text-center text-muted-foreground">
               <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">左のリストから会話を選択してください</p>
+              <p className="text-sm">{t("trainerMessages.selectConversation")}</p>
             </div>
           </Card>
         )}

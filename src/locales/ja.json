@@ -1866,5 +1866,20 @@
     "lastMonth": "先月",
     "monthsAgo": "{{count}}ヶ月前",
     "noRecords": "トレーニング記録がありません"
+  },
+  "monthlyComment": {
+    "saveFailed": "保存に失敗しました",
+    "saved": "月間コメントを保存しました",
+    "title": "月間コメント",
+    "placeholder": "この月のお客様へのコメントを入力...",
+    "update": "更新する",
+    "save": "保存する"
+  },
+  "trainerMessages": {
+    "title": "メッセージ",
+    "noCustomers": "顧客がまだ登録されていません",
+    "noMessagePreview": "メッセージなし",
+    "noHistory": "メッセージ履歴がありません",
+    "selectConversation": "左のリストから会話を選択してください"
   }
 }

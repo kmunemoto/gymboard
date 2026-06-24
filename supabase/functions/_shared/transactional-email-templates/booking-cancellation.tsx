@@ -52,7 +52,7 @@ const BookingCancellationEmail = ({
           <Text style={text}>{intro}</Text>
           <Section style={detailSection}>
             {recipientRole === 'customer' && (
-              <Text style={sectionTitle}>📅 キャンセルした予約</Text>
+              <Text style={sectionTitle}>キャンセルした予約</Text>
             )}
             <Text style={label}>お名前</Text>
             <Text style={value}>{customerName}</Text>
@@ -75,7 +75,7 @@ const BookingCancellationEmail = ({
           {recipientRole === 'customer' ? (
             <>
               <Text style={footer}>ジムボード</Text>
-              <Link href={SITE_URL} style={footerLink}>🌐 {SITE_URL}</Link>
+              <Link href={SITE_URL} style={footerLink}>{SITE_URL}</Link>
             </>
           ) : (
             <Text style={footer}>

@@ -22,7 +22,10 @@ const NewBookingNotificationEmail = ({
   dashboardUrl = '',
 }: NewBookingNotificationProps) => (
   <Html lang="ja" dir="ltr">
-    <Head />
+    <Head>
+      <meta charSet="UTF-8" />
+      <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
+    </Head>
     <Preview>新しい予約が入りました — {SITE_NAME}</Preview>
     <Body style={main}>
       <Container style={container}>

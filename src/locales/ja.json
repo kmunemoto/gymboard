@@ -1887,5 +1887,12 @@
     "lapsed": "{{days}}日前に来店・予約なし",
     "neverBooked": "まだ予約がありません",
     "more": "他 {{count}}名"
+  },
+  "renewal": {
+    "title": "更新が近い顧客",
+    "soon": "あと{{days}}日で更新",
+    "soonToday": "本日更新",
+    "remaining": "・今期残り{{count}}回",
+    "unlimited": "・通い放題"
   }
 }

@@ -1887,5 +1887,12 @@
     "lapsed": "Last visit {{days}}d ago · no upcoming booking",
     "neverBooked": "No bookings yet",
     "more": "+{{count}} more"
+  },
+  "renewal": {
+    "title": "Customers up for renewal",
+    "soon": "Renews in {{days}}d",
+    "soonToday": "Renews today",
+    "remaining": " · {{count}} left this cycle",
+    "unlimited": " · Unlimited"
   }
 }

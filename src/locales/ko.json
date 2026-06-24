@@ -1887,5 +1887,12 @@
     "lapsed": "{{days}}일 전 방문 · 예약 없음",
     "neverBooked": "아직 예약이 없습니다",
     "more": "외 {{count}}명"
+  },
+  "renewal": {
+    "title": "갱신이 임박한 고객",
+    "soon": "{{days}}일 후 갱신",
+    "soonToday": "오늘 갱신",
+    "remaining": "・이번 주기 잔여 {{count}}회",
+    "unlimited": "・무제한"
   }
 }

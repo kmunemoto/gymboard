@@ -8,3 +8,8 @@ export const MONTHLY_REPORT_ENABLED = false; // 月次レポート画面
 export const LINE_INTEGRATION_ENABLED = true;  // LINE連携セクション
 export const GOOGLE_CALENDAR_ENABLED = false;  // Googleカレンダー連携セクション（Google OAuth審査中）
 export const APPLE_CONNECTION_ENABLED = false; // Apple連携セクション（App Store審査中）
+
+// キャンセル待ち（満枠スロットへの登録）。
+// 既定 OFF。DBマイグレーション(booking_waitlist + RLS)を適用・検証してから true にする。
+// OFF の間は予約フローの挙動は一切変わらない。
+export const WAITLIST_ENABLED = false;

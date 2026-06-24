@@ -1881,5 +1881,11 @@
     "noMessagePreview": "メッセージなし",
     "noHistory": "メッセージ履歴がありません",
     "selectConversation": "左のリストから会話を選択してください"
+  },
+  "retention": {
+    "title": "フォローが必要な顧客",
+    "lapsed": "{{days}}日前に来店・予約なし",
+    "neverBooked": "まだ予約がありません",
+    "more": "他 {{count}}名"
   }
 }

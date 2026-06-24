@@ -1881,5 +1881,11 @@
     "noMessagePreview": "메시지 없음",
     "noHistory": "메시지 기록이 없습니다",
     "selectConversation": "왼쪽 목록에서 대화를 선택해 주세요"
+  },
+  "retention": {
+    "title": "팔로우가 필요한 고객",
+    "lapsed": "{{days}}일 전 방문 · 예약 없음",
+    "neverBooked": "아직 예약이 없습니다",
+    "more": "외 {{count}}명"
   }
 }

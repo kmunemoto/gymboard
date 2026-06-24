@@ -1,4 +1,4 @@
-import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList } from "lucide-react";
+import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -141,6 +141,48 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
     return { month: t("dashboard.monthLabel", { month: monthNumber }), revenue: revenueByMonth.get(monthKey) || 0 };
   });
 
+  // フォローが必要な顧客（離脱検知）:
+  //  最終来店から INACTIVE_DAYS 日以上経過し、今後の予約が無い顧客を抽出。
+  //  既存テーブル（bookings / profiles）の派生計算のみ。スキーマ変更なし。
+  const INACTIVE_DAYS = 14;
+  const atRiskCustomers = useMemo(() => {
+    const now = new Date();
+    // ユーザーごとの最終来店日（過去の非キャンセル予約の最大日）と、今後予約の有無
+    const visit = new Map<string, { last: string | null; upcoming: boolean }>();
+    bookings.forEach((b) => {
+      if (b.status === "キャンセル済み" || b.user_id === "blocked" || b.user_id === "trial-guest") return;
+      const dt = new Date(`${b.date}T${b.startTime || "00:00"}:00+09:00`);
+      const info = visit.get(b.user_id) || { last: null, upcoming: false };
+      if (dt <= now) {
+        if (!info.last || b.date > info.last) info.last = b.date;
+      } else {
+        info.upcoming = true;
+      }
+      visit.set(b.user_id, info);
+    });
+
+    const daysBetween = (fromIso: string) =>
+      Math.floor((now.getTime() - new Date(fromIso).getTime()) / 86400000);
+
+    type Risk = { user_id: string; name: string; reason: "lapsed" | "neverBooked"; days: number };
+    const list: Risk[] = [];
+    profiles.forEach((p) => {
+      const info = visit.get(p.user_id);
+      const hasUpcoming = (info?.upcoming ?? false) || !!p.next_booking_date;
+      if (hasUpcoming) return;
+      const name = p.display_name || t("common.nameUnset");
+      if (info?.last) {
+        const days = daysBetween(`${info.last}T23:59:59+09:00`);
+        if (days >= INACTIVE_DAYS) list.push({ user_id: p.user_id, name, reason: "lapsed", days });
+      } else {
+        // 一度も予約がない顧客（登録から日が経っているもののみ）
+        const joined = p.created_at ? daysBetween(p.created_at) : 0;
+        if (joined >= INACTIVE_DAYS) list.push({ user_id: p.user_id, name, reason: "neverBooked", days: joined });
+      }
+    });
+    return list.sort((a, b) => b.days - a.days);
+  }, [bookings, profiles, t]);
+
   if (loading || bookingsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -180,6 +222,44 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
       </div>
 
       <div className="space-y-4 sm:space-y-6">
+        {/* フォローが必要な顧客（離脱検知） */}
+        {atRiskCustomers.length > 0 && (
+          <section>
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+              <UserRoundX className="w-3.5 h-3.5 text-warning" />
+              {t("retention.title")}
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 ml-1">
+                {t("dashboard.countUnit", { count: atRiskCustomers.length })}
+              </Badge>
+            </h2>
+            <div className="space-y-2">
+              {atRiskCustomers.slice(0, 10).map((c) => (
+                <Card key={c.user_id} className="card-hover cursor-pointer border-warning/30" onClick={() => onSelectClient(c.user_id)}>
+                  <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-warning/15 flex items-center justify-center text-warning font-bold text-xs sm:text-sm shrink-0">
+                      {(c.name || "?")[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{c.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {c.reason === "lapsed"
+                          ? t("retention.lapsed", { days: c.days })
+                          : t("retention.neverBooked")}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </CardContent>
+                </Card>
+              ))}
+              {atRiskCustomers.length > 10 && (
+                <p className="text-[11px] text-muted-foreground text-center pt-1">
+                  {t("retention.more", { count: atRiskCustomers.length - 10 })}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Today's Schedule - REAL DATA */}
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">

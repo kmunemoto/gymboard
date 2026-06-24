@@ -1881,5 +1881,11 @@
     "noMessagePreview": "No messages",
     "noHistory": "No message history",
     "selectConversation": "Select a conversation from the list on the left"
+  },
+  "retention": {
+    "title": "Customers needing follow-up",
+    "lapsed": "Last visit {{days}}d ago · no upcoming booking",
+    "neverBooked": "No bookings yet",
+    "more": "+{{count}} more"
   }
 }

@@ -1881,5 +1881,11 @@
     "noMessagePreview": "无消息",
     "noHistory": "无消息记录",
     "selectConversation": "请从左侧列表中选择会话"
+  },
+  "retention": {
+    "title": "需要跟进的客户",
+    "lapsed": "{{days}} 天前到店 · 无后续预约",
+    "neverBooked": "尚无预约",
+    "more": "其他 {{count}} 名"
   }
 }

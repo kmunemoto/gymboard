@@ -1866,5 +1866,20 @@
     "lastMonth": "Last month",
     "monthsAgo": "{{count}} months ago",
     "noRecords": "No training records"
+  },
+  "monthlyComment": {
+    "saveFailed": "Failed to save",
+    "saved": "Monthly comment saved",
+    "title": "Monthly Comment",
+    "placeholder": "Enter a comment for the customer this month...",
+    "update": "Update",
+    "save": "Save"
+  },
+  "trainerMessages": {
+    "title": "Messages",
+    "noCustomers": "No customers registered yet",
+    "noMessagePreview": "No messages",
+    "noHistory": "No message history",
+    "selectConversation": "Select a conversation from the list on the left"
   }
 }

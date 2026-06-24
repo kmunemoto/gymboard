@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 const TrainerMonthlyComment = ({ clientId }: Props) => {
+  const { t } = useTranslation();
   const now = getJSTNow();
   const monthOptions = Array.from({ length: 6 }, (_, i) => {
     const d = startOfMonth(subMonths(now, i));
@@ -56,7 +58,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
         .from("monthly_reports" as any)
         .update({ trainer_comment: comment } as any)
         .eq("id", existingId);
-      if (error) { toast.error("保存に失敗しました"); setSaving(false); return; }
+      if (error) { toast.error(t("monthlyComment.saveFailed")); setSaving(false); return; }
     } else {
       const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
       const tenantId = await fetchMyTenantId();
@@ -65,10 +67,10 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
         .insert(withTenant({ user_id: clientId, month: selectedMonth, trainer_comment: comment }, tenantId) as any)
         .select()
         .single();
-      if (error) { toast.error("保存に失敗しました"); setSaving(false); return; }
+      if (error) { toast.error(t("monthlyComment.saveFailed")); setSaving(false); return; }
       if (data) setExistingId((data as any).id);
     }
-    toast.success("月間コメントを保存しました");
+    toast.success(t("monthlyComment.saved"));
     setSaving(false);
   };
 
@@ -76,7 +78,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
     <div className="space-y-4">
       <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
         <MessageSquare className="w-3.5 h-3.5" />
-        月間コメント
+        {t("monthlyComment.title")}
       </h2>
 
       <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -98,7 +100,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
         <Card>
           <CardContent className="p-4 space-y-3">
             <Textarea
-              placeholder="この月のお客様へのコメントを入力..."
+              placeholder={t("monthlyComment.placeholder")}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={5}
@@ -106,7 +108,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
             />
             <Button onClick={handleSave} disabled={saving || !comment.trim()} className="w-full">
               {saving ? <DumbbellLoader className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-              {existingId ? "更新する" : "保存する"}
+              {existingId ? t("monthlyComment.update") : t("monthlyComment.save")}
             </Button>
           </CardContent>
         </Card>

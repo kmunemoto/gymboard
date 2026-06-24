@@ -1,13 +1,14 @@
 // sync-trial-cancel-to-salute
 // トレーナーが GymBoard で体験予約をキャンセルした直後に呼ばれ、その場で
-// Salute へキャンセルを伝える「即時版」逆同期。
-// (1時間ごとの sync-bookings-to-salute バッチは安全網として引き続き残す)
+//   (1) Salute へキャンセルを伝え（予約サイトの枠を即時解放）
+//   (2) お客様とジム(トレーナー)へキャンセル確認メールを送る
+// を行う「即時版」のキャンセル後処理。
+// (1時間ごとの sync-bookings-to-salute バッチは Salute 反映の安全網として残る)
 //
 // - クライアント(トレーナー)から supabase.functions.invoke で呼ばれる。
 // - 念のため GymBoard 側に「キャンセル済み」の該当行が実在することを確認してから
-//   送信する (任意の予約を外部から勝手にキャンセルさせないため)。
-// - Salute の sync-trial-booking-from-gymboard へ x-migration-secret 付きで送信。
-// - 失敗してもバッチが後追いで再送するため致命的ではない (fire-and-forget 前提)。
+//   処理する (任意の予約を外部から勝手にキャンセル/通知させないため)。
+// - メールは冪等キー付き。二重invokeでも重複送信しない。
 //
 // 環境変数:
 //   - MIGRATION_SHARED_SECRET
@@ -68,10 +69,10 @@ Deno.serve(async (req) => {
     });
 
     // GymBoard 側に「キャンセル済み」の該当予約が実在することを確認する。
-    // 実在するキャンセルのみを Salute に伝える (なりすまし防止 & 冪等)。
+    // 実在するキャンセルのみを処理する (なりすまし防止 & 冪等)。guest_contact も取得。
     const { data: gbRow, error: gbErr } = await admin
       .from("trial_bookings")
-      .select("id")
+      .select("id, guest_contact")
       .eq("tenant_id", TENANT_ID)
       .eq("booking_date", booking_date)
       .eq("guest_name", guest_name)
@@ -83,21 +84,97 @@ Deno.serve(async (req) => {
     if (!gbRow) {
       return json({ ok: false, error: "no matching cancelled trial in GymBoard" }, 409);
     }
+    const guest_contact = (gbRow.guest_contact as string | null) ?? "";
 
-    // Salute へキャンセルを伝える
-    const targetUrl = `${SALUTE_URL_BASE.replace(/\/$/, "")}/functions/v1/sync-trial-booking-from-gymboard`;
-    const res = await fetch(targetUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-migration-secret": SHARED_SECRET,
-      },
-      body: JSON.stringify({ booking_date, guest_name, action: "cancel" }),
-    });
-    const txt = await res.text();
-    console.log(`[trial-cancel-realtime] status=${res.status} body=${txt.slice(0, 200)}`);
+    // ===== (1) Salute へキャンセルを伝える =====
+    let saluteOk = false;
+    let saluteStatus = 0;
+    try {
+      const targetUrl = `${SALUTE_URL_BASE.replace(/\/$/, "")}/functions/v1/sync-trial-booking-from-gymboard`;
+      const res = await fetch(targetUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-migration-secret": SHARED_SECRET },
+        body: JSON.stringify({ booking_date, guest_name, action: "cancel" }),
+      });
+      saluteStatus = res.status;
+      saluteOk = res.ok;
+      const txt = await res.text();
+      console.log(`[trial-cancel-realtime] salute status=${res.status} body=${txt.slice(0, 200)}`);
+    } catch (e) {
+      console.error("[trial-cancel-realtime] salute sync failed:", e instanceof Error ? e.message : String(e));
+    }
 
-    return json({ ok: res.ok, salute_status: res.status, salute_response: txt.slice(0, 300) }, res.ok ? 200 : 502);
+    // ===== (2) キャンセル確認メール (お客様 + ジム) =====
+    const safeContact = guest_contact.replace(/[^A-Za-z0-9._@+-]/g, "_");
+    const notifyKey = `${booking_date}-${safeContact}`;
+
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
+    const bd = new Date(booking_date);
+    const jstBd = new Date(bd.getTime() + jstOffset);
+    const dateStr = `${jstBd.getUTCMonth() + 1}月${jstBd.getUTCDate()}日（${dowChars[jstBd.getUTCDay()]}）`;
+    const startMin = jstBd.getUTCHours() * 60 + jstBd.getUTCMinutes();
+    const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const timeStr = `${fmt(startMin)}〜${fmt(startMin + 60)}`;
+
+    const invokeEmail = (payload: Record<string, unknown>) =>
+      fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SERVICE_ROLE,
+          "Authorization": `Bearer ${SERVICE_ROLE}`,
+        },
+        body: JSON.stringify(payload),
+      })
+        .then((r) => r.text())
+        .then((t) => console.log(`[trial-cancel-email] template=${payload.templateName} body=${t.slice(0, 160)}`))
+        .catch((e) => console.error("[trial-cancel-email] failed:", e instanceof Error ? e.message : String(e)));
+
+    // お客様宛
+    if (guest_contact.includes("@")) {
+      await invokeEmail({
+        templateName: "booking-cancellation",
+        recipientEmail: guest_contact,
+        idempotencyKey: `trial-cancel-customer-${notifyKey}`,
+        templateData: {
+          customerName: guest_name,
+          bookingDate: dateStr,
+          bookingTime: timeStr,
+          planName: "初回無料体験",
+          recipientRole: "customer",
+          isTrial: true,
+        },
+      });
+    }
+
+    // ジム(トレーナー)宛
+    try {
+      const { data: trainerRoles } = await admin.rpc("get_trainer_ids");
+      const trainerId = (trainerRoles as Array<{ user_id: string }> | null)?.[0]?.user_id;
+      if (trainerId) {
+        await invokeEmail({
+          templateName: "booking-cancellation",
+          recipientEmail: "_resolve_trainer_",
+          idempotencyKey: `trial-cancel-trainer-${notifyKey}`,
+          templateData: {
+            customerName: guest_name,
+            bookingDate: dateStr,
+            bookingTime: timeStr,
+            planName: "初回無料体験",
+            recipientRole: "trainer",
+            isTrial: true,
+            trainerUserId: trainerId,
+          },
+        });
+      } else {
+        console.log("[trial-cancel-email] no trainer found via get_trainer_ids");
+      }
+    } catch (e) {
+      console.error("[trial-cancel-email] trainer resolve failed:", e instanceof Error ? e.message : String(e));
+    }
+
+    return json({ ok: true, salute_synced: saluteOk, salute_status: saluteStatus, notified: true }, 200);
   } catch (e) {
     return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);
   }

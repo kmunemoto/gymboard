@@ -25,7 +25,10 @@
     "female": "여성",
     "all": "전체",
     "none": "없음",
-    "nameUnset": "이름 미설정"
+    "nameUnset": "이름 미설정",
+    "brand": "GymBoard",
+    "chat": "채팅",
+    "customer": "고객"
   },
   "settings": {
     "title": "설정",
@@ -1714,5 +1717,67 @@
     "athlete": "애슬리트",
     "elite": "엘리트",
     "legend": "레전드"
+  },
+  "nav": {
+    "home": "홈",
+    "training": "기록",
+    "booking": "예약",
+    "meals": "식사",
+    "settings": "설정"
+  },
+  "milestoneDialog": {
+    "achieved": "{{name}} 달성!",
+    "sessionReached": "{{count}}세션 도달",
+    "coins": "{{count}} 코인",
+    "exp": "{{count}} EXP",
+    "gachaTickets": "가챠 티켓 {{count}}장",
+    "titleReward": "칭호 \"{{title}}\"",
+    "badgeEarned": "기념 배지 획득",
+    "next": "다음 ({{current}}/{{total}})"
+  },
+  "sessionExp": {
+    "title": "오늘의 트레이닝 성과",
+    "baseExp": "기본 EXP",
+    "volumeBonus": "볼륨 보너스",
+    "totalVolume": "총 거상량 {{volume}}kg",
+    "personalBest": "자기 베스트",
+    "combo": "콤보 {{count}}회",
+    "companion": "동료도 경험치를 받았습니다!",
+    "companionWithName": "동료({{name}})도 경험치를 받았습니다!",
+    "remainExp": "{{count}} EXP 남음"
+  },
+  "announcementsDialog": {
+    "title": "공지",
+    "markAllRead": "모두 읽음으로 표시",
+    "allReadToast": "모든 공지를 읽음으로 표시했습니다",
+    "empty": "공지가 없습니다"
+  },
+  "trainerNav": {
+    "menu": "메뉴",
+    "dashboard": "대시보드",
+    "clients": "고객 목록",
+    "schedule": "스케줄",
+    "messages": "메시지",
+    "exercises": "종목 관리",
+    "counseling": "상담",
+    "announcements": "공지 관리",
+    "notifications": "알림 설정",
+    "gymSettings": "짐 설정",
+    "mDashboard": "홈",
+    "mClients": "고객",
+    "mSchedule": "예약",
+    "mExercises": "종목",
+    "mAnnouncements": "공지",
+    "mNotifications": "알림",
+    "mGymSettings": "설정"
+  },
+  "customerView": {
+    "purchaseComplete": "구매가 완료되었습니다!"
+  },
+  "trainerView": {
+    "newMessageFrom": "{{name}}님으로부터 새 메시지가 있습니다",
+    "messagePreview": "\"{{text}}\"",
+    "check": "확인하기",
+    "adminSuffix": "관리 화면"
   }
 }

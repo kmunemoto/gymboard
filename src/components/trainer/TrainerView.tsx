@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { MessageSquare } from "lucide-react";
 
 import TrainerSidebar from "./TrainerSidebar";
@@ -24,6 +25,7 @@ import { useTenant } from "@/hooks/useTenant";
 export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "gym-settings";
 
 const TrainerView = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TrainerTab>("dashboard");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const { signOut } = useAuth();
@@ -63,11 +65,11 @@ const TrainerView = () => {
               .select("display_name")
               .eq("user_id", msg.sender_id)
               .single();
-            const name = profile?.display_name || "顧客";
-            toast(`${name} 様から新着メッセージがあります`, {
-              description: `「${msg.content.substring(0, 30)}${msg.content.length > 30 ? "…" : ""}」`,
+            const name = profile?.display_name || t("common.customer");
+            toast(t("trainerView.newMessageFrom", { name }), {
+              description: t("trainerView.messagePreview", { text: `${msg.content.substring(0, 30)}${msg.content.length > 30 ? "…" : ""}` }),
               action: {
-                label: "確認する",
+                label: t("trainerView.check"),
                 onClick: () => setTab("messages"),
               },
             });
@@ -101,12 +103,12 @@ const TrainerView = () => {
             ) : (
               <GymLogo size="sm" />
             )}
-            <span className="text-xs sm:text-sm font-bold truncate">{tenant?.gym_name || "ジムボード"} <span className="hidden sm:inline">管理画面</span></span>
+            <span className="text-xs sm:text-sm font-bold truncate">{tenant?.gym_name || t("common.brand")} <span className="hidden sm:inline">{t("trainerView.adminSuffix")}</span></span>
           </div>
           <button
             onClick={() => { setTab("messages"); setSelectedClientId(null); }}
             className="relative p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="チャット"
+            aria-label={t("common.chat")}
           >
             <MessageSquare className="w-5 h-5" />
             {unreadMessages > 0 && (
@@ -125,7 +127,7 @@ const TrainerView = () => {
         <div className="flex">
           <TrainerSidebar
             activeTab={tab}
-            onTabChange={(t) => { setTab(t); setSelectedClientId(null); }}
+            onTabChange={(nextTab) => { setTab(nextTab); setSelectedClientId(null); }}
             unreadMessages={unreadMessages}
             unreadCounseling={unreadCounseling}
           />

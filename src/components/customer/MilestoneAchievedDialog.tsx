@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Coins, Star, Ticket, Award } from "lucide-react";
@@ -12,6 +13,7 @@ interface Props {
 }
 
 const MilestoneAchievedDialog = ({ milestones, onClose }: Props) => {
+  const { t } = useTranslation();
   const [idx, setIdx] = useState(0);
   useEffect(() => { setIdx(0); }, [milestones]);
   if (!milestones.length) return null;
@@ -45,35 +47,35 @@ const MilestoneAchievedDialog = ({ milestones, onClose }: Props) => {
         <div className="relative text-center pt-2">
           <p className="text-[11px] font-bold text-muted-foreground tracking-widest mb-2">MILESTONE</p>
           <h2 className="text-xl font-extrabold mb-1 break-all" style={{ color: "#0ABAB5" }}>
-            {m.milestone_name}達成！
+            {t("milestoneDialog.achieved", { name: m.milestone_name })}
           </h2>
-          <p className="text-xs text-muted-foreground mb-4">{m.session_count}セッション到達</p>
+          <p className="text-xs text-muted-foreground mb-4">{t("milestoneDialog.sessionReached", { count: m.session_count })}</p>
 
           <div className="space-y-2 text-left mb-4">
             {m.reward_coins > 0 && (
-              <RewardRow icon={<Coins className="w-4 h-4 text-amber-500" />} label={`${m.reward_coins} コイン`} />
+              <RewardRow icon={<Coins className="w-4 h-4 text-amber-500" />} label={t("milestoneDialog.coins", { count: m.reward_coins })} />
             )}
             {m.reward_exp > 0 && (
-              <RewardRow icon={<Star className="w-4 h-4 text-primary" />} label={`${m.reward_exp} EXP`} />
+              <RewardRow icon={<Star className="w-4 h-4 text-primary" />} label={t("milestoneDialog.exp", { count: m.reward_exp })} />
             )}
             {m.reward_gacha_tickets > 0 && (
-              <RewardRow icon={<Ticket className="w-4 h-4 text-purple-500" />} label={`ガチャチケット ${m.reward_gacha_tickets}枚`} />
+              <RewardRow icon={<Ticket className="w-4 h-4 text-purple-500" />} label={t("milestoneDialog.gachaTickets", { count: m.reward_gacha_tickets })} />
             )}
             {titleName && (
-              <RewardRow icon={<Award className="w-4 h-4 text-rose-500" />} label={`称号「${titleName}」`} />
+              <RewardRow icon={<Award className="w-4 h-4 text-rose-500" />} label={t("milestoneDialog.titleReward", { title: titleName })} />
             )}
             {m.reward_badge_key && (
               <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-gradient-to-r from-primary/10 to-amber-100/40 border border-primary/20">
                 <div className="flex items-center gap-2">
                   <BadgeIcon type="achievement" iconKey={m.reward_badge_key} rarity="epic" size={36} />
-                  <span className="text-xs font-bold break-all">記念バッジ獲得</span>
+                  <span className="text-xs font-bold break-all">{t("milestoneDialog.badgeEarned")}</span>
                 </div>
               </div>
             )}
           </div>
 
           <Button onClick={next} className="w-full" style={{ background: "#0ABAB5" }}>
-            {idx + 1 < milestones.length ? `次へ (${idx + 2}/${milestones.length})` : "閉じる"}
+            {idx + 1 < milestones.length ? t("milestoneDialog.next", { current: idx + 2, total: milestones.length }) : t("common.close")}
           </Button>
         </div>
       </DialogContent>

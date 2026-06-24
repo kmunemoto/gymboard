@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { MessageCircle, Bell } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,6 +24,7 @@ import { useTenant } from "@/hooks/useTenant";
 export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report";
 
 const CustomerView = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<CustomerTab>("home");
   const { count: unreadChat, refetch: refetchUnread } = useUnreadCount();
   const { count: unreadAnnouncements, refetch: refetchAnnouncements } = useAnnouncementUnreadCount();
@@ -46,7 +48,7 @@ const CustomerView = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success" && params.get("session_id")) {
-      toast.success("購入が完了しました！");
+      toast.success(t("customerView.purchaseComplete"));
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -63,7 +65,7 @@ const CustomerView = () => {
             {tenant?.logo_url && (
               <img src={tenant.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
             )}
-            <span className="text-sm font-bold truncate">{tenant?.gym_name_short || tenant?.gym_name || "ジムボード"}</span>
+            <span className="text-sm font-bold truncate">{tenant?.gym_name_short || tenant?.gym_name || t("common.brand")}</span>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -71,7 +73,7 @@ const CustomerView = () => {
               size="sm"
               onClick={() => setAnnouncementsOpen(true)}
               className="text-muted-foreground relative"
-              aria-label="お知らせ"
+              aria-label={t("announcementsDialog.title")}
             >
               <Bell className="w-4 h-4" />
               {unreadAnnouncements > 0 && (
@@ -80,7 +82,7 @@ const CustomerView = () => {
                 </span>
               )}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setTab("chat")} className="text-muted-foreground relative" aria-label="チャット">
+            <Button variant="ghost" size="sm" onClick={() => setTab("chat")} className="text-muted-foreground relative" aria-label={t("common.chat")}>
               <MessageCircle className="w-4 h-4" />
               {unreadChat > 0 && (
                 <span className="absolute top-0 right-0 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">

@@ -25,7 +25,10 @@
     "female": "Female",
     "all": "All",
     "none": "None",
-    "nameUnset": "No name set"
+    "nameUnset": "No name set",
+    "brand": "GymBoard",
+    "chat": "Chat",
+    "customer": "Customer"
   },
   "settings": {
     "title": "Settings",
@@ -1714,5 +1717,67 @@
     "athlete": "Athlete",
     "elite": "Elite",
     "legend": "Legend"
+  },
+  "nav": {
+    "home": "Home",
+    "training": "Records",
+    "booking": "Booking",
+    "meals": "Meals",
+    "settings": "Settings"
+  },
+  "milestoneDialog": {
+    "achieved": "{{name}} achieved!",
+    "sessionReached": "Reached {{count}} sessions",
+    "coins": "{{count}} coins",
+    "exp": "{{count}} EXP",
+    "gachaTickets": "{{count}} gacha tickets",
+    "titleReward": "Title \"{{title}}\"",
+    "badgeEarned": "Commemorative badge earned",
+    "next": "Next ({{current}}/{{total}})"
+  },
+  "sessionExp": {
+    "title": "Today's Training Results",
+    "baseExp": "Base EXP",
+    "volumeBonus": "Volume Bonus",
+    "totalVolume": "Total volume {{volume}}kg",
+    "personalBest": "Personal Best",
+    "combo": "{{count}} combo",
+    "companion": "Your companion gained EXP too!",
+    "companionWithName": "Your companion ({{name}}) gained EXP too!",
+    "remainExp": "{{count}} EXP to go"
+  },
+  "announcementsDialog": {
+    "title": "Announcements",
+    "markAllRead": "Mark all as read",
+    "allReadToast": "Marked all announcements as read",
+    "empty": "No announcements"
+  },
+  "trainerNav": {
+    "menu": "Menu",
+    "dashboard": "Dashboard",
+    "clients": "Customers",
+    "schedule": "Schedule",
+    "messages": "Messages",
+    "exercises": "Exercises",
+    "counseling": "Counseling",
+    "announcements": "Announcements",
+    "notifications": "Notifications",
+    "gymSettings": "Gym Settings",
+    "mDashboard": "Home",
+    "mClients": "Clients",
+    "mSchedule": "Booking",
+    "mExercises": "Exercises",
+    "mAnnouncements": "News",
+    "mNotifications": "Alerts",
+    "mGymSettings": "Settings"
+  },
+  "customerView": {
+    "purchaseComplete": "Purchase complete!"
+  },
+  "trainerView": {
+    "newMessageFrom": "New message from {{name}}",
+    "messagePreview": "\"{{text}}\"",
+    "check": "View",
+    "adminSuffix": "Admin"
   }
 }

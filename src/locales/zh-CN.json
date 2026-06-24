@@ -25,7 +25,10 @@
     "female": "女",
     "all": "全部",
     "none": "无",
-    "nameUnset": "未设置姓名"
+    "nameUnset": "未设置姓名",
+    "brand": "GymBoard",
+    "chat": "聊天",
+    "customer": "客户"
   },
   "settings": {
     "title": "设置",
@@ -1714,5 +1717,67 @@
     "athlete": "运动员",
     "elite": "精英",
     "legend": "传奇"
+  },
+  "nav": {
+    "home": "首页",
+    "training": "记录",
+    "booking": "预约",
+    "meals": "饮食",
+    "settings": "设置"
+  },
+  "milestoneDialog": {
+    "achieved": "{{name}} 达成！",
+    "sessionReached": "达到 {{count}} 次训练",
+    "coins": "{{count}} 金币",
+    "exp": "{{count}} EXP",
+    "gachaTickets": "{{count}} 张扭蛋券",
+    "titleReward": "称号“{{title}}”",
+    "badgeEarned": "获得纪念徽章",
+    "next": "下一个 ({{current}}/{{total}})"
+  },
+  "sessionExp": {
+    "title": "今日的训练成果",
+    "baseExp": "基础 EXP",
+    "volumeBonus": "容量奖励",
+    "totalVolume": "总举重量 {{volume}}kg",
+    "personalBest": "个人最佳",
+    "combo": "{{count}} 连击",
+    "companion": "伙伴也获得了经验值！",
+    "companionWithName": "伙伴（{{name}}）也获得了经验值！",
+    "remainExp": "还差 {{count}} EXP"
+  },
+  "announcementsDialog": {
+    "title": "公告",
+    "markAllRead": "全部标为已读",
+    "allReadToast": "已将所有公告标为已读",
+    "empty": "暂无公告"
+  },
+  "trainerNav": {
+    "menu": "菜单",
+    "dashboard": "仪表盘",
+    "clients": "客户列表",
+    "schedule": "日程",
+    "messages": "消息",
+    "exercises": "动作管理",
+    "counseling": "咨询",
+    "announcements": "公告管理",
+    "notifications": "通知设置",
+    "gymSettings": "健身房设置",
+    "mDashboard": "首页",
+    "mClients": "客户",
+    "mSchedule": "预约",
+    "mExercises": "动作",
+    "mAnnouncements": "公告",
+    "mNotifications": "通知",
+    "mGymSettings": "设置"
+  },
+  "customerView": {
+    "purchaseComplete": "购买已完成！"
+  },
+  "trainerView": {
+    "newMessageFrom": "来自 {{name}} 的新消息",
+    "messagePreview": "“{{text}}”",
+    "check": "查看",
+    "adminSuffix": "管理后台"
   }
 }

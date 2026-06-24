@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Star, Dumbbell, TrendingUp, Flame, Heart } from "lucide-react";
@@ -19,6 +20,7 @@ const totalExpToReach = (lv: number) => {
 };
 
 const SessionExpSummaryDialog = ({ open, onClose, result }: Props) => {
+  const { t } = useTranslation();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -49,32 +51,32 @@ const SessionExpSummaryDialog = ({ open, onClose, result }: Props) => {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <div className="text-center pt-2">
-          <h2 className="text-base font-bold mb-4" style={{ color: "#0ABAB5" }}>今日のトレーニング成果</h2>
+          <h2 className="text-base font-bold mb-4" style={{ color: "#0ABAB5" }}>{t("sessionExp.title")}</h2>
           <div className="space-y-2 text-left text-sm">
-            <Row icon={<Star className="w-4 h-4 text-primary" />} label="基本EXP" value={`+${result.session_base}`} />
+            <Row icon={<Star className="w-4 h-4 text-primary" />} label={t("sessionExp.baseExp")} value={`+${result.session_base}`} />
             {result.volume_bonus > 0 && (
               <Row
                 icon={<Dumbbell className="w-4 h-4 text-amber-600" />}
-                label="ボリュームボーナス"
-                sub={`総挙上量 ${Math.floor(result.volume_kg).toLocaleString()}kg`}
+                label={t("sessionExp.volumeBonus")}
+                sub={t("sessionExp.totalVolume", { volume: Math.floor(result.volume_kg).toLocaleString() })}
                 value={`+${result.volume_bonus}`}
               />
             )}
             {result.pr_count > 0 && (
               <Row
                 icon={<TrendingUp className="w-4 h-4 text-green-600" />}
-                label="自己ベスト"
+                label={t("sessionExp.personalBest")}
                 sub={(result.pr_exercises || []).filter(Boolean).slice(0, 3).join(", ")}
                 value={`+${result.pr_count * 30}`}
               />
             )}
             {result.combo >= 2 && (
-              <Row icon={<Flame className="w-4 h-4 text-orange-500" />} label={`コンボ ${result.combo}回`} value={`×${result.multiplier.toFixed(1)}`} />
+              <Row icon={<Flame className="w-4 h-4 text-orange-500" />} label={t("sessionExp.combo", { count: result.combo })} value={`×${result.multiplier.toFixed(1)}`} />
             )}
             {result.companion_exp_gained && result.companion_exp_gained > 0 && (
               <Row
                 icon={<Heart className="w-4 h-4 text-pink-500" />}
-                label={`おとも${result.companion_name ? `（${result.companion_name}）` : ""}も経験値をもらった！`}
+                label={result.companion_name ? t("sessionExp.companionWithName", { name: result.companion_name }) : t("sessionExp.companion")}
                 value={`+${result.companion_exp_gained}`}
               />
             )}
@@ -87,11 +89,11 @@ const SessionExpSummaryDialog = ({ open, onClose, result }: Props) => {
           <div className="text-left">
             <div className="flex items-center justify-between text-[11px] mb-1">
               <span className="font-bold">Lv.{lv}</span>
-              <span className="text-muted-foreground">あと {remain} EXP</span>
+              <span className="text-muted-foreground">{t("sessionExp.remainExp", { count: remain })}</span>
             </div>
             <Progress value={pct} className="h-2" />
           </div>
-          <Button onClick={onClose} className="w-full mt-4">閉じる</Button>
+          <Button onClick={onClose} className="w-full mt-4">{t("common.close")}</Button>
         </div>
       </DialogContent>
     </Dialog>

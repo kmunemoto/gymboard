@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, X, Bell, CheckCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 const AnnouncementsDialog = ({ open, onClose }: Props) => {
+  const { t } = useTranslation();
   const { items, readIds, loading, markRead, markAllRead } = useAnnouncements();
   const [selected, setSelected] = useState<Announcement | null>(null);
   const unreadCount = items.filter((a) => !readIds.has(a.id)).length;
@@ -31,7 +33,7 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
 
   const handleMarkAllRead = async () => {
     await markAllRead();
-    toast.success("全てのお知らせを既読にしました");
+    toast.success(t("announcementsDialog.allReadToast"));
   };
 
   return (
@@ -40,13 +42,13 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         {selected ? (
           <button onClick={() => setSelected(null)} className="flex items-center gap-1 text-sm text-foreground">
-            <ArrowLeft className="w-4 h-4" /> 戻る
+            <ArrowLeft className="w-4 h-4" /> {t("common.back")}
           </button>
         ) : (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-accent" />
-              <span className="text-base font-bold">お知らせ</span>
+              <span className="text-base font-bold">{t("announcementsDialog.title")}</span>
             </div>
           </div>
         )}
@@ -57,7 +59,7 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">読み込み中…</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
         ) : selected ? (
           <div className="p-5 space-y-3">
             <div className="flex items-center gap-3">
@@ -86,7 +88,7 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
             )}
           </div>
         ) : items.length === 0 ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">お知らせはありません</div>
+          <div className="p-12 text-center text-sm text-muted-foreground">{t("announcementsDialog.empty")}</div>
         ) : (
           <div className="p-3 space-y-2">
             {unreadCount > 0 && (
@@ -97,7 +99,7 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
                 onClick={handleMarkAllRead}
               >
                 <CheckCheck className="w-4 h-4 mr-1.5" />
-                すべて既読にする
+                {t("announcementsDialog.markAllRead")}
               </Button>
             )}
             {items.map((a) => {

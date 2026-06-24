@@ -25,7 +25,10 @@
     "female": "女性",
     "all": "すべて",
     "none": "なし",
-    "nameUnset": "名前未設定"
+    "nameUnset": "名前未設定",
+    "brand": "ジムボード",
+    "chat": "チャット",
+    "customer": "顧客"
   },
   "settings": {
     "title": "設定",
@@ -1714,5 +1717,67 @@
     "athlete": "アスリート",
     "elite": "エリート",
     "legend": "レジェンド"
+  },
+  "nav": {
+    "home": "ホーム",
+    "training": "記録",
+    "booking": "予約",
+    "meals": "食事",
+    "settings": "設定"
+  },
+  "milestoneDialog": {
+    "achieved": "{{name}}達成！",
+    "sessionReached": "{{count}}セッション到達",
+    "coins": "{{count}} コイン",
+    "exp": "{{count}} EXP",
+    "gachaTickets": "ガチャチケット {{count}}枚",
+    "titleReward": "称号「{{title}}」",
+    "badgeEarned": "記念バッジ獲得",
+    "next": "次へ ({{current}}/{{total}})"
+  },
+  "sessionExp": {
+    "title": "今日のトレーニング成果",
+    "baseExp": "基本EXP",
+    "volumeBonus": "ボリュームボーナス",
+    "totalVolume": "総挙上量 {{volume}}kg",
+    "personalBest": "自己ベスト",
+    "combo": "コンボ {{count}}回",
+    "companion": "おともも経験値をもらった！",
+    "companionWithName": "おとも（{{name}}）も経験値をもらった！",
+    "remainExp": "あと {{count}} EXP"
+  },
+  "announcementsDialog": {
+    "title": "お知らせ",
+    "markAllRead": "すべて既読にする",
+    "allReadToast": "全てのお知らせを既読にしました",
+    "empty": "お知らせはありません"
+  },
+  "trainerNav": {
+    "menu": "メニュー",
+    "dashboard": "ダッシュボード",
+    "clients": "顧客一覧",
+    "schedule": "スケジュール",
+    "messages": "メッセージ",
+    "exercises": "種目管理",
+    "counseling": "カウンセリング",
+    "announcements": "お知らせ管理",
+    "notifications": "通知設定",
+    "gymSettings": "ジム設定",
+    "mDashboard": "ホーム",
+    "mClients": "顧客",
+    "mSchedule": "予約",
+    "mExercises": "種目",
+    "mAnnouncements": "お知らせ",
+    "mNotifications": "通知",
+    "mGymSettings": "設定"
+  },
+  "customerView": {
+    "purchaseComplete": "購入が完了しました！"
+  },
+  "trainerView": {
+    "newMessageFrom": "{{name}} 様から新着メッセージがあります",
+    "messagePreview": "「{{text}}」",
+    "check": "確認する",
+    "adminSuffix": "管理画面"
   }
 }

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import GymLogo from "@/components/GymLogo";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import { formatDate } from "@/lib/dateFormat";
 import { toast } from "sonner";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
@@ -497,7 +498,7 @@ const TrialBooking = () => {
             <div id="trial-time-slots" className="mt-4 slide-up">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" />
-                {t("trialBooking.dateOpenSlots", { date: format(selectedDate, "M月d日（E）", { locale: ja }) })}
+                {t("trialBooking.dateOpenSlots", { date: formatDate(selectedDate, "monthDayDow") })}
               </h3>
               <div className="grid grid-cols-4 gap-1.5">
                 {slots.map((slot) => (

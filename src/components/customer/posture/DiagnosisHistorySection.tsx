@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
+import { formatDate } from "@/lib/dateFormat";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
@@ -399,7 +400,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                         </Badge>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {format(dt, "yyyy年M月d日 HH:mm", { locale: ja })}
+                        {formatDate(dt, "yearMonthDayTime")}
                       </p>
                     </div>
                     {!compareMode && (
@@ -501,7 +502,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>{t("posture.history.deleteTitle")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  {t("posture.history.deleteDesc", { date: format(dt, "yyyy年M月d日 HH:mm", { locale: ja }) })}
+                                  {t("posture.history.deleteDesc", { date: formatDate(dt, "yearMonthDayTime") })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

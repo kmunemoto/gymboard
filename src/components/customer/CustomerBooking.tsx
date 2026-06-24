@@ -18,6 +18,7 @@ import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow, getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import { formatDate } from "@/lib/dateFormat";
 import CourseProgressBadge from "@/components/trainer/CourseProgressBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
@@ -628,7 +629,7 @@ const CustomerBooking = () => {
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  {t("booking.availableSlots", { date: format(selectedDate, "M月d日（E）", { locale: ja }) })}
+                  {t("booking.availableSlots", { date: formatDate(selectedDate, "monthDayDow") })}
                 </h3>
                 <div className="grid grid-cols-4 gap-1.5">
                   {slots.map((slot) => (

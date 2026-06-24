@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
+import { formatDate } from "@/lib/dateFormat";
 import { getJSTNow } from "@/lib/timezone";
 import { toast } from "sonner";
 import { sendBookingNotification } from "@/lib/bookingNotification";
@@ -460,7 +461,7 @@ const TrainerSchedule = () => {
             <div key={day.toISOString()}>
               <div className={`flex items-center gap-2 mb-1.5 ${isToday ? "text-accent" : "text-muted-foreground"}`}>
                 <span className="text-xs font-bold uppercase">
-                  {format(day, "M/d（E）", { locale: ja })}
+                  {formatDate(day, "slashMonthDayDow")}
                 </span>
                 {isToday && <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">{t("common.today")}</span>}
               </div>

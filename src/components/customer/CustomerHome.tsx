@@ -17,6 +17,7 @@ import { useStreak } from "@/hooks/useStreak";
 import { format, parseISO } from "date-fns";
 import { getJSTNow, formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
+import { formatDate } from "@/lib/dateFormat";
 import { supabase } from "@/integrations/supabase/client";
 import { getCycleWindow } from "@/lib/courseProgress";
 import WorkoutShareModal from "./WorkoutShareModal";
@@ -189,7 +190,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const formatBookingDate = (b: typeof nextBooking) => {
     if (!b) return "";
     const d = parseISO(b.date);
-    return `${format(d, "M月d日（E）", { locale: ja })} ${b.startTime} - ${b.endTime}`;
+    return `${formatDate(d, "monthDayDow")} ${b.startTime} - ${b.endTime}`;
   };
 
   // Compute weight/fat changes from first to latest
@@ -323,7 +324,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full h-11 justify-start text-left font-normal", !measurementDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : t("home.selectDate")}
+                    {measurementDate ? formatDate(measurementDate, "yearMonthDay") : t("home.selectDate")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">

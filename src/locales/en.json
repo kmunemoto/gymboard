@@ -887,71 +887,71 @@
     "deleteAria": "Delete"
   },
   "help": {
-    "title": "使い方ガイド",
-    "subtitle": "GymBoardの基本操作と、お客様の招待方法をまとめています",
-    "section1Title": "1. オーナー側でできること",
-    "section1Intro": "左側メニュー（PC）／下部ナビ（スマホ）から各機能にアクセスできます。",
-    "section1Clients": "顧客一覧",
-    "section1ClientsDesc": "：参加中のお客様の確認、プラン割り当て、トレーニング履歴・食事記録・体組成・予約状況の閲覧、代理予約など。",
-    "section1Schedule": "スケジュール",
-    "section1ScheduleDesc": "：予約一覧の確認、時間帯のブロック（休業・施術中などで埋める）、代理予約の作成。",
-    "section1Exercise": "種目管理",
-    "section1ExerciseDesc": "：お客様がトレーニング記録で選べる種目マスタの登録・編集。",
-    "section1Announcement": "お知らせ管理",
-    "section1AnnouncementDesc": "：お客様のアプリ上に表示するお知らせを作成・配信。",
-    "section1Counseling": "カウンセリング",
-    "section1CounselingDesc": "：体験・カウンセリングフォームからの回答一覧。",
-    "section1Message": "メッセージ",
-    "section1MessageDesc": "：お客様との1対1チャット。新着はヘッダーのアイコンに通知バッジが付きます。",
-    "section2Title": "2. お客様の招待・登録方法",
-    "section2Intro1": "お客様の参加は ",
-    "section2InviteCode": "招待コード",
-    "section2Intro2": "（または招待リンク）で行います。ジムごとに固有のコードが自動発行されています。",
-    "section2Step1": "招待コード／リンクを取得",
-    "section2Step1Desc": "ジム設定の「招待コード」カードから、コードまたは招待リンク（{{path}}）をコピーできます。",
-    "section2Step2": "お客様に共有",
-    "section2Step2Desc": "LINE・メール・口頭など、任意の方法でお客様にお伝えください。招待リンクを送ると入力の手間が省けて確実です。",
-    "section2Step3": "お客様がアプリにアクセス",
-    "section2Step3Desc": "お客様はスマートフォンのブラウザ（Safari／Chrome 等）で招待リンクを開きます。コードを口頭で伝えた場合は、GymBoardのサイトを開いて「ジムに参加」からコードを入力します。",
-    "section2Step4": "アカウント作成（メール＋パスワード）",
-    "section2Step4Desc": "未登録のお客様は、その場でメールアドレスとパスワードを設定して新規登録します。メール確認は不要で、登録後すぐにご利用いただけます。",
-    "section2Step5": "表示名を入力して参加完了",
-    "section2Step5Desc": "ジム名を確認のうえ「参加する」をタップ、表示名（オーナーに表示される名前）を入れると登録が完了します。",
-    "section2Step6": "ホーム画面に追加のご案内（任意）",
-    "section2Step6Desc": "お客様のアプリ上には「ホーム画面に追加」の案内が表示されます。追加するとアプリのように起動でき、利便性が向上します。",
-    "section3Title": "3. お客様がアプリでできること",
-    "section3Item1": "セッションの予約・キャンセル、予約状況・残回数の確認",
-    "section3Item2": "トレーニング記録（種目・セット・重量・回数）の入力と推移グラフ",
-    "section3Item3": "食事の写真記録とAIによる栄養素の自動分析",
-    "section3Item4": "体重・体脂肪率などの体組成記録と推移グラフ",
-    "section3Item5": "姿勢分析（写真からの骨格・姿勢チェック）",
-    "section3Item6": "月次レポートの閲覧",
-    "section3Item7": "オーナーとの1対1チャット、ジムからのお知らせ閲覧",
-    "section4Title": "4. つまずきやすいポイント",
-    "section4Item1Title": "招待リンクが開けない",
-    "section4Item1Desc": "：お客様の端末のメッセージアプリ内ブラウザでは正しく動かない場合があります。「Safariで開く」「Chromeで開く」を案内してください。",
-    "section4Item2Title": "1ユーザー1ジムまで",
-    "section4Item2Desc": "：既に他のジムに参加中のメールアドレスでは、同じアカウントで別のジムに参加することはできません。",
-    "section4Item3Title": "招待コードが見つからない",
-    "section4Item3Desc": "：コードは大文字小文字・ハイフンを無視して照合されますが、全角数字や余分なスペースが入っていると失敗します。",
-    "section4Item4Title": "予約枠が表示されない",
-    "section4Item4Desc": "：ジム設定の営業時間・スロット時間が未設定だと予約枠が出ません。スケジュール画面でブロックを入れすぎていないかも確認してください。",
-    "section4Item5Title": "プラン上限の超過",
-    "section4Item5Desc": "：ご契約プランの顧客数上限を超えると、新規予約や記録の追加が制限されます。プラン変更または顧客整理で解除されます。",
-    "section5Title": "5. プランのご契約方法",
-    "section5Intro": "GymBoardの有料プランはWeb版の管理画面からご契約いただけます。アプリと同じアカウントでログインしてください。",
-    "section5Step1": "Webの管理サイトにアクセス",
-    "section5Step1Desc": "スマートフォンまたはPCのブラウザで{{url}}を開き、アプリと同じメールアドレス・パスワードでログインします。",
-    "section5Step2": "「プラン・お支払い」を開く",
-    "section5Step2Desc": "管理画面の「ジム設定」から「プラン・お支払い」セクションを選択します。",
-    "section5Step3": "プランと支払い周期を選ぶ",
-    "section5Step3Desc": "Starter / Standard / Pro の中からご希望のプランを選び、月額または年額（2ヶ月分お得）を選択します。",
-    "section5Step4": "決済を完了する",
-    "section5Step4Desc": "画面の案内にそってクレジットカード情報を入力し、決済を完了させます。請求情報や領収書は後からカスタマーポータルで確認できます。",
-    "section5Step5": "アプリに反映される",
-    "section5Step5Desc": "契約完了後、アプリの「現在のプラン」表示に反映されます。反映には数分かかる場合があります。",
-    "section5Notice": "注意",
-    "section5NoticeDesc": "：プランの変更・解約はWeb版のカスタマーポータルから行えます。アプリ内では閲覧のみとなります。"
+    "title": "How-to Guide",
+    "subtitle": "A summary of GymBoard's basic operations and how to invite customers",
+    "section1Title": "1. What owners can do",
+    "section1Intro": "Access each feature from the left menu (PC) / bottom nav (mobile).",
+    "section1Clients": "Customer list",
+    "section1ClientsDesc": ": Check participating customers, assign plans, view training history, meal records, body composition, and booking status, make bookings on their behalf, etc.",
+    "section1Schedule": "Schedule",
+    "section1ScheduleDesc": ": Check the booking list, block time slots (fill in closures, ongoing sessions, etc.), and create bookings on behalf.",
+    "section1Exercise": "Exercise management",
+    "section1ExerciseDesc": ": Register and edit the master list of exercises customers can choose in their training records.",
+    "section1Announcement": "Announcement management",
+    "section1AnnouncementDesc": ": Create and deliver announcements shown in customers' apps.",
+    "section1Counseling": "Counseling",
+    "section1CounselingDesc": ": A list of responses from trial and counseling forms.",
+    "section1Message": "Messages",
+    "section1MessageDesc": ": One-on-one chat with customers. New messages show a notification badge on the header icon.",
+    "section2Title": "2. How to invite & register customers",
+    "section2Intro1": "Customers join via an ",
+    "section2InviteCode": "invite code",
+    "section2Intro2": " (or invite link). A unique code is automatically issued for each gym.",
+    "section2Step1": "Get the invite code / link",
+    "section2Step1Desc": "You can copy the code or invite link ({{path}}) from the \"Invite code\" card in gym settings.",
+    "section2Step2": "Share with customers",
+    "section2Step2Desc": "Share it with customers by LINE, email, in person, or any method. Sending the invite link saves them input effort and is more reliable.",
+    "section2Step3": "Customer accesses the app",
+    "section2Step3Desc": "Customers open the invite link in their smartphone browser (Safari/Chrome, etc.). If you gave the code verbally, they open the GymBoard site and enter it via \"Join a gym\".",
+    "section2Step4": "Create an account (email + password)",
+    "section2Step4Desc": "Unregistered customers set an email and password on the spot to sign up. No email confirmation is needed; they can use it right after registering.",
+    "section2Step5": "Enter a display name to finish joining",
+    "section2Step5Desc": "After confirming the gym name, tap \"Join\" and enter a display name (the name shown to the owner) to complete registration.",
+    "section2Step6": "Guidance to add to home screen (optional)",
+    "section2Step6Desc": "An \"Add to Home Screen\" prompt appears in the customer's app. Adding it lets them launch it like an app for greater convenience.",
+    "section3Title": "3. What customers can do in the app",
+    "section3Item1": "Book/cancel sessions and check booking status and remaining sessions",
+    "section3Item2": "Enter training records (exercise, sets, weight, reps) and view progress charts",
+    "section3Item3": "Photo-record meals with automatic AI nutrient analysis",
+    "section3Item4": "Record body composition such as weight and body fat, with progress charts",
+    "section3Item5": "Posture analysis (body type & posture check from a photo)",
+    "section3Item6": "View monthly reports",
+    "section3Item7": "One-on-one chat with the owner and view announcements from the gym",
+    "section4Title": "4. Common pitfalls",
+    "section4Item1Title": "Can't open the invite link",
+    "section4Item1Desc": ": It may not work correctly in the in-app browser of a customer's messaging app. Guide them to \"Open in Safari\" or \"Open in Chrome\".",
+    "section4Item2Title": "One gym per user",
+    "section4Item2Desc": ": An email already participating in another gym cannot join a different gym with the same account.",
+    "section4Item3Title": "Invite code not found",
+    "section4Item3Desc": ": Codes are matched ignoring case and hyphens, but full-width digits or extra spaces will cause failure.",
+    "section4Item4Title": "Booking slots don't appear",
+    "section4Item4Desc": ": Slots won't appear if business hours or slot duration aren't set in gym settings. Also check that you haven't added too many blocks on the schedule screen.",
+    "section4Item5Title": "Exceeding the plan limit",
+    "section4Item5Desc": ": Exceeding your plan's customer limit restricts new bookings and record additions. It's lifted by changing your plan or reducing customers.",
+    "section5Title": "5. How to subscribe to a plan",
+    "section5Intro": "GymBoard's paid plans can be subscribed to from the web admin screen. Log in with the same account as the app.",
+    "section5Step1": "Access the web admin site",
+    "section5Step1Desc": "Open {{url}} in your smartphone or PC browser and log in with the same email and password as the app.",
+    "section5Step2": "Open \"Plans & Billing\"",
+    "section5Step2Desc": "From \"Gym Settings\" in the admin screen, select the \"Plans & Billing\" section.",
+    "section5Step3": "Choose a plan and billing cycle",
+    "section5Step3Desc": "Choose your desired plan from Starter / Standard / Pro, and select monthly or yearly (2 months free).",
+    "section5Step4": "Complete payment",
+    "section5Step4Desc": "Follow the on-screen guidance to enter your credit card details and complete the payment. Billing info and receipts can be checked later in the customer portal.",
+    "section5Step5": "Reflected in the app",
+    "section5Step5Desc": "After subscribing, it's reflected in the app's \"Current Plan\" display. This may take a few minutes.",
+    "section5Notice": "Note",
+    "section5NoticeDesc": ": Plan changes and cancellations can be done from the web customer portal. The app is view-only."
   },
   "weightJourney": {
     "title": "Weight Goal",
@@ -1584,128 +1584,128 @@
   },
   "titles": {
     "chest_master": {
-      "name": "胸板の鬼",
-      "condition": "胸トレが全体の40%以上"
+      "name": "Chest Beast",
+      "condition": "Chest training is 40%+ of total"
     },
     "back_master": {
-      "name": "背中の鬼",
-      "condition": "背中トレが全体の40%以上"
+      "name": "Back Beast",
+      "condition": "Back training is 40%+ of total"
     },
     "leg_master": {
-      "name": "脚の王",
-      "condition": "脚トレが全体の40%以上"
+      "name": "Leg King",
+      "condition": "Leg training is 40%+ of total"
     },
     "shoulder_master": {
-      "name": "肩メロン",
-      "condition": "肩トレが全体の40%以上"
+      "name": "Boulder Shoulders",
+      "condition": "Shoulder training is 40%+ of total"
     },
     "arm_master": {
-      "name": "腕自慢",
-      "condition": "腕トレが全体の40%以上"
+      "name": "Arm Show-off",
+      "condition": "Arm training is 40%+ of total"
     },
     "early_bird": {
-      "name": "朝活の達人",
-      "condition": "午前セッションが70%以上"
+      "name": "Morning Master",
+      "condition": "70%+ of sessions in the morning"
     },
     "night_owl": {
-      "name": "夜型トレーニー",
-      "condition": "19時以降セッションが70%以上"
+      "name": "Night Owl Trainee",
+      "condition": "70%+ of sessions after 7 PM"
     },
     "consistency_king": {
-      "name": "継続の王",
-      "condition": "12週連続来店"
+      "name": "King of Consistency",
+      "condition": "Visited 12 weeks in a row"
     },
     "volume_monster": {
-      "name": "ボリュームモンスター",
-      "condition": "月間総挙上量10万kg以上"
+      "name": "Volume Monster",
+      "condition": "100,000kg+ total monthly volume"
     },
     "all_rounder_title": {
-      "name": "オールラウンダー",
-      "condition": "毎月5部位以上を3ヶ月連続"
+      "name": "All-Rounder",
+      "condition": "5+ muscle groups every month for 3 months straight"
     },
     "boss_slayer": {
-      "name": "ボスハンター",
-      "condition": "レイドボス3回撃破に貢献"
+      "name": "Boss Hunter",
+      "condition": "Contributed to defeating 3 raid bosses"
     },
     "mission_addict": {
-      "name": "ミッション中毒",
-      "condition": "デイリーミッション累計50回達成"
+      "name": "Mission Addict",
+      "condition": "Completed 50 daily missions in total"
     },
     "combo_master": {
-      "name": "コンボマスター",
-      "condition": "5コンボ以上を3回達成"
+      "name": "Combo Master",
+      "condition": "Achieved 5+ combos 3 times"
     },
     "core_oni": {
-      "name": "コアの鬼",
-      "condition": "体幹トレが全体の40%以上"
+      "name": "Core Beast",
+      "condition": "Core training is 40%+ of total"
     },
     "weekend_warrior": {
-      "name": "週末戦士",
-      "condition": "土日のセッションが60%以上"
+      "name": "Weekend Warrior",
+      "condition": "60%+ of sessions on weekends"
     },
     "iron_man": {
-      "name": "鉄人",
-      "condition": "累計200セッション以上"
+      "name": "Iron Man",
+      "condition": "200+ total sessions"
     },
     "gacha_master": {
-      "name": "ガチャマスター",
-      "condition": "ガチャ累計50回以上"
+      "name": "Gacha Master",
+      "condition": "50+ total gacha pulls"
     },
     "raid_slayer": {
-      "name": "レイドスレイヤー",
-      "condition": "レイドボス5回撃破に貢献"
+      "name": "Raid Slayer",
+      "condition": "Contributed to defeating 5 raid bosses"
     },
     "streaker": {
-      "name": "ストリーカー",
-      "condition": "最大コンボ10回以上"
+      "name": "Streaker",
+      "condition": "Max combo of 10+"
     },
     "record_child": {
-      "name": "記録の申し子",
-      "condition": "自己ベスト累計30回以上"
+      "name": "Record Prodigy",
+      "condition": "30+ personal bests in total"
     },
     "legend_title": {
-      "name": "レジェンド",
-      "condition": "アバターレベル50到達"
+      "name": "Legend",
+      "condition": "Reached avatar level 50"
     },
     "collector": {
-      "name": "コレクター",
-      "condition": "バッジ10個取得"
+      "name": "Collector",
+      "condition": "Earned 10 badges"
     },
     "badge_master": {
-      "name": "バッジマスター",
-      "condition": "バッジ20個取得"
+      "name": "Badge Master",
+      "condition": "Earned 20 badges"
     },
     "complete_road": {
-      "name": "コンプリートへの道",
-      "condition": "バッジ30個取得"
+      "name": "Road to Completion",
+      "condition": "Earned 30 badges"
     },
     "legend_collector": {
-      "name": "レジェンドコレクター",
-      "condition": "全バッジ制覇"
+      "name": "Legend Collector",
+      "condition": "Collected all badges"
     },
     "liberator": {
-      "name": "解放者",
-      "condition": "王国復興クエスト ステージ1クリア"
+      "name": "Liberator",
+      "condition": "Cleared Stage 1 of the Kingdom Restoration quest"
     },
     "harbor_guardian": {
-      "name": "港の守り手",
-      "condition": "王国復興クエスト ステージ3クリア"
+      "name": "Harbor Guardian",
+      "condition": "Cleared Stage 3 of the Kingdom Restoration quest"
     },
     "spirit_ally": {
-      "name": "精霊の盟友",
-      "condition": "王国復興クエスト ステージ5クリア"
+      "name": "Spirit Ally",
+      "condition": "Cleared Stage 5 of the Kingdom Restoration quest"
     },
     "sky_pioneer": {
-      "name": "天空の開拓者",
-      "condition": "王国復興クエスト ステージ7クリア"
+      "name": "Sky Pioneer",
+      "condition": "Cleared Stage 7 of the Kingdom Restoration quest"
     },
     "kingdom_hero": {
-      "name": "王国の英雄",
-      "condition": "王国復興クエスト 全ステージクリア"
+      "name": "Kingdom Hero",
+      "condition": "Cleared all stages of the Kingdom Restoration quest"
     },
     "goal_achiever": {
-      "name": "ゴール達成者",
-      "condition": "目標体重を達成"
+      "name": "Goal Achiever",
+      "condition": "Reached target weight"
     }
   },
   "ranks": {

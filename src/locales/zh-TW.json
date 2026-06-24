@@ -887,71 +887,71 @@
     "deleteAria": "刪除"
   },
   "help": {
-    "title": "使い方ガイド",
-    "subtitle": "GymBoardの基本操作と、お客様の招待方法をまとめています",
-    "section1Title": "1. オーナー側でできること",
-    "section1Intro": "左側メニュー（PC）／下部ナビ（スマホ）から各機能にアクセスできます。",
-    "section1Clients": "顧客一覧",
-    "section1ClientsDesc": "：参加中のお客様の確認、プラン割り当て、トレーニング履歴・食事記録・体組成・予約状況の閲覧、代理予約など。",
-    "section1Schedule": "スケジュール",
-    "section1ScheduleDesc": "：予約一覧の確認、時間帯のブロック（休業・施術中などで埋める）、代理予約の作成。",
-    "section1Exercise": "種目管理",
-    "section1ExerciseDesc": "：お客様がトレーニング記録で選べる種目マスタの登録・編集。",
-    "section1Announcement": "お知らせ管理",
-    "section1AnnouncementDesc": "：お客様のアプリ上に表示するお知らせを作成・配信。",
-    "section1Counseling": "カウンセリング",
-    "section1CounselingDesc": "：体験・カウンセリングフォームからの回答一覧。",
-    "section1Message": "メッセージ",
-    "section1MessageDesc": "：お客様との1対1チャット。新着はヘッダーのアイコンに通知バッジが付きます。",
-    "section2Title": "2. お客様の招待・登録方法",
-    "section2Intro1": "お客様の参加は ",
-    "section2InviteCode": "招待コード",
-    "section2Intro2": "（または招待リンク）で行います。ジムごとに固有のコードが自動発行されています。",
-    "section2Step1": "招待コード／リンクを取得",
-    "section2Step1Desc": "ジム設定の「招待コード」カードから、コードまたは招待リンク（{{path}}）をコピーできます。",
-    "section2Step2": "お客様に共有",
-    "section2Step2Desc": "LINE・メール・口頭など、任意の方法でお客様にお伝えください。招待リンクを送ると入力の手間が省けて確実です。",
-    "section2Step3": "お客様がアプリにアクセス",
-    "section2Step3Desc": "お客様はスマートフォンのブラウザ（Safari／Chrome 等）で招待リンクを開きます。コードを口頭で伝えた場合は、GymBoardのサイトを開いて「ジムに参加」からコードを入力します。",
-    "section2Step4": "アカウント作成（メール＋パスワード）",
-    "section2Step4Desc": "未登録のお客様は、その場でメールアドレスとパスワードを設定して新規登録します。メール確認は不要で、登録後すぐにご利用いただけます。",
-    "section2Step5": "表示名を入力して参加完了",
-    "section2Step5Desc": "ジム名を確認のうえ「参加する」をタップ、表示名（オーナーに表示される名前）を入れると登録が完了します。",
-    "section2Step6": "ホーム画面に追加のご案内（任意）",
-    "section2Step6Desc": "お客様のアプリ上には「ホーム画面に追加」の案内が表示されます。追加するとアプリのように起動でき、利便性が向上します。",
-    "section3Title": "3. お客様がアプリでできること",
-    "section3Item1": "セッションの予約・キャンセル、予約状況・残回数の確認",
-    "section3Item2": "トレーニング記録（種目・セット・重量・回数）の入力と推移グラフ",
-    "section3Item3": "食事の写真記録とAIによる栄養素の自動分析",
-    "section3Item4": "体重・体脂肪率などの体組成記録と推移グラフ",
-    "section3Item5": "姿勢分析（写真からの骨格・姿勢チェック）",
-    "section3Item6": "月次レポートの閲覧",
-    "section3Item7": "オーナーとの1対1チャット、ジムからのお知らせ閲覧",
-    "section4Title": "4. つまずきやすいポイント",
-    "section4Item1Title": "招待リンクが開けない",
-    "section4Item1Desc": "：お客様の端末のメッセージアプリ内ブラウザでは正しく動かない場合があります。「Safariで開く」「Chromeで開く」を案内してください。",
-    "section4Item2Title": "1ユーザー1ジムまで",
-    "section4Item2Desc": "：既に他のジムに参加中のメールアドレスでは、同じアカウントで別のジムに参加することはできません。",
-    "section4Item3Title": "招待コードが見つからない",
-    "section4Item3Desc": "：コードは大文字小文字・ハイフンを無視して照合されますが、全角数字や余分なスペースが入っていると失敗します。",
-    "section4Item4Title": "予約枠が表示されない",
-    "section4Item4Desc": "：ジム設定の営業時間・スロット時間が未設定だと予約枠が出ません。スケジュール画面でブロックを入れすぎていないかも確認してください。",
-    "section4Item5Title": "プラン上限の超過",
-    "section4Item5Desc": "：ご契約プランの顧客数上限を超えると、新規予約や記録の追加が制限されます。プラン変更または顧客整理で解除されます。",
-    "section5Title": "5. プランのご契約方法",
-    "section5Intro": "GymBoardの有料プランはWeb版の管理画面からご契約いただけます。アプリと同じアカウントでログインしてください。",
-    "section5Step1": "Webの管理サイトにアクセス",
-    "section5Step1Desc": "スマートフォンまたはPCのブラウザで{{url}}を開き、アプリと同じメールアドレス・パスワードでログインします。",
-    "section5Step2": "「プラン・お支払い」を開く",
-    "section5Step2Desc": "管理画面の「ジム設定」から「プラン・お支払い」セクションを選択します。",
-    "section5Step3": "プランと支払い周期を選ぶ",
-    "section5Step3Desc": "Starter / Standard / Pro の中からご希望のプランを選び、月額または年額（2ヶ月分お得）を選択します。",
-    "section5Step4": "決済を完了する",
-    "section5Step4Desc": "画面の案内にそってクレジットカード情報を入力し、決済を完了させます。請求情報や領収書は後からカスタマーポータルで確認できます。",
-    "section5Step5": "アプリに反映される",
-    "section5Step5Desc": "契約完了後、アプリの「現在のプラン」表示に反映されます。反映には数分かかる場合があります。",
+    "title": "使用指南",
+    "subtitle": "彙整了 GymBoard 的基本操作以及邀請客戶的方法",
+    "section1Title": "1. 老闆可以做什麼",
+    "section1Intro": "可從左側選單（電腦）／底部導覽（手機）存取各項功能。",
+    "section1Clients": "客戶列表",
+    "section1ClientsDesc": "：查看參與中的客戶、分配方案、查看訓練歷史·飲食記錄·體成分·預約狀況，進行代理預約等。",
+    "section1Schedule": "行程",
+    "section1ScheduleDesc": "：查看預約列表、封鎖時段（用於休息·施術中等）、建立代理預約。",
+    "section1Exercise": "動作管理",
+    "section1ExerciseDesc": "：登錄·編輯客戶在訓練記錄中可選擇的動作主列表。",
+    "section1Announcement": "公告管理",
+    "section1AnnouncementDesc": "：建立並發送顯示在客戶應用程式上的公告。",
+    "section1Counseling": "諮詢",
+    "section1CounselingDesc": "：來自體驗·諮詢表單的回答列表。",
+    "section1Message": "訊息",
+    "section1MessageDesc": "：與客戶的一對一聊天。有新訊息時，頁首圖示會顯示通知標記。",
+    "section2Title": "2. 客戶的邀請·註冊方法",
+    "section2Intro1": "客戶透過 ",
+    "section2InviteCode": "邀請碼",
+    "section2Intro2": "（或邀請連結）加入。系統會為每間健身房自動發放專屬邀請碼。",
+    "section2Step1": "取得邀請碼／連結",
+    "section2Step1Desc": "可從健身房設定的「邀請碼」卡片中複製邀請碼或邀請連結（{{path}}）。",
+    "section2Step2": "分享給客戶",
+    "section2Step2Desc": "可透過 LINE、電子郵件、口頭等任意方式告知客戶。傳送邀請連結可省去輸入麻煩且更可靠。",
+    "section2Step3": "客戶存取應用程式",
+    "section2Step3Desc": "客戶在手機瀏覽器（Safari／Chrome 等）中開啟邀請連結。若口頭告知邀請碼，則開啟 GymBoard 網站，透過「加入健身房」輸入邀請碼。",
+    "section2Step4": "建立帳號（電子郵件＋密碼）",
+    "section2Step4Desc": "未註冊的客戶當場設定電子郵件和密碼完成註冊。無需電子郵件確認，註冊後即可立即使用。",
+    "section2Step5": "輸入顯示名稱完成加入",
+    "section2Step5Desc": "確認健身房名稱後點擊「加入」，輸入顯示名稱（老闆會看到的名稱）即可完成註冊。",
+    "section2Step6": "加入主畫面的引導（選填）",
+    "section2Step6Desc": "客戶應用程式上會顯示「加入主畫面」的引導。加入後即可像應用程式一樣啟動，提升便利性。",
+    "section3Title": "3. 客戶在應用程式中可以做什麼",
+    "section3Item1": "預約·取消課程，查看預約狀況·剩餘次數",
+    "section3Item2": "輸入訓練記錄（動作·組數·重量·次數）並查看趨勢圖",
+    "section3Item3": "用照片記錄飲食並由 AI 自動分析營養素",
+    "section3Item4": "記錄體重·體脂率等體成分並查看趨勢圖",
+    "section3Item5": "姿勢分析（透過照片進行骨架·姿勢檢查）",
+    "section3Item6": "查看月報",
+    "section3Item7": "與老闆一對一聊天，查看健身房公告",
+    "section4Title": "4. 容易卡住的地方",
+    "section4Item1Title": "無法開啟邀請連結",
+    "section4Item1Desc": "：在客戶裝置的訊息應用程式內建瀏覽器中可能無法正常運作。請引導其「在 Safari 中開啟」或「在 Chrome 中開啟」。",
+    "section4Item2Title": "每位使用者最多一間健身房",
+    "section4Item2Desc": "：已加入其他健身房的電子郵件無法用同一帳號加入另一間健身房。",
+    "section4Item3Title": "找不到邀請碼",
+    "section4Item3Desc": "：邀請碼在比對時會忽略大小寫和連字號，但若含有全形數字或多餘空格則會失敗。",
+    "section4Item4Title": "不顯示預約時段",
+    "section4Item4Desc": "：若健身房設定中的營業時間·時段時長未設定，則不會顯示預約時段。也請檢查是否在行程畫面封鎖了過多時段。",
+    "section4Item5Title": "超出方案上限",
+    "section4Item5Desc": "：超出簽約方案的客戶數上限後，新預約和記錄新增將受限。可透過變更方案或整理客戶來解除。",
+    "section5Title": "5. 方案的簽約方法",
+    "section5Intro": "GymBoard 的付費方案可在 Web 版管理畫面簽約。請使用與應用程式相同的帳號登入。",
+    "section5Step1": "存取 Web 管理網站",
+    "section5Step1Desc": "在手機或電腦瀏覽器中開啟 {{url}}，使用與應用程式相同的電子郵件·密碼登入。",
+    "section5Step2": "開啟「方案·付款」",
+    "section5Step2Desc": "在管理畫面的「健身房設定」中，選擇「方案·付款」部分。",
+    "section5Step3": "選擇方案和付款週期",
+    "section5Step3Desc": "從 Starter / Standard / Pro 中選擇所需方案，並選擇按月或按年（省兩個月）。",
+    "section5Step4": "完成付款",
+    "section5Step4Desc": "依照畫面引導輸入信用卡資訊並完成付款。帳單資訊和收據可稍後在客戶入口中查看。",
+    "section5Step5": "反映到應用程式中",
+    "section5Step5Desc": "簽約完成後，會反映到應用程式的「目前方案」顯示中。反映可能需要幾分鐘。",
     "section5Notice": "注意",
-    "section5NoticeDesc": "：プランの変更・解約はWeb版のカスタマーポータルから行えます。アプリ内では閲覧のみとなります。"
+    "section5NoticeDesc": "：方案的變更·取消可在 Web 版客戶入口中進行。應用程式內僅可查看。"
   },
   "weightJourney": {
     "title": "減脂目標",
@@ -1584,128 +1584,128 @@
   },
   "titles": {
     "chest_master": {
-      "name": "胸板の鬼",
-      "condition": "胸トレが全体の40%以上"
+      "name": "胸肌猛獸",
+      "condition": "胸部訓練佔總量 40% 以上"
     },
     "back_master": {
-      "name": "背中の鬼",
-      "condition": "背中トレが全体の40%以上"
+      "name": "背部猛獸",
+      "condition": "背部訓練佔總量 40% 以上"
     },
     "leg_master": {
-      "name": "脚の王",
-      "condition": "脚トレが全体の40%以上"
+      "name": "腿王",
+      "condition": "腿部訓練佔總量 40% 以上"
     },
     "shoulder_master": {
-      "name": "肩メロン",
-      "condition": "肩トレが全体の40%以上"
+      "name": "蜜瓜肩",
+      "condition": "肩部訓練佔總量 40% 以上"
     },
     "arm_master": {
-      "name": "腕自慢",
-      "condition": "腕トレが全体の40%以上"
+      "name": "秀臂達人",
+      "condition": "手臂訓練佔總量 40% 以上"
     },
     "early_bird": {
-      "name": "朝活の達人",
-      "condition": "午前セッションが70%以上"
+      "name": "晨練達人",
+      "condition": "上午時段的訓練佔 70% 以上"
     },
     "night_owl": {
-      "name": "夜型トレーニー",
-      "condition": "19時以降セッションが70%以上"
+      "name": "夜型訓練者",
+      "condition": "19 點以後的訓練佔 70% 以上"
     },
     "consistency_king": {
-      "name": "継続の王",
-      "condition": "12週連続来店"
+      "name": "堅持之王",
+      "condition": "連續 12 週到店"
     },
     "volume_monster": {
-      "name": "ボリュームモンスター",
-      "condition": "月間総挙上量10万kg以上"
+      "name": "容量怪獸",
+      "condition": "月總舉重量 10 萬kg 以上"
     },
     "all_rounder_title": {
-      "name": "オールラウンダー",
-      "condition": "毎月5部位以上を3ヶ月連続"
+      "name": "全能型",
+      "condition": "連續 3 個月每月練 5 個以上部位"
     },
     "boss_slayer": {
-      "name": "ボスハンター",
-      "condition": "レイドボス3回撃破に貢献"
+      "name": "Boss 獵人",
+      "condition": "為擊敗 3 次副本 Boss 做出貢獻"
     },
     "mission_addict": {
-      "name": "ミッション中毒",
-      "condition": "デイリーミッション累計50回達成"
+      "name": "任務狂人",
+      "condition": "累計完成 50 次每日任務"
     },
     "combo_master": {
-      "name": "コンボマスター",
-      "condition": "5コンボ以上を3回達成"
+      "name": "連擊大師",
+      "condition": "達成 5 連擊以上 3 次"
     },
     "core_oni": {
-      "name": "コアの鬼",
-      "condition": "体幹トレが全体の40%以上"
+      "name": "核心猛獸",
+      "condition": "核心訓練佔總量 40% 以上"
     },
     "weekend_warrior": {
-      "name": "週末戦士",
-      "condition": "土日のセッションが60%以上"
+      "name": "週末戰士",
+      "condition": "週末時段的訓練佔 60% 以上"
     },
     "iron_man": {
-      "name": "鉄人",
-      "condition": "累計200セッション以上"
+      "name": "鐵人",
+      "condition": "累計 200 次以上訓練"
     },
     "gacha_master": {
-      "name": "ガチャマスター",
-      "condition": "ガチャ累計50回以上"
+      "name": "扭蛋大師",
+      "condition": "累計抽扭蛋 50 次以上"
     },
     "raid_slayer": {
-      "name": "レイドスレイヤー",
-      "condition": "レイドボス5回撃破に貢献"
+      "name": "副本屠戮者",
+      "condition": "為擊敗 5 次副本 Boss 做出貢獻"
     },
     "streaker": {
-      "name": "ストリーカー",
-      "condition": "最大コンボ10回以上"
+      "name": "連勝者",
+      "condition": "最大連擊 10 次以上"
     },
     "record_child": {
-      "name": "記録の申し子",
-      "condition": "自己ベスト累計30回以上"
+      "name": "紀錄天才",
+      "condition": "累計 30 次以上個人最佳"
     },
     "legend_title": {
-      "name": "レジェンド",
-      "condition": "アバターレベル50到達"
+      "name": "傳奇",
+      "condition": "頭像等級達到 50"
     },
     "collector": {
-      "name": "コレクター",
-      "condition": "バッジ10個取得"
+      "name": "收藏家",
+      "condition": "獲得 10 個徽章"
     },
     "badge_master": {
-      "name": "バッジマスター",
-      "condition": "バッジ20個取得"
+      "name": "徽章大師",
+      "condition": "獲得 20 個徽章"
     },
     "complete_road": {
-      "name": "コンプリートへの道",
-      "condition": "バッジ30個取得"
+      "name": "集齊之路",
+      "condition": "獲得 30 個徽章"
     },
     "legend_collector": {
-      "name": "レジェンドコレクター",
-      "condition": "全バッジ制覇"
+      "name": "傳奇收藏家",
+      "condition": "集齊全部徽章"
     },
     "liberator": {
       "name": "解放者",
-      "condition": "王国復興クエスト ステージ1クリア"
+      "condition": "通關王國復興任務 第 1 關"
     },
     "harbor_guardian": {
-      "name": "港の守り手",
-      "condition": "王国復興クエスト ステージ3クリア"
+      "name": "港口守護者",
+      "condition": "通關王國復興任務 第 3 關"
     },
     "spirit_ally": {
-      "name": "精霊の盟友",
-      "condition": "王国復興クエスト ステージ5クリア"
+      "name": "精靈盟友",
+      "condition": "通關王國復興任務 第 5 關"
     },
     "sky_pioneer": {
-      "name": "天空の開拓者",
-      "condition": "王国復興クエスト ステージ7クリア"
+      "name": "天空開拓者",
+      "condition": "通關王國復興任務 第 7 關"
     },
     "kingdom_hero": {
-      "name": "王国の英雄",
-      "condition": "王国復興クエスト 全ステージクリア"
+      "name": "王國英雄",
+      "condition": "通關王國復興任務 全部關卡"
     },
     "goal_achiever": {
-      "name": "ゴール達成者",
-      "condition": "目標体重を達成"
+      "name": "目標達成者",
+      "condition": "達成目標體重"
     }
   },
   "ranks": {

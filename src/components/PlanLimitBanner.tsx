@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useTenantLimit } from "@/hooks/useTenantLimit";
@@ -14,18 +15,19 @@ interface Props {
  * On native apps, billing CTAs are hidden (no in-app purchases).
  */
 const PlanLimitBanner = ({ onUpgrade, onManageCustomers }: Props) => {
+  const { t } = useTranslation();
   const { status, role } = useTenantLimit();
   const isNative = Capacitor.isNativePlatform();
   if (!status || !status.over_limit) return null;
 
   const parts: string[] = [];
   if (status.customer_over && status.max_customers !== null) {
-    parts.push(`顧客 ${status.customer_count}名／上限 ${status.max_customers}名`);
+    parts.push(t("planLimit.customerOver", { count: status.customer_count, max: status.max_customers }));
   }
   if (status.trainer_over && status.max_trainers !== null) {
-    parts.push(`トレーナー ${status.trainer_count}名／上限 ${status.max_trainers}名`);
+    parts.push(t("planLimit.trainerOver", { count: status.trainer_count, max: status.max_trainers }));
   }
-  const detail = parts.join("、");
+  const detail = parts.join(t("planLimit.listSeparator"));
 
   const isStaff = role === "owner" || role === "trainer";
 
@@ -36,32 +38,27 @@ const PlanLimitBanner = ({ onUpgrade, onManageCustomers }: Props) => {
         <div className="flex-1 min-w-0 text-xs sm:text-sm">
           {isStaff ? (
             <>
-              <p className="font-bold">プランの上限を超えています（{detail}）。</p>
+              <p className="font-bold">{t("planLimit.overTitle", { detail })}</p>
               <p className="text-muted-foreground mt-0.5">
-                {isNative
-                  ? "顧客を上限以下にしてください。プランの変更はWebサイトから行えます。解消されるまで新規予約・記録などの作成ができません。"
-                  : "アップグレードするか、顧客を上限以下にしてください。解消されるまで新規予約・記録などの作成ができません。"}
+                {isNative ? t("planLimit.overDescNative") : t("planLimit.overDescWeb")}
               </p>
               {(onUpgrade || onManageCustomers) && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {onUpgrade && !isNative && (
                     <Button size="sm" variant="default" onClick={onUpgrade}>
-                      プランをアップグレード
+                      {t("planLimit.upgrade")}
                     </Button>
                   )}
                   {onManageCustomers && (
                     <Button size="sm" variant="outline" onClick={onManageCustomers}>
-                      顧客管理
+                      {t("planLimit.manageCustomers")}
                     </Button>
                   )}
                 </div>
               )}
             </>
           ) : (
-            <p>
-              ジムが現在プラン上限を超えています。新しい記録の作成が一時的にできません。
-              オーナーにご確認ください。
-            </p>
+            <p>{t("planLimit.customerNotice")}</p>
           )}
         </div>
       </div>

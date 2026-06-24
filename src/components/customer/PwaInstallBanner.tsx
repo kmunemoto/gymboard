@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Capacitor } from "@capacitor/core";
 import { X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const PwaInstallBanner = () => {
+  const { t } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [isIos, setIsIos] = useState(false);
@@ -66,21 +68,21 @@ const PwaInstallBanner = () => {
           <Download className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-foreground">ホーム画面に追加</p>
+          <p className="text-sm font-bold text-foreground">{t("pwaInstall.title")}</p>
           {isIos ? (
             <p className="text-xs text-muted-foreground mt-0.5">
-              Safari下部の共有ボタン
+              {t("pwaInstall.iosHintBefore")}
               <span className="inline-block mx-0.5">⬆</span>
-              →「ホーム画面に追加」をタップ
+              {t("pwaInstall.iosHintAfter")}
             </p>
           ) : (
             <p className="text-xs text-muted-foreground mt-0.5">
-              アプリのように素早くアクセスできます
+              {t("pwaInstall.androidHint")}
             </p>
           )}
           {!isIos && deferredPrompt && (
             <Button size="sm" className="mt-2 h-8 text-xs" onClick={handleInstall}>
-              インストール
+              {t("pwaInstall.install")}
             </Button>
           )}
         </div>

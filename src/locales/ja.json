@@ -1779,5 +1779,31 @@
     "messagePreview": "「{{text}}」",
     "check": "確認する",
     "adminSuffix": "管理画面"
+  },
+  "deleteAccountBtn": {
+    "ownerCannotDelete": "オーナーはアカウントを削除できません。先にジムを削除するか、別のオーナーに引き継いでください",
+    "deleteFailed": "アカウントの削除に失敗しました",
+    "deleted": "アカウントが削除されました",
+    "button": "アカウントを削除する",
+    "confirmTitle": "本当に削除しますか？",
+    "confirmDesc": "アカウントを削除すると、すべてのデータが失われます。この操作は取り消せません。"
+  },
+  "planLimit": {
+    "customerOver": "顧客 {{count}}名／上限 {{max}}名",
+    "trainerOver": "トレーナー {{count}}名／上限 {{max}}名",
+    "listSeparator": "、",
+    "overTitle": "プランの上限を超えています（{{detail}}）。",
+    "overDescNative": "顧客を上限以下にしてください。プランの変更はWebサイトから行えます。解消されるまで新規予約・記録などの作成ができません。",
+    "overDescWeb": "アップグレードするか、顧客を上限以下にしてください。解消されるまで新規予約・記録などの作成ができません。",
+    "upgrade": "プランをアップグレード",
+    "manageCustomers": "顧客管理",
+    "customerNotice": "ジムが現在プラン上限を超えています。新しい記録の作成が一時的にできません。オーナーにご確認ください。"
+  },
+  "pwaInstall": {
+    "title": "ホーム画面に追加",
+    "iosHintBefore": "Safari下部の共有ボタン",
+    "iosHintAfter": "→「ホーム画面に追加」をタップ",
+    "androidHint": "アプリのように素早くアクセスできます",
+    "install": "インストール"
   }
 }

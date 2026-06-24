@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const DeleteAccountButton = () => {
+  const { t } = useTranslation();
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
@@ -30,18 +32,18 @@ const DeleteAccountButton = () => {
       const { error } = await supabase.rpc("delete_my_account" as any);
       if (error) {
         if (error.message?.includes("Owner cannot delete")) {
-          toast.error("オーナーはアカウントを削除できません。先にジムを削除するか、別のオーナーに引き継いでください");
+          toast.error(t("deleteAccountBtn.ownerCannotDelete"));
         } else {
-          toast.error("アカウントの削除に失敗しました");
+          toast.error(t("deleteAccountBtn.deleteFailed"));
         }
         setDeleting(false);
         return;
       }
       await signOut();
-      toast.success("アカウントが削除されました");
+      toast.success(t("deleteAccountBtn.deleted"));
       navigate("/auth");
     } catch (e) {
-      toast.error("アカウントの削除に失敗しました");
+      toast.error(t("deleteAccountBtn.deleteFailed"));
       setDeleting(false);
     }
   };
@@ -54,18 +56,18 @@ const DeleteAccountButton = () => {
           className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive font-bold"
         >
           <Trash2 className="w-4 h-4 mr-2" />
-          アカウントを削除する
+          {t("deleteAccountBtn.button")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
+          <AlertDialogTitle>{t("deleteAccountBtn.confirmTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            アカウントを削除すると、すべてのデータが失われます。この操作は取り消せません。
+            {t("deleteAccountBtn.confirmDesc")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
@@ -74,7 +76,7 @@ const DeleteAccountButton = () => {
             disabled={deleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleting ? <DumbbellLoader className="w-4 h-4" /> : "削除する"}
+            {deleting ? <DumbbellLoader className="w-4 h-4" /> : t("common.deleteAction")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

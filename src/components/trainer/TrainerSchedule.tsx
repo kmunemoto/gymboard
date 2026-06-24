@@ -55,7 +55,15 @@ const TrainerSchedule = () => {
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
-  const { tenant } = useTenant();
+  const { tenant, plans } = useTenant();
+  // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
+  // 「初回無料体験」は予約種別の特別枠として全テナント共通で先頭に常設。
+  // tenant_plans 未取得時は従来の既定プランにフォールバックして空リストを避ける。
+  const proxyPlanOptions = (() => {
+    const tenantPlanNames = plans.map((p) => p.plan_name);
+    const base = tenantPlanNames.length > 0 ? tenantPlanNames : ["月4回", "月6回", "月8回", "通い放題"];
+    return ["初回無料体験", ...base.filter((n) => n !== "初回無料体験")];
+  })();
   // [6月/7月の棲み分け対応] Salute御所南テナントかつ予約日が2026年6月か
   const isSaluteJuneLocked = (d: string) =>
     tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026Date(d);
@@ -575,11 +583,9 @@ const TrainerSchedule = () => {
                 className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <option value="" disabled>{t("schedule.selectPrompt")}</option>
-                <option value="初回無料体験">初回無料体験</option>
-                <option value="月4回">月4回</option>
-                <option value="月6回">月6回</option>
-                <option value="月8回">月8回</option>
-                <option value="通い放題">通い放題</option>
+                {proxyPlanOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
               </select>
             </div>
             <div>

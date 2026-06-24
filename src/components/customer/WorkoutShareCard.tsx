@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";
 import { ACHIEVEMENTS } from "@/lib/avatarSystem";
@@ -16,8 +17,9 @@ interface Props {
 
 const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
   ({ session, theme, featuredBadges }, ref) => {
+    const { t } = useTranslation();
     const { tenant } = useTenant();
-    const gymBrand = tenant?.gym_name || "ジムボード";
+    const gymBrand = tenant?.gym_name || t("common.brand");
 
     const isLight = theme === "light";
     const isTransparent = theme === "transparent";
@@ -75,7 +77,7 @@ const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
               marginBottom: 18,
             }}
           >
-            トレーニング時間
+            {t("workoutShare.trainingTime")}
           </div>
           <div
             style={{

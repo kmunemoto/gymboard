@@ -28,7 +28,9 @@
     "nameUnset": "No name set",
     "brand": "GymBoard",
     "chat": "Chat",
-    "customer": "Customer"
+    "customer": "Customer",
+    "gymLogo": "Gym logo",
+    "unknownError": "Unknown error"
   },
   "settings": {
     "title": "Settings",
@@ -231,7 +233,14 @@
     "checkData": "View data",
     "visitsCount": "{{count}} visits",
     "weightChange": "Weight {{change}}kg",
-    "postureCheck": "Posture Check (AI)"
+    "postureCheck": "Posture Check (AI)",
+    "streakMilestone4": "4 weeks in a row! You've kept it up for a month. Keep up the great work!",
+    "streakMilestone8": "8 weeks in a row! Two months of consistency — wonderful!",
+    "streakMilestone12": "12 weeks in a row! Three months of consistency is truly amazing!",
+    "streakBest": "New personal best! You've reached {{count}} weeks in a row!",
+    "recordMeasurement": "Record measurements",
+    "measureDate": "Measurement date",
+    "selectDate": "Select date"
   },
   "streak": {
     "msg13": "Outstanding consistency! Your trainer is impressed.",
@@ -387,7 +396,8 @@
       "deleteFailed": "Failed to delete",
       "datetimeChanged": "Date & time changed",
       "datetimeChangeFailed": "Failed to change date & time"
-    }
+    },
+    "dummyFeedback": "Couldn't connect to AI analysis temporarily. Showing sample data."
   },
   "posture": {
     "title": "Posture & Body Type Analysis",
@@ -1805,5 +1815,56 @@
     "iosHintAfter": " → tap \"Add to Home Screen\"",
     "androidHint": "Access it quickly like an app",
     "install": "Install"
+  },
+  "pushSection": {
+    "header": "Push Notifications",
+    "offToast": "Push notifications turned off",
+    "unsubFailToast": "Failed to turn off notifications",
+    "onToast": "Push notifications turned on",
+    "permissionFailToast": "Notification permission was not granted. Please check your browser settings.",
+    "prefUpdateFailToast": "Failed to update settings",
+    "title": "App push notifications",
+    "desc": "Receive notifications for booking confirmations, cancellations, messages from your trainer, and more on your phone or PC.",
+    "on": "Notifications ON",
+    "turnOff": "Turn off",
+    "deniedIos": "Notifications are blocked. Allow them via iPhone \"Settings\" → \"GymBoard\" → \"Notifications\".",
+    "deniedAndroid": "Notifications are blocked. Allow them via your device's \"Settings\" → \"Apps\" → \"GymBoard\" → \"Notifications\".",
+    "deniedWeb": "Notifications are blocked. Please allow notifications in your browser's site settings.",
+    "receive": "Enable notifications",
+    "reminderInfo": "Receive booking reminders",
+    "dayBefore": "Day-before reminder",
+    "dayBeforeDesc": "We'll notify you of the next day's booking at 9 PM the day before",
+    "hourBefore": "1-hour reminder",
+    "hourBeforeDesc": "We'll notify you about an hour before your booking starts"
+  },
+  "customerChat": {
+    "defaultTrainer": "Coach",
+    "online": "Online",
+    "emptyPrompt": "Send a message to get started!",
+    "inputPlaceholder": "Type a message..."
+  },
+  "inviteCode": {
+    "copiedToast": "{{label}} copied",
+    "copyFailed": "Failed to copy",
+    "title": "Invite Code",
+    "desc": "Share this code or link with your customers",
+    "codeLabel": "Invite code",
+    "linkLabel": "Invite link",
+    "copyCode": "Copy code",
+    "copyLink": "Copy link"
+  },
+  "courseBadge": {
+    "unconfigured": "No course set",
+    "unlimited": "Visit {{index}} this cycle (unlimited)",
+    "normal": "{{index}}/{{total}} this cycle"
+  },
+  "muscleBalance": {
+    "title": "Training Muscle Balance",
+    "prevPeriod": "Previous period",
+    "nextPeriod": "Next period",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "monthsAgo": "{{count}} months ago",
+    "noRecords": "No training records"
   }
 }

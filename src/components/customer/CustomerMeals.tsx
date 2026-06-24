@@ -199,7 +199,7 @@ const CustomerMeals = () => {
           fat: 15.0,
           carbs: 60.0,
           fiber: 5.0,
-          feedback: "AI分析に一時的に接続できませんでした。ダミーデータを表示しています。",
+          feedback: t("meals.dummyFeedback"),
           analyzed: true,
         };
         await supabase.from("meals").update(dummyAnalysis).eq("id", newMeal.id);

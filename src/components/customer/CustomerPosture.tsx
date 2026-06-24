@@ -365,7 +365,7 @@ const CustomerPosture = () => {
       toast.success(t("posture.toast.saved"));
     } catch (e) {
       console.error("Save diagnosis error:", e);
-      const msg = e?.message || e?.error_description || "不明なエラー";
+      const msg = e?.message || e?.error_description || t("common.unknownError");
       toast.error(t("posture.toast.saveFailed", { msg }));
     } finally {
       savingRef.current = false;

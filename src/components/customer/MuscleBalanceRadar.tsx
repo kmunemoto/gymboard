@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Activity } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
@@ -36,6 +37,7 @@ interface Props {
 }
 
 const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: Props = {}) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profile } = useProfile();
   const userId = userIdProp ?? user?.id;
@@ -121,7 +123,7 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Activity className="w-4 h-4 text-accent" />
-            <h3 className="font-bold text-sm">トレーニング部位バランス</h3>
+            <h3 className="font-bold text-sm">{t("muscleBalance.title")}</h3>
           </div>
           <span className="text-xs" style={{ color: "#999" }}>{periodLabel}</span>
         </div>
@@ -130,18 +132,18 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
           <button
             onClick={() => setCycleOffset((n) => n - 1)}
             className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition"
-            aria-label="前の期間"
+            aria-label={t("muscleBalance.prevPeriod")}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-xs text-muted-foreground">
-            {isCurrent ? "今月" : cycleOffset === -1 ? "先月" : `${Math.abs(cycleOffset)}ヶ月前`}
+            {isCurrent ? t("muscleBalance.thisMonth") : cycleOffset === -1 ? t("muscleBalance.lastMonth") : t("muscleBalance.monthsAgo", { count: Math.abs(cycleOffset) })}
           </span>
           <button
             onClick={() => setCycleOffset((n) => Math.min(0, n + 1))}
             disabled={isCurrent}
             className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition disabled:opacity-30"
-            aria-label="次の期間"
+            aria-label={t("muscleBalance.nextPeriod")}
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -170,7 +172,7 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
           </div>
         ) : (
           <div className="h-[250px] flex items-center justify-center text-sm text-muted-foreground">
-            トレーニング記録がありません
+            {t("muscleBalance.noRecords")}
           </div>
         )}
       </CardContent>

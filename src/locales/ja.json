@@ -28,7 +28,9 @@
     "nameUnset": "名前未設定",
     "brand": "ジムボード",
     "chat": "チャット",
-    "customer": "顧客"
+    "customer": "顧客",
+    "gymLogo": "ジムロゴ",
+    "unknownError": "不明なエラー"
   },
   "settings": {
     "title": "設定",
@@ -231,7 +233,14 @@
     "checkData": "データを確認する",
     "visitsCount": "来店{{count}}回",
     "weightChange": "体重{{change}}kg",
-    "postureCheck": "姿勢チェック（AI）"
+    "postureCheck": "姿勢チェック（AI）",
+    "streakMilestone4": "4週連続来店達成！1ヶ月間継続できています。この調子で頑張りましょう！",
+    "streakMilestone8": "8週連続来店達成！2ヶ月間の継続、素晴らしいです！",
+    "streakMilestone12": "12週連続来店達成！3ヶ月間の継続は本当にすごいことです！",
+    "streakBest": "自己ベスト更新！{{count}}週連続来店を達成しました！",
+    "recordMeasurement": "計測データを記録",
+    "measureDate": "計測日",
+    "selectDate": "日付を選択"
   },
   "streak": {
     "msg13": "圧巻の継続力！トレーナーも感動しています",
@@ -387,7 +396,8 @@
       "deleteFailed": "削除に失敗しました",
       "datetimeChanged": "日時を変更しました",
       "datetimeChangeFailed": "日時の変更に失敗しました"
-    }
+    },
+    "dummyFeedback": "AI分析に一時的に接続できませんでした。ダミーデータを表示しています。"
   },
   "posture": {
     "title": "姿勢・骨格診断",
@@ -1805,5 +1815,56 @@
     "iosHintAfter": "→「ホーム画面に追加」をタップ",
     "androidHint": "アプリのように素早くアクセスできます",
     "install": "インストール"
+  },
+  "pushSection": {
+    "header": "プッシュ通知",
+    "offToast": "プッシュ通知をオフにしました",
+    "unsubFailToast": "通知の解除に失敗しました",
+    "onToast": "プッシュ通知をオンにしました",
+    "permissionFailToast": "通知の許可が得られませんでした。ブラウザの設定をご確認ください。",
+    "prefUpdateFailToast": "設定の更新に失敗しました",
+    "title": "アプリのプッシュ通知",
+    "desc": "予約確定・キャンセル・トレーナーからのメッセージ等をスマホやPCの通知として受け取れます。",
+    "on": "通知ON",
+    "turnOff": "通知をOFFにする",
+    "deniedIos": "通知が拒否されています。iPhoneの「設定」→「ジムボード」→「通知」から許可してください。",
+    "deniedAndroid": "通知が拒否されています。端末の「設定」→「アプリ」→「ジムボード」→「通知」から許可してください。",
+    "deniedWeb": "通知が拒否されています。ブラウザのサイト設定から通知を許可してください。",
+    "receive": "通知を受け取る",
+    "reminderInfo": "予約のリマインダーを受け取れます",
+    "dayBefore": "前日にお知らせ",
+    "dayBeforeDesc": "前日21時に翌日のご予約をお知らせします",
+    "hourBefore": "1時間前にお知らせ",
+    "hourBeforeDesc": "予約開始の約1時間前にお知らせします"
+  },
+  "customerChat": {
+    "defaultTrainer": "コーチ",
+    "online": "オンライン",
+    "emptyPrompt": "メッセージを送ってみましょう！",
+    "inputPlaceholder": "メッセージを入力..."
+  },
+  "inviteCode": {
+    "copiedToast": "{{label}}をコピーしました",
+    "copyFailed": "コピーに失敗しました",
+    "title": "招待コード",
+    "desc": "お客様にこのコードまたはリンクを共有してください",
+    "codeLabel": "招待コード",
+    "linkLabel": "招待リンク",
+    "copyCode": "コードをコピー",
+    "copyLink": "リンクをコピー"
+  },
+  "courseBadge": {
+    "unconfigured": "コース未設定",
+    "unlimited": "今回 {{index}} 回（通い放題）",
+    "normal": "今回 {{index}}/{{total}} 回目"
+  },
+  "muscleBalance": {
+    "title": "トレーニング部位バランス",
+    "prevPeriod": "前の期間",
+    "nextPeriod": "次の期間",
+    "thisMonth": "今月",
+    "lastMonth": "先月",
+    "monthsAgo": "{{count}}ヶ月前",
+    "noRecords": "トレーニング記録がありません"
   }
 }

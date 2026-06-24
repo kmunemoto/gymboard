@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,9 +8,10 @@ import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 
 const CustomerChat = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [trainerId, setTrainerId] = useState<string | null>(null);
-  const [trainerName, setTrainerName] = useState("コーチ");
+  const [trainerName, setTrainerName] = useState(() => t("customerChat.defaultTrainer"));
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -83,7 +85,7 @@ const CustomerChat = () => {
             <p className="font-bold text-sm">{trainerName}</p>
             <p className="text-xs text-success font-medium flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-success rounded-full inline-block" />
-              オンライン
+              {t("customerChat.online")}
             </p>
           </div>
         </div>
@@ -93,7 +95,7 @@ const CustomerChat = () => {
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground text-sm mt-8">
-            メッセージを送ってみましょう！
+            {t("customerChat.emptyPrompt")}
           </div>
         )}
         {messages.map((msg, i) => {
@@ -138,7 +140,7 @@ const CustomerChat = () => {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="メッセージを入力..."
+            placeholder={t("customerChat.inputPlaceholder")}
             rows={1}
             className="flex-1 bg-secondary rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground resize-none overflow-y-auto"
             style={{ maxHeight: 120 }}

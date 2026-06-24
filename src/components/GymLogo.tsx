@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 
 interface GymLogoProps {
@@ -5,6 +6,7 @@ interface GymLogoProps {
 }
 
 const GymLogo = ({ size = "sm" }: GymLogoProps) => {
+  const { t } = useTranslation();
   const { tenant, loading } = useTenant();
   const dim = size === "lg" ? "w-24 h-24" : "w-8 h-8";
 
@@ -16,7 +18,7 @@ const GymLogo = ({ size = "sm" }: GymLogoProps) => {
     return (
       <img
         src={tenant.logo_url}
-        alt="ジムロゴ"
+        alt={t("common.gymLogo")}
         className={`${dim} rounded object-contain`}
       />
     );

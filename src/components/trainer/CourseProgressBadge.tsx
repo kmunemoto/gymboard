@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface CourseProgressBadgeProps {
@@ -28,6 +29,7 @@ const CourseProgressBadge = ({
   size = "sm",
   className,
 }: CourseProgressBadgeProps) => {
+  const { t } = useTranslation();
   if (isUnconfigured) {
     return (
       <span
@@ -37,7 +39,7 @@ const CourseProgressBadge = ({
           className,
         )}
       >
-        コース未設定
+        {t("courseBadge.unconfigured")}
       </span>
     );
   }
@@ -51,7 +53,7 @@ const CourseProgressBadge = ({
           className,
         )}
       >
-        今回 {index} 回（通い放題）
+        {t("courseBadge.unlimited", { index })}
       </span>
     );
   }
@@ -68,7 +70,7 @@ const CourseProgressBadge = ({
         className,
       )}
     >
-      今回 {index}/{total} 回目
+      {t("courseBadge.normal", { index, total })}
     </span>
   );
 };

@@ -28,7 +28,9 @@
     "nameUnset": "未设置姓名",
     "brand": "GymBoard",
     "chat": "聊天",
-    "customer": "客户"
+    "customer": "客户",
+    "gymLogo": "健身房 Logo",
+    "unknownError": "未知错误"
   },
   "settings": {
     "title": "设置",
@@ -231,7 +233,14 @@
     "checkData": "查看数据",
     "visitsCount": "到店{{count}}次",
     "weightChange": "体重{{change}}kg",
-    "postureCheck": "姿势检查(AI)"
+    "postureCheck": "姿势检查(AI)",
+    "streakMilestone4": "连续 4 周到店达成！已坚持一个月。保持这个势头加油！",
+    "streakMilestone8": "连续 8 周到店达成！坚持两个月，太棒了！",
+    "streakMilestone12": "连续 12 周到店达成！坚持三个月真的非常了不起！",
+    "streakBest": "刷新个人最佳！已达成连续 {{count}} 周到店！",
+    "recordMeasurement": "记录测量数据",
+    "measureDate": "测量日期",
+    "selectDate": "选择日期"
   },
   "streak": {
     "msg13": "惊人的坚持力!您的教练也深受感动",
@@ -387,7 +396,8 @@
       "deleteFailed": "删除失败",
       "datetimeChanged": "已更改日期和时间",
       "datetimeChangeFailed": "更改日期和时间失败"
-    }
+    },
+    "dummyFeedback": "暂时无法连接 AI 分析。正在显示示例数据。"
   },
   "posture": {
     "title": "姿势·骨架诊断",
@@ -1805,5 +1815,56 @@
     "iosHintAfter": "→ 点击“添加到主屏幕”",
     "androidHint": "可以像应用一样快速访问",
     "install": "安装"
+  },
+  "pushSection": {
+    "header": "推送通知",
+    "offToast": "已关闭推送通知",
+    "unsubFailToast": "关闭通知失败",
+    "onToast": "已开启推送通知",
+    "permissionFailToast": "未获得通知权限。请检查浏览器设置。",
+    "prefUpdateFailToast": "设置更新失败",
+    "title": "应用推送通知",
+    "desc": "可在手机或电脑上接收预约确认、取消、教练消息等通知。",
+    "on": "通知开启",
+    "turnOff": "关闭通知",
+    "deniedIos": "通知已被拒绝。请通过 iPhone 的“设置”→“GymBoard”→“通知”允许。",
+    "deniedAndroid": "通知已被拒绝。请通过设备的“设置”→“应用”→“GymBoard”→“通知”允许。",
+    "deniedWeb": "通知已被拒绝。请在浏览器的网站设置中允许通知。",
+    "receive": "接收通知",
+    "reminderInfo": "可接收预约提醒",
+    "dayBefore": "前一天提醒",
+    "dayBeforeDesc": "在前一天 21 点提醒您次日的预约",
+    "hourBefore": "提前 1 小时提醒",
+    "hourBeforeDesc": "在预约开始前约 1 小时提醒您"
+  },
+  "customerChat": {
+    "defaultTrainer": "教练",
+    "online": "在线",
+    "emptyPrompt": "发送消息开始聊天吧！",
+    "inputPlaceholder": "输入消息..."
+  },
+  "inviteCode": {
+    "copiedToast": "已复制{{label}}",
+    "copyFailed": "复制失败",
+    "title": "邀请码",
+    "desc": "请将此邀请码或链接分享给客户",
+    "codeLabel": "邀请码",
+    "linkLabel": "邀请链接",
+    "copyCode": "复制邀请码",
+    "copyLink": "复制链接"
+  },
+  "courseBadge": {
+    "unconfigured": "未设置课程",
+    "unlimited": "本期第 {{index}} 次（无限次）",
+    "normal": "本期第 {{index}}/{{total}} 次"
+  },
+  "muscleBalance": {
+    "title": "训练部位平衡",
+    "prevPeriod": "上一期",
+    "nextPeriod": "下一期",
+    "thisMonth": "本月",
+    "lastMonth": "上月",
+    "monthsAgo": "{{count}} 个月前",
+    "noRecords": "暂无训练记录"
   }
 }

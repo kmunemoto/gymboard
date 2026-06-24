@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Bell, BellOff, AlertCircle, Clock } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { usePushSubscription, type NotificationPreferences } from "@/hooks/usePu
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const PushNotificationSection = () => {
+  const { t } = useTranslation();
   const {
     isSupported,
     isSubscribed,
@@ -52,12 +54,12 @@ const PushNotificationSection = () => {
   const handleToggle = async () => {
     if (isSubscribed) {
       const ok = await unsubscribe();
-      if (ok) toast.success("プッシュ通知をオフにしました");
-      else toast.error("通知の解除に失敗しました");
+      if (ok) toast.success(t("pushSection.offToast"));
+      else toast.error(t("pushSection.unsubFailToast"));
     } else {
       const ok = await subscribe();
-      if (ok) toast.success("プッシュ通知をオンにしました");
-      else toast.error("通知の許可が得られませんでした。ブラウザの設定をご確認ください。");
+      if (ok) toast.success(t("pushSection.onToast"));
+      else toast.error(t("pushSection.permissionFailToast"));
     }
   };
 
@@ -68,7 +70,7 @@ const PushNotificationSection = () => {
     const ok = await updateNotificationPreference(key, value);
     if (!ok) {
       setPrefs(prev);
-      toast.error("設定の更新に失敗しました");
+      toast.error(t("pushSection.prefUpdateFailToast"));
     }
   };
 
@@ -76,7 +78,7 @@ const PushNotificationSection = () => {
     <section>
       <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
         <Bell className="w-3.5 h-3.5" />
-        プッシュ通知
+        {t("pushSection.header")}
       </h2>
       <Card>
         <CardContent className="p-4">
@@ -89,36 +91,34 @@ const PushNotificationSection = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold mb-1">アプリのプッシュ通知</p>
+              <p className="text-sm font-bold mb-1">{t("pushSection.title")}</p>
               <p className="text-xs text-muted-foreground mb-3 break-all">
-                予約確定・キャンセル・トレーナーからのメッセージ等をスマホやPCの通知として受け取れます。
+                {t("pushSection.desc")}
               </p>
               {loading ? (
                 <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
               ) : isSubscribed ? (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-accent">通知ON</span>
+                  <span className="text-xs font-bold text-accent">{t("pushSection.on")}</span>
                   <Button size="sm" variant="outline" onClick={handleToggle}>
-                    通知をOFFにする
+                    {t("pushSection.turnOff")}
                   </Button>
                 </div>
               ) : permission === "denied" ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                   <div className="text-xs text-muted-foreground break-all">
-                    {isNative ? (
-                      <>
-                        通知が拒否されています。{platform === "ios" ? "iPhoneの「設定」→「ジムボード」→「通知」" : "端末の「設定」→「アプリ」→「ジムボード」→「通知」"}から許可してください。
-                      </>
-                    ) : (
-                      <>通知が拒否されています。ブラウザのサイト設定から通知を許可してください。</>
-                    )}
+                    {isNative
+                      ? platform === "ios"
+                        ? t("pushSection.deniedIos")
+                        : t("pushSection.deniedAndroid")
+                      : t("pushSection.deniedWeb")}
                   </div>
                 </div>
               ) : (
                 <Button size="sm" onClick={handleToggle} variant="accent">
                   <Bell className="w-4 h-4 mr-1.5" />
-                  通知を受け取る
+                  {t("pushSection.receive")}
                 </Button>
               )}
             </div>
@@ -128,13 +128,13 @@ const PushNotificationSection = () => {
             <div className="mt-4 pt-4 border-t border-border space-y-3">
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" />
-                予約のリマインダーを受け取れます
+                {t("pushSection.reminderInfo")}
               </p>
 
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold">前日にお知らせ</p>
-                  <p className="text-xs text-muted-foreground break-all">前日21時に翌日のご予約をお知らせします</p>
+                  <p className="text-sm font-bold">{t("pushSection.dayBefore")}</p>
+                  <p className="text-xs text-muted-foreground break-all">{t("pushSection.dayBeforeDesc")}</p>
                 </div>
                 <Switch
                   checked={prefs.reminder_day_before}
@@ -145,8 +145,8 @@ const PushNotificationSection = () => {
 
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold">1時間前にお知らせ</p>
-                  <p className="text-xs text-muted-foreground break-all">予約開始の約1時間前にお知らせします</p>
+                  <p className="text-sm font-bold">{t("pushSection.hourBefore")}</p>
+                  <p className="text-xs text-muted-foreground break-all">{t("pushSection.hourBeforeDesc")}</p>
                 </div>
                 <Switch
                   checked={prefs.reminder_hour_before}

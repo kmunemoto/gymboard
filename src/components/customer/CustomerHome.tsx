@@ -152,11 +152,11 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
 
       let message = "";
       if (hitMilestone) {
-        if (hitMilestone === 4) message = `4週連続来店達成！1ヶ月間継続できています。この調子で頑張りましょう！`;
-        else if (hitMilestone === 8) message = `8週連続来店達成！2ヶ月間の継続、素晴らしいです！`;
-        else if (hitMilestone === 12) message = `12週連続来店達成！3ヶ月間の継続は本当にすごいことです！`;
+        if (hitMilestone === 4) message = t("home.streakMilestone4");
+        else if (hitMilestone === 8) message = t("home.streakMilestone8");
+        else if (hitMilestone === 12) message = t("home.streakMilestone12");
       } else if (isBestRecord) {
-        message = `自己ベスト更新！${currentStreak}週連続来店を達成しました！`;
+        message = t("home.streakBest", { count: currentStreak });
       }
 
       if (message && currentStreak > lastNotified) {
@@ -313,17 +313,17 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <Weight className="w-3.5 h-3.5" />
-          計測データを記録
+          {t("home.recordMeasurement")}
         </h2>
         <Card>
           <CardContent className="p-3 sm:p-4 space-y-3">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">計測日</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("home.measureDate")}</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full h-11 justify-start text-left font-normal", !measurementDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : "日付を選択"}
+                    {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : t("home.selectDate")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">

@@ -215,7 +215,14 @@ const TrainerSchedule = () => {
         }
       }
 
-      const res = await supabase.from("trial_bookings").delete().eq("id", target.id);
+      // 体験予約はソフトキャンセル(status更新)にする。これにより、
+      //  - GymBoard の表示・重複判定はキャンセル済みを除外する(既存挙動を維持)
+      //  - sync-bookings-to-salute がこのキャンセルを Salute へ逆同期し、
+      //    初回無料体験の予約サイト側の該当枠が解放される
+      const res = await supabase
+        .from("trial_bookings")
+        .update({ status: "キャンセル済み" })
+        .eq("id", target.id);
       error = res.error;
     } else {
       const res = await cancelBooking(target.id, true);

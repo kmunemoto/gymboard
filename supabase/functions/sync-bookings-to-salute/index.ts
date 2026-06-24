@@ -127,6 +127,61 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ============================================================
+    // 体験予約 (trial_bookings) のキャンセル逆同期
+    // GymBoard でキャンセル (status='キャンセル済み') された体験予約を Salute に伝え、
+    // Salute 側の trial_bookings を「キャンセル済み」にして予約サイトの枠を解放する。
+    // - 体験予約はゲスト予約で user_id が無いため booking_date + guest_name で突合。
+    // - 未来日のみ対象 (過去枠は再予約されないため伝える必要がない & 再送量を抑える)。
+    // - 受信側 (Salute の sync-trial-booking-from-gymboard) は冪等。
+    // ============================================================
+    const trialTargetUrl = `${SALUTE_URL_BASE.replace(/\/$/, "")}/functions/v1/sync-trial-booking-from-gymboard`;
+    const nowIso = new Date().toISOString();
+    let trialSent = 0;
+    let trialFailed = 0;
+    const trialResults: Array<Record<string, unknown>> = [];
+
+    const { data: trialRows, error: trialErr } = await admin
+      .from("trial_bookings")
+      .select("id, booking_date, guest_name, status")
+      .eq("tenant_id", TENANT_ID)
+      .eq("status", "キャンセル済み")
+      .gte("booking_date", nowIso)
+      .order("booking_date");
+
+    if (trialErr) {
+      trialResults.push({ step: "fetch_trial_bookings", error: trialErr.message });
+    } else {
+      for (const t of trialRows ?? []) {
+        const payload = {
+          booking_date: t.booking_date,
+          guest_name: t.guest_name,
+          action: "cancel",
+        };
+        try {
+          const res = await fetch(trialTargetUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-migration-secret": SHARED_SECRET,
+            },
+            body: JSON.stringify(payload),
+          });
+          const txt = await res.text();
+          if (res.ok) {
+            trialSent += 1;
+            trialResults.push({ id: t.id, action: "cancel", status: res.status, response: txt.slice(0, 200) });
+          } else {
+            trialFailed += 1;
+            trialResults.push({ id: t.id, action: "cancel", status: res.status, error: txt.slice(0, 300) });
+          }
+        } catch (e) {
+          trialFailed += 1;
+          trialResults.push({ id: t.id, action: "cancel", error: e instanceof Error ? e.message : String(e) });
+        }
+      }
+    }
+
     return json({
       ok: true,
       tenant_id: TENANT_ID,
@@ -135,6 +190,12 @@ Deno.serve(async (req) => {
       failed,
       skipped_unmapped: skippedUnmapped,
       results,
+      trial_cancellations: {
+        total: (trialRows ?? []).length,
+        sent: trialSent,
+        failed: trialFailed,
+        results: trialResults,
+      },
     });
   } catch (e) {
     return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 200);

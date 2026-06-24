@@ -21,7 +21,10 @@ const BookingConfirmationEmail = ({
   planName = '',
 }: BookingConfirmationProps) => (
   <Html lang="ja" dir="ltr">
-    <Head />
+    <Head>
+      <meta charSet="UTF-8" />
+      <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
+    </Head>
     <Preview>ご予約を承りました — ジムボード</Preview>
     <Body style={main}>
       <Container style={container}>
@@ -30,7 +33,7 @@ const BookingConfirmationEmail = ({
         <Text style={greeting}>{customerName} 様</Text>
         <Text style={text}>ご予約を承りました。</Text>
         <Section style={detailSection}>
-          <Text style={sectionTitle}>📅 ご予約内容</Text>
+          <Text style={sectionTitle}>ご予約内容</Text>
           <Text style={label}>日時</Text>
           <Text style={value}>{bookingDate} {bookingTime}</Text>
           <Text style={label}>プラン</Text>
@@ -43,7 +46,7 @@ const BookingConfirmationEmail = ({
         </Section>
         <Hr style={hr} />
         <Text style={footer}>ジムボード</Text>
-        <Link href={SITE_URL} style={footerLink}>🌐 {SITE_URL}</Link>
+        <Link href={SITE_URL} style={footerLink}>{SITE_URL}</Link>
       </Container>
     </Body>
   </Html>

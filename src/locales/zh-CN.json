@@ -1779,5 +1779,31 @@
     "messagePreview": "“{{text}}”",
     "check": "查看",
     "adminSuffix": "管理后台"
+  },
+  "deleteAccountBtn": {
+    "ownerCannotDelete": "老板无法删除账号。请先删除健身房，或移交给其他老板。",
+    "deleteFailed": "删除账号失败",
+    "deleted": "账号已删除",
+    "button": "删除账号",
+    "confirmTitle": "确定要删除吗？",
+    "confirmDesc": "删除账号将丢失所有数据。此操作无法撤销。"
+  },
+  "planLimit": {
+    "customerOver": "客户 {{count}} 名／上限 {{max}} 名",
+    "trainerOver": "教练 {{count}} 名／上限 {{max}} 名",
+    "listSeparator": "、",
+    "overTitle": "已超出套餐上限（{{detail}}）。",
+    "overDescNative": "请将客户数量降至上限以下。套餐变更可在网站上进行。在解决之前，无法创建新的预约、记录等。",
+    "overDescWeb": "请升级套餐或将客户数量降至上限以下。在解决之前，无法创建新的预约、记录等。",
+    "upgrade": "升级套餐",
+    "manageCustomers": "客户管理",
+    "customerNotice": "健身房目前已超出套餐上限。暂时无法创建新记录。请向老板确认。"
+  },
+  "pwaInstall": {
+    "title": "添加到主屏幕",
+    "iosHintBefore": "Safari 底部的分享按钮",
+    "iosHintAfter": "→ 点击“添加到主屏幕”",
+    "androidHint": "可以像应用一样快速访问",
+    "install": "安装"
   }
 }

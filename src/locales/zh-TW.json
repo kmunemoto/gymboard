@@ -1779,5 +1779,31 @@
     "messagePreview": "「{{text}}」",
     "check": "查看",
     "adminSuffix": "管理後台"
+  },
+  "deleteAccountBtn": {
+    "ownerCannotDelete": "老闆無法刪除帳號。請先刪除健身房，或移交給其他老闆。",
+    "deleteFailed": "刪除帳號失敗",
+    "deleted": "帳號已刪除",
+    "button": "刪除帳號",
+    "confirmTitle": "確定要刪除嗎？",
+    "confirmDesc": "刪除帳號將遺失所有資料。此操作無法復原。"
+  },
+  "planLimit": {
+    "customerOver": "客戶 {{count}} 名／上限 {{max}} 名",
+    "trainerOver": "教練 {{count}} 名／上限 {{max}} 名",
+    "listSeparator": "、",
+    "overTitle": "已超出方案上限（{{detail}}）。",
+    "overDescNative": "請將客戶數量降至上限以下。方案變更可在網站上進行。在解決之前，無法建立新的預約、記錄等。",
+    "overDescWeb": "請升級方案或將客戶數量降至上限以下。在解決之前，無法建立新的預約、記錄等。",
+    "upgrade": "升級方案",
+    "manageCustomers": "客戶管理",
+    "customerNotice": "健身房目前已超出方案上限。暫時無法建立新記錄。請向老闆確認。"
+  },
+  "pwaInstall": {
+    "title": "加入主畫面",
+    "iosHintBefore": "Safari 底部的分享按鈕",
+    "iosHintAfter": "→ 點擊「加入主畫面」",
+    "androidHint": "可以像應用程式一樣快速存取",
+    "install": "安裝"
   }
 }

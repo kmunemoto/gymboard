@@ -1779,5 +1779,31 @@
     "messagePreview": "\"{{text}}\"",
     "check": "확인하기",
     "adminSuffix": "관리 화면"
+  },
+  "deleteAccountBtn": {
+    "ownerCannotDelete": "오너는 계정을 삭제할 수 없습니다. 먼저 짐을 삭제하거나 다른 오너에게 인계해 주세요",
+    "deleteFailed": "계정 삭제에 실패했습니다",
+    "deleted": "계정이 삭제되었습니다",
+    "button": "계정 삭제",
+    "confirmTitle": "정말 삭제하시겠습니까?",
+    "confirmDesc": "계정을 삭제하면 모든 데이터가 사라집니다. 이 작업은 취소할 수 없습니다."
+  },
+  "planLimit": {
+    "customerOver": "고객 {{count}}명／상한 {{max}}명",
+    "trainerOver": "트레이너 {{count}}명／상한 {{max}}명",
+    "listSeparator": ", ",
+    "overTitle": "플랜 상한을 초과했습니다（{{detail}}）.",
+    "overDescNative": "고객을 상한 이하로 줄여 주세요. 플랜 변경은 웹사이트에서 할 수 있습니다. 해소될 때까지 신규 예약·기록 등을 만들 수 없습니다.",
+    "overDescWeb": "업그레이드하거나 고객을 상한 이하로 줄여 주세요. 해소될 때까지 신규 예약·기록 등을 만들 수 없습니다.",
+    "upgrade": "플랜 업그레이드",
+    "manageCustomers": "고객 관리",
+    "customerNotice": "짐이 현재 플랜 상한을 초과했습니다. 새 기록 생성이 일시적으로 불가능합니다. 오너에게 확인해 주세요."
+  },
+  "pwaInstall": {
+    "title": "홈 화면에 추가",
+    "iosHintBefore": "Safari 하단의 공유 버튼",
+    "iosHintAfter": "→ \"홈 화면에 추가\"를 탭",
+    "androidHint": "앱처럼 빠르게 접근할 수 있습니다",
+    "install": "설치"
   }
 }

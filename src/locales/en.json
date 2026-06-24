@@ -1779,5 +1779,31 @@
     "messagePreview": "\"{{text}}\"",
     "check": "View",
     "adminSuffix": "Admin"
+  },
+  "deleteAccountBtn": {
+    "ownerCannotDelete": "Owners cannot delete their account. Please delete the gym first or transfer it to another owner.",
+    "deleteFailed": "Failed to delete account",
+    "deleted": "Your account has been deleted",
+    "button": "Delete account",
+    "confirmTitle": "Are you sure you want to delete?",
+    "confirmDesc": "Deleting your account will lose all your data. This action cannot be undone."
+  },
+  "planLimit": {
+    "customerOver": "Customers {{count}} / limit {{max}}",
+    "trainerOver": "Trainers {{count}} / limit {{max}}",
+    "listSeparator": ", ",
+    "overTitle": "You've exceeded your plan limit ({{detail}}).",
+    "overDescNative": "Please bring customers under the limit. Plan changes can be made on the website. Until resolved, you can't create new bookings, records, etc.",
+    "overDescWeb": "Please upgrade or bring customers under the limit. Until resolved, you can't create new bookings, records, etc.",
+    "upgrade": "Upgrade plan",
+    "manageCustomers": "Manage customers",
+    "customerNotice": "The gym is currently over its plan limit. Creating new records is temporarily unavailable. Please check with the owner."
+  },
+  "pwaInstall": {
+    "title": "Add to Home Screen",
+    "iosHintBefore": "The Share button at the bottom of Safari ",
+    "iosHintAfter": " → tap \"Add to Home Screen\"",
+    "androidHint": "Access it quickly like an app",
+    "install": "Install"
   }
 }

@@ -57,12 +57,14 @@ const TrainerSchedule = () => {
   const { profiles } = useAllCustomerProfiles();
   const { tenant, plans } = useTenant();
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
-  // 「初回無料体験」は予約種別の特別枠として全テナント共通で先頭に常設。
+  // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
+  // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
   // tenant_plans 未取得時は従来の既定プランにフォールバックして空リストを避ける。
+  const PROXY_NO_PLAN = "プラン未設定";
   const proxyPlanOptions = (() => {
     const tenantPlanNames = plans.map((p) => p.plan_name);
     const base = tenantPlanNames.length > 0 ? tenantPlanNames : ["月4回", "月6回", "月8回", "通い放題"];
-    return ["初回無料体験", ...base.filter((n) => n !== "初回無料体験")];
+    return [PROXY_NO_PLAN, ...base.filter((n) => n !== PROXY_NO_PLAN)];
   })();
   // [6月/7月の棲み分け対応] Salute御所南テナントかつ予約日が2026年6月か
   const isSaluteJuneLocked = (d: string) =>
@@ -563,9 +565,11 @@ const TrainerSchedule = () => {
                   const selectedUserId = e.target.value;
                   setProxyClient(selectedUserId);
                   const selectedProfile = profiles.find((p) => p.user_id === selectedUserId);
-                  if (selectedProfile?.plan) {
-                    setProxyBookingType(selectedProfile.plan);
-                  }
+                  // お客様に割り当て済みのプランを初期選択。未設定や選択肢に無いプランは「プラン未設定」にフォールバック。
+                  const assignedPlan = selectedProfile?.plan;
+                  setProxyBookingType(
+                    assignedPlan && proxyPlanOptions.includes(assignedPlan) ? assignedPlan : PROXY_NO_PLAN,
+                  );
                 }}
                 className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >

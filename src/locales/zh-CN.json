@@ -1887,5 +1887,12 @@
     "lapsed": "{{days}} 天前到店 · 无后续预约",
     "neverBooked": "尚无预约",
     "more": "其他 {{count}} 名"
+  },
+  "renewal": {
+    "title": "即将续费的客户",
+    "soon": "{{days}} 天后续费",
+    "soonToday": "今天续费",
+    "remaining": "・本期剩余 {{count}} 次",
+    "unlimited": "・无限次"
   }
 }

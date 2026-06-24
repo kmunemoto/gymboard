@@ -1887,5 +1887,12 @@
     "lapsed": "{{days}} 天前到店 · 無後續預約",
     "neverBooked": "尚無預約",
     "more": "其他 {{count}} 名"
+  },
+  "renewal": {
+    "title": "即將續約的客戶",
+    "soon": "{{days}} 天後續約",
+    "soonToday": "今天續約",
+    "remaining": "・本期剩餘 {{count}} 次",
+    "unlimited": "・無限次"
   }
 }

@@ -5,11 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { useAllCustomerProfiles, useProfile } from "@/hooks/useProfile";
 import { useAllBookings } from "@/hooks/useBookings";
-import { formatJST } from "@/lib/timezone";
+import { formatJST, getJSTNow } from "@/lib/timezone";
+import { addDays, startOfDay } from "date-fns";
 import CounselingResponseList from "./CounselingResponseList";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
-import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, computeCourseProgress, type BookingForProgress } from "@/lib/courseProgress";
+import { RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
@@ -183,6 +185,30 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
     return list.sort((a, b) => b.days - a.days);
   }, [bookings, profiles, t]);
 
+  // 更新が近い顧客（プラン更新リマインド）:
+  //  現在のサイクル満了（=月次更新/支払いの起点）まで RENEWAL_SOON_DAYS 日以内の顧客。
+  //  既存の computeCourseProgress（実績ロジック）を流用。スキーマ変更なし。
+  const RENEWAL_SOON_DAYS = 7;
+  const renewalSoon = useMemo(() => {
+    const now = getJSTNow();
+    const todayStart = startOfDay(now);
+    type Renewal = { user_id: string; name: string; days: number; remaining: number | null; isUnlimited: boolean };
+    const list: Renewal[] = [];
+    profiles.forEach((p) => {
+      if (!p.cycle_start_date || !p.plan) return;
+      const progress = computeCourseProgress(p.cycle_start_date, p.plan, bookingsByUser.get(p.user_id) || [], now);
+      if (!progress.cycle || progress.isUnconfigured) return;
+      const anniversary = addDays(progress.cycle.end, -1); // サイクル最終日（満了日）
+      const days = Math.round((startOfDay(anniversary).getTime() - todayStart.getTime()) / 86400000);
+      if (days < 0 || days > RENEWAL_SOON_DAYS) return;
+      const remaining = !progress.isUnlimited && progress.monthlyTotal != null
+        ? Math.max(0, progress.monthlyTotal - progress.totalUsed)
+        : null;
+      list.push({ user_id: p.user_id, name: p.display_name || t("common.nameUnset"), days, remaining, isUnlimited: progress.isUnlimited });
+    });
+    return list.sort((a, b) => a.days - b.days);
+  }, [profiles, bookingsByUser, t]);
+
   if (loading || bookingsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -254,6 +280,48 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
               {atRiskCustomers.length > 10 && (
                 <p className="text-[11px] text-muted-foreground text-center pt-1">
                   {t("retention.more", { count: atRiskCustomers.length - 10 })}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* 更新が近い顧客（プラン更新リマインド） */}
+        {renewalSoon.length > 0 && (
+          <section>
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+              <RefreshCw className="w-3.5 h-3.5 text-info" />
+              {t("renewal.title")}
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-1">
+                {t("dashboard.countUnit", { count: renewalSoon.length })}
+              </Badge>
+            </h2>
+            <div className="space-y-2">
+              {renewalSoon.slice(0, 10).map((c) => {
+                const when = c.days === 0 ? t("renewal.soonToday") : t("renewal.soon", { days: c.days });
+                const detail = c.isUnlimited
+                  ? t("renewal.unlimited")
+                  : c.remaining != null
+                    ? t("renewal.remaining", { count: c.remaining })
+                    : "";
+                return (
+                  <Card key={c.user_id} className="card-hover cursor-pointer border-info/30" onClick={() => onSelectClient(c.user_id)}>
+                    <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-info/15 flex items-center justify-center text-info font-bold text-xs sm:text-sm shrink-0">
+                        {(c.name || "?")[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate">{c.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{when}{detail}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {renewalSoon.length > 10 && (
+                <p className="text-[11px] text-muted-foreground text-center pt-1">
+                  {t("retention.more", { count: renewalSoon.length - 10 })}
                 </p>
               )}
             </div>

@@ -39,6 +39,7 @@ import { format, addMonths, differenceInDays, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
+import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { applyRaidDamage, checkTrainingMilestones, computeSessionVolume, processSessionRewards, type MilestoneAchieved, type SessionRewardResult } from "@/lib/raidUtils";
 import { updateEventProgress } from "@/hooks/useSeasonEvents";
@@ -857,7 +858,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full h-11 justify-start text-left font-normal", !measurementDate && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {measurementDate ? format(measurementDate, "yyyy年M月d日", { locale: ja }) : t("clientDetail.selectDate")}
+                        {measurementDate ? formatDate(measurementDate, "yearMonthDay") : t("clientDetail.selectDate")}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">

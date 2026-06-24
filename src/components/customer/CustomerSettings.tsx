@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { getCycleWindow } from "@/lib/courseProgress";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
+import { formatDate } from "@/lib/dateFormat";
 import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -449,7 +450,7 @@ const CustomerSettings = () => {
                 <div className="space-y-2">
                   {pastBookings.map((b) => {
                     const dt = new Date(`${b.date}T${b.startTime}:00+09:00`);
-                    const dateLabel = format(dt, "M月d日（E）", { locale: ja });
+                    const dateLabel = formatDate(dt, "monthDayDow");
                     const planLabel = planLabelMap[b.booking_type] || b.booking_type;
                     return (
                       <Card key={b.id} className="opacity-75">

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
+import { formatDate } from "@/lib/dateFormat";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface Props {
@@ -21,7 +22,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
   const now = getJSTNow();
   const monthOptions = Array.from({ length: 6 }, (_, i) => {
     const d = startOfMonth(subMonths(now, i));
-    return { value: format(d, "yyyy-MM-dd"), label: format(d, "yyyy年M月", { locale: ja }) };
+    return { value: format(d, "yyyy-MM-dd"), label: formatDate(d, "yearMonth") };
   });
 
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);

@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow } from "@/lib/timezone";
 import { getMuscleGroup, loadMuscleGroupMap, subscribeMuscleGroup } from "@/lib/muscleGroup";
 import { getCycleWindow as sharedGetCycleWindow } from "@/lib/courseProgress";
+import { formatDate } from "@/lib/dateFormat";
 
 const MUSCLE_GROUPS = ["胸", "背中", "肩", "脚", "二頭筋", "三頭筋", "腹筋"] as const;
 
@@ -114,7 +115,7 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
     };
   }, [workouts]);
 
-  const periodLabel = format(start, "yyyy年M月");
+  const periodLabel = formatDate(start, "yearMonth");
   const isCurrent = cycleOffset === 0;
 
   return (

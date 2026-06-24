@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
 import { useAnnouncements, type Announcement } from "@/hooks/useAnnouncements";
+import { formatDate } from "@/lib/dateFormat";
 import RenderIcon from "@/components/RenderIcon";
 import { Button } from "@/components/ui/button";
 
@@ -69,7 +70,7 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
               <div className="min-w-0">
                 <h2 className="text-xl font-bold leading-tight break-all">{selected.title}</h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {format(new Date(selected.published_at), "M月d日 HH:mm", { locale: ja })}
+                  {formatDate(new Date(selected.published_at), "monthDayTime")}
                 </p>
               </div>
             </div>
@@ -117,7 +118,7 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
                   <div className="min-w-0 flex-1">
                     <p className="text-base font-bold leading-tight break-all">{a.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(a.published_at), "M月d日", { locale: ja })}
+                      {formatDate(new Date(a.published_at), "monthDay")}
                     </p>
                   </div>
                 </button>

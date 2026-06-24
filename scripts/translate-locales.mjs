@@ -173,7 +173,14 @@ async function processLang(target, jaFlat) {
   const todo = [];
   for (const [key, text] of Object.entries(jaFlat)) {
     if (typeof text !== "string") continue;
-    if (!FORCE && typeof existingFlat[key] === "string" && existingFlat[key].length > 0) {
+    // 既存値が「空でなく」かつ「日本語原文と異なる」場合のみ翻訳済みとみなしてスキップ。
+    // 日本語がそのまま複製されているキー（＝未翻訳）は原文と一致するため再翻訳対象に含める。
+    if (
+      !FORCE &&
+      typeof existingFlat[key] === "string" &&
+      existingFlat[key].length > 0 &&
+      existingFlat[key] !== text
+    ) {
       continue;
     }
     todo.push({ key, text });

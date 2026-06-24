@@ -257,28 +257,28 @@
     "trainingWeight": "Training Weight"
   },
   "workoutShare": {
-    "brandFallback": "ジムボード",
-    "trainingTime": "トレーニング時間",
-    "minutes": "{{count}}分",
-    "exerciseCount": "種目数",
-    "totalSets": "総セット",
-    "topExercise": "トップ種目",
-    "photoLoadFailed": "写真の読み込みに失敗しました",
-    "imageGenFailed": "画像生成に失敗しました",
-    "imageGenFailedToast": "画像の生成に失敗しました",
-    "title": "トレーニング シェア",
-    "close": "閉じる",
-    "preview": "プレビュー",
-    "bgTransparent": "透過",
-    "changePhoto": "写真を変更",
-    "addPhoto": "写真と合成",
-    "layoutCenter": "中央",
-    "layoutGrid": "グリッド",
-    "layoutBottom": "下部",
-    "saveImage": "画像を保存",
-    "generating": "シェア画像を生成中...",
-    "saveHint": "↓ 画像を長押しして「写真に追加」で保存",
-    "shareImageAlt": "トレーニングシェア"
+    "brandFallback": "GymBoard",
+    "trainingTime": "Training time",
+    "minutes": "{{count}} min",
+    "exerciseCount": "Exercises",
+    "totalSets": "Total sets",
+    "topExercise": "Top exercise",
+    "photoLoadFailed": "Failed to load photo",
+    "imageGenFailed": "Failed to generate image",
+    "imageGenFailedToast": "Failed to generate image",
+    "title": "Share Workout",
+    "close": "Close",
+    "preview": "Preview",
+    "bgTransparent": "Transparent",
+    "changePhoto": "Change photo",
+    "addPhoto": "Add photo",
+    "layoutCenter": "Center",
+    "layoutGrid": "Grid",
+    "layoutBottom": "Bottom",
+    "saveImage": "Save image",
+    "generating": "Generating share image...",
+    "saveHint": "↓ Press and hold the image and tap \"Add to Photos\" to save",
+    "shareImageAlt": "Workout share"
   },
   "booking": {
     "title": "Book a Session",
@@ -334,287 +334,287 @@
     "repsSuffix": "reps"
   },
   "meals": {
-    "title": "食事管理",
-    "subtitle": "写真を撮るだけでAIが自動分析",
-    "analyzing": "分析中...",
-    "addPhoto": "写真を追加",
-    "empty": "食事の写真を撮って記録を始めましょう",
-    "totalCalories": "合計カロリー",
-    "pfcGoal": "目標{{pct}}%",
-    "actualBalance": "実績バランス",
-    "goalLine": "▼ 目標ライン",
-    "mealPhotoAlt": "食事写真",
-    "aiAdvice": "AIアドバイス",
-    "aiAnalyzing": "AI分析中...",
-    "today": "今日 ({{label}})",
-    "yesterday": "昨日 ({{label}})",
-    "dateLabel": "{{m}}月{{d}}日",
-    "dishesBreakdown": "内訳を見る（{{count}}品）",
+    "title": "Meal Tracking",
+    "subtitle": "Just take a photo and AI analyzes it automatically",
+    "analyzing": "Analyzing...",
+    "addPhoto": "Add photo",
+    "empty": "Take a photo of your meal to start tracking",
+    "totalCalories": "Total calories",
+    "pfcGoal": "Goal {{pct}}%",
+    "actualBalance": "Actual balance",
+    "goalLine": "▼ Goal line",
+    "mealPhotoAlt": "Meal photo",
+    "aiAdvice": "AI advice",
+    "aiAnalyzing": "AI analyzing...",
+    "today": "Today ({{label}})",
+    "yesterday": "Yesterday ({{label}})",
+    "dateLabel": "{{m}}/{{d}}",
+    "dishesBreakdown": "View breakdown ({{count}} items)",
     "nutrient": {
-      "calories": "カロリー",
-      "protein": "タンパク質",
-      "fat": "脂質",
-      "carbs": "炭水化物",
-      "fiber": "食物繊維"
+      "calories": "Calories",
+      "protein": "Protein",
+      "fat": "Fat",
+      "carbs": "Carbs",
+      "fiber": "Fiber"
     },
     "uploadDialog": {
-      "title": "食事の情報（任意）",
-      "mealType": "食事タイプ",
-      "quantityLabel": "量の補足（任意）",
-      "quantityPlaceholder": "例：大盛り、半分残した、2人前",
-      "quantityHint": "入力するとAIの推定精度が向上します",
-      "startAnalysis": "分析開始"
+      "title": "Meal info (optional)",
+      "mealType": "Meal type",
+      "quantityLabel": "Quantity note (optional)",
+      "quantityPlaceholder": "e.g. large portion, left half, 2 servings",
+      "quantityHint": "Adding this improves AI estimation accuracy",
+      "startAnalysis": "Start analysis"
     },
     "deleteDialog": {
-      "title": "この食事記録を削除しますか？",
-      "description": "削除すると元に戻すことはできません。写真と分析データが完全に削除されます。",
-      "confirm": "削除する"
+      "title": "Delete this meal record?",
+      "description": "Once deleted, it cannot be undone. The photo and analysis data will be permanently deleted.",
+      "confirm": "Delete"
     },
     "editDateDialog": {
-      "title": "食事の日時を変更",
-      "date": "日付",
-      "time": "時間"
+      "title": "Change meal date & time",
+      "date": "Date",
+      "time": "Time"
     },
     "toast": {
-      "uploadedAnalyzing": "写真をアップロードしました。AI分析中...",
-      "dummyResult": "ダミーの分析結果を表示しています",
-      "analysisComplete": "AI分析が完了しました！",
-      "uploadFailed": "アップロードに失敗しました",
-      "deleted": "食事記録を削除しました",
-      "deleteFailed": "削除に失敗しました",
-      "datetimeChanged": "日時を変更しました",
-      "datetimeChangeFailed": "日時の変更に失敗しました"
+      "uploadedAnalyzing": "Photo uploaded. AI analyzing...",
+      "dummyResult": "Showing dummy analysis results",
+      "analysisComplete": "AI analysis complete!",
+      "uploadFailed": "Upload failed",
+      "deleted": "Meal record deleted",
+      "deleteFailed": "Failed to delete",
+      "datetimeChanged": "Date & time changed",
+      "datetimeChangeFailed": "Failed to change date & time"
     }
   },
   "posture": {
-    "title": "姿勢・骨格診断",
-    "description": "全身写真をアップロードして、AIが姿勢と骨格タイプを分析します。",
-    "disclaimer": "※本機能はAIによる参考情報です。医療診断ではありません。",
-    "uploadPhoto": "写真をアップロード",
-    "takePhoto": "カメラで撮影",
-    "photoTip": "全身が映るよう、少し離れた位置から撮影してください。",
-    "imageAlt": "姿勢解析画像",
-    "modelLoading": "モデルを読み込み中...",
-    "analyzing": "解析中...",
-    "detectedPoints": "{{detected}} / {{total}} キーポイントを検出",
-    "redo": "やり直す",
-    "saveDone": "保存済み",
-    "saveInProgress": "保存中...",
-    "saveResult": "結果を保存",
-    "reanalyze": "再解析",
+    "title": "Posture & Body Type Analysis",
+    "description": "Upload a full-body photo and AI will analyze your posture and body type.",
+    "disclaimer": "* This feature provides AI-based reference information. It is not a medical diagnosis.",
+    "uploadPhoto": "Upload photo",
+    "takePhoto": "Take photo",
+    "photoTip": "Shoot from a slight distance so your whole body is visible.",
+    "imageAlt": "Posture analysis image",
+    "modelLoading": "Loading model...",
+    "analyzing": "Analyzing...",
+    "detectedPoints": "{{detected}} / {{total}} keypoints detected",
+    "redo": "Redo",
+    "saveDone": "Saved",
+    "saveInProgress": "Saving...",
+    "saveResult": "Save result",
+    "reanalyze": "Re-analyze",
     "toast": {
-      "modelFailed": "モデルの読み込みに失敗しました",
-      "imageInvalid": "画像ファイルを選択してください",
-      "imageFailed": "画像の読み込みに失敗しました",
-      "noPosture": "姿勢を検出できませんでした。全身が映った写真をお試しください。",
-      "analysisDone": "姿勢解析が完了しました",
-      "analysisFailed": "解析に失敗しました。もう一度お試しください。",
-      "saved": "骨格診断を保存しました",
-      "saveFailed": "保存に失敗しました: {{msg}}"
+      "modelFailed": "Failed to load the model",
+      "imageInvalid": "Please select an image file",
+      "imageFailed": "Failed to load the image",
+      "noPosture": "Could not detect posture. Please try a photo showing your whole body.",
+      "analysisDone": "Posture analysis complete",
+      "analysisFailed": "Analysis failed. Please try again.",
+      "saved": "Body type analysis saved",
+      "saveFailed": "Failed to save: {{msg}}"
     },
     "feedback": {
-      "title": "姿勢フィードバック",
-      "scoreLabel": "姿勢スコア",
-      "scoreUnit": "点",
-      "scoreVeryGood": "とても良い姿勢です！",
-      "scoreGood": "良い姿勢です",
-      "scoreOk": "改善の余地があります",
-      "scoreBad": "姿勢に注意が必要です"
+      "title": "Posture Feedback",
+      "scoreLabel": "Posture score",
+      "scoreUnit": "pts",
+      "scoreVeryGood": "Excellent posture!",
+      "scoreGood": "Good posture",
+      "scoreOk": "Room for improvement",
+      "scoreBad": "Your posture needs attention"
     },
     "skeletal": {
-      "title": "骨格タイプ診断",
-      "typeLabel": "{{label}}タイプ",
-      "traitsTitle": "{{label}}タイプの特徴",
-      "measureData": "計測データを見る",
-      "shoulderHipRatio": "肩/ヒップ比",
-      "upperBodyRatio": "上半身比率",
-      "limbTorsoRatio": "四肢/胴比",
-      "photoDisclaimer": "※写真の角度や撮影条件によって結果が変わる場合があります。",
+      "title": "Body Type Diagnosis",
+      "typeLabel": "{{label}} type",
+      "traitsTitle": "Traits of the {{label}} type",
+      "measureData": "View measurement data",
+      "shoulderHipRatio": "Shoulder/hip ratio",
+      "upperBodyRatio": "Upper body ratio",
+      "limbTorsoRatio": "Limb/torso ratio",
+      "photoDisclaimer": "* Results may vary depending on the photo angle and shooting conditions.",
       "types": {
         "straight": {
-          "label": "ストレート",
-          "desc": "筋肉のハリ感があり、立体感のある体型です。",
+          "label": "Straight",
+          "desc": "A toned, three-dimensional physique with muscle firmness.",
           "traits": [
-            "骨格がしっかりしている",
-            "筋肉がつきやすい",
-            "上重心",
-            "直線的なラインが特徴"
+            "Solid bone structure",
+            "Builds muscle easily",
+            "Upper center of gravity",
+            "Characterized by straight lines"
           ]
         },
         "wave": {
-          "label": "ウェーブ",
-          "desc": "柔らかく曲線的なラインが特徴の体型です。",
+          "label": "Wave",
+          "desc": "A physique characterized by soft, curvy lines.",
           "traits": [
-            "脂肪がつきやすい",
-            "下重心",
-            "曲線的なラインが特徴",
-            "柔らかい質感"
+            "Gains fat easily",
+            "Lower center of gravity",
+            "Characterized by curved lines",
+            "Soft texture"
           ]
         },
         "natural": {
-          "label": "ナチュラル",
-          "desc": "骨感があり、フレームの大きい体型です。",
+          "label": "Natural",
+          "desc": "A physique with prominent bones and a large frame.",
           "traits": [
-            "骨格が大きい",
-            "関節が目立つ",
-            "直線的かつ立体感がある",
-            "筋肉・脂肪がつきにくい"
+            "Large bone structure",
+            "Prominent joints",
+            "Straight yet three-dimensional",
+            "Hard to gain muscle or fat"
           ]
         }
       }
     },
     "recommendation": {
-      "title": "トレーニング推奨",
-      "postureExerciseTitle": "姿勢改善エクササイズ",
+      "title": "Training Recommendations",
+      "postureExerciseTitle": "Posture Improvement Exercises",
       "types": {
         "straight": {
-          "summary": "ストレートタイプは筋肉量を活かした高負荷トレーニングが効果的です。体幹強化と下半身のバランス改善を重点的に行いましょう。",
+          "summary": "For the Straight type, high-load training that leverages muscle mass is effective. Focus on core strengthening and improving lower-body balance.",
           "tips": [
             {
-              "area": "体幹・腹筋",
+              "area": "Core / Abs",
               "exercises": [
-                "プランク",
-                "デッドバグ",
-                "ケーブルクランチ"
+                "Plank",
+                "Dead Bug",
+                "Cable Crunch"
               ],
-              "reason": "体幹を強化し、姿勢の安定性を高めます。"
+              "reason": "Strengthens the core and improves postural stability."
             },
             {
-              "area": "背中",
+              "area": "Back",
               "exercises": [
-                "ラットプルダウン",
-                "シーテッドロウ"
+                "Lat Pulldown",
+                "Seated Row"
               ],
-              "reason": "背中の筋肉を鍛え、上半身のバランスを整えます。"
+              "reason": "Builds back muscles and balances the upper body."
             },
             {
-              "area": "下半身",
+              "area": "Lower Body",
               "exercises": [
-                "スクワット",
-                "ヒップスラスト"
+                "Squat",
+                "Hip Thrust"
               ],
-              "reason": "下半身を強化し、全身のバランスを改善します。"
+              "reason": "Strengthens the lower body and improves overall balance."
             }
           ]
         },
         "wave": {
-          "summary": "ウェーブタイプは上半身と下半身のバランスを整えることが重要です。軽めの負荷で回数を多くこなしましょう。",
+          "summary": "For the Wave type, balancing the upper and lower body is important. Do higher reps with lighter loads.",
           "tips": [
             {
-              "area": "肩・上半身",
+              "area": "Shoulders / Upper Body",
               "exercises": [
-                "ショルダープレス",
-                "サイドレイズ",
-                "プッシュアップ"
+                "Shoulder Press",
+                "Lateral Raise",
+                "Push-up"
               ],
-              "reason": "上半身にボリュームをつけ、全体のバランスを整えます。"
+              "reason": "Adds volume to the upper body and balances the overall figure."
             },
             {
-              "area": "下半身・ヒップ",
+              "area": "Lower Body / Hips",
               "exercises": [
-                "ブルガリアンスクワット",
-                "カーフレイズ"
+                "Bulgarian Split Squat",
+                "Calf Raise"
               ],
-              "reason": "下半身を引き締め、メリハリのあるラインを作ります。"
+              "reason": "Tones the lower body and creates a well-defined line."
             },
             {
-              "area": "体幹",
+              "area": "Core",
               "exercises": [
-                "ヒップリフト",
-                "サイドプランク"
+                "Hip Lift",
+                "Side Plank"
               ],
-              "reason": "体幹を安定させ、姿勢改善につなげます。"
+              "reason": "Stabilizes the core and helps improve posture."
             }
           ]
         },
         "natural": {
-          "summary": "ナチュラルタイプは全身をバランスよく鍛えることが大切です。柔軟性も意識して取り組みましょう。",
+          "summary": "For the Natural type, training the whole body in a balanced way is key. Also pay attention to flexibility.",
           "tips": [
             {
-              "area": "全身",
+              "area": "Full Body",
               "exercises": [
-                "デッドリフト",
-                "ケトルベルスイング"
+                "Deadlift",
+                "Kettlebell Swing"
               ],
-              "reason": "全身の連動性を高め、機能的な体づくりをします。"
+              "reason": "Enhances whole-body coordination for a functional physique."
             },
             {
-              "area": "胸・肩",
+              "area": "Chest / Shoulders",
               "exercises": [
-                "ベンチプレス",
-                "フェイスプル"
+                "Bench Press",
+                "Face Pull"
               ],
-              "reason": "上半身に適度な筋肉をつけ、体型を整えます。"
+              "reason": "Adds moderate muscle to the upper body and shapes the figure."
             },
             {
-              "area": "柔軟性",
+              "area": "Flexibility",
               "exercises": [
-                "ヨガ",
-                "ダイナミックストレッチ"
+                "Yoga",
+                "Dynamic Stretching"
               ],
-              "reason": "関節の可動域を広げ、怪我を予防します。"
+              "reason": "Expands joint range of motion and prevents injury."
             }
           ]
         }
       },
       "postureExercises": {
         "straightNeck": {
-          "area": "頭部の前傾（ストレートネック）",
+          "area": "Forward head (straight neck)",
           "exercises": [
-            "チンタック",
-            "頸部ストレッチ",
-            "フェイスプル"
+            "Chin Tuck",
+            "Neck Stretch",
+            "Face Pull"
           ],
-          "reason": "頸部のアライメントを整え、ストレートネックを改善します。"
+          "reason": "Realigns the neck and improves straight neck."
         },
         "roundedBack": {
-          "area": "猫背（胸椎の丸まり）",
+          "area": "Rounded back (thoracic kyphosis)",
           "exercises": [
-            "胸椎モビリティ",
-            "フェイスプル",
-            "リバースフライ"
+            "Thoracic Mobility",
+            "Face Pull",
+            "Reverse Fly"
           ],
-          "reason": "胸椎の可動性を高め、猫背姿勢を改善します。"
+          "reason": "Improves thoracic mobility and corrects a rounded back."
         },
         "pelvicTilt": {
-          "area": "骨盤の前傾/後傾",
+          "area": "Anterior/posterior pelvic tilt",
           "exercises": [
-            "ヒップフレクサーストレッチ",
-            "グルートブリッジ",
-            "プランク"
+            "Hip Flexor Stretch",
+            "Glute Bridge",
+            "Plank"
           ],
-          "reason": "骨盤周辺の筋肉バランスを整え、正しいアライメントを取り戻します。"
+          "reason": "Balances the muscles around the pelvis and restores proper alignment."
         }
       }
     },
     "history": {
-      "title": "骨格分析履歴",
-      "noHistory": "まだ分析履歴はありません",
-      "noPhoto": "写真なし",
-      "compareTitle": "ビフォーアフター比較",
-      "compareEnd": "比較を終了",
-      "compareHint": "比較したい2つの分析を選んでください（{{selected}}/2 選択中）",
-      "scoreTrend": "スコア推移",
-      "typeLabel": "{{label}}タイプ",
-      "imageAlt": "骨格オーバーレイ",
-      "shoulderHipShort": "肩/ヒップ",
-      "upperBodyShort": "上半身",
-      "limbTorsoShort": "四肢/胴",
-      "shoulderHipRatio": "肩/ヒップ比",
-      "upperBodyRatio": "上半身比率",
-      "limbTorsoRatio": "四肢/胴比",
-      "trainingRecommendation": "おすすめトレーニング",
-      "deleteButton": "この分析を削除",
-      "deleteTitle": "骨格分析を削除しますか？",
-      "deleteDesc": "{{date}}の分析結果と画像が完全に削除されます。この操作は取り消せません。",
-      "deleteCancel": "キャンセル",
-      "deleteConfirm": "削除する",
+      "title": "Body Analysis History",
+      "noHistory": "No analysis history yet",
+      "noPhoto": "No photo",
+      "compareTitle": "Before & After Comparison",
+      "compareEnd": "End comparison",
+      "compareHint": "Select two analyses to compare ({{selected}}/2 selected)",
+      "scoreTrend": "Score trend",
+      "typeLabel": "{{label}} type",
+      "imageAlt": "Skeletal overlay",
+      "shoulderHipShort": "Shoulder/hip",
+      "upperBodyShort": "Upper body",
+      "limbTorsoShort": "Limb/torso",
+      "shoulderHipRatio": "Shoulder/hip ratio",
+      "upperBodyRatio": "Upper body ratio",
+      "limbTorsoRatio": "Limb/torso ratio",
+      "trainingRecommendation": "Recommended training",
+      "deleteButton": "Delete this analysis",
+      "deleteTitle": "Delete body analysis?",
+      "deleteDesc": "The analysis results and image from {{date}} will be permanently deleted. This action cannot be undone.",
+      "deleteCancel": "Cancel",
+      "deleteConfirm": "Delete",
       "toast": {
-        "deleteSuccess": "削除しました",
-        "deleteSuccessDesc": "骨格分析を削除しました",
-        "deleteFailed": "削除できませんでした",
-        "deleteFailedDesc": "権限がないか、すでに削除されている可能性があります",
-        "deleteError": "削除に失敗しました"
+        "deleteSuccess": "Deleted",
+        "deleteSuccessDesc": "Body analysis deleted",
+        "deleteFailed": "Could not delete",
+        "deleteFailedDesc": "You may not have permission, or it may already be deleted",
+        "deleteError": "Failed to delete"
       }
     }
   },
@@ -673,52 +673,52 @@
     "adviceDefault": "コツコツ続けることが大切です。一緒に頑張りましょう！"
   },
   "progress": {
-    "typeFront": "正面",
-    "typeSide": "側面",
-    "typeBack": "背面",
-    "addPhoto": "写真を追加",
-    "dateLabel": "撮影日",
-    "typeLabel": "写真の種類",
-    "photoLabel": "写真",
-    "memoLabel": "メモ（任意）",
-    "memoPlaceholder": "体調や気づきなど",
-    "selectPhoto": "写真を選択",
-    "changePhoto": "変更",
-    "previewAlt": "プレビュー",
-    "save": "保存する",
-    "errNoPhoto": "写真を選択してください",
-    "uploadSuccess": "写真を追加しました",
-    "uploadFailed": "アップロードに失敗しました",
-    "compareTitle": "写真を比較",
-    "noPhotos": "写真がまだありません",
-    "beforeLabel": "ビフォー",
-    "afterLabel": "アフター",
-    "elapsedDays": "経過日数：{{days}}日間",
-    "shareImage": "シェア画像を作成",
-    "shareSaveHint": "画像を長押しして保存できます",
-    "compareImageAlt": "比較画像",
-    "download": "ダウンロード",
-    "noPhotoInCell": "写真なし",
-    "bothPhotosMissing": "両方の写真がありません",
-    "imageGenFailed": "画像生成に失敗しました",
-    "compare": "比較する",
-    "addPhotoBtn": "写真を追加",
-    "emptyTitle": "最初の写真を撮影しましょう",
-    "emptyDesc": "定期的に記録するとビフォーアフターで比較できます",
-    "photoCount": "{{count}}枚",
-    "dateCardLabel": "{{month}}月{{day}}日（{{dow}}）",
-    "dow0": "日",
-    "dow1": "月",
-    "dow2": "火",
-    "dow3": "水",
-    "dow4": "木",
-    "dow5": "金",
-    "dow6": "土",
-    "notRegistered": "未登録",
-    "deleteConfirm": "この写真を削除しますか？",
-    "deleteSuccess": "削除しました",
-    "deleteFailed": "削除に失敗しました",
-    "delete": "削除"
+    "typeFront": "Front",
+    "typeSide": "Side",
+    "typeBack": "Back",
+    "addPhoto": "Add photo",
+    "dateLabel": "Date taken",
+    "typeLabel": "Photo type",
+    "photoLabel": "Photo",
+    "memoLabel": "Memo (optional)",
+    "memoPlaceholder": "Condition, observations, etc.",
+    "selectPhoto": "Select photo",
+    "changePhoto": "Change",
+    "previewAlt": "Preview",
+    "save": "Save",
+    "errNoPhoto": "Please select a photo",
+    "uploadSuccess": "Photo added",
+    "uploadFailed": "Upload failed",
+    "compareTitle": "Compare photos",
+    "noPhotos": "No photos yet",
+    "beforeLabel": "Before",
+    "afterLabel": "After",
+    "elapsedDays": "Days elapsed: {{days}}",
+    "shareImage": "Create share image",
+    "shareSaveHint": "Press and hold the image to save it",
+    "compareImageAlt": "Comparison image",
+    "download": "Download",
+    "noPhotoInCell": "No photo",
+    "bothPhotosMissing": "Both photos are missing",
+    "imageGenFailed": "Failed to generate image",
+    "compare": "Compare",
+    "addPhotoBtn": "Add photo",
+    "emptyTitle": "Take your first photo",
+    "emptyDesc": "Record regularly to compare before and after",
+    "photoCount": "{{count}} photos",
+    "dateCardLabel": "{{month}}/{{day}} ({{dow}})",
+    "dow0": "Sun",
+    "dow1": "Mon",
+    "dow2": "Tue",
+    "dow3": "Wed",
+    "dow4": "Thu",
+    "dow5": "Fri",
+    "dow6": "Sat",
+    "notRegistered": "Not registered",
+    "deleteConfirm": "Delete this photo?",
+    "deleteSuccess": "Deleted",
+    "deleteFailed": "Failed to delete",
+    "delete": "Delete"
   },
   "dashboard": {
     "title": "Dashboard",

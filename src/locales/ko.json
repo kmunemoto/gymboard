@@ -257,28 +257,28 @@
     "trainingWeight": "트레이닝 중량"
   },
   "workoutShare": {
-    "brandFallback": "ジムボード",
-    "trainingTime": "トレーニング時間",
-    "minutes": "{{count}}分",
-    "exerciseCount": "種目数",
-    "totalSets": "総セット",
-    "topExercise": "トップ種目",
-    "photoLoadFailed": "写真の読み込みに失敗しました",
-    "imageGenFailed": "画像生成に失敗しました",
-    "imageGenFailedToast": "画像の生成に失敗しました",
-    "title": "トレーニング シェア",
-    "close": "閉じる",
-    "preview": "プレビュー",
-    "bgTransparent": "透過",
-    "changePhoto": "写真を変更",
-    "addPhoto": "写真と合成",
-    "layoutCenter": "中央",
-    "layoutGrid": "グリッド",
-    "layoutBottom": "下部",
-    "saveImage": "画像を保存",
-    "generating": "シェア画像を生成中...",
-    "saveHint": "↓ 画像を長押しして「写真に追加」で保存",
-    "shareImageAlt": "トレーニングシェア"
+    "brandFallback": "GymBoard",
+    "trainingTime": "트레이닝 시간",
+    "minutes": "{{count}}분",
+    "exerciseCount": "종목 수",
+    "totalSets": "총 세트",
+    "topExercise": "톱 종목",
+    "photoLoadFailed": "사진을 불러오지 못했습니다",
+    "imageGenFailed": "이미지 생성에 실패했습니다",
+    "imageGenFailedToast": "이미지 생성에 실패했습니다",
+    "title": "트레이닝 공유",
+    "close": "닫기",
+    "preview": "미리보기",
+    "bgTransparent": "투명",
+    "changePhoto": "사진 변경",
+    "addPhoto": "사진과 합성",
+    "layoutCenter": "중앙",
+    "layoutGrid": "그리드",
+    "layoutBottom": "하단",
+    "saveImage": "이미지 저장",
+    "generating": "공유 이미지를 생성 중...",
+    "saveHint": "↓ 이미지를 길게 눌러 \"사진에 추가\"로 저장",
+    "shareImageAlt": "트레이닝 공유"
   },
   "booking": {
     "title": "예약하기",
@@ -334,287 +334,287 @@
     "repsSuffix": "회"
   },
   "meals": {
-    "title": "食事管理",
-    "subtitle": "写真を撮るだけでAIが自動分析",
-    "analyzing": "分析中...",
-    "addPhoto": "写真を追加",
-    "empty": "食事の写真を撮って記録を始めましょう",
-    "totalCalories": "合計カロリー",
-    "pfcGoal": "目標{{pct}}%",
-    "actualBalance": "実績バランス",
-    "goalLine": "▼ 目標ライン",
-    "mealPhotoAlt": "食事写真",
-    "aiAdvice": "AIアドバイス",
-    "aiAnalyzing": "AI分析中...",
-    "today": "今日 ({{label}})",
-    "yesterday": "昨日 ({{label}})",
-    "dateLabel": "{{m}}月{{d}}日",
-    "dishesBreakdown": "内訳を見る（{{count}}品）",
+    "title": "식사 관리",
+    "subtitle": "사진만 찍으면 AI가 자동으로 분석",
+    "analyzing": "분석 중...",
+    "addPhoto": "사진 추가",
+    "empty": "식사 사진을 찍어 기록을 시작해 보세요",
+    "totalCalories": "총 칼로리",
+    "pfcGoal": "목표 {{pct}}%",
+    "actualBalance": "실제 밸런스",
+    "goalLine": "▼ 목표 라인",
+    "mealPhotoAlt": "식사 사진",
+    "aiAdvice": "AI 조언",
+    "aiAnalyzing": "AI 분석 중...",
+    "today": "오늘 ({{label}})",
+    "yesterday": "어제 ({{label}})",
+    "dateLabel": "{{m}}월 {{d}}일",
+    "dishesBreakdown": "상세 보기 ({{count}}개)",
     "nutrient": {
-      "calories": "カロリー",
-      "protein": "タンパク質",
-      "fat": "脂質",
-      "carbs": "炭水化物",
-      "fiber": "食物繊維"
+      "calories": "칼로리",
+      "protein": "단백질",
+      "fat": "지방",
+      "carbs": "탄수화물",
+      "fiber": "식이섬유"
     },
     "uploadDialog": {
-      "title": "食事の情報（任意）",
-      "mealType": "食事タイプ",
-      "quantityLabel": "量の補足（任意）",
-      "quantityPlaceholder": "例：大盛り、半分残した、2人前",
-      "quantityHint": "入力するとAIの推定精度が向上します",
-      "startAnalysis": "分析開始"
+      "title": "식사 정보 (선택)",
+      "mealType": "식사 유형",
+      "quantityLabel": "양 보충 설명 (선택)",
+      "quantityPlaceholder": "예: 곱빼기, 절반 남김, 2인분",
+      "quantityHint": "입력하면 AI 추정 정확도가 향상됩니다",
+      "startAnalysis": "분석 시작"
     },
     "deleteDialog": {
-      "title": "この食事記録を削除しますか？",
-      "description": "削除すると元に戻すことはできません。写真と分析データが完全に削除されます。",
-      "confirm": "削除する"
+      "title": "이 식사 기록을 삭제하시겠습니까?",
+      "description": "삭제하면 되돌릴 수 없습니다. 사진과 분석 데이터가 완전히 삭제됩니다.",
+      "confirm": "삭제"
     },
     "editDateDialog": {
-      "title": "食事の日時を変更",
-      "date": "日付",
-      "time": "時間"
+      "title": "식사 일시 변경",
+      "date": "날짜",
+      "time": "시간"
     },
     "toast": {
-      "uploadedAnalyzing": "写真をアップロードしました。AI分析中...",
-      "dummyResult": "ダミーの分析結果を表示しています",
-      "analysisComplete": "AI分析が完了しました！",
-      "uploadFailed": "アップロードに失敗しました",
-      "deleted": "食事記録を削除しました",
-      "deleteFailed": "削除に失敗しました",
-      "datetimeChanged": "日時を変更しました",
-      "datetimeChangeFailed": "日時の変更に失敗しました"
+      "uploadedAnalyzing": "사진을 업로드했습니다. AI 분석 중...",
+      "dummyResult": "더미 분석 결과를 표시하고 있습니다",
+      "analysisComplete": "AI 분석이 완료되었습니다!",
+      "uploadFailed": "업로드에 실패했습니다",
+      "deleted": "식사 기록을 삭제했습니다",
+      "deleteFailed": "삭제에 실패했습니다",
+      "datetimeChanged": "일시를 변경했습니다",
+      "datetimeChangeFailed": "일시 변경에 실패했습니다"
     }
   },
   "posture": {
-    "title": "姿勢・骨格診断",
-    "description": "全身写真をアップロードして、AIが姿勢と骨格タイプを分析します。",
-    "disclaimer": "※本機能はAIによる参考情報です。医療診断ではありません。",
-    "uploadPhoto": "写真をアップロード",
-    "takePhoto": "カメラで撮影",
-    "photoTip": "全身が映るよう、少し離れた位置から撮影してください。",
-    "imageAlt": "姿勢解析画像",
-    "modelLoading": "モデルを読み込み中...",
-    "analyzing": "解析中...",
-    "detectedPoints": "{{detected}} / {{total}} キーポイントを検出",
-    "redo": "やり直す",
-    "saveDone": "保存済み",
-    "saveInProgress": "保存中...",
-    "saveResult": "結果を保存",
-    "reanalyze": "再解析",
+    "title": "자세·골격 진단",
+    "description": "전신 사진을 업로드하면 AI가 자세와 골격 타입을 분석합니다.",
+    "disclaimer": "※ 본 기능은 AI에 의한 참고 정보입니다. 의료 진단이 아닙니다.",
+    "uploadPhoto": "사진 업로드",
+    "takePhoto": "카메라로 촬영",
+    "photoTip": "전신이 나오도록 조금 떨어진 위치에서 촬영해 주세요.",
+    "imageAlt": "자세 분석 이미지",
+    "modelLoading": "모델을 불러오는 중...",
+    "analyzing": "분석 중...",
+    "detectedPoints": "{{detected}} / {{total}} 키포인트 검출",
+    "redo": "다시 하기",
+    "saveDone": "저장됨",
+    "saveInProgress": "저장 중...",
+    "saveResult": "결과 저장",
+    "reanalyze": "재분석",
     "toast": {
-      "modelFailed": "モデルの読み込みに失敗しました",
-      "imageInvalid": "画像ファイルを選択してください",
-      "imageFailed": "画像の読み込みに失敗しました",
-      "noPosture": "姿勢を検出できませんでした。全身が映った写真をお試しください。",
-      "analysisDone": "姿勢解析が完了しました",
-      "analysisFailed": "解析に失敗しました。もう一度お試しください。",
-      "saved": "骨格診断を保存しました",
-      "saveFailed": "保存に失敗しました: {{msg}}"
+      "modelFailed": "모델을 불러오지 못했습니다",
+      "imageInvalid": "이미지 파일을 선택해 주세요",
+      "imageFailed": "이미지를 불러오지 못했습니다",
+      "noPosture": "자세를 검출하지 못했습니다. 전신이 나온 사진으로 시도해 주세요.",
+      "analysisDone": "자세 분석이 완료되었습니다",
+      "analysisFailed": "분석에 실패했습니다. 다시 시도해 주세요.",
+      "saved": "골격 진단을 저장했습니다",
+      "saveFailed": "저장에 실패했습니다: {{msg}}"
     },
     "feedback": {
-      "title": "姿勢フィードバック",
-      "scoreLabel": "姿勢スコア",
-      "scoreUnit": "点",
-      "scoreVeryGood": "とても良い姿勢です！",
-      "scoreGood": "良い姿勢です",
-      "scoreOk": "改善の余地があります",
-      "scoreBad": "姿勢に注意が必要です"
+      "title": "자세 피드백",
+      "scoreLabel": "자세 점수",
+      "scoreUnit": "점",
+      "scoreVeryGood": "매우 좋은 자세입니다!",
+      "scoreGood": "좋은 자세입니다",
+      "scoreOk": "개선의 여지가 있습니다",
+      "scoreBad": "자세에 주의가 필요합니다"
     },
     "skeletal": {
-      "title": "骨格タイプ診断",
-      "typeLabel": "{{label}}タイプ",
-      "traitsTitle": "{{label}}タイプの特徴",
-      "measureData": "計測データを見る",
-      "shoulderHipRatio": "肩/ヒップ比",
-      "upperBodyRatio": "上半身比率",
-      "limbTorsoRatio": "四肢/胴比",
-      "photoDisclaimer": "※写真の角度や撮影条件によって結果が変わる場合があります。",
+      "title": "골격 타입 진단",
+      "typeLabel": "{{label}} 타입",
+      "traitsTitle": "{{label}} 타입의 특징",
+      "measureData": "측정 데이터 보기",
+      "shoulderHipRatio": "어깨/엉덩이 비율",
+      "upperBodyRatio": "상체 비율",
+      "limbTorsoRatio": "사지/몸통 비율",
+      "photoDisclaimer": "※ 사진 각도나 촬영 조건에 따라 결과가 달라질 수 있습니다.",
       "types": {
         "straight": {
-          "label": "ストレート",
-          "desc": "筋肉のハリ感があり、立体感のある体型です。",
+          "label": "스트레이트",
+          "desc": "근육의 탄력이 있고 입체감 있는 체형입니다.",
           "traits": [
-            "骨格がしっかりしている",
-            "筋肉がつきやすい",
-            "上重心",
-            "直線的なラインが特徴"
+            "골격이 탄탄함",
+            "근육이 잘 붙음",
+            "상체 중심",
+            "직선적인 라인이 특징"
           ]
         },
         "wave": {
-          "label": "ウェーブ",
-          "desc": "柔らかく曲線的なラインが特徴の体型です。",
+          "label": "웨이브",
+          "desc": "부드럽고 곡선적인 라인이 특징인 체형입니다.",
           "traits": [
-            "脂肪がつきやすい",
-            "下重心",
-            "曲線的なラインが特徴",
-            "柔らかい質感"
+            "지방이 잘 붙음",
+            "하체 중심",
+            "곡선적인 라인이 특징",
+            "부드러운 질감"
           ]
         },
         "natural": {
-          "label": "ナチュラル",
-          "desc": "骨感があり、フレームの大きい体型です。",
+          "label": "내추럴",
+          "desc": "골격감이 있고 프레임이 큰 체형입니다.",
           "traits": [
-            "骨格が大きい",
-            "関節が目立つ",
-            "直線的かつ立体感がある",
-            "筋肉・脂肪がつきにくい"
+            "골격이 큼",
+            "관절이 두드러짐",
+            "직선적이면서 입체감 있음",
+            "근육·지방이 잘 붙지 않음"
           ]
         }
       }
     },
     "recommendation": {
-      "title": "トレーニング推奨",
-      "postureExerciseTitle": "姿勢改善エクササイズ",
+      "title": "트레이닝 추천",
+      "postureExerciseTitle": "자세 개선 운동",
       "types": {
         "straight": {
-          "summary": "ストレートタイプは筋肉量を活かした高負荷トレーニングが効果的です。体幹強化と下半身のバランス改善を重点的に行いましょう。",
+          "summary": "스트레이트 타입은 근육량을 활용한 고부하 트레이닝이 효과적입니다. 코어 강화와 하체 밸런스 개선을 중점적으로 진행하세요.",
           "tips": [
             {
-              "area": "体幹・腹筋",
+              "area": "코어·복근",
               "exercises": [
-                "プランク",
-                "デッドバグ",
-                "ケーブルクランチ"
+                "플랭크",
+                "데드버그",
+                "케이블 크런치"
               ],
-              "reason": "体幹を強化し、姿勢の安定性を高めます。"
+              "reason": "코어를 강화하고 자세 안정성을 높입니다."
             },
             {
-              "area": "背中",
+              "area": "등",
               "exercises": [
-                "ラットプルダウン",
-                "シーテッドロウ"
+                "랫 풀다운",
+                "시티드 로우"
               ],
-              "reason": "背中の筋肉を鍛え、上半身のバランスを整えます。"
+              "reason": "등 근육을 단련하고 상체 밸런스를 잡습니다."
             },
             {
-              "area": "下半身",
+              "area": "하체",
               "exercises": [
-                "スクワット",
-                "ヒップスラスト"
+                "스쿼트",
+                "힙 스러스트"
               ],
-              "reason": "下半身を強化し、全身のバランスを改善します。"
+              "reason": "하체를 강화하고 전신 밸런스를 개선합니다."
             }
           ]
         },
         "wave": {
-          "summary": "ウェーブタイプは上半身と下半身のバランスを整えることが重要です。軽めの負荷で回数を多くこなしましょう。",
+          "summary": "웨이브 타입은 상체와 하체의 밸런스를 잡는 것이 중요합니다. 가벼운 부하로 횟수를 많이 하세요.",
           "tips": [
             {
-              "area": "肩・上半身",
+              "area": "어깨·상체",
               "exercises": [
-                "ショルダープレス",
-                "サイドレイズ",
-                "プッシュアップ"
+                "숄더 프레스",
+                "사이드 레이즈",
+                "푸시업"
               ],
-              "reason": "上半身にボリュームをつけ、全体のバランスを整えます。"
+              "reason": "상체에 볼륨을 더해 전체 밸런스를 잡습니다."
             },
             {
-              "area": "下半身・ヒップ",
+              "area": "하체·엉덩이",
               "exercises": [
-                "ブルガリアンスクワット",
-                "カーフレイズ"
+                "불가리안 스플릿 스쿼트",
+                "카프 레이즈"
               ],
-              "reason": "下半身を引き締め、メリハリのあるラインを作ります。"
+              "reason": "하체를 탄탄하게 만들어 굴곡 있는 라인을 만듭니다."
             },
             {
-              "area": "体幹",
+              "area": "코어",
               "exercises": [
-                "ヒップリフト",
-                "サイドプランク"
+                "힙 리프트",
+                "사이드 플랭크"
               ],
-              "reason": "体幹を安定させ、姿勢改善につなげます。"
+              "reason": "코어를 안정시켜 자세 개선으로 이어집니다."
             }
           ]
         },
         "natural": {
-          "summary": "ナチュラルタイプは全身をバランスよく鍛えることが大切です。柔軟性も意識して取り組みましょう。",
+          "summary": "내추럴 타입은 전신을 균형 있게 단련하는 것이 중요합니다. 유연성도 의식하며 진행하세요.",
           "tips": [
             {
-              "area": "全身",
+              "area": "전신",
               "exercises": [
-                "デッドリフト",
-                "ケトルベルスイング"
+                "데드리프트",
+                "케틀벨 스윙"
               ],
-              "reason": "全身の連動性を高め、機能的な体づくりをします。"
+              "reason": "전신의 연동성을 높여 기능적인 몸을 만듭니다."
             },
             {
-              "area": "胸・肩",
+              "area": "가슴·어깨",
               "exercises": [
-                "ベンチプレス",
-                "フェイスプル"
+                "벤치 프레스",
+                "페이스 풀"
               ],
-              "reason": "上半身に適度な筋肉をつけ、体型を整えます。"
+              "reason": "상체에 적당한 근육을 붙여 체형을 잡습니다."
             },
             {
-              "area": "柔軟性",
+              "area": "유연성",
               "exercises": [
-                "ヨガ",
-                "ダイナミックストレッチ"
+                "요가",
+                "다이내믹 스트레칭"
               ],
-              "reason": "関節の可動域を広げ、怪我を予防します。"
+              "reason": "관절 가동 범위를 넓히고 부상을 예방합니다."
             }
           ]
         }
       },
       "postureExercises": {
         "straightNeck": {
-          "area": "頭部の前傾（ストレートネック）",
+          "area": "머리 전방 기울임 (거북목)",
           "exercises": [
-            "チンタック",
-            "頸部ストレッチ",
-            "フェイスプル"
+            "친 턱",
+            "경부 스트레칭",
+            "페이스 풀"
           ],
-          "reason": "頸部のアライメントを整え、ストレートネックを改善します。"
+          "reason": "경부 정렬을 바로잡아 거북목을 개선합니다."
         },
         "roundedBack": {
-          "area": "猫背（胸椎の丸まり）",
+          "area": "굽은 등 (흉추 굽음)",
           "exercises": [
-            "胸椎モビリティ",
-            "フェイスプル",
-            "リバースフライ"
+            "흉추 모빌리티",
+            "페이스 풀",
+            "리버스 플라이"
           ],
-          "reason": "胸椎の可動性を高め、猫背姿勢を改善します。"
+          "reason": "흉추 가동성을 높여 굽은 등 자세를 개선합니다."
         },
         "pelvicTilt": {
-          "area": "骨盤の前傾/後傾",
+          "area": "골반 전방/후방 경사",
           "exercises": [
-            "ヒップフレクサーストレッチ",
-            "グルートブリッジ",
-            "プランク"
+            "고관절 굴곡근 스트레칭",
+            "글루트 브리지",
+            "플랭크"
           ],
-          "reason": "骨盤周辺の筋肉バランスを整え、正しいアライメントを取り戻します。"
+          "reason": "골반 주변 근육 밸런스를 잡아 올바른 정렬을 되찾습니다."
         }
       }
     },
     "history": {
-      "title": "骨格分析履歴",
-      "noHistory": "まだ分析履歴はありません",
-      "noPhoto": "写真なし",
-      "compareTitle": "ビフォーアフター比較",
-      "compareEnd": "比較を終了",
-      "compareHint": "比較したい2つの分析を選んでください（{{selected}}/2 選択中）",
-      "scoreTrend": "スコア推移",
-      "typeLabel": "{{label}}タイプ",
-      "imageAlt": "骨格オーバーレイ",
-      "shoulderHipShort": "肩/ヒップ",
-      "upperBodyShort": "上半身",
-      "limbTorsoShort": "四肢/胴",
-      "shoulderHipRatio": "肩/ヒップ比",
-      "upperBodyRatio": "上半身比率",
-      "limbTorsoRatio": "四肢/胴比",
-      "trainingRecommendation": "おすすめトレーニング",
-      "deleteButton": "この分析を削除",
-      "deleteTitle": "骨格分析を削除しますか？",
-      "deleteDesc": "{{date}}の分析結果と画像が完全に削除されます。この操作は取り消せません。",
-      "deleteCancel": "キャンセル",
-      "deleteConfirm": "削除する",
+      "title": "골격 분석 이력",
+      "noHistory": "아직 분석 이력이 없습니다",
+      "noPhoto": "사진 없음",
+      "compareTitle": "비포·애프터 비교",
+      "compareEnd": "비교 종료",
+      "compareHint": "비교할 2개의 분석을 선택해 주세요 ({{selected}}/2 선택 중)",
+      "scoreTrend": "점수 추이",
+      "typeLabel": "{{label}} 타입",
+      "imageAlt": "골격 오버레이",
+      "shoulderHipShort": "어깨/엉덩이",
+      "upperBodyShort": "상체",
+      "limbTorsoShort": "사지/몸통",
+      "shoulderHipRatio": "어깨/엉덩이 비율",
+      "upperBodyRatio": "상체 비율",
+      "limbTorsoRatio": "사지/몸통 비율",
+      "trainingRecommendation": "추천 트레이닝",
+      "deleteButton": "이 분석 삭제",
+      "deleteTitle": "골격 분석을 삭제하시겠습니까?",
+      "deleteDesc": "{{date}}의 분석 결과와 이미지가 완전히 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+      "deleteCancel": "취소",
+      "deleteConfirm": "삭제",
       "toast": {
-        "deleteSuccess": "削除しました",
-        "deleteSuccessDesc": "骨格分析を削除しました",
-        "deleteFailed": "削除できませんでした",
-        "deleteFailedDesc": "権限がないか、すでに削除されている可能性があります",
-        "deleteError": "削除に失敗しました"
+        "deleteSuccess": "삭제했습니다",
+        "deleteSuccessDesc": "골격 분석을 삭제했습니다",
+        "deleteFailed": "삭제할 수 없습니다",
+        "deleteFailedDesc": "권한이 없거나 이미 삭제되었을 수 있습니다",
+        "deleteError": "삭제에 실패했습니다"
       }
     }
   },
@@ -673,52 +673,52 @@
     "adviceDefault": "コツコツ続けることが大切です。一緒に頑張りましょう！"
   },
   "progress": {
-    "typeFront": "正面",
-    "typeSide": "側面",
-    "typeBack": "背面",
-    "addPhoto": "写真を追加",
-    "dateLabel": "撮影日",
-    "typeLabel": "写真の種類",
-    "photoLabel": "写真",
-    "memoLabel": "メモ（任意）",
-    "memoPlaceholder": "体調や気づきなど",
-    "selectPhoto": "写真を選択",
-    "changePhoto": "変更",
-    "previewAlt": "プレビュー",
-    "save": "保存する",
-    "errNoPhoto": "写真を選択してください",
-    "uploadSuccess": "写真を追加しました",
-    "uploadFailed": "アップロードに失敗しました",
-    "compareTitle": "写真を比較",
-    "noPhotos": "写真がまだありません",
-    "beforeLabel": "ビフォー",
-    "afterLabel": "アフター",
-    "elapsedDays": "経過日数：{{days}}日間",
-    "shareImage": "シェア画像を作成",
-    "shareSaveHint": "画像を長押しして保存できます",
-    "compareImageAlt": "比較画像",
-    "download": "ダウンロード",
-    "noPhotoInCell": "写真なし",
-    "bothPhotosMissing": "両方の写真がありません",
-    "imageGenFailed": "画像生成に失敗しました",
-    "compare": "比較する",
-    "addPhotoBtn": "写真を追加",
-    "emptyTitle": "最初の写真を撮影しましょう",
-    "emptyDesc": "定期的に記録するとビフォーアフターで比較できます",
-    "photoCount": "{{count}}枚",
-    "dateCardLabel": "{{month}}月{{day}}日（{{dow}}）",
-    "dow0": "日",
-    "dow1": "月",
-    "dow2": "火",
-    "dow3": "水",
-    "dow4": "木",
-    "dow5": "金",
-    "dow6": "土",
-    "notRegistered": "未登録",
-    "deleteConfirm": "この写真を削除しますか？",
-    "deleteSuccess": "削除しました",
-    "deleteFailed": "削除に失敗しました",
-    "delete": "削除"
+    "typeFront": "정면",
+    "typeSide": "측면",
+    "typeBack": "후면",
+    "addPhoto": "사진 추가",
+    "dateLabel": "촬영일",
+    "typeLabel": "사진 종류",
+    "photoLabel": "사진",
+    "memoLabel": "메모 (선택)",
+    "memoPlaceholder": "컨디션이나 느낀 점 등",
+    "selectPhoto": "사진 선택",
+    "changePhoto": "변경",
+    "previewAlt": "미리보기",
+    "save": "저장하기",
+    "errNoPhoto": "사진을 선택해 주세요",
+    "uploadSuccess": "사진을 추가했습니다",
+    "uploadFailed": "업로드에 실패했습니다",
+    "compareTitle": "사진 비교",
+    "noPhotos": "아직 사진이 없습니다",
+    "beforeLabel": "비포",
+    "afterLabel": "애프터",
+    "elapsedDays": "경과 일수: {{days}}일",
+    "shareImage": "공유 이미지 만들기",
+    "shareSaveHint": "이미지를 길게 눌러 저장할 수 있습니다",
+    "compareImageAlt": "비교 이미지",
+    "download": "다운로드",
+    "noPhotoInCell": "사진 없음",
+    "bothPhotosMissing": "두 사진이 모두 없습니다",
+    "imageGenFailed": "이미지 생성에 실패했습니다",
+    "compare": "비교하기",
+    "addPhotoBtn": "사진 추가",
+    "emptyTitle": "첫 사진을 촬영해 보세요",
+    "emptyDesc": "정기적으로 기록하면 비포·애프터로 비교할 수 있습니다",
+    "photoCount": "{{count}}장",
+    "dateCardLabel": "{{month}}월 {{day}}일 ({{dow}})",
+    "dow0": "일",
+    "dow1": "월",
+    "dow2": "화",
+    "dow3": "수",
+    "dow4": "목",
+    "dow5": "금",
+    "dow6": "토",
+    "notRegistered": "미등록",
+    "deleteConfirm": "이 사진을 삭제하시겠습니까?",
+    "deleteSuccess": "삭제했습니다",
+    "deleteFailed": "삭제에 실패했습니다",
+    "delete": "삭제"
   },
   "dashboard": {
     "title": "대시보드",

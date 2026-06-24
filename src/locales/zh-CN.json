@@ -257,28 +257,28 @@
     "trainingWeight": "训练重量"
   },
   "workoutShare": {
-    "brandFallback": "ジムボード",
-    "trainingTime": "トレーニング時間",
-    "minutes": "{{count}}分",
-    "exerciseCount": "種目数",
-    "totalSets": "総セット",
-    "topExercise": "トップ種目",
-    "photoLoadFailed": "写真の読み込みに失敗しました",
-    "imageGenFailed": "画像生成に失敗しました",
-    "imageGenFailedToast": "画像の生成に失敗しました",
-    "title": "トレーニング シェア",
-    "close": "閉じる",
-    "preview": "プレビュー",
-    "bgTransparent": "透過",
-    "changePhoto": "写真を変更",
-    "addPhoto": "写真と合成",
-    "layoutCenter": "中央",
-    "layoutGrid": "グリッド",
-    "layoutBottom": "下部",
-    "saveImage": "画像を保存",
-    "generating": "シェア画像を生成中...",
-    "saveHint": "↓ 画像を長押しして「写真に追加」で保存",
-    "shareImageAlt": "トレーニングシェア"
+    "brandFallback": "GymBoard",
+    "trainingTime": "训练时长",
+    "minutes": "{{count}} 分钟",
+    "exerciseCount": "动作数",
+    "totalSets": "总组数",
+    "topExercise": "主打动作",
+    "photoLoadFailed": "照片加载失败",
+    "imageGenFailed": "生成图片失败",
+    "imageGenFailedToast": "生成图片失败",
+    "title": "分享训练",
+    "close": "关闭",
+    "preview": "预览",
+    "bgTransparent": "透明",
+    "changePhoto": "更换照片",
+    "addPhoto": "与照片合成",
+    "layoutCenter": "居中",
+    "layoutGrid": "网格",
+    "layoutBottom": "底部",
+    "saveImage": "保存图片",
+    "generating": "正在生成分享图片...",
+    "saveHint": "↓ 长按图片并点击“添加到照片”即可保存",
+    "shareImageAlt": "训练分享"
   },
   "booking": {
     "title": "预约",
@@ -334,287 +334,287 @@
     "repsSuffix": "次"
   },
   "meals": {
-    "title": "食事管理",
-    "subtitle": "写真を撮るだけでAIが自動分析",
+    "title": "饮食管理",
+    "subtitle": "只需拍照，AI 自动分析",
     "analyzing": "分析中...",
-    "addPhoto": "写真を追加",
-    "empty": "食事の写真を撮って記録を始めましょう",
-    "totalCalories": "合計カロリー",
-    "pfcGoal": "目標{{pct}}%",
-    "actualBalance": "実績バランス",
-    "goalLine": "▼ 目標ライン",
-    "mealPhotoAlt": "食事写真",
-    "aiAdvice": "AIアドバイス",
-    "aiAnalyzing": "AI分析中...",
-    "today": "今日 ({{label}})",
-    "yesterday": "昨日 ({{label}})",
+    "addPhoto": "添加照片",
+    "empty": "拍下饮食照片，开始记录吧",
+    "totalCalories": "总热量",
+    "pfcGoal": "目标 {{pct}}%",
+    "actualBalance": "实际比例",
+    "goalLine": "▼ 目标线",
+    "mealPhotoAlt": "饮食照片",
+    "aiAdvice": "AI 建议",
+    "aiAnalyzing": "AI 分析中...",
+    "today": "今天 ({{label}})",
+    "yesterday": "昨天 ({{label}})",
     "dateLabel": "{{m}}月{{d}}日",
-    "dishesBreakdown": "内訳を見る（{{count}}品）",
+    "dishesBreakdown": "查看明细（{{count}} 项）",
     "nutrient": {
-      "calories": "カロリー",
-      "protein": "タンパク質",
-      "fat": "脂質",
-      "carbs": "炭水化物",
-      "fiber": "食物繊維"
+      "calories": "热量",
+      "protein": "蛋白质",
+      "fat": "脂肪",
+      "carbs": "碳水化合物",
+      "fiber": "膳食纤维"
     },
     "uploadDialog": {
-      "title": "食事の情報（任意）",
-      "mealType": "食事タイプ",
-      "quantityLabel": "量の補足（任意）",
-      "quantityPlaceholder": "例：大盛り、半分残した、2人前",
-      "quantityHint": "入力するとAIの推定精度が向上します",
-      "startAnalysis": "分析開始"
+      "title": "饮食信息（可选）",
+      "mealType": "餐次类型",
+      "quantityLabel": "分量补充说明（可选）",
+      "quantityPlaceholder": "例：大份、剩了一半、两人份",
+      "quantityHint": "填写后可提高 AI 的估算精度",
+      "startAnalysis": "开始分析"
     },
     "deleteDialog": {
-      "title": "この食事記録を削除しますか？",
-      "description": "削除すると元に戻すことはできません。写真と分析データが完全に削除されます。",
-      "confirm": "削除する"
+      "title": "要删除这条饮食记录吗？",
+      "description": "删除后无法恢复。照片和分析数据将被彻底删除。",
+      "confirm": "删除"
     },
     "editDateDialog": {
-      "title": "食事の日時を変更",
-      "date": "日付",
-      "time": "時間"
+      "title": "更改饮食日期和时间",
+      "date": "日期",
+      "time": "时间"
     },
     "toast": {
-      "uploadedAnalyzing": "写真をアップロードしました。AI分析中...",
-      "dummyResult": "ダミーの分析結果を表示しています",
-      "analysisComplete": "AI分析が完了しました！",
-      "uploadFailed": "アップロードに失敗しました",
-      "deleted": "食事記録を削除しました",
-      "deleteFailed": "削除に失敗しました",
-      "datetimeChanged": "日時を変更しました",
-      "datetimeChangeFailed": "日時の変更に失敗しました"
+      "uploadedAnalyzing": "照片已上传。AI 分析中...",
+      "dummyResult": "正在显示示例分析结果",
+      "analysisComplete": "AI 分析完成！",
+      "uploadFailed": "上传失败",
+      "deleted": "已删除饮食记录",
+      "deleteFailed": "删除失败",
+      "datetimeChanged": "已更改日期和时间",
+      "datetimeChangeFailed": "更改日期和时间失败"
     }
   },
   "posture": {
-    "title": "姿勢・骨格診断",
-    "description": "全身写真をアップロードして、AIが姿勢と骨格タイプを分析します。",
-    "disclaimer": "※本機能はAIによる参考情報です。医療診断ではありません。",
-    "uploadPhoto": "写真をアップロード",
-    "takePhoto": "カメラで撮影",
-    "photoTip": "全身が映るよう、少し離れた位置から撮影してください。",
-    "imageAlt": "姿勢解析画像",
-    "modelLoading": "モデルを読み込み中...",
-    "analyzing": "解析中...",
-    "detectedPoints": "{{detected}} / {{total}} キーポイントを検出",
-    "redo": "やり直す",
-    "saveDone": "保存済み",
+    "title": "姿势·骨架诊断",
+    "description": "上传全身照片，AI 将分析您的姿势和骨架类型。",
+    "disclaimer": "※ 本功能为 AI 提供的参考信息，并非医疗诊断。",
+    "uploadPhoto": "上传照片",
+    "takePhoto": "用相机拍摄",
+    "photoTip": "请从稍远的位置拍摄，使全身都能入镜。",
+    "imageAlt": "姿势分析图片",
+    "modelLoading": "正在加载模型...",
+    "analyzing": "分析中...",
+    "detectedPoints": "已检测 {{detected}} / {{total}} 个关键点",
+    "redo": "重做",
+    "saveDone": "已保存",
     "saveInProgress": "保存中...",
-    "saveResult": "結果を保存",
-    "reanalyze": "再解析",
+    "saveResult": "保存结果",
+    "reanalyze": "重新分析",
     "toast": {
-      "modelFailed": "モデルの読み込みに失敗しました",
-      "imageInvalid": "画像ファイルを選択してください",
-      "imageFailed": "画像の読み込みに失敗しました",
-      "noPosture": "姿勢を検出できませんでした。全身が映った写真をお試しください。",
-      "analysisDone": "姿勢解析が完了しました",
-      "analysisFailed": "解析に失敗しました。もう一度お試しください。",
-      "saved": "骨格診断を保存しました",
-      "saveFailed": "保存に失敗しました: {{msg}}"
+      "modelFailed": "模型加载失败",
+      "imageInvalid": "请选择图片文件",
+      "imageFailed": "图片加载失败",
+      "noPosture": "未能检测到姿势。请尝试使用拍到全身的照片。",
+      "analysisDone": "姿势分析完成",
+      "analysisFailed": "分析失败。请重试。",
+      "saved": "已保存骨架诊断",
+      "saveFailed": "保存失败：{{msg}}"
     },
     "feedback": {
-      "title": "姿勢フィードバック",
-      "scoreLabel": "姿勢スコア",
-      "scoreUnit": "点",
-      "scoreVeryGood": "とても良い姿勢です！",
-      "scoreGood": "良い姿勢です",
-      "scoreOk": "改善の余地があります",
-      "scoreBad": "姿勢に注意が必要です"
+      "title": "姿势反馈",
+      "scoreLabel": "姿势评分",
+      "scoreUnit": "分",
+      "scoreVeryGood": "姿势非常好！",
+      "scoreGood": "姿势良好",
+      "scoreOk": "还有改善空间",
+      "scoreBad": "姿势需要注意"
     },
     "skeletal": {
-      "title": "骨格タイプ診断",
-      "typeLabel": "{{label}}タイプ",
-      "traitsTitle": "{{label}}タイプの特徴",
-      "measureData": "計測データを見る",
-      "shoulderHipRatio": "肩/ヒップ比",
-      "upperBodyRatio": "上半身比率",
-      "limbTorsoRatio": "四肢/胴比",
-      "photoDisclaimer": "※写真の角度や撮影条件によって結果が変わる場合があります。",
+      "title": "骨架类型诊断",
+      "typeLabel": "{{label}} 型",
+      "traitsTitle": "{{label}} 型的特征",
+      "measureData": "查看测量数据",
+      "shoulderHipRatio": "肩/臀比",
+      "upperBodyRatio": "上半身比例",
+      "limbTorsoRatio": "四肢/躯干比",
+      "photoDisclaimer": "※ 结果可能因照片角度和拍摄条件而有所不同。",
       "types": {
         "straight": {
-          "label": "ストレート",
-          "desc": "筋肉のハリ感があり、立体感のある体型です。",
+          "label": "直线型",
+          "desc": "肌肉紧实、富有立体感的体型。",
           "traits": [
-            "骨格がしっかりしている",
-            "筋肉がつきやすい",
-            "上重心",
-            "直線的なラインが特徴"
+            "骨架结实",
+            "容易长肌肉",
+            "重心偏上",
+            "以直线线条为特征"
           ]
         },
         "wave": {
-          "label": "ウェーブ",
-          "desc": "柔らかく曲線的なラインが特徴の体型です。",
+          "label": "曲线型",
+          "desc": "以柔软、曲线线条为特征的体型。",
           "traits": [
-            "脂肪がつきやすい",
-            "下重心",
-            "曲線的なラインが特徴",
-            "柔らかい質感"
+            "容易长脂肪",
+            "重心偏下",
+            "以曲线线条为特征",
+            "质感柔软"
           ]
         },
         "natural": {
-          "label": "ナチュラル",
-          "desc": "骨感があり、フレームの大きい体型です。",
+          "label": "自然型",
+          "desc": "骨感明显、骨架较大的体型。",
           "traits": [
-            "骨格が大きい",
-            "関節が目立つ",
-            "直線的かつ立体感がある",
-            "筋肉・脂肪がつきにくい"
+            "骨架较大",
+            "关节明显",
+            "直线且富有立体感",
+            "不易长肌肉和脂肪"
           ]
         }
       }
     },
     "recommendation": {
-      "title": "トレーニング推奨",
-      "postureExerciseTitle": "姿勢改善エクササイズ",
+      "title": "训练推荐",
+      "postureExerciseTitle": "姿势改善运动",
       "types": {
         "straight": {
-          "summary": "ストレートタイプは筋肉量を活かした高負荷トレーニングが効果的です。体幹強化と下半身のバランス改善を重点的に行いましょう。",
+          "summary": "直线型适合利用肌肉量进行的高负荷训练。请重点进行核心强化和下半身平衡改善。",
           "tips": [
             {
-              "area": "体幹・腹筋",
+              "area": "核心·腹肌",
               "exercises": [
-                "プランク",
-                "デッドバグ",
-                "ケーブルクランチ"
+                "平板支撑",
+                "死虫式",
+                "缆绳卷腹"
               ],
-              "reason": "体幹を強化し、姿勢の安定性を高めます。"
+              "reason": "强化核心，提高姿势稳定性。"
             },
             {
-              "area": "背中",
+              "area": "背部",
               "exercises": [
-                "ラットプルダウン",
-                "シーテッドロウ"
+                "高位下拉",
+                "坐姿划船"
               ],
-              "reason": "背中の筋肉を鍛え、上半身のバランスを整えます。"
+              "reason": "锻炼背部肌肉，平衡上半身。"
             },
             {
               "area": "下半身",
               "exercises": [
-                "スクワット",
-                "ヒップスラスト"
+                "深蹲",
+                "臀冲"
               ],
-              "reason": "下半身を強化し、全身のバランスを改善します。"
+              "reason": "强化下半身，改善全身平衡。"
             }
           ]
         },
         "wave": {
-          "summary": "ウェーブタイプは上半身と下半身のバランスを整えることが重要です。軽めの負荷で回数を多くこなしましょう。",
+          "summary": "曲线型重在平衡上半身与下半身。请用较轻的负荷做较多次数。",
           "tips": [
             {
-              "area": "肩・上半身",
+              "area": "肩部·上半身",
               "exercises": [
-                "ショルダープレス",
-                "サイドレイズ",
-                "プッシュアップ"
+                "肩推",
+                "侧平举",
+                "俯卧撑"
               ],
-              "reason": "上半身にボリュームをつけ、全体のバランスを整えます。"
+              "reason": "为上半身增加围度，平衡整体比例。"
             },
             {
-              "area": "下半身・ヒップ",
+              "area": "下半身·臀部",
               "exercises": [
-                "ブルガリアンスクワット",
-                "カーフレイズ"
+                "保加利亚分腿蹲",
+                "提踵"
               ],
-              "reason": "下半身を引き締め、メリハリのあるラインを作ります。"
+              "reason": "紧致下半身，打造有曲线的线条。"
             },
             {
-              "area": "体幹",
+              "area": "核心",
               "exercises": [
-                "ヒップリフト",
-                "サイドプランク"
+                "臀桥",
+                "侧平板支撑"
               ],
-              "reason": "体幹を安定させ、姿勢改善につなげます。"
+              "reason": "稳定核心，有助于改善姿势。"
             }
           ]
         },
         "natural": {
-          "summary": "ナチュラルタイプは全身をバランスよく鍛えることが大切です。柔軟性も意識して取り組みましょう。",
+          "summary": "自然型重在均衡地锻炼全身。请同时注意柔韧性。",
           "tips": [
             {
               "area": "全身",
               "exercises": [
-                "デッドリフト",
-                "ケトルベルスイング"
+                "硬拉",
+                "壶铃摆荡"
               ],
-              "reason": "全身の連動性を高め、機能的な体づくりをします。"
+              "reason": "提高全身协调性，打造功能性身体。"
             },
             {
-              "area": "胸・肩",
+              "area": "胸部·肩部",
               "exercises": [
-                "ベンチプレス",
-                "フェイスプル"
+                "卧推",
+                "面拉"
               ],
-              "reason": "上半身に適度な筋肉をつけ、体型を整えます。"
+              "reason": "为上半身增加适量肌肉，调整体型。"
             },
             {
-              "area": "柔軟性",
+              "area": "柔韧性",
               "exercises": [
-                "ヨガ",
-                "ダイナミックストレッチ"
+                "瑜伽",
+                "动态拉伸"
               ],
-              "reason": "関節の可動域を広げ、怪我を予防します。"
+              "reason": "扩大关节活动范围，预防受伤。"
             }
           ]
         }
       },
       "postureExercises": {
         "straightNeck": {
-          "area": "頭部の前傾（ストレートネック）",
+          "area": "头部前倾（颈椎变直）",
           "exercises": [
-            "チンタック",
-            "頸部ストレッチ",
-            "フェイスプル"
+            "收下巴",
+            "颈部拉伸",
+            "面拉"
           ],
-          "reason": "頸部のアライメントを整え、ストレートネックを改善します。"
+          "reason": "调整颈部排列，改善颈椎变直。"
         },
         "roundedBack": {
-          "area": "猫背（胸椎の丸まり）",
+          "area": "驼背（胸椎弯曲）",
           "exercises": [
-            "胸椎モビリティ",
-            "フェイスプル",
-            "リバースフライ"
+            "胸椎灵活性训练",
+            "面拉",
+            "反向飞鸟"
           ],
-          "reason": "胸椎の可動性を高め、猫背姿勢を改善します。"
+          "reason": "提高胸椎活动度，改善驼背姿势。"
         },
         "pelvicTilt": {
-          "area": "骨盤の前傾/後傾",
+          "area": "骨盆前倾/后倾",
           "exercises": [
-            "ヒップフレクサーストレッチ",
-            "グルートブリッジ",
-            "プランク"
+            "髋屈肌拉伸",
+            "臀桥",
+            "平板支撑"
           ],
-          "reason": "骨盤周辺の筋肉バランスを整え、正しいアライメントを取り戻します。"
+          "reason": "平衡骨盆周围肌肉，恢复正确排列。"
         }
       }
     },
     "history": {
-      "title": "骨格分析履歴",
-      "noHistory": "まだ分析履歴はありません",
-      "noPhoto": "写真なし",
-      "compareTitle": "ビフォーアフター比較",
-      "compareEnd": "比較を終了",
-      "compareHint": "比較したい2つの分析を選んでください（{{selected}}/2 選択中）",
-      "scoreTrend": "スコア推移",
-      "typeLabel": "{{label}}タイプ",
-      "imageAlt": "骨格オーバーレイ",
-      "shoulderHipShort": "肩/ヒップ",
+      "title": "骨架分析历史",
+      "noHistory": "暂无分析历史",
+      "noPhoto": "无照片",
+      "compareTitle": "前后对比",
+      "compareEnd": "结束对比",
+      "compareHint": "请选择要对比的 2 个分析（已选 {{selected}}/2）",
+      "scoreTrend": "评分趋势",
+      "typeLabel": "{{label}} 型",
+      "imageAlt": "骨架叠加图",
+      "shoulderHipShort": "肩/臀",
       "upperBodyShort": "上半身",
-      "limbTorsoShort": "四肢/胴",
-      "shoulderHipRatio": "肩/ヒップ比",
-      "upperBodyRatio": "上半身比率",
-      "limbTorsoRatio": "四肢/胴比",
-      "trainingRecommendation": "おすすめトレーニング",
-      "deleteButton": "この分析を削除",
-      "deleteTitle": "骨格分析を削除しますか？",
-      "deleteDesc": "{{date}}の分析結果と画像が完全に削除されます。この操作は取り消せません。",
-      "deleteCancel": "キャンセル",
-      "deleteConfirm": "削除する",
+      "limbTorsoShort": "四肢/躯干",
+      "shoulderHipRatio": "肩/臀比",
+      "upperBodyRatio": "上半身比例",
+      "limbTorsoRatio": "四肢/躯干比",
+      "trainingRecommendation": "推荐训练",
+      "deleteButton": "删除此分析",
+      "deleteTitle": "要删除骨架分析吗？",
+      "deleteDesc": "{{date}} 的分析结果和图片将被彻底删除。此操作无法撤销。",
+      "deleteCancel": "取消",
+      "deleteConfirm": "删除",
       "toast": {
-        "deleteSuccess": "削除しました",
-        "deleteSuccessDesc": "骨格分析を削除しました",
-        "deleteFailed": "削除できませんでした",
-        "deleteFailedDesc": "権限がないか、すでに削除されている可能性があります",
-        "deleteError": "削除に失敗しました"
+        "deleteSuccess": "已删除",
+        "deleteSuccessDesc": "已删除骨架分析",
+        "deleteFailed": "无法删除",
+        "deleteFailedDesc": "可能没有权限，或已被删除",
+        "deleteError": "删除失败"
       }
     }
   },
@@ -674,51 +674,51 @@
   },
   "progress": {
     "typeFront": "正面",
-    "typeSide": "側面",
+    "typeSide": "侧面",
     "typeBack": "背面",
-    "addPhoto": "写真を追加",
-    "dateLabel": "撮影日",
-    "typeLabel": "写真の種類",
-    "photoLabel": "写真",
-    "memoLabel": "メモ（任意）",
-    "memoPlaceholder": "体調や気づきなど",
-    "selectPhoto": "写真を選択",
-    "changePhoto": "変更",
-    "previewAlt": "プレビュー",
-    "save": "保存する",
-    "errNoPhoto": "写真を選択してください",
-    "uploadSuccess": "写真を追加しました",
-    "uploadFailed": "アップロードに失敗しました",
-    "compareTitle": "写真を比較",
-    "noPhotos": "写真がまだありません",
-    "beforeLabel": "ビフォー",
-    "afterLabel": "アフター",
-    "elapsedDays": "経過日数：{{days}}日間",
-    "shareImage": "シェア画像を作成",
-    "shareSaveHint": "画像を長押しして保存できます",
-    "compareImageAlt": "比較画像",
-    "download": "ダウンロード",
-    "noPhotoInCell": "写真なし",
-    "bothPhotosMissing": "両方の写真がありません",
-    "imageGenFailed": "画像生成に失敗しました",
-    "compare": "比較する",
-    "addPhotoBtn": "写真を追加",
-    "emptyTitle": "最初の写真を撮影しましょう",
-    "emptyDesc": "定期的に記録するとビフォーアフターで比較できます",
-    "photoCount": "{{count}}枚",
+    "addPhoto": "添加照片",
+    "dateLabel": "拍摄日期",
+    "typeLabel": "照片类型",
+    "photoLabel": "照片",
+    "memoLabel": "备注（可选）",
+    "memoPlaceholder": "身体状况或心得等",
+    "selectPhoto": "选择照片",
+    "changePhoto": "更改",
+    "previewAlt": "预览",
+    "save": "保存",
+    "errNoPhoto": "请选择照片",
+    "uploadSuccess": "已添加照片",
+    "uploadFailed": "上传失败",
+    "compareTitle": "对比照片",
+    "noPhotos": "暂无照片",
+    "beforeLabel": "之前",
+    "afterLabel": "之后",
+    "elapsedDays": "经过天数：{{days}} 天",
+    "shareImage": "生成分享图片",
+    "shareSaveHint": "长按图片即可保存",
+    "compareImageAlt": "对比图片",
+    "download": "下载",
+    "noPhotoInCell": "无照片",
+    "bothPhotosMissing": "两张照片都缺失",
+    "imageGenFailed": "生成图片失败",
+    "compare": "对比",
+    "addPhotoBtn": "添加照片",
+    "emptyTitle": "拍下第一张照片吧",
+    "emptyDesc": "定期记录即可进行前后对比",
+    "photoCount": "{{count}} 张",
     "dateCardLabel": "{{month}}月{{day}}日（{{dow}}）",
     "dow0": "日",
-    "dow1": "月",
-    "dow2": "火",
-    "dow3": "水",
-    "dow4": "木",
-    "dow5": "金",
-    "dow6": "土",
-    "notRegistered": "未登録",
-    "deleteConfirm": "この写真を削除しますか？",
-    "deleteSuccess": "削除しました",
-    "deleteFailed": "削除に失敗しました",
-    "delete": "削除"
+    "dow1": "一",
+    "dow2": "二",
+    "dow3": "三",
+    "dow4": "四",
+    "dow5": "五",
+    "dow6": "六",
+    "notRegistered": "未登记",
+    "deleteConfirm": "要删除这张照片吗？",
+    "deleteSuccess": "已删除",
+    "deleteFailed": "删除失败",
+    "delete": "删除"
   },
   "dashboard": {
     "title": "仪表盘",

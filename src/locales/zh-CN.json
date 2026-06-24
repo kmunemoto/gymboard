@@ -327,7 +327,11 @@
     "shareText": "{{gym}} 训练",
     "juneLockMessage": "6月的预约和取消仍在Salute应用中受理。7月以后的预约请使用本应用。",
     "customerFallback": "顾客",
-    "cancelDescWithTime": "将取消 {{date}} {{startTime}}〜{{endTime}} 的预约。"
+    "cancelDescWithTime": "将取消 {{date}} {{startTime}}〜{{endTime}} 的预约。",
+    "waitlistJoin": "候补登记",
+    "waitlistJoined": "候补中",
+    "waitlistAdded": "已加入候补名单",
+    "waitlistRemoved": "已取消候补"
   },
   "training": {
     "title": "记录",

@@ -19,6 +19,8 @@ import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { getCycleWindow, getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
 import { formatDate } from "@/lib/dateFormat";
+import { useWaitlist } from "@/hooks/useWaitlist";
+import { WAITLIST_ENABLED } from "@/lib/featureFlags";
 import CourseProgressBadge from "@/components/trainer/CourseProgressBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
@@ -158,7 +160,7 @@ const CustomerBooking = () => {
   };
 
   const generateSlots = () => {
-    const slots: { id: string; time: string; available: boolean }[] = [];
+    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
     const startMin = openHour * 60;
     // last bookable slot starts so the session ends by closing time
     const lastStart = closeHour * 60 - slotMinutes;
@@ -168,12 +170,21 @@ const CustomerBooking = () => {
       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
       const blocked = isSlotBlocked(dateKey, time);
       const tooSoon = isBookingDayClosed(dateKey);
-      slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon });
+      slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon, blocked, tooSoon });
     }
     return slots;
   };
 
   const slots = dateKey ? generateSlots() : [];
+  const { isOnWaitlist, toggle: toggleWaitlist } = useWaitlist(dateKey || null);
+
+  const handleWaitlistToggle = async (time: string) => {
+    if (!dateKey) return;
+    const result = await toggleWaitlist(dateKey, time);
+    if (result === true) toast.success(t("booking.waitlistAdded"));
+    else if (result === false) toast.success(t("booking.waitlistRemoved"));
+    else toast.error(t("common.errorGeneric"));
+  };
 
   // ============================================================
   // 6月/7月の棲み分け対応・移行完了後に削除
@@ -632,34 +643,51 @@ const CustomerBooking = () => {
                   {t("booking.availableSlots", { date: formatDate(selectedDate, "monthDayDow") })}
                 </h3>
                 <div className="grid grid-cols-4 gap-1.5">
-                  {slots.map((slot) => (
+                  {slots.map((slot) => {
+                    // 満枠（他予約で埋まっている＝blocked かつ 締切前）はキャンセル待ち登録可能（フラグON時のみ）。
+                    const waitlistable = WAITLIST_ENABLED && !slot.available && slot.blocked && !slot.tooSoon;
+                    const onWaitlist = waitlistable && isOnWaitlist(dateKey, slot.time);
+                    return (
                     <button
                       key={slot.id}
                       type="button"
-                      disabled={!slot.available}
+                      disabled={!slot.available && !waitlistable}
                       onClick={() => {
-                        setSelectedSlot(slot.id);
-                        setTimeout(() => {
-                          document.getElementById("booking-confirm-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                        }, 100);
+                        if (slot.available) {
+                          setSelectedSlot(slot.id);
+                          setTimeout(() => {
+                            document.getElementById("booking-confirm-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 100);
+                        } else if (waitlistable) {
+                          handleWaitlistToggle(slot.time);
+                        }
                       }}
                       className={`relative rounded-lg p-2 text-center text-xs font-semibold transition-all duration-200 min-h-[44px] ${
-                        !slot.available
-                          ? "bg-muted text-muted-foreground/40 cursor-not-allowed"
-                          : selectedSlot === slot.id
+                        slot.available
+                          ? selectedSlot === slot.id
                             ? "accent-gradient text-accent-foreground shadow-md scale-105"
                             : "bg-card border border-border hover:border-accent hover:shadow-sm"
+                          : onWaitlist
+                            ? "bg-warning/15 text-warning border border-warning/40"
+                            : waitlistable
+                              ? "bg-card border border-border/60 text-muted-foreground hover:border-warning/50"
+                              : "bg-muted text-muted-foreground/40 cursor-not-allowed"
                       }`}
                     >
                       <span>{slot.time}</span>
                       {!slot.available && (
-                        <span className="block text-[9px] text-destructive/70 font-medium">{t("booking.slotFull")}</span>
+                        <span className="block text-[9px] font-medium">
+                          {waitlistable
+                            ? (onWaitlist ? t("booking.waitlistJoined") : t("booking.waitlistJoin"))
+                            : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
+                        </span>
                       )}
                       {selectedSlot === slot.id && (
                         <Check className="w-2.5 h-2.5 absolute top-0.5 right-0.5" />
                       )}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {selectedSlot && (

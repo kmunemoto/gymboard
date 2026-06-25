@@ -133,40 +133,80 @@ html, body {
 
 /* =========================================================
    ガラス仕様（すりガラス風）テーマ。設定の「ガラス仕様」ON で
-   <html> に theme-glass が付く。選択中のテーマカラー（--accent 等）
-   で色づくため、各カラーごとに見え方が変わる。
+   <html> に theme-glass が付く。
+   背景＝選択中のテーマカラー（グラデーション）、パネル＝半透明の
+   すりガラス、文字＝視認性のため白系。各カラーごとに色が変わる。
    ========================================================= */
+html.theme-glass {
+  /* 文字・縁を白系に切り替え（色背景でも読めるように） */
+  --foreground: 0 0% 100%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
+  --secondary-foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 100%;
+  --border: 0 0% 100%;
+  --input: 0 0% 100%;
+  --ring: 0 0% 100%;
+  background-color: hsl(var(--primary)); /* 余白の白を防ぐベース色 */
+}
+
+/* 背景＝設定カラーのグラデーション */
 html.theme-glass body {
-  background:
-    radial-gradient(125% 80% at 8% -5%, hsl(var(--accent) / 0.28), transparent 55%),
-    radial-gradient(115% 85% at 105% 12%, hsl(var(--primary) / 0.24), transparent 55%),
-    radial-gradient(130% 90% at 50% 108%, hsl(var(--accent-2) / 0.22), transparent 55%),
-    hsl(var(--background));
-  background-attachment: fixed;
+  background: linear-gradient(160deg, hsl(var(--primary)), hsl(var(--accent)) 50%, hsl(var(--accent-2)));
+  min-height: 100vh;
+  color: hsl(0 0% 100%);
 }
 
-/* カード類をすりガラス化（選択カラーで縁・影が色づく） */
-html.theme-glass .bg-card {
-  background-color: hsl(0 0% 100% / 0.6) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid hsl(0 0% 100% / 0.55);
-  box-shadow: 0 8px 30px hsl(var(--accent) / 0.12);
+/* ページ土台を透過させ、背景カラーを見せる */
+html.theme-glass .bg-background {
+  background-color: transparent !important;
 }
 
-/* 既存の .glass（ヘッダー/ボトムナビ等）をより強い磨りガラスに */
+/* カード/ヘッダー/ナビ＝半透明すりガラス（背景カラーが透ける） */
+html.theme-glass .bg-card,
 html.theme-glass .glass {
-  background-color: hsl(0 0% 100% / 0.5) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  backdrop-filter: blur(22px) saturate(180%);
-  border-color: hsl(0 0% 100% / 0.5) !important;
+  background-color: hsl(0 0% 100% / 0.14) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid hsl(0 0% 100% / 0.3) !important;
+  box-shadow: 0 8px 30px hsl(0 0% 0% / 0.12);
 }
 
-/* ダイアログ/ポップオーバーは可読性優先で透過は控えめに */
-html.theme-glass .bg-popover {
-  background-color: hsl(0 0% 100% / 0.92) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+/* チップ・プログレストラック等の薄い面 */
+html.theme-glass .bg-secondary,
+html.theme-glass .bg-muted {
+  background-color: hsl(0 0% 100% / 0.16) !important;
+}
+
+/* アクセント/プライマリの文字・アイコンは背景と同系色になるため白に */
+html.theme-glass .text-accent,
+html.theme-glass .text-primary,
+html.theme-glass .text-foreground {
+  color: hsl(0 0% 100%) !important;
+}
+
+/* 副次テキストはやや薄い白で階層をつける */
+html.theme-glass .text-muted-foreground {
+  color: hsl(0 0% 100% / 0.78) !important;
+}
+
+/* 塗りボタン・グラデヒーローは背景と同系色なので縁と影で分離 */
+html.theme-glass .bg-primary,
+html.theme-glass .bg-accent,
+html.theme-glass .gym-gradient,
+html.theme-glass .accent-gradient {
+  border: 1px solid hsl(0 0% 100% / 0.32);
+  box-shadow: 0 6px 24px hsl(0 0% 0% / 0.15);
+}
+
+/* ダイアログ/ポップオーバー＝濃いめのカラー半透明（白文字が読める） */
+html.theme-glass .bg-popover,
+html.theme-glass [role="dialog"],
+html.theme-glass [role="alertdialog"] {
+  background-color: hsl(var(--primary) / 0.92) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid hsl(0 0% 100% / 0.25) !important;
 }
 
 @keyframes fadeIn {

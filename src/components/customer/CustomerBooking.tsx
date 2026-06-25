@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, CreditCard, Info } from "lucide-react";
+import { CalendarDays, CalendarCheck, Clock, Check, Trash2, CalendarPlus, Swords, CreditCard, Info } from "lucide-react";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -365,6 +365,10 @@ const CustomerBooking = () => {
   const maxSessions = hasPlan ? (planMaxMap[currentPlan!] || 0) : 0;
   const isExpired = remainingDays !== null && remainingDays < 0;
   const isExpiringSoon = remainingDays !== null && remainingDays >= 0 && remainingDays <= 3;
+  // 今サイクルで「あと何回予約できるか」。通い放題（max_sessions が null）は無制限扱い。
+  const currentTenantPlan = tenantPlans?.find((p) => p.plan_name === currentPlan);
+  const isUnlimitedPlan = hasPlan && (currentPlan === "通い放題" || (currentTenantPlan != null && currentTenantPlan.max_sessions == null));
+  const remainingSessions = maxSessions > 0 ? Math.max(0, maxSessions - cycleVisitedCount) : null;
 
   return (
     <>
@@ -399,6 +403,18 @@ const CustomerBooking = () => {
                     ) : (
                       <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>{t("booking.daysLeft", { count: remainingDays })}</span>
                     )}
+                  </span>
+                </div>
+              )}
+              {currentCycle && !isExpired && (isUnlimitedPlan || remainingSessions !== null) && (
+                <div className="flex items-center gap-2">
+                  <CalendarCheck className="w-4 h-4 text-accent shrink-0" />
+                  <span className="text-xs font-medium text-foreground">
+                    {isUnlimitedPlan
+                      ? t("booking.cycleUnlimited", { used: cycleVisitedCount })
+                      : remainingSessions === 0
+                        ? t("booking.cycleFull", { used: cycleVisitedCount, total: maxSessions })
+                        : t("booking.cycleRemaining", { remaining: remainingSessions, used: cycleVisitedCount, total: maxSessions })}
                   </span>
                 </div>
               )}

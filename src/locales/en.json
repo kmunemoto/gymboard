@@ -1820,6 +1820,12 @@
     "confirmTitle": "Are you sure you want to delete?",
     "confirmDesc": "Deleting your account will lose all your data. This action cannot be undone."
   },
+  "subscriptionBlock": {
+    "title": "Subscription is not active",
+    "staffBody": "Please check your billing status. Until it is reactivated, new bookings and adding client data are restricted.",
+    "customerBody": "This gym cannot accept bookings right now. Please contact the gym.",
+    "manage": "Manage plan & billing"
+  },
   "planLimit": {
     "customerOver": "Customers {{count}} / limit {{max}}",
     "trainerOver": "Trainers {{count}} / limit {{max}}",

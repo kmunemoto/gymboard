@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMyBookings, createBooking, cancelBooking, BookingWithTime } from "@/hooks/useBookings";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
-import { format, addMonths, startOfDay, parseISO, differenceInDays } from "date-fns";
+import { format, addMonths, startOfDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
 import { trialLabel } from "@/lib/dummyData";
@@ -17,7 +17,9 @@ import { sendBookingNotification } from "@/lib/bookingNotification";
 import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
-import { getCycleWindow, getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
+import PlanUsageBadge from "./PlanUsageBadge";
 import { formatDate } from "@/lib/dateFormat";
 import { useWaitlist } from "@/hooks/useWaitlist";
 import { WAITLIST_ENABLED } from "@/lib/featureFlags";
@@ -40,11 +42,6 @@ const CustomerBooking = () => {
   const planLabelMap = useMemo(() => {
     const m: Record<string, string> = { "初回無料体験": "初回無料体験" };
     tenantPlans?.forEach((p) => { m[p.plan_name] = p.plan_name; });
-    return m;
-  }, [tenantPlans]);
-  const planMaxMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    tenantPlans?.forEach((p) => { if (p.max_sessions != null) m[p.plan_name] = p.max_sessions; });
     return m;
   }, [tenantPlans]);
 
@@ -347,28 +344,23 @@ const CustomerBooking = () => {
   const planLabel = (type: string) => planLabelMap[type] || type;
 
 
-  // Current cycle / plan summary (mirrors home screen logic)
+  // プラン消化状況（GymBoard 共通ロジック）。月N回 / 回数券 / 期間プラン / 通い放題 を吸収する。
   const currentPlan = profile?.plan;
-  const hasPlan = !!currentPlan && currentPlan !== "初回無料体験";
+  const hasPlan = !!currentPlan && currentPlan !== "初回無料体験" && currentPlan !== "プラン未設定";
   const now = getJSTNow();
-  const currentCycle = hasPlan && profile?.cycle_start_date
-    ? getCycleWindow(profile.cycle_start_date, now)
-    : null;
-  const remainingDays = currentCycle ? differenceInDays(currentCycle.end, now) : null;
-  const cycleVisitedCount = currentCycle
-    ? myBookings.filter((b) => {
-        if (b.status === "キャンセル済み") return false;
-        const d = parseISO(b.date);
-        return d >= currentCycle.start && d < currentCycle.end;
-      }).length
-    : 0;
-  const maxSessions = hasPlan ? (planMaxMap[currentPlan!] || 0) : 0;
-  const isExpired = remainingDays !== null && remainingDays < 0;
-  const isExpiringSoon = remainingDays !== null && remainingDays >= 0 && remainingDays <= 3;
-  // 今サイクルで「あと何回予約できるか」。通い放題（max_sessions が null）は無制限扱い。
   const currentTenantPlan = tenantPlans?.find((p) => p.plan_name === currentPlan);
-  const isUnlimitedPlan = hasPlan && (currentPlan === "通い放題" || (currentTenantPlan != null && currentTenantPlan.max_sessions == null));
-  const remainingSessions = maxSessions > 0 ? Math.max(0, maxSessions - cycleVisitedCount) : null;
+  const usageInput = hasPlan ? resolvePlanUsageInput(currentPlan, currentTenantPlan, profile?.cycle_start_date) : null;
+  const planUsage = usageInput
+    ? computePlanUsage(
+        usageInput,
+        myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+        now,
+      )
+    : null;
+  const showPlanCard = hasPlan && planUsage != null && !planUsage.isUnconfigured;
+  const usageDaysLeft = planUsage?.daysLeft ?? null;
+  const isExpired = planUsage?.isExpired ?? false;
+  const isExpiringSoon = usageDaysLeft !== null && usageDaysLeft >= 0 && usageDaysLeft <= 3;
 
   return (
     <>
@@ -384,39 +376,50 @@ const CustomerBooking = () => {
           <p className="text-xs text-muted-foreground/70 mt-1">{t("booking.advanceNotice")}</p>
         </div>
 
-        {hasPlan && (
+        {showPlanCard && planUsage && (
           <Card className={`border-l-4 ${isExpired ? "border-l-destructive bg-destructive/5" : isExpiringSoon ? "border-l-warning bg-warning/5" : "border-l-accent bg-accent/5"}`}>
-            <CardContent className="p-3 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-accent shrink-0" />
-                <span className="text-sm font-bold">
-                  {t("booking.currentPlan", { plan: planLabel(currentPlan!) })}
-                </span>
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CreditCard className="w-4 h-4 text-accent shrink-0" />
+                  <span className="text-sm font-bold truncate">
+                    {t("booking.currentPlan", { plan: planLabel(currentPlan!) })}
+                  </span>
+                </div>
+                <PlanUsageBadge usage={planUsage} />
               </div>
-              {currentCycle && (
+
+              {planUsage.windowStart && planUsage.windowEnd && (
                 <div className="flex items-center gap-2">
                   <Clock className={`w-4 h-4 shrink-0 ${isExpired ? "text-destructive" : isExpiringSoon ? "text-warning" : "text-accent"}`} />
                   <span className="text-xs text-muted-foreground">
-                    {t("booking.usagePeriod", { start: format(currentCycle.start, "M/d", { locale: ja }), end: format(currentCycle.end, "M/d", { locale: ja }) })}
+                    {t("booking.usagePeriod", { start: format(planUsage.windowStart, "M/d", { locale: ja }), end: format(planUsage.windowEnd, "M/d", { locale: ja }) })}
                     {isExpired ? (
                       <span className="font-bold text-destructive ml-1">{t("booking.expired")}</span>
-                    ) : (
-                      <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>{t("booking.daysLeft", { count: remainingDays })}</span>
-                    )}
+                    ) : usageDaysLeft !== null ? (
+                      <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>{t("booking.daysLeft", { count: usageDaysLeft })}</span>
+                    ) : null}
                   </span>
                 </div>
               )}
-              {currentCycle && !isExpired && (isUnlimitedPlan || remainingSessions !== null) && (
-                <div className="flex items-center gap-2">
-                  <CalendarCheck className="w-4 h-4 text-accent shrink-0" />
-                  <span className="text-xs font-medium text-foreground">
-                    {isUnlimitedPlan
-                      ? t("booking.cycleUnlimited", { used: cycleVisitedCount })
-                      : remainingSessions === 0
-                        ? t("booking.cycleFull", { used: cycleVisitedCount, total: maxSessions })
-                        : t("booking.cycleRemaining", { remaining: remainingSessions, used: cycleVisitedCount, total: maxSessions })}
-                  </span>
+
+              {!isExpired && !planUsage.isUnlimited && planUsage.total != null && (
+                <div className="space-y-1">
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${planUsage.remaining === 0 ? "bg-destructive" : planUsage.remaining === 1 ? "bg-warning" : "bg-accent"}`}
+                      style={{ width: `${Math.min(100, Math.round((planUsage.used / planUsage.total) * 100))}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{t("booking.usedOfTotal", { used: planUsage.used, total: planUsage.total })}</p>
                 </div>
+              )}
+
+              {!isExpired && planUsage.isUnlimited && (
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" />
+                  {t("booking.usedUnlimited", { used: planUsage.used })}
+                </p>
               )}
             </CardContent>
           </Card>

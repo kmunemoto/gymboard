@@ -21,6 +21,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useTenant } from "@/hooks/useTenant";
+import PlanUsageCard from "@/components/customer/PlanUsageCard";
 import { fetchMyTenantId } from "@/lib/tenantHelper";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import { useMessages } from "@/hooks/useMessages";
@@ -700,6 +701,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <p className="text-sm font-bold mt-2">{t("clientDetail.monthlyPrice", { price: getPrice(clientPlan).toLocaleString() })}</p>
               </div>
             )}
+
+            {/* プラン消化状況（残り予約回数）— GymBoard 共通カード */}
+            <PlanUsageCard
+              planName={clientPlan}
+              cycleStartDate={cycleStartDate}
+              tenantPlans={tenantPlans}
+              bookings={bookings.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status }))}
+            />
 
             {/* Cycle Start Date */}
             <div className="pt-2 border-t border-border space-y-2">

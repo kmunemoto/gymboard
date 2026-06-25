@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
+import { SOCIAL_LOGIN_ENABLED } from "@/lib/featureFlags";
 import gymboardLogo from "@/assets/gymboard-logo.png";
 
 type AuthMode = "login" | "signup" | "forgot";
@@ -321,7 +322,7 @@ const Auth = () => {
 
             {/* ソーシャルログインは顧客・トレーナー両タブで表示。
                 トレーナータブの場合は OAuth 後に signup-trainer で trainer ロールを付与する。 */}
-            {mode !== "forgot" && (
+            {mode !== "forgot" && SOCIAL_LOGIN_ENABLED && (
               <div className="mt-5">
                 <SocialAuthButtons
                   redirectParam={redirectParam}

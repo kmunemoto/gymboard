@@ -144,7 +144,9 @@ const CustomerBooking = () => {
     return bookedSlots.some((b) => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
-      const bEnd = timeToMin(b.endTime);
+      // 既存予約側にも同じ15分バッファを足し、前後どちらの間隔も確保する
+      // （トレーナー側 checkSlotBlocked と挙動を一致させる）。
+      const bEnd = timeToMin(b.endTime) + BOOKING_BUFFER_MINUTES;
       return newMin < bEnd && bMin < newEnd;
     });
   };
@@ -198,6 +200,7 @@ const CustomerBooking = () => {
   // ============================================================
 
   const handleBook = async () => {
+    if (submitting) return; // 二重送信ガード（ボタンのdisabledに加えた多重防御）
     // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可
     if (isSaluteJuneLocked(dateKey)) {
       toast.info(JUNE_LOCK_MESSAGE);

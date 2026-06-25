@@ -22,4 +22,4 @@ project_id = "rrbfwitprzuevzytykrq"
   [functions.reconcile-bookings-from-salute]
     verify_jwt = false
   [functions.sync-trial-cancel-to-salute]
-    verify_jwt = true
+    verify_jwt = false

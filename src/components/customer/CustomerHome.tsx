@@ -233,7 +233,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-base">{formatBookingDate(nextBooking)}</p>
+                  <p className="font-bold text-base glass-stat">{formatBookingDate(nextBooking)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {nextBooking.booking_type === "初回無料体験" ? t("home.freeTrial") : t("home.training")}
                   </p>
@@ -283,7 +283,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           {latest.weight != null && (
             <Card className="card-hover">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-extrabold">{latest.weight}<span className="text-sm font-medium text-muted-foreground">kg</span></p>
+                <p className="text-2xl font-extrabold glass-stat">{latest.weight}<span className="text-sm font-medium text-muted-foreground">kg</span></p>
                 <p className="text-xs text-muted-foreground mt-1">{t("home.currentWeight")}</p>
                 {weightChange && (
                   <div className="flex items-center justify-center gap-1 mt-1.5">
@@ -301,7 +301,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           {latest.body_fat != null && (
             <Card className="card-hover">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-extrabold">{latest.body_fat}<span className="text-sm font-medium text-muted-foreground">%</span></p>
+                <p className="text-2xl font-extrabold glass-stat">{latest.body_fat}<span className="text-sm font-medium text-muted-foreground">%</span></p>
                 <p className="text-xs text-muted-foreground mt-1">{t("home.bodyFat")}</p>
                 {fatChange && (
                   <div className="flex items-center justify-center gap-1 mt-1.5">

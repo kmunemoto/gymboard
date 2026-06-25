@@ -11,6 +11,7 @@
 //     未設定時は SALUTE_EXPORT_URL から "salute-export-counts" を "salute-export-exercises" に置換して使用
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { authorizeAdmin } from "../_shared/migrationAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +43,9 @@ type SaluteExercise = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+  if (!authorizeAdmin(req)) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   try {

@@ -1820,6 +1820,12 @@
     "confirmTitle": "確定要刪除嗎？",
     "confirmDesc": "刪除帳號將遺失所有資料。此操作無法復原。"
   },
+  "subscriptionBlock": {
+    "title": "訂閱未生效",
+    "staffBody": "請檢查付款狀態。在重新生效之前，新預約受理與新增客戶資料等操作將受到限制。",
+    "customerBody": "該健身房目前無法接受預約，請聯絡健身房。",
+    "manage": "查看方案與付款"
+  },
   "planLimit": {
     "customerOver": "客戶 {{count}} 名／上限 {{max}} 名",
     "trainerOver": "教練 {{count}} 名／上限 {{max}} 名",

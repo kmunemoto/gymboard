@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import GymLogo from "@/components/GymLogo";
 import PlanLimitBanner from "@/components/PlanLimitBanner";
+import SubscriptionBlockedBanner from "@/components/SubscriptionBlockedBanner";
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,6 +121,9 @@ const TrainerView = () => {
         </div>
       </div>
       <div style={{ paddingTop: "calc(3rem + env(safe-area-inset-top, 0px))" }}>
+        <SubscriptionBlockedBanner
+          onManage={() => { setTab("gym-settings"); setSelectedClientId(null); }}
+        />
         <PlanLimitBanner
           onUpgrade={() => { setTab("gym-settings"); setSelectedClientId(null); }}
           onManageCustomers={() => { setTab("clients"); setSelectedClientId(null); }}

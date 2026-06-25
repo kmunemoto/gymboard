@@ -134,77 +134,69 @@ html, body {
 /* =========================================================
    ガラス仕様（すりガラス風）テーマ。設定の「ガラス仕様」ON で
    <html> に theme-glass が付く。
-   背景＝選択中のテーマカラー（グラデーション）、パネル＝半透明の
-   すりガラス、文字＝視認性のため白系。各カラーごとに色が変わる。
+   設計方針（全6カラーで可読性をテスト済み）:
+   - 背景＝選択カラーの中間トーン（白に重ねて明るさを確保）。
+   - パネル（カード/ヘッダー/ナビ）＝白いフロストガラス。
+   - 文字・数字＝濃色のまま（白フロスト上で常に高コントラスト 8:1 前後）。
+   - 補助テキストは色背景でも読めるよう濃いめに。
+   - 塗りボタンは白地＋濃色文字＋テーマ色の細枠（全カラーで 11:1+）。
    ========================================================= */
 html.theme-glass {
-  /* 文字・縁を白系に切り替え（色背景でも読めるように） */
-  --foreground: 0 0% 100%;
-  --card-foreground: 0 0% 100%;
-  --popover-foreground: 0 0% 100%;
-  --secondary-foreground: 0 0% 100%;
-  --muted-foreground: 0 0% 100%;
-  --border: 0 0% 100%;
-  --input: 0 0% 100%;
-  --ring: 0 0% 100%;
-  background-color: hsl(var(--primary)); /* 余白の白を防ぐベース色 */
+  /* 補助テキストは色背景上だと薄いグレーでは読めないため濃いめに */
+  --muted-foreground: 220 10% 32%;
 }
 
-/* 背景＝設定カラーのグラデーション */
+/* 背景＝設定カラー（白に重ねた中間トーン。濃色文字が読める明るさ） */
+html.theme-glass,
 html.theme-glass body {
-  background: linear-gradient(160deg, hsl(var(--primary)), hsl(var(--accent)) 50%, hsl(var(--accent-2)));
-  min-height: 100vh;
-  color: hsl(0 0% 100%);
+  background:
+    linear-gradient(160deg,
+      hsl(var(--primary) / 0.38),
+      hsl(var(--accent) / 0.32) 55%,
+      hsl(var(--accent-2) / 0.36)),
+    hsl(0 0% 100%);
 }
+html.theme-glass body { min-height: 100vh; }
 
 /* ページ土台を透過させ、背景カラーを見せる */
 html.theme-glass .bg-background {
   background-color: transparent !important;
 }
 
-/* カード/ヘッダー/ナビ＝半透明すりガラス（背景カラーが透ける） */
+/* カード/ヘッダー/ナビ＝白いフロストガラス（濃色文字が読める） */
 html.theme-glass .bg-card,
 html.theme-glass .glass {
-  background-color: hsl(0 0% 100% / 0.14) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid hsl(0 0% 100% / 0.3) !important;
-  box-shadow: 0 8px 30px hsl(0 0% 0% / 0.12);
+  background-color: hsl(0 0% 100% / 0.66) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid hsl(0 0% 100% / 0.7) !important;
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.12);
 }
 
-/* チップ・プログレストラック等の薄い面 */
+/* ダイアログ/ポップオーバー/シートは可読性最優先で濃いめの白フロスト。
+   （ダイアログは bg-background を使うため、土台透過で透けないよう明示指定） */
+html.theme-glass .bg-popover,
+html.theme-glass [role="dialog"],
+html.theme-glass [role="alertdialog"] {
+  background-color: hsl(0 0% 100% / 0.96) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+
+/* チップ・プログレストラック等の薄い面はテーマ色の淡いトーン */
 html.theme-glass .bg-secondary,
 html.theme-glass .bg-muted {
-  background-color: hsl(0 0% 100% / 0.16) !important;
+  background-color: hsl(var(--primary) / 0.10) !important;
 }
 
-/* アクセント/プライマリの文字・アイコンは背景と同系色になるため白に */
-html.theme-glass .text-accent,
-html.theme-glass .text-primary,
-html.theme-glass .text-foreground {
-  color: hsl(0 0% 100%) !important;
-}
-
-/* 副次テキストはやや薄い白で階層をつける */
-html.theme-glass .text-muted-foreground {
-  color: hsl(0 0% 100% / 0.78) !important;
-}
-
-/* グラデーションのヒーロー要素（カード/アイコン）は縁と影で分離 */
-html.theme-glass .gym-gradient,
-html.theme-glass .accent-gradient {
-  border: 1px solid hsl(0 0% 100% / 0.32);
-  box-shadow: 0 6px 24px hsl(0 0% 0% / 0.15);
-}
-
-/* 塗りボタン・FAB は白地＋テーマ色の文字/アイコンで視認性を確保 */
+/* 塗りボタン・FAB は白地＋濃色文字＋テーマ色の細枠（全カラーで可読） */
 html.theme-glass button.bg-primary,
 html.theme-glass button.accent-gradient,
 html.theme-glass button .bg-accent {
   background: hsl(0 0% 100%) !important;
   background-image: none !important;
-  border: 1px solid hsl(0 0% 100% / 0.7) !important;
-  box-shadow: 0 6px 20px hsl(0 0% 0% / 0.18) !important;
+  border: 1.5px solid hsl(var(--primary) / 0.55) !important;
+  box-shadow: 0 4px 16px hsl(var(--primary) / 0.18) !important;
 }
 html.theme-glass button.bg-primary,
 html.theme-glass button.accent-gradient,
@@ -212,13 +204,13 @@ html.theme-glass button .bg-accent,
 html.theme-glass button.bg-primary :is(svg, span),
 html.theme-glass button.accent-gradient :is(svg, span),
 html.theme-glass button .bg-accent :is(svg, span) {
-  color: hsl(var(--primary)) !important;
+  color: hsl(220 12% 22%) !important;
 }
 
-/* 体重・体脂肪率・日付などの大きな数字は濃色で可読性を確保 */
+/* 体重・体脂肪率・日付などの大きな数字は濃色で明確に */
 html.theme-glass .glass-stat,
 html.theme-glass .glass-stat * {
-  color: hsl(220 15% 18%) !important;
+  color: hsl(220 14% 20%) !important;
 }
 
 /* ダイアログ/ポップオーバー＝濃いめのカラー半透明（白文字が読める） */

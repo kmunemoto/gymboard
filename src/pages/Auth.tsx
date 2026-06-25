@@ -53,10 +53,12 @@ const Auth = () => {
     if (mode === "forgot") {
       setLoading(true);
       try {
-        const redirectTo = "https://gymboard.lovable.app/reset-password";
+        // 現在のオリジンの /reset-password に戻す（固定の lovable ドメインだと
+        // 独自ドメインやプレビュー環境で誤った場所に遷移してしまうため）。
+        const redirectTo = `${window.location.origin}/reset-password`;
         await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       } catch (err) {
-        console.warn("resetPasswordForEmail error (suppressed):", err?.message);
+        console.warn("resetPasswordForEmail error (suppressed):", err instanceof Error ? err.message : String(err));
       } finally {
         setForgotSent(true);
         setLoading(false);
@@ -121,7 +123,7 @@ const Auth = () => {
         navigate(redirectParam || "/");
       }
     } catch (err) {
-      const msg = err.message || "";
+      const msg = err instanceof Error ? err.message : String(err ?? "");
       console.error("Auth error:", msg);
       const localized =
         msg.includes("Invalid login credentials")

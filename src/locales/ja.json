@@ -42,6 +42,8 @@
     "languageDescription": "アプリの表示言語を切り替えます",
     "themeColor": "テーマカラー",
     "themeColorDescription": "アプリの配色（アクセント色）を選べます",
+    "glassMode": "ガラス仕様",
+    "glassModeDescription": "すりガラス風の半透明デザインにします（選択中のカラーで色づきます）",
     "themeColors": {
       "teal": "ティール",
       "blue": "ブルー",

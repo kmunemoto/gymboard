@@ -131,6 +131,44 @@ html, body {
   }
 }
 
+/* =========================================================
+   ガラス仕様（すりガラス風）テーマ。設定の「ガラス仕様」ON で
+   <html> に theme-glass が付く。選択中のテーマカラー（--accent 等）
+   で色づくため、各カラーごとに見え方が変わる。
+   ========================================================= */
+html.theme-glass body {
+  background:
+    radial-gradient(125% 80% at 8% -5%, hsl(var(--accent) / 0.28), transparent 55%),
+    radial-gradient(115% 85% at 105% 12%, hsl(var(--primary) / 0.24), transparent 55%),
+    radial-gradient(130% 90% at 50% 108%, hsl(var(--accent-2) / 0.22), transparent 55%),
+    hsl(var(--background));
+  background-attachment: fixed;
+}
+
+/* カード類をすりガラス化（選択カラーで縁・影が色づく） */
+html.theme-glass .bg-card {
+  background-color: hsl(0 0% 100% / 0.6) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid hsl(0 0% 100% / 0.55);
+  box-shadow: 0 8px 30px hsl(var(--accent) / 0.12);
+}
+
+/* 既存の .glass（ヘッダー/ボトムナビ等）をより強い磨りガラスに */
+html.theme-glass .glass {
+  background-color: hsl(0 0% 100% / 0.5) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border-color: hsl(0 0% 100% / 0.5) !important;
+}
+
+/* ダイアログ/ポップオーバーは可読性優先で透過は控えめに */
+html.theme-glass .bg-popover {
+  background-color: hsl(0 0% 100% / 0.92) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

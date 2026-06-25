@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Palette, Check } from "lucide-react";
+import { Palette, Check, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { THEME_COLORS, applyThemeColor, getStoredThemeColor } from "@/lib/themeColor";
+import { Switch } from "@/components/ui/switch";
+import { THEME_COLORS, applyThemeColor, getStoredThemeColor, applyGlassMode, getStoredGlassMode } from "@/lib/themeColor";
 
 // 設定画面用: アクセントカラーを 6 色から選ぶ。お客様側・ジム側共通。
 interface ThemeColorSwitcherProps {
@@ -12,10 +13,16 @@ interface ThemeColorSwitcherProps {
 const ThemeColorSwitcher = ({ variant = "customer" }: ThemeColorSwitcherProps) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string>(getStoredThemeColor());
+  const [glass, setGlass] = useState<boolean>(getStoredGlassMode());
 
   const handleSelect = (id: string) => {
     setSelected(id);
     applyThemeColor(id);
+  };
+
+  const handleGlass = (on: boolean) => {
+    setGlass(on);
+    applyGlassMode(on);
   };
 
   return (
@@ -53,6 +60,18 @@ const ThemeColorSwitcher = ({ variant = "customer" }: ThemeColorSwitcherProps) =
                     </button>
                   );
                 })}
+              </div>
+
+              {/* ガラス仕様（すりガラス）トグル */}
+              <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sparkles className="w-4 h-4 text-accent shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">{t("settings.glassMode")}</p>
+                    <p className="text-[11px] text-muted-foreground">{t("settings.glassModeDescription")}</p>
+                  </div>
+                </div>
+                <Switch checked={glass} onCheckedChange={handleGlass} aria-label={t("settings.glassMode")} />
               </div>
             </div>
           </div>

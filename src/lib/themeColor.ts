@@ -38,12 +38,33 @@ export const THEME_COLORS: ThemeColorPreset[] = [
 
 export const DEFAULT_THEME_ID = "teal";
 const STORAGE_KEY = "gymboard.themeColor";
+const GLASS_KEY = "gymboard.glassMode";
 
 export function getStoredThemeColor(): string {
   try {
     return localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME_ID;
   } catch {
     return DEFAULT_THEME_ID;
+  }
+}
+
+// ガラス仕様（すりガラス風の半透明デザイン）の保存/取得/適用。
+// documentElement に theme-glass クラスを付与し、index.css の glass スタイルを有効化する。
+// 配色は選択中のテーマカラー（--accent 等）で色づくため「各カラーごと」に見え方が変わる。
+export function getStoredGlassMode(): boolean {
+  try {
+    return localStorage.getItem(GLASS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function applyGlassMode(on: boolean): void {
+  document.documentElement.classList.toggle("theme-glass", on);
+  try {
+    localStorage.setItem(GLASS_KEY, on ? "1" : "0");
+  } catch {
+    // ignore
   }
 }
 
@@ -58,11 +79,15 @@ export function applyThemeColor(id: string): void {
   }
 }
 
-// 起動時に保存済みの色を適用する（main.tsx から呼ぶ）。
+// 起動時に保存済みの色・ガラス設定を適用する（main.tsx から呼ぶ）。
 export function initThemeColor(): void {
   const id = getStoredThemeColor();
   const preset = THEME_COLORS.find((p) => p.id === id);
-  if (!preset || preset.id === DEFAULT_THEME_ID) return; // 既定は index.css のまま
-  const root = document.documentElement;
-  Object.entries(preset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+  if (preset && preset.id !== DEFAULT_THEME_ID) {
+    const root = document.documentElement;
+    Object.entries(preset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+  }
+  if (getStoredGlassMode()) {
+    document.documentElement.classList.add("theme-glass");
+  }
 }

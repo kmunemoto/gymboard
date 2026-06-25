@@ -42,6 +42,8 @@
     "languageDescription": "切换应用的显示语言",
     "themeColor": "主题颜色",
     "themeColorDescription": "选择应用的强调色",
+    "glassMode": "玻璃质感",
+    "glassModeDescription": "采用磨砂半透明设计（随所选颜色着色）",
     "themeColors": {
       "teal": "青色",
       "blue": "蓝色",

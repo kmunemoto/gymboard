@@ -42,6 +42,8 @@
     "languageDescription": "切換應用程式的顯示語言",
     "themeColor": "主題顏色",
     "themeColorDescription": "選擇應用程式的強調色",
+    "glassMode": "玻璃質感",
+    "glassModeDescription": "採用霧面半透明設計（隨所選顏色著色）",
     "themeColors": {
       "teal": "青色",
       "blue": "藍色",

@@ -42,6 +42,8 @@
     "languageDescription": "Change the app's display language",
     "themeColor": "Theme color",
     "themeColorDescription": "Choose the app's accent color",
+    "glassMode": "Glass style",
+    "glassModeDescription": "Use a frosted, translucent design (tinted by the selected color)",
     "themeColors": {
       "teal": "Teal",
       "blue": "Blue",

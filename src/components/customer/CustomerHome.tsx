@@ -24,6 +24,7 @@ import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
+import PlanUsageCard from "./PlanUsageCard";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 // Fallback for legacy Salute plans when tenant_plans has no match
@@ -265,6 +266,14 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
 
       {/* 2. Next Booking */}
       {nextBookingSection}
+
+      {/* 2.5 プラン消化状況（残り予約回数） */}
+      <PlanUsageCard
+        planName={profile?.plan}
+        cycleStartDate={profile?.cycle_start_date}
+        tenantPlans={tenantPlans}
+        bookings={bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
+      />
 
       {/* 3. Streak */}
 

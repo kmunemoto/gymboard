@@ -190,13 +190,35 @@ html.theme-glass .text-muted-foreground {
   color: hsl(0 0% 100% / 0.78) !important;
 }
 
-/* 塗りボタン・グラデヒーローは背景と同系色なので縁と影で分離 */
-html.theme-glass .bg-primary,
-html.theme-glass .bg-accent,
+/* グラデーションのヒーロー要素（カード/アイコン）は縁と影で分離 */
 html.theme-glass .gym-gradient,
 html.theme-glass .accent-gradient {
   border: 1px solid hsl(0 0% 100% / 0.32);
   box-shadow: 0 6px 24px hsl(0 0% 0% / 0.15);
+}
+
+/* 塗りボタン・FAB は白地＋テーマ色の文字/アイコンで視認性を確保 */
+html.theme-glass button.bg-primary,
+html.theme-glass button.accent-gradient,
+html.theme-glass button .bg-accent {
+  background: hsl(0 0% 100%) !important;
+  background-image: none !important;
+  border: 1px solid hsl(0 0% 100% / 0.7) !important;
+  box-shadow: 0 6px 20px hsl(0 0% 0% / 0.18) !important;
+}
+html.theme-glass button.bg-primary,
+html.theme-glass button.accent-gradient,
+html.theme-glass button .bg-accent,
+html.theme-glass button.bg-primary :is(svg, span),
+html.theme-glass button.accent-gradient :is(svg, span),
+html.theme-glass button .bg-accent :is(svg, span) {
+  color: hsl(var(--primary)) !important;
+}
+
+/* 体重・体脂肪率・日付などの大きな数字は濃色で可読性を確保 */
+html.theme-glass .glass-stat,
+html.theme-glass .glass-stat * {
+  color: hsl(220 15% 18%) !important;
 }
 
 /* ダイアログ/ポップオーバー＝濃いめのカラー半透明（白文字が読める） */

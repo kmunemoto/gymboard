@@ -81,13 +81,15 @@ Deno.serve(async (req) => {
       syncAction = "skipped_pre_cutoff";
       console.log(`[trial-sync] skipped_pre_cutoff booking_date=${booking_date}`);
     } else {
-      // 冪等性チェック: 同 tenant + 同日時 + 同 guest_name は二重投入しない
+      // 冪等性チェック: 同 tenant + 同日時 + 同 guest_name は二重投入しない。
+      // キャンセル済みは除外する(同じ枠を再予約した場合に再同期できるようにするため)。
       const { data: existing, error: dupErr } = await admin
         .from("trial_bookings")
         .select("id")
         .eq("tenant_id", TENANT_ID)
         .eq("booking_date", booking_date)
         .eq("guest_name", guest_name)
+        .neq("status", "キャンセル済み")
         .maybeSingle();
 
       if (dupErr) {

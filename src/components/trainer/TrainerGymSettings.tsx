@@ -16,6 +16,7 @@ import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
 import { GOOGLE_CALENDAR_ENABLED } from "@/lib/featureFlags";
@@ -229,6 +230,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       {/* === 言語 / Language === */}
       <LanguageSwitcher variant="trainer" />
+
+      {/* === テーマカラー / Theme color === */}
+      <ThemeColorSwitcher variant="trainer" />
 
       <Separator />
 

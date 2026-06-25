@@ -40,6 +40,16 @@
     "plan": "プラン",
     "language": "言語",
     "languageDescription": "アプリの表示言語を切り替えます",
+    "themeColor": "テーマカラー",
+    "themeColorDescription": "アプリの配色（アクセント色）を選べます",
+    "themeColors": {
+      "teal": "ティール",
+      "blue": "ブルー",
+      "violet": "バイオレット",
+      "rose": "ローズ",
+      "amber": "アンバー",
+      "green": "グリーン"
+    },
     "languageJa": "日本語",
     "languageEn": "英語",
     "languageKo": "韓国語",

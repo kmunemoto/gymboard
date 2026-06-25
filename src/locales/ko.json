@@ -40,6 +40,16 @@
     "plan": "플랜",
     "language": "언어",
     "languageDescription": "앱 표시 언어를 변경합니다",
+    "themeColor": "테마 색상",
+    "themeColorDescription": "앱의 강조 색상을 선택합니다",
+    "themeColors": {
+      "teal": "틸",
+      "blue": "블루",
+      "violet": "바이올렛",
+      "rose": "로즈",
+      "amber": "앰버",
+      "green": "그린"
+    },
     "languageJa": "일본어",
     "languageEn": "영어",
     "languageKo": "한국어",

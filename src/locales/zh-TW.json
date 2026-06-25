@@ -40,6 +40,16 @@
     "plan": "方案",
     "language": "語言",
     "languageDescription": "切換應用程式的顯示語言",
+    "themeColor": "主題顏色",
+    "themeColorDescription": "選擇應用程式的強調色",
+    "themeColors": {
+      "teal": "青色",
+      "blue": "藍色",
+      "violet": "紫色",
+      "rose": "玫紅",
+      "amber": "琥珀",
+      "green": "綠色"
+    },
     "languageJa": "日語",
     "languageEn": "英語",
     "languageKo": "韓語",

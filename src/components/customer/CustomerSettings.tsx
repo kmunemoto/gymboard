@@ -19,6 +19,7 @@ import { formatDate } from "@/lib/dateFormat";
 import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import { useTranslation } from "react-i18next";
 
 import { useTenant } from "@/hooks/useTenant";
@@ -246,6 +247,9 @@ const CustomerSettings = () => {
 
       {/* Language */}
       <LanguageSwitcher variant="customer" />
+
+      {/* Theme color */}
+      <ThemeColorSwitcher variant="customer" />
 
       {/* Push Notifications */}
       <PushNotificationSection />

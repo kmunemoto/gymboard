@@ -51,6 +51,8 @@ html, body {
     /* Tiffany blue accent */
     --accent: 174 65% 50%;
     --accent-foreground: 0 0% 100%;
+    /* Secondary accent stop for gradients (overridable per theme color) */
+    --accent-2: 180 60% 55%;
 
     /* Per-tenant brand color (hex, set by useTenant) */
     --tenant-color: #3FB6AC;
@@ -110,10 +112,10 @@ html, body {
 
 @layer utilities {
   .gym-gradient {
-    background: linear-gradient(135deg, hsl(174 60% 45%), hsl(174 65% 50%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
   }
   .accent-gradient {
-    background: linear-gradient(135deg, hsl(174 65% 50%), hsl(180 60% 55%));
+    background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)));
   }
   .glass {
     @apply bg-card/80 backdrop-blur-xl;

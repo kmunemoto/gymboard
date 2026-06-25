@@ -40,6 +40,16 @@
     "plan": "套餐",
     "language": "语言",
     "languageDescription": "切换应用的显示语言",
+    "themeColor": "主题颜色",
+    "themeColorDescription": "选择应用的强调色",
+    "themeColors": {
+      "teal": "青色",
+      "blue": "蓝色",
+      "violet": "紫色",
+      "rose": "玫红",
+      "amber": "琥珀",
+      "green": "绿色"
+    },
     "languageJa": "日语",
     "languageEn": "英语",
     "languageKo": "韩语",

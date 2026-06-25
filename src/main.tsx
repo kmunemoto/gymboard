@@ -6,6 +6,10 @@ import { App as CapApp } from "@capacitor/app";
 import App from "./App.tsx";
 import "./index.css";
 import "./lib/i18n";
+import { initThemeColor } from "./lib/themeColor";
+
+// 保存済みのテーマカラーを起動時に適用（未選択なら既定のまま）
+initThemeColor();
 
 // Initialize native (Capacitor) integrations — no-op on web
 if (Capacitor.isNativePlatform()) {

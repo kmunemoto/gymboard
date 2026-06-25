@@ -4,6 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
+import { authorizeAdmin } from "../_shared/migrationAuth.ts";
 
 async function getAccessToken(sa: { client_email: string; private_key: string; token_uri?: string }) {
   const now = Math.floor(Date.now() / 1000);
@@ -29,6 +30,9 @@ async function getAccessToken(sa: { client_email: string; private_key: string; t
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (!authorizeAdmin(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,

@@ -3,6 +3,7 @@
 // Body: { "email": "hiroko_kawai0126@icloud.com" }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { authorizeAdmin } from "../_shared/migrationAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,7 @@ function json(b: unknown, s: number) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (!authorizeAdmin(req)) return json({ ok: false, error: "Unauthorized" }, 401);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

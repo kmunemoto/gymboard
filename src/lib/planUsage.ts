@@ -1,6 +1,6 @@
 import { addDays, differenceInDays, parseISO, startOfDay } from "date-fns";
 import { getCycleWindow } from "./courseProgress";
-import { getJSTNow } from "./timezone";
+import { getJSTNow, toJSTDate } from "./timezone";
 
 // GymBoard 共通: お客様のプラン消化状況（今サイクルであと何回予約できるか）を算出する。
 // プラン種別ごとに「集計の窓（window）」が異なる点を吸収する:
@@ -91,7 +91,8 @@ export function computePlanUsage(
 
   const used = bookings.filter((b) => {
     if (isCancelled(b.status)) return false;
-    const d = new Date(b.booking_date);
+    // 予約は絶対時刻。窓(JST擬似Date)と比較するため toJSTDate でJST基準に揃える。
+    const d = toJSTDate(b.booking_date);
     if (d < windowStart) return false;
     if (windowEnd && d >= windowEnd) return false;
     return true;

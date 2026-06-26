@@ -1,6 +1,6 @@
 import { addMonths, addDays, parseISO, startOfDay } from "date-fns";
 import { PlanType, planOptions } from "./dummyData";
-import { getJSTNow } from "./timezone";
+import { getJSTNow, toJSTDate } from "./timezone";
 
 /**
  * Plan名から月間セッション回数を導出
@@ -100,12 +100,14 @@ export const computeCourseProgress = (
   const cycleBookings = bookings
     .filter((b) => b.status !== "キャンセル済み")
     .filter((b) => {
-      const d = new Date(b.booking_date);
+      // 予約は絶対時刻。JST擬似Dateの窓と比較するため toJSTDate でJST基準に揃える
+      // （端末TZがJST以外でもサイクル判定が1日ずれないように）。
+      const d = toJSTDate(b.booking_date);
       return d >= cycle.start && d < cycle.end;
     })
     .sort((a, b) => new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime());
 
-  const completedCount = cycleBookings.filter((b) => new Date(b.booking_date) <= now).length;
+  const completedCount = cycleBookings.filter((b) => toJSTDate(b.booking_date) <= now).length;
   const upcomingCount = cycleBookings.length - completedCount;
 
   return {
@@ -132,7 +134,7 @@ export const getBookingProgressIndex = (
 ): { index: number; total: number | null; isUnlimited: boolean; isUnconfigured: boolean; isOverflow: boolean } | null => {
   const target = bookings.find((b) => b.id === bookingId);
   if (!target) return null;
-  const targetDate = new Date(target.booking_date);
+  const targetDate = toJSTDate(target.booking_date);
   const progress = computeCourseProgress(cycleStartDate, plan, bookings, targetDate);
   if (!progress.cycle) {
     return { index: 0, total: progress.monthlyTotal, isUnlimited: progress.isUnlimited, isUnconfigured: progress.isUnconfigured, isOverflow: false };

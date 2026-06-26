@@ -7,6 +7,7 @@ import App from "./App.tsx";
 import "./index.css";
 import "./lib/i18n";
 import { initThemeColor } from "./lib/themeColor";
+import { clearAppBadge } from "./lib/appBadge";
 
 // 保存済みのテーマカラーを起動時に適用（未選択なら既定のまま）
 initThemeColor();
@@ -37,7 +38,19 @@ if (Capacitor.isNativePlatform()) {
       console.warn("appUrlOpen handling failed:", e);
     }
   });
+
+  // フォアグラウンドに戻ったらアイコンのバッジ（未読マーク）をクリアする。
+  // （capacitor.config の Badge.autoClear と二重で確実に消す）
+  CapApp.addListener("appStateChange", ({ isActive }) => {
+    if (isActive) clearAppBadge();
+  });
 }
+
+// 起動時・再表示時にアイコンのバッジをクリア（Web/ネイティブ共通）。
+clearAppBadge();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") clearAppBadge();
+});
 
 const showAppUpdateBanner = () => {
   if (document.getElementById("app-update-banner")) return;

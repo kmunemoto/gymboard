@@ -1198,6 +1198,8 @@
     "labelPasswordConfirm": "Password (confirm)",
     "passwordPlaceholder": "6+ characters",
     "signupPasswordHint": "* Use a password of at least 6 characters that is hard to guess.",
+    "passwordShow": "Show password",
+    "passwordHide": "Hide password",
     "forgotLink": "Forgot your password?",
     "passwordMismatch": "Passwords do not match",
     "submitSend": "Send",

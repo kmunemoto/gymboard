@@ -1198,6 +1198,8 @@
     "labelPasswordConfirm": "비밀번호 (확인)",
     "passwordPlaceholder": "6자 이상",
     "signupPasswordHint": "※ 비밀번호는 6자 이상으로, 추측하기 어려운 것으로 설정해 주세요.",
+    "passwordShow": "비밀번호 표시",
+    "passwordHide": "비밀번호 숨기기",
     "forgotLink": "비밀번호를 잊으셨나요?",
     "passwordMismatch": "비밀번호가 일치하지 않습니다",
     "submitSend": "보내기",

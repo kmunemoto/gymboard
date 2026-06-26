@@ -1198,6 +1198,8 @@
     "labelPasswordConfirm": "パスワード（確認用）",
     "passwordPlaceholder": "6文字以上",
     "signupPasswordHint": "※パスワードは6文字以上で、推測されにくいものを設定してください",
+    "passwordShow": "パスワードを表示",
+    "passwordHide": "パスワードを非表示",
     "forgotLink": "パスワードをお忘れの方はこちら",
     "passwordMismatch": "パスワードが一致しません",
     "submitSend": "送信する",

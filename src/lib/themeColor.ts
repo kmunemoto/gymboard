@@ -28,7 +28,7 @@ const make = (id: string, primary: string, accent: string, accent2: string): The
 });
 
 export const THEME_COLORS: ThemeColorPreset[] = [
-  make("teal", "174 60% 45%", "174 65% 50%", "180 60% 55%"),
+  make("teal", "174 60% 45%", "174 63% 39%", "180 58% 41%"),
   make("blue", "214 70% 48%", "210 80% 52%", "198 85% 55%"),
   make("violet", "256 55% 56%", "262 70% 60%", "276 70% 64%"),
   make("rose", "342 65% 53%", "346 78% 58%", "356 80% 62%"),

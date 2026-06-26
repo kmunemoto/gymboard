@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Dumbbell, Mail, Lock, User, Shield } from "lucide-react";
+import { Dumbbell, Mail, Lock, User, Shield, Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
@@ -30,6 +30,8 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectParam = searchParams.get("redirect");
@@ -155,7 +157,7 @@ const Auth = () => {
         <div className="text-center flex flex-col items-center gap-1">
           <img src={gymboardLogo} alt={t("auth.logoAlt")} className="h-20 w-auto object-contain" />
           <h1 className="text-2xl font-bold tracking-tight mt-1">{t("auth.appTitle")}</h1>
-          <p className="text-xs text-muted-foreground">{t("auth.appTagline")}</p>
+          <p className="text-sm text-foreground/70">{t("auth.appTagline")}</p>
           <p className="text-sm text-muted-foreground mt-2">
             {mode === "login" ? t("auth.modeLogin") : mode === "signup" ? t("auth.modeSignup") : t("auth.modeForgot")}
           </p>
@@ -203,12 +205,14 @@ const Auth = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <p className="text-sm text-muted-foreground leading-relaxed">{t("auth.forgotIntro")}</p>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold">{t("auth.labelEmail")}</label>
+                    <label htmlFor="reset-email" className="text-sm font-bold">{t("auth.labelEmail")}</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
+                        id="reset-email"
                         type="email"
                         required
+                        autoComplete="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder={t("auth.emailPlaceholder")}
@@ -234,11 +238,13 @@ const Auth = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === "signup" && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">{t("auth.labelName")}</label>
+                  <label htmlFor="displayName" className="text-sm font-bold">{t("auth.labelName")}</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
+                      id="displayName"
                       type="text"
+                      autoComplete="name"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder={t("auth.namePlaceholder")}
@@ -249,12 +255,14 @@ const Auth = () => {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-sm font-bold">{t("auth.labelEmail")}</label>
+                <label htmlFor="email" className="text-sm font-bold">{t("auth.labelEmail")}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
+                    id="email"
                     type="email"
                     required
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t("auth.emailPlaceholder")}
@@ -264,18 +272,29 @@ const Auth = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-bold">{t("auth.labelPassword")}</label>
+                <label htmlFor="password" className="text-sm font-bold">{t("auth.labelPassword")}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
-                    type="password"
+                    id="password"
+                    type={showPassword ? "text" : "password"}
                     required
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t("auth.passwordPlaceholder")}
                     minLength={6}
-                    className="w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
+                    className="w-full bg-secondary rounded-xl pl-10 pr-11 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30 transition-all placeholder:text-muted-foreground"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? t("auth.passwordHide") : t("auth.passwordShow")}
+                    aria-pressed={showPassword}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
                 {mode === "signup" && (
                   <p className="text-xs text-muted-foreground mt-1">{t("auth.signupPasswordHint")}</p>
@@ -285,7 +304,7 @@ const Auth = () => {
                     <button
                       type="button"
                       onClick={() => setMode("forgot")}
-                      className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+                      className="text-xs text-foreground/70 hover:text-foreground underline transition-colors"
                     >
                       {t("auth.forgotLink")}
                     </button>
@@ -295,20 +314,31 @@ const Auth = () => {
 
               {mode === "signup" && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">{t("auth.labelPasswordConfirm")}</label>
+                  <label htmlFor="passwordConfirm" className="text-sm font-bold">{t("auth.labelPasswordConfirm")}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
-                      type="password"
+                      id="passwordConfirm"
+                      type={showPasswordConfirm ? "text" : "password"}
                       required
+                      autoComplete="new-password"
                       value={passwordConfirm}
                       onChange={(e) => setPasswordConfirm(e.target.value)}
                       placeholder={t("auth.passwordPlaceholder")}
                       minLength={6}
-                      className={`w-full bg-secondary rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 transition-all placeholder:text-muted-foreground ${
+                      className={`w-full bg-secondary rounded-xl pl-10 pr-11 py-2.5 text-sm outline-none focus:ring-2 transition-all placeholder:text-muted-foreground ${
                         passwordMismatch ? "ring-2 ring-destructive/50 focus:ring-destructive/50" : "focus:ring-accent/30"
                       }`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordConfirm((v) => !v)}
+                      aria-label={showPasswordConfirm ? t("auth.passwordHide") : t("auth.passwordShow")}
+                      aria-pressed={showPasswordConfirm}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPasswordConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                   {passwordMismatch && (
                     <p className="text-xs text-destructive font-medium">{t("auth.passwordMismatch")}</p>

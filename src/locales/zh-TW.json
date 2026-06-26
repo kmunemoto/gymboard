@@ -1198,6 +1198,8 @@
     "labelPasswordConfirm": "密碼（確認）",
     "passwordPlaceholder": "6 個字元以上",
     "signupPasswordHint": "※ 請設定 6 個字元以上且不易被猜到的密碼。",
+    "passwordShow": "顯示密碼",
+    "passwordHide": "隱藏密碼",
     "forgotLink": "忘記密碼？",
     "passwordMismatch": "密碼不一致",
     "submitSend": "送出",

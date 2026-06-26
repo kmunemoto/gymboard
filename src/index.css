@@ -48,11 +48,13 @@ html, body {
     --muted: 30 10% 96%;
     --muted-foreground: 220 6% 55%;
 
-    /* Tiffany blue accent */
-    --accent: 174 65% 50%;
+    /* Tiffany blue accent.
+       塗りボタン(accent-gradient)の白文字が読めるよう既定値をやや濃く調整
+       （白文字とのコントラスト ≈ 1.9:1 → ≈ 3.3:1）。色相はティファニー系を維持。 */
+    --accent: 174 63% 39%;
     --accent-foreground: 0 0% 100%;
     /* Secondary accent stop for gradients (overridable per theme color) */
-    --accent-2: 180 60% 55%;
+    --accent-2: 180 58% 41%;
 
     /* Per-tenant brand color (hex, set by useTenant) */
     --tenant-color: #3FB6AC;

@@ -2,6 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
+import { escapeNonAsciiToEntities } from '../_shared/email-encoding.ts'
 
 // Configuration baked in at scaffold time — do NOT change these manually.
 // To update, re-run the email domain setup flow.
@@ -21,17 +22,6 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 }
 
-/**
- * 非ASCII文字をHTML数値文字参照に変換し、SMTPの行折り返しが
- * UTF-8マルチバイト文字の途中で発生して起きる文字化け（例: "パ"→"ã\x83\x91"）を防止する。
- * auth-email-hook と同等の保護を transactional 系メールにも適用する。
- */
-function escapeNonAsciiToEntities(html: string): string {
-  return Array.from(html).map(ch => {
-    const code = ch.codePointAt(0)!
-    return code > 127 ? `&#${code};` : ch
-  }).join('')
-}
 
 
 // Generate a cryptographically random 32-byte hex token

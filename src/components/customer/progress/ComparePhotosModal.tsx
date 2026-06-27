@@ -80,7 +80,10 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
 
   return (
     <div className="fixed inset-0 z-[60] bg-background flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b"
+        style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}
+      >
         <h2 className="text-base font-bold">{t("progress.compareTitle")}</h2>
         <button onClick={handleClose} className="p-1 rounded-lg hover:bg-muted">
           <X className="w-5 h-5" />

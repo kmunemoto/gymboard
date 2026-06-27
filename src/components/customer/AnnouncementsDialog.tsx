@@ -40,7 +40,10 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
   return (
     <div className="fixed inset-0 z-[60] bg-background flex flex-col w-full max-w-md mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b border-border bg-card"
+        style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}
+      >
         {selected ? (
           <button onClick={() => setSelected(null)} className="flex items-center gap-1 text-sm text-foreground">
             <ArrowLeft className="w-4 h-4" /> {t("common.back")}

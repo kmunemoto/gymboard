@@ -93,7 +93,7 @@ const CustomerView = () => {
           </div>
         </div>
       </div>
-      <div className="pt-12" style={{ marginTop: "env(safe-area-inset-top, 0px)" }} key={tab}>
+      <div className="pt-14" style={{ marginTop: "env(safe-area-inset-top, 0px)" }} key={tab}>
 
         <PlanLimitBanner />
         {tab === "home" && <CustomerHome onNavigate={setTab} />}

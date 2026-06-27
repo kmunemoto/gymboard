@@ -129,7 +129,7 @@ const ProgressPhotosTab = () => {
       {/* Viewer */}
       {viewer && (
         <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col" onClick={() => setViewer(null)}>
-          <div className="flex justify-end p-3">
+          <div className="flex justify-end p-3" style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}>
             <button
               onClick={(e) => { e.stopPropagation(); handleDelete(viewer); }}
               className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold flex items-center gap-1"

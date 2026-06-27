@@ -210,7 +210,8 @@ async function handleWebhook(req: Request): Promise<Response> {
   // The email action type is in payload.data.action_type (e.g., "signup", "recovery")
   // payload.type is the hook event type ("auth")
   const emailType = payload.data.action_type
-  console.log('Received auth event', { emailType, email: payload.data.email, run_id })
+  // デプロイ確認用の目印。View logs にこの文字列が出れば最新コードが本番で動いている。
+  console.log('[auth-email-hook build=2026-06-27-plain-recovery] Received auth event', { emailType, email: payload.data.email, run_id })
   console.log('payload.data keys:', Object.keys(payload.data), 'url:', (payload.data as any).url)
 
 

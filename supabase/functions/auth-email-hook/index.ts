@@ -9,7 +9,7 @@ import { MagicLinkEmail } from '../_shared/email-templates/magic-link.tsx'
 import { RecoveryEmail } from '../_shared/email-templates/recovery.tsx'
 import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
 import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
-import { escapeNonAsciiToEntities } from '../_shared/email-encoding.ts'
+import { wrapEmailHtml } from '../_shared/email-encoding.ts'
 
 
 const corsHeaders = {
@@ -276,15 +276,15 @@ async function handleWebhook(req: Request): Promise<Response> {
   }
 
   // Render React Email to HTML and plain text.
-  // pretty:true inserts line breaks into the HTML output. Without this the
-  // body is a single giant line and the upstream mail transport wraps it at
-  // a fixed byte boundary, sometimes splitting a multibyte UTF-8 char (the
-  // observed "パ"/"ー" mojibake). Pretty lines stay short enough that
-  // wrapping never lands inside a multibyte char.
+  // pretty:true inserts line breaks into the HTML output, then wrapEmailHtml
+  // keeps every line short (UTF-8 byte length) so the upstream mail transport's
+  // fixed-width line wrapping never lands inside a multibyte char (the observed
+  // "パ"/"ー" mojibake). The body is sent as raw UTF-8 so the transport uses a
+  // wrap-safe encoding (base64) instead of splitting an entity on a 7bit line.
   const rawHtml = await renderAsync(React.createElement(EmailTemplate, templateProps), {
     pretty: true,
   })
-  const html = escapeNonAsciiToEntities(rawHtml)
+  const html = wrapEmailHtml(rawHtml)
 
   const text = await renderAsync(React.createElement(EmailTemplate, templateProps), {
     plainText: true,

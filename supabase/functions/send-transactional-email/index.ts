@@ -2,7 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
-import { escapeNonAsciiToEntities } from '../_shared/email-encoding.ts'
+import { wrapEmailHtml } from '../_shared/email-encoding.ts'
 
 // Configuration baked in at scaffold time — do NOT change these manually.
 // To update, re-run the email domain setup flow.
@@ -392,15 +392,15 @@ Deno.serve(async (req) => {
   }
 
   // 4. Render React Email template to HTML and plain text
-  // pretty:true で改行を入れて、SMTPの固定バイト幅折り返しが
-  // マルチバイトUTF-8文字の途中に入り文字化けする問題を回避する。
-  // さらに非ASCII文字をHTML数値文字参照に変換して二重に保護する
-  // （auth-email-hook と同等）。
+  // pretty:true で構造行を短くし、さらに wrapEmailHtml で各行の UTF-8 バイト長を
+  // 安全な幅に抑える。これで送信経路の固定幅折り返しがマルチバイト文字の途中に
+  // 入って文字化けする問題を回避する。本文は生の UTF-8 のまま送り、送信経路に
+  // ラップ安全な転送エンコード（base64）を使わせる（auth-email-hook と同等）。
   const rawHtml = await renderAsync(
     React.createElement(template.component, templateData),
     { pretty: true }
   )
-  const html = escapeNonAsciiToEntities(rawHtml)
+  const html = wrapEmailHtml(rawHtml)
   const plainText = await renderAsync(
     React.createElement(template.component, templateData),
     { plainText: true }

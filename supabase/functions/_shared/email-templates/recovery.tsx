@@ -8,7 +8,6 @@ import {
   Head,
   Heading,
   Html,
-  Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -23,13 +22,19 @@ interface RecoveryEmailProps {
 // has been observed to corrupt the first multi-byte char after the boundary
 // in some email clients (mojibake on "パ"). Inlining the full sentence
 // prevents that.
+//
+// NOTE 2: <Preview> is intentionally omitted. It injects a long run of
+// invisible padding characters before the body, pushing the body to a large
+// byte offset. The streaming HTML renderer (Deno) then splits a multibyte
+// UTF-8 character at a chunk boundary, corrupting it into U+FFFD (the observed
+// "パスワ???ード"). Dropping <Preview> keeps the document small enough that the
+// body stays within the first render chunk and is never split.
 export const RecoveryEmail = (_: RecoveryEmailProps) => (
   <Html lang="ja" dir="ltr">
     <Head>
       <meta charSet="utf-8" />
       <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
     </Head>
-    <Preview>ジムボードのパスワード再設定</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>パスワードの再設定</Heading>

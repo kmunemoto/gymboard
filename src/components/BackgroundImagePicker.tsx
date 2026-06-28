@@ -1,22 +1,23 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Image as ImageIcon, Trash2, Maximize, Scan } from "lucide-react";
+import { Image as ImageIcon, Trash2, Crop } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import BackgroundImageEditor from "@/components/BackgroundImageEditor";
 import {
   getStoredBackgroundImage,
   setBackgroundImageFromFile,
   clearBackgroundImage,
   getBackgroundConfig,
   setBackgroundConfig,
+  areaToCss,
   type BackgroundConfig,
-  type BackgroundFit,
+  type CropArea,
 } from "@/lib/backgroundImage";
 
-// 設定画面用: 端末の写真をアプリ背景に設定し、表示範囲（フィット・位置）を調整する。
-// お客様側・ジム側共通。
+// 設定画面用: 端末の写真をアプリ背景に設定し、表示範囲を「範囲を調整」エディタ
+// （ドラッグで移動・ピンチ/スライダーで拡大縮小）で決める。お客様側・ジム側共通。
 interface BackgroundImagePickerProps {
   variant?: "customer" | "trainer";
 }
@@ -26,6 +27,7 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
   const [current, setCurrent] = useState<string | null>(getStoredBackgroundImage());
   const [config, setConfig] = useState<BackgroundConfig>(getBackgroundConfig());
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (f: File | null) => {
@@ -50,28 +52,14 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
     setConfig(getBackgroundConfig());
   };
 
-  // 設定を即時反映（実際の背景もライブ更新される＝WYSIWYG）。
-  const updateConfig = (patch: Partial<BackgroundConfig>) => {
-    const next = { ...config, ...patch };
+  const handleSaveArea = (area: CropArea) => {
+    const next: BackgroundConfig = { area };
     setConfig(next);
     setBackgroundConfig(next);
+    setEditing(false);
   };
 
-  const fitButton = (value: BackgroundFit, label: string, Icon: typeof Maximize) => (
-    <button
-      type="button"
-      onClick={() => updateConfig({ fit: value })}
-      aria-pressed={config.fit === value}
-      className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
-        config.fit === value
-          ? "bg-accent text-accent-foreground shadow-sm"
-          : "bg-secondary text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {label}
-    </button>
-  );
+  const css = areaToCss(config.area);
 
   return (
     <section data-variant={variant}>
@@ -96,8 +84,8 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
                   className="w-full h-28 rounded-xl mb-3 border border-border bg-secondary"
                   style={{
                     backgroundImage: `url("${current}")`,
-                    backgroundSize: config.fit,
-                    backgroundPosition: `${config.posX}% ${config.posY}%`,
+                    backgroundSize: css.size == null ? "cover" : `${css.size}%`,
+                    backgroundPosition: `${css.posX}% ${css.posY}%`,
                     backgroundRepeat: "no-repeat",
                   }}
                   aria-hidden
@@ -132,6 +120,18 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
                     variant="outline"
                     size="sm"
                     disabled={busy}
+                    onClick={() => setEditing(true)}
+                  >
+                    <Crop className="w-4 h-4" />
+                    {t("settings.background.adjust")}
+                  </Button>
+                )}
+                {current && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={busy}
                     onClick={handleClear}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -139,52 +139,19 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
                   </Button>
                 )}
               </div>
-
-              {/* 表示範囲の調整（画像設定時のみ） */}
-              {current && (
-                <div className="mt-4 pt-3 border-t border-border space-y-3">
-                  <p className="text-[11px] font-bold text-muted-foreground">
-                    {t("settings.background.adjust")}
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {fitButton("cover", t("settings.background.fitCover"), Maximize)}
-                    {fitButton("contain", t("settings.background.fitContain"), Scan)}
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-muted-foreground">
-                      {t("settings.background.posX")}
-                    </label>
-                    <Slider
-                      value={[config.posX]}
-                      min={0}
-                      max={100}
-                      step={1}
-                      onValueChange={([v]) => updateConfig({ posX: v })}
-                      className="mt-1.5"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-muted-foreground">
-                      {t("settings.background.posY")}
-                    </label>
-                    <Slider
-                      value={[config.posY]}
-                      min={0}
-                      max={100}
-                      step={1}
-                      onValueChange={([v]) => updateConfig({ posY: v })}
-                      className="mt-1.5"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {editing && current && (
+        <BackgroundImageEditor
+          image={current}
+          initialArea={config.area}
+          onCancel={() => setEditing(false)}
+          onSave={handleSaveArea}
+        />
+      )}
     </section>
   );
 };

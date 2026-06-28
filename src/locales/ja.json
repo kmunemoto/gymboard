@@ -52,11 +52,11 @@
       "remove": "背景を削除",
       "applied": "背景を設定しました",
       "errTooLarge": "画像の設定に失敗しました。サイズの小さい画像でお試しください。",
-      "adjust": "表示範囲の調整",
-      "fitCover": "画面いっぱい",
-      "fitContain": "画像全体",
-      "posX": "横位置",
-      "posY": "縦位置"
+      "adjust": "表示範囲を調整",
+      "editorHint": "ドラッグで移動・ピンチで拡大縮小",
+      "zoom": "拡大",
+      "save": "決定",
+      "cancel": "キャンセル"
     },
     "themeColors": {
       "teal": "ティール",

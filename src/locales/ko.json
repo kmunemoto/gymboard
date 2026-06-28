@@ -53,10 +53,10 @@
       "applied": "배경을 설정했습니다",
       "errTooLarge": "이미지 설정에 실패했습니다. 더 작은 이미지로 시도해 주세요.",
       "adjust": "표시 범위 조정",
-      "fitCover": "화면 가득",
-      "fitContain": "전체 이미지",
-      "posX": "가로 위치",
-      "posY": "세로 위치"
+      "editorHint": "드래그로 이동, 핀치로 확대/축소",
+      "zoom": "확대",
+      "save": "완료",
+      "cancel": "취소"
     },
     "themeColors": {
       "teal": "틸",

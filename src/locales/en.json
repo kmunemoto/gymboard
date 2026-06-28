@@ -53,10 +53,10 @@
       "applied": "Background set",
       "errTooLarge": "Couldn't set the image. Please try a smaller one.",
       "adjust": "Adjust framing",
-      "fitCover": "Fill screen",
-      "fitContain": "Whole image",
-      "posX": "Horizontal",
-      "posY": "Vertical"
+      "editorHint": "Drag to move, pinch to zoom",
+      "zoom": "Zoom",
+      "save": "Done",
+      "cancel": "Cancel"
     },
     "themeColors": {
       "teal": "Teal",

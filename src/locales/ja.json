@@ -44,6 +44,15 @@
     "themeColorDescription": "アプリの配色（アクセント色）を選べます",
     "glassMode": "ガラス仕様",
     "glassModeDescription": "すりガラス風の半透明デザインにします（選択中のカラーで色づきます）",
+    "background": {
+      "title": "背景画像",
+      "description": "端末の写真からアプリの背景を設定できます（すりガラス風で表示）。この端末にのみ保存されます。",
+      "choose": "画像を選択",
+      "change": "画像を変更",
+      "remove": "背景を削除",
+      "applied": "背景を設定しました",
+      "errTooLarge": "画像の設定に失敗しました。サイズの小さい画像でお試しください。"
+    },
     "themeColors": {
       "teal": "ティール",
       "blue": "ブルー",

@@ -44,6 +44,15 @@
     "themeColorDescription": "选择应用的强调色",
     "glassMode": "玻璃质感",
     "glassModeDescription": "采用磨砂半透明设计（随所选颜色着色）",
+    "background": {
+      "title": "背景图片",
+      "description": "可从设备照片设置应用背景（以磨砂玻璃风格显示）。仅保存在本设备。",
+      "choose": "选择图片",
+      "change": "更换图片",
+      "remove": "删除背景",
+      "applied": "已设置背景",
+      "errTooLarge": "设置图片失败，请尝试更小的图片。"
+    },
     "themeColors": {
       "teal": "青色",
       "blue": "蓝色",

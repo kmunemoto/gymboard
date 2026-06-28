@@ -44,6 +44,15 @@
     "themeColorDescription": "Choose the app's accent color",
     "glassMode": "Glass style",
     "glassModeDescription": "Use a frosted, translucent design (tinted by the selected color)",
+    "background": {
+      "title": "Background image",
+      "description": "Set the app background from a photo on your device (shown frosted-glass style). Saved only on this device.",
+      "choose": "Choose image",
+      "change": "Change image",
+      "remove": "Remove background",
+      "applied": "Background set",
+      "errTooLarge": "Couldn't set the image. Please try a smaller one."
+    },
     "themeColors": {
       "teal": "Teal",
       "blue": "Blue",

@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import PushBootstrap from "@/components/PushBootstrap";
 
 // ルート単位でコード分割し、初期バンドルを小さく保つ。
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -34,6 +35,7 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
+          <PushBootstrap />
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />

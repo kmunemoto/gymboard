@@ -233,15 +233,26 @@ html.theme-glass [role="alertdialog"] {
    薄い暗幕(18%)を重ねて明るい写真でも文字を読みやすくする。
    ========================================================= */
 html.theme-photo {
-  /* レイヤー1: 薄い暗幕（可読性）／ レイヤー2: 選択画像（範囲は設定で調整） */
+  background-color: hsl(0 0% 100%);
+  min-height: 100vh;
+}
+/* 背景写真はスマホ画面に固定する（スクロールしても動かない＝壁紙のように）。
+   background-attachment: fixed はモバイル WebView で不安定なため、
+   position: fixed の専用レイヤー(::before)で確実にビューポートへ固定する。
+   これによりエディタで合わせた範囲（画面の縦横比基準）とも正確に一致する。
+   レイヤー1: 薄い暗幕（可読性）／ レイヤー2: 選択画像（範囲は設定で調整） */
+html.theme-photo::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     linear-gradient(hsl(220 14% 12% / 0.18), hsl(220 14% 12% / 0.18)),
     var(--app-bg-image, none);
   background-position: center, var(--app-bg-position, 50% 50%);
   background-size: cover, var(--app-bg-size, cover);
   background-repeat: no-repeat, no-repeat;
-  background-color: hsl(0 0% 100%);
-  min-height: 100vh;
 }
 /* theme-glass の body グラデーションを写真側で打ち消す（後勝ちで透過） */
 html.theme-photo body {

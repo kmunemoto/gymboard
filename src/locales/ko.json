@@ -51,7 +51,12 @@
       "change": "이미지 변경",
       "remove": "배경 삭제",
       "applied": "배경을 설정했습니다",
-      "errTooLarge": "이미지 설정에 실패했습니다. 더 작은 이미지로 시도해 주세요."
+      "errTooLarge": "이미지 설정에 실패했습니다. 더 작은 이미지로 시도해 주세요.",
+      "adjust": "표시 범위 조정",
+      "fitCover": "화면 가득",
+      "fitContain": "전체 이미지",
+      "posX": "가로 위치",
+      "posY": "세로 위치"
     },
     "themeColors": {
       "teal": "틸",

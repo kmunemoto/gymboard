@@ -51,7 +51,12 @@
       "change": "更换图片",
       "remove": "删除背景",
       "applied": "已设置背景",
-      "errTooLarge": "设置图片失败，请尝试更小的图片。"
+      "errTooLarge": "设置图片失败，请尝试更小的图片。",
+      "adjust": "显示范围调整",
+      "fitCover": "铺满屏幕",
+      "fitContain": "完整图片",
+      "posX": "水平位置",
+      "posY": "垂直位置"
     },
     "themeColors": {
       "teal": "青色",

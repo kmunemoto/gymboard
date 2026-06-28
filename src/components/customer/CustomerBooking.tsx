@@ -278,7 +278,7 @@ const CustomerBooking = () => {
         supabase.functions.invoke("send-push-notification", {
           body: {
             user_ids: [...trainerIds, user.id],
-            title: "📅 新しい予約",
+            title: "新しい予約",
             body: `${profile?.display_name || "お客様"}が${format(selectedDate!, "M月d日", { locale: ja })} ${slot.time}〜${endTime}を予約しました`,
             url: "/",
             tag: `booking-${data.id}`,

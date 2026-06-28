@@ -1,16 +1,22 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Image as ImageIcon, Trash2 } from "lucide-react";
+import { Image as ImageIcon, Trash2, Maximize, Scan } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   getStoredBackgroundImage,
   setBackgroundImageFromFile,
   clearBackgroundImage,
+  getBackgroundConfig,
+  setBackgroundConfig,
+  type BackgroundConfig,
+  type BackgroundFit,
 } from "@/lib/backgroundImage";
 
-// 設定画面用: 端末の写真をアプリ背景に設定する。お客様側・ジム側共通。
+// 設定画面用: 端末の写真をアプリ背景に設定し、表示範囲（フィット・位置）を調整する。
+// お客様側・ジム側共通。
 interface BackgroundImagePickerProps {
   variant?: "customer" | "trainer";
 }
@@ -18,6 +24,7 @@ interface BackgroundImagePickerProps {
 const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerProps) => {
   const { t } = useTranslation();
   const [current, setCurrent] = useState<string | null>(getStoredBackgroundImage());
+  const [config, setConfig] = useState<BackgroundConfig>(getBackgroundConfig());
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -27,6 +34,7 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
     try {
       await setBackgroundImageFromFile(f);
       setCurrent(getStoredBackgroundImage());
+      setConfig(getBackgroundConfig());
       toast.success(t("settings.background.applied"));
     } catch {
       toast.error(t("settings.background.errTooLarge"));
@@ -39,7 +47,31 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
   const handleClear = () => {
     clearBackgroundImage();
     setCurrent(null);
+    setConfig(getBackgroundConfig());
   };
+
+  // 設定を即時反映（実際の背景もライブ更新される＝WYSIWYG）。
+  const updateConfig = (patch: Partial<BackgroundConfig>) => {
+    const next = { ...config, ...patch };
+    setConfig(next);
+    setBackgroundConfig(next);
+  };
+
+  const fitButton = (value: BackgroundFit, label: string, Icon: typeof Maximize) => (
+    <button
+      type="button"
+      onClick={() => updateConfig({ fit: value })}
+      aria-pressed={config.fit === value}
+      className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+        config.fit === value
+          ? "bg-accent text-accent-foreground shadow-sm"
+          : "bg-secondary text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </button>
+  );
 
   return (
     <section data-variant={variant}>
@@ -61,8 +93,13 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
 
               {current && (
                 <div
-                  className="w-full h-24 rounded-xl mb-3 bg-center bg-cover border border-border"
-                  style={{ backgroundImage: `url("${current}")` }}
+                  className="w-full h-28 rounded-xl mb-3 border border-border bg-secondary"
+                  style={{
+                    backgroundImage: `url("${current}")`,
+                    backgroundSize: config.fit,
+                    backgroundPosition: `${config.posX}% ${config.posY}%`,
+                    backgroundRepeat: "no-repeat",
+                  }}
                   aria-hidden
                 />
               )}
@@ -102,6 +139,48 @@ const BackgroundImagePicker = ({ variant = "customer" }: BackgroundImagePickerPr
                   </Button>
                 )}
               </div>
+
+              {/* 表示範囲の調整（画像設定時のみ） */}
+              {current && (
+                <div className="mt-4 pt-3 border-t border-border space-y-3">
+                  <p className="text-[11px] font-bold text-muted-foreground">
+                    {t("settings.background.adjust")}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {fitButton("cover", t("settings.background.fitCover"), Maximize)}
+                    {fitButton("contain", t("settings.background.fitContain"), Scan)}
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("settings.background.posX")}
+                    </label>
+                    <Slider
+                      value={[config.posX]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([v]) => updateConfig({ posX: v })}
+                      className="mt-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("settings.background.posY")}
+                    </label>
+                    <Slider
+                      value={[config.posY]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([v]) => updateConfig({ posY: v })}
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

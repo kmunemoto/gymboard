@@ -51,7 +51,12 @@
       "change": "Change image",
       "remove": "Remove background",
       "applied": "Background set",
-      "errTooLarge": "Couldn't set the image. Please try a smaller one."
+      "errTooLarge": "Couldn't set the image. Please try a smaller one.",
+      "adjust": "Adjust framing",
+      "fitCover": "Fill screen",
+      "fitContain": "Whole image",
+      "posX": "Horizontal",
+      "posY": "Vertical"
     },
     "themeColors": {
       "teal": "Teal",

@@ -233,9 +233,13 @@ html.theme-glass [role="alertdialog"] {
    薄い暗幕(18%)を重ねて明るい写真でも文字を読みやすくする。
    ========================================================= */
 html.theme-photo {
-  background:
+  /* レイヤー1: 薄い暗幕（可読性）／ レイヤー2: 選択画像（範囲は設定で調整） */
+  background-image:
     linear-gradient(hsl(220 14% 12% / 0.18), hsl(220 14% 12% / 0.18)),
-    var(--app-bg-image, none) center / cover no-repeat;
+    var(--app-bg-image, none);
+  background-position: center, var(--app-bg-position, 50% 50%);
+  background-size: cover, var(--app-bg-size, cover);
+  background-repeat: no-repeat, no-repeat;
   background-color: hsl(0 0% 100%);
   min-height: 100vh;
 }

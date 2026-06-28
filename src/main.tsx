@@ -7,10 +7,13 @@ import App from "./App.tsx";
 import "./index.css";
 import "./lib/i18n";
 import { initThemeColor } from "./lib/themeColor";
+import { initBackgroundImage } from "./lib/backgroundImage";
 import { clearAppBadge } from "./lib/appBadge";
 
 // 保存済みのテーマカラーを起動時に適用（未選択なら既定のまま）
 initThemeColor();
+// 保存済みの背景画像を起動時に適用（未設定なら何もしない）
+initBackgroundImage();
 
 // Initialize native (Capacitor) integrations — no-op on web
 if (Capacitor.isNativePlatform()) {

@@ -44,6 +44,15 @@
     "themeColorDescription": "選擇應用程式的強調色",
     "glassMode": "玻璃質感",
     "glassModeDescription": "採用霧面半透明設計（隨所選顏色著色）",
+    "background": {
+      "title": "背景圖片",
+      "description": "可從裝置照片設定應用程式背景（以霧面玻璃風格顯示）。僅儲存在本裝置。",
+      "choose": "選擇圖片",
+      "change": "更換圖片",
+      "remove": "刪除背景",
+      "applied": "已設定背景",
+      "errTooLarge": "設定圖片失敗，請改用較小的圖片。"
+    },
     "themeColors": {
       "teal": "青色",
       "blue": "藍色",

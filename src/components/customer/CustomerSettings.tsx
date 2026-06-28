@@ -20,6 +20,7 @@ import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
+import BackgroundImagePicker from "@/components/BackgroundImagePicker";
 import { useTranslation } from "react-i18next";
 
 import { useTenant } from "@/hooks/useTenant";
@@ -250,6 +251,9 @@ const CustomerSettings = () => {
 
       {/* Theme color */}
       <ThemeColorSwitcher variant="customer" />
+
+      {/* Background image */}
+      <BackgroundImagePicker variant="customer" />
 
       {/* Push Notifications */}
       <PushNotificationSection />

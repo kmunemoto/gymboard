@@ -59,13 +59,30 @@ export function getStoredGlassMode(): boolean {
   }
 }
 
+// 背景写真が有効かどうか。写真背景はガラス仕様のフロスト面を流用するため、
+// 写真が有効な間は theme-glass も付与する（backgroundImage.ts から通知される）。
+let backgroundPhotoActive = false;
+
+// theme-glass / theme-photo クラスを、ガラス設定と背景写真の状態から再計算する。
+function reconcileFrostClasses(): void {
+  const root = document.documentElement;
+  root.classList.toggle("theme-glass", getStoredGlassMode() || backgroundPhotoActive);
+  root.classList.toggle("theme-photo", backgroundPhotoActive);
+}
+
+// 背景写真の有効/無効を通知する（backgroundImage.ts から呼ぶ）。
+export function setBackgroundPhotoActive(active: boolean): void {
+  backgroundPhotoActive = active;
+  reconcileFrostClasses();
+}
+
 export function applyGlassMode(on: boolean): void {
-  document.documentElement.classList.toggle("theme-glass", on);
   try {
     localStorage.setItem(GLASS_KEY, on ? "1" : "0");
   } catch {
     // ignore
   }
+  reconcileFrostClasses();
 }
 
 export function applyThemeColor(id: string): void {
@@ -87,7 +104,5 @@ export function initThemeColor(): void {
     const root = document.documentElement;
     Object.entries(preset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
   }
-  if (getStoredGlassMode()) {
-    document.documentElement.classList.add("theme-glass");
-  }
+  reconcileFrostClasses();
 }

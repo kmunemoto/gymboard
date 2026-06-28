@@ -225,6 +225,26 @@ html.theme-glass [role="alertdialog"] {
   border: 1px solid hsl(0 0% 100% / 0.25) !important;
 }
 
+/* =========================================================
+   写真背景（すりガラス併用）。設定でユーザーが選んだ画像を
+   アプリ全体の背景にする。フロスト面はガラス仕様(theme-glass)を流用し、
+   写真が有効な間は theme-glass も付与される（themeColor.ts が制御）。
+   画像は --app-bg-image に data URL で設定される。
+   薄い暗幕(18%)を重ねて明るい写真でも文字を読みやすくする。
+   ========================================================= */
+html.theme-photo {
+  background:
+    linear-gradient(hsl(220 14% 12% / 0.18), hsl(220 14% 12% / 0.18)),
+    var(--app-bg-image, none) center / cover no-repeat;
+  background-color: hsl(0 0% 100%);
+  min-height: 100vh;
+}
+/* theme-glass の body グラデーションを写真側で打ち消す（後勝ちで透過） */
+html.theme-photo body {
+  background: transparent !important;
+  min-height: 100vh;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

@@ -44,6 +44,15 @@
     "themeColorDescription": "앱의 강조 색상을 선택합니다",
     "glassMode": "글래스 스타일",
     "glassModeDescription": "반투명 글래스 느낌의 디자인으로 전환합니다 (선택한 색상으로 물듭니다)",
+    "background": {
+      "title": "배경 이미지",
+      "description": "기기의 사진으로 앱 배경을 설정할 수 있습니다 (글래스 느낌으로 표시). 이 기기에만 저장됩니다.",
+      "choose": "이미지 선택",
+      "change": "이미지 변경",
+      "remove": "배경 삭제",
+      "applied": "배경을 설정했습니다",
+      "errTooLarge": "이미지 설정에 실패했습니다. 더 작은 이미지로 시도해 주세요."
+    },
     "themeColors": {
       "teal": "틸",
       "blue": "블루",

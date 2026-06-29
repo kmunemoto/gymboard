@@ -6,13 +6,17 @@ REM ============================================================
 setlocal
 
 echo [1/5] git pull
+REM npm install が書き換える package-lock.json のローカル変更で pull が中断するのを防ぐ。
+REM （このファイルは npm install で再生成されるため破棄して問題ない）
+git checkout -- package-lock.json 2>nul
 git pull || goto :err
 
 echo [2/5] npm install (iOS ビルドと同じ依存。--legacy-peer-deps 必須)
 call npm install --legacy-peer-deps || goto :err
 REM 一部の依存は package.json に含まれない optional peer のため明示インストール。
 REM これが無いと npm run build が @mediapipe/pose 等で失敗し、dist が更新されない。
-call npm install @mediapipe/pose @tensorflow/tfjs-backend-webgpu @tensorflow/tfjs-backend-webgl @tensorflow/tfjs-core @tensorflow/tfjs-converter --legacy-peer-deps || goto :err
+REM --no-save: package.json / package-lock.json を汚さない（次回の git pull が中断しないように）。
+call npm install @mediapipe/pose @tensorflow/tfjs-backend-webgpu @tensorflow/tfjs-backend-webgl @tensorflow/tfjs-core @tensorflow/tfjs-converter --no-save --legacy-peer-deps || goto :err
 
 echo [3/5] npm run build (web) ... dist/ を最新化（失敗したらここで停止）
 call npm run build || goto :err

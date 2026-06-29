@@ -8,10 +8,13 @@ setlocal
 echo [1/5] git pull
 git pull || goto :err
 
-echo [2/5] npm install
-call npm install || goto :err
+echo [2/5] npm install (iOS ビルドと同じ依存。--legacy-peer-deps 必須)
+call npm install --legacy-peer-deps || goto :err
+REM 一部の依存は package.json に含まれない optional peer のため明示インストール。
+REM これが無いと npm run build が @mediapipe/pose 等で失敗し、dist が更新されない。
+call npm install @mediapipe/pose @tensorflow/tfjs-backend-webgpu @tensorflow/tfjs-backend-webgl @tensorflow/tfjs-core @tensorflow/tfjs-converter --legacy-peer-deps || goto :err
 
-echo [3/5] npm run build (web)
+echo [3/5] npm run build (web) ... dist/ を最新化（失敗したらここで停止）
 call npm run build || goto :err
 
 echo [4/5] npx cap sync android

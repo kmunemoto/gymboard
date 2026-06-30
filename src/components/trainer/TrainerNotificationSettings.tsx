@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
-import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_ENABLED } from "@/lib/featureFlags";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_TRAINER_ENABLED } from "@/lib/featureFlags";
 
 const TrainerNotificationSettings = () => {
   const { t } = useTranslation();
@@ -182,7 +182,7 @@ const TrainerNotificationSettings = () => {
 
       <div className="space-y-4 max-w-lg">
         {/* Googleカレンダー連携セクション。表示可否は featureFlags.ts で一元管理。 */}
-        {GOOGLE_CALENDAR_ENABLED && (
+        {GOOGLE_CALENDAR_TRAINER_ENABLED && (
           <Card>
             <CardContent className="p-5">
               <div className="flex items-start gap-4">

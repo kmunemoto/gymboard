@@ -8,8 +8,8 @@ export const MONTHLY_REPORT_ENABLED = false; // 月次レポート画面
 export const LINE_INTEGRATION_ENABLED = true;  // LINE連携セクション
 // Googleカレンダー連携の表示フラグ。Salute プロジェクトの OAuth クライアントを流用。
 //  - ジム（トレーナー）設定: 自分の Google アカウントを連携する用途。
-//  - お客様向け: 全テナントで表示。calendar.events は機密スコープのため、実際の連携可否は
-//    OAuth 同意画面の公開・審査状況（未審査時はテストユーザーのみ）に依存する。
+//  - お客様向け: 全テナントで表示。OAuth 同意画面は審査通過済みのため、一般のお客様も
+//    警告なしで連携できる（calendar.events は機密スコープ）。
 export const GOOGLE_CALENDAR_TRAINER_ENABLED = true;  // ジム（トレーナー）設定の連携セクション
 export const GOOGLE_CALENDAR_CUSTOMER_ENABLED = true; // お客様設定の連携セクション（全テナントで表示）
 export const APPLE_CONNECTION_ENABLED = false; // Apple連携セクション（App Store審査中）

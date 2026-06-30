@@ -6,11 +6,12 @@ export const MONTHLY_REPORT_ENABLED = false; // 月次レポート画面
 // ここで一元管理する。外部設定が整い次第、対象フラグを true に戻すだけで再有効化できる。
 // 連携済みユーザーのデータ・通知ロジックには影響しない。
 export const LINE_INTEGRATION_ENABLED = true;  // LINE連携セクション
-// Googleカレンダー連携は Salute に合わせて表示範囲を分離する。
-//  - ジム（トレーナー）設定: 自分の Google アカウントを連携する用途。Salute 同様に表示。
-//  - お客様向け: Google OAuth 審査通過まで非表示（審査中）。審査後 true に戻すと再表示される。
-export const GOOGLE_CALENDAR_TRAINER_ENABLED = true;   // ジム（トレーナー）設定の連携セクション（Salute 同様に表示）
-export const GOOGLE_CALENDAR_CUSTOMER_ENABLED = false; // お客様設定の連携セクション（Google OAuth審査中のため非表示）
+// Googleカレンダー連携の表示フラグ。Salute プロジェクトの OAuth クライアントを流用。
+//  - ジム（トレーナー）設定: 自分の Google アカウントを連携する用途。
+//  - お客様向け: 全テナントで表示。calendar.events は機密スコープのため、実際の連携可否は
+//    OAuth 同意画面の公開・審査状況（未審査時はテストユーザーのみ）に依存する。
+export const GOOGLE_CALENDAR_TRAINER_ENABLED = true;  // ジム（トレーナー）設定の連携セクション
+export const GOOGLE_CALENDAR_CUSTOMER_ENABLED = true; // お客様設定の連携セクション（全テナントで表示）
 export const APPLE_CONNECTION_ENABLED = false; // Apple連携セクション（App Store審査中）
 
 // キャンセル待ち（満枠スロットへの登録）。

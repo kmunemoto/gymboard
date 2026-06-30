@@ -20,7 +20,7 @@ import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import BackgroundImagePicker from "@/components/BackgroundImagePicker";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
-import { GOOGLE_CALENDAR_ENABLED } from "@/lib/featureFlags";
+import { GOOGLE_CALENDAR_TRAINER_ENABLED } from "@/lib/featureFlags";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -306,7 +306,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <Separator />
 
       {/* Googleカレンダー連携セクション。表示可否は featureFlags.ts で一元管理。 */}
-      {GOOGLE_CALENDAR_ENABLED && (
+      {GOOGLE_CALENDAR_TRAINER_ENABLED && (
         <section className="space-y-3">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.external")}</h3>
 

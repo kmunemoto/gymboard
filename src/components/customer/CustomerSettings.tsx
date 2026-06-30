@@ -26,7 +26,7 @@ import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import PushNotificationSection from "./PushNotificationSection";
-import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_ENABLED, APPLE_CONNECTION_ENABLED } from "@/lib/featureFlags";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_CUSTOMER_ENABLED, APPLE_CONNECTION_ENABLED } from "@/lib/featureFlags";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();
@@ -311,7 +311,7 @@ const CustomerSettings = () => {
       {/*
         Googleカレンダー連携セクション（顧客向け）。表示可否は featureFlags.ts で一元管理。
       */}
-      {GOOGLE_CALENDAR_ENABLED && (
+      {GOOGLE_CALENDAR_CUSTOMER_ENABLED && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5" />

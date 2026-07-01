@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, Trash2, Image, User, Save, LogOut, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, Settings } from "lucide-react";
+import { Upload, Trash2, Image, User, Save, LogOut, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerPlanManager from "./TrainerPlanManager";
@@ -18,9 +18,7 @@ import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import BackgroundImagePicker from "@/components/BackgroundImagePicker";
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
-import { GOOGLE_CALENDAR_ENABLED } from "@/lib/featureFlags";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -30,7 +28,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const { t } = useTranslation();
   const { tenant, refetch: refetchTenant } = useTenant();
   const { user } = useAuth();
-  const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
+  const { profile } = useProfile();
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
@@ -39,55 +37,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
 
 
-  const isLineLinked = !!profile?.line_user_id;
-
-  // Google Calendar state
-  const [gcalLinked, setGcalLinked] = useState(false);
-  const [gcalLoading, setGcalLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
   }, [profile]);
-
-  const checkGcalStatus = async () => {
-    if (!user) return;
-    setGcalLoading(true);
-    const { data } = await supabase
-      .from("google_calendar_tokens" as any)
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    setGcalLinked(!!data);
-    setGcalLoading(false);
-  };
-
-  useEffect(() => {
-    checkGcalStatus();
-  }, [user]);
-
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === "line-link-result") {
-        if (e.data.success) {
-          toast.success(t("settings.line.linkSuccess"));
-          refetchProfile();
-        } else {
-          toast.error(t("settings.line.linkFailed"));
-        }
-      }
-      if (e.data?.type === "google-calendar-result") {
-        if (e.data.success) {
-          toast.success(t("settings.gcal.linkSuccess"));
-          setGcalLinked(true);
-        } else {
-          toast.error(t("settings.gcal.linkFailed"));
-        }
-      }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [refetchProfile, t]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -148,53 +100,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       setUploading(false);
     }
   };
-
-  const handleLineLink = async () => {
-    if (!user) return;
-    const { data, error } = await supabase.functions.invoke("line-auth-url", { body: {} });
-    if (error || !data?.url) {
-      toast.error(t("settings.line.startFailed"));
-      return;
-    }
-    window.open(data.url, "line-link", "width=500,height=700");
-  };
-
-
-  const handleLineUnlink = async () => {
-    if (!user) return;
-    const { error } = await supabase.from("profiles").update({ line_user_id: null }).eq("user_id", user.id);
-    if (error) toast.error(t("settings.line.unlinkFailed"));
-    else { toast.success(t("settings.line.unlinked")); refetchProfile(); }
-  };
-
-  const handleGcalLink = async () => {
-    if (!user) return;
-    const popup = window.open("about:blank", "gcal-link", "width=500,height=700");
-    try {
-      const { data, error } = await supabase.functions.invoke("google-calendar-auth-url", { body: { user_id: user.id } });
-      if (error || !data?.url) { popup?.close(); toast.error(t("settings.gcal.authUrlFailed")); return; }
-      if (popup) popup.location.href = data.url;
-      else window.location.href = data.url;
-    } catch (e) { popup?.close(); toast.error(t("common.errorGeneric")); }
-  };
-
-  const handleGcalUnlink = async () => {
-    if (!user) return;
-    const { error } = await supabase.from("google_calendar_tokens" as any).delete().eq("user_id", user.id);
-    if (error) toast.error(t("settings.gcal.unlinkFailed"));
-    else { toast.success(t("settings.gcal.unlinked")); setGcalLinked(false); }
-  };
-
-  const handleSyncAll = async () => {
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-calendar-sync", { body: { action: "sync_all" } });
-      if (error) throw error;
-      toast.success(t("settings.gcal.syncDone", { count: data?.synced || 0 }));
-    } catch (e) { toast.error(t("settings.gcal.syncFailed")); }
-    setSyncing(false);
-  };
-
 
 
 
@@ -304,79 +209,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       </section>
 
       <Separator />
-
-      {/* Googleカレンダー連携セクション。表示可否は featureFlags.ts で一元管理。 */}
-      {GOOGLE_CALENDAR_ENABLED && (
-        <section className="space-y-3">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.external")}</h3>
-
-          {/* Googleカレンダー */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4 text-blue-500" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-sm mb-0.5">{t("settings.gcal.section")}</h3>
-                  <p className="text-xs text-muted-foreground mb-2">{t("settings.gcal.trainerDescription")}</p>
-                  {gcalLoading ? (
-                    <DumbbellLoader className="w-4 h-4 text-muted-foreground" />
-                  ) : gcalLinked ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-blue-500">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("settings.gcal.linkedShort")}
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button size="sm" variant="outline" onClick={handleSyncAll} disabled={syncing}>
-                          {syncing ? <DumbbellLoader className="w-3.5 h-3.5 mr-1" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
-                          {t("settings.gcal.syncAllShort")}
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={handleGcalUnlink}>
-                          <Unlink className="w-3.5 h-3.5 mr-1" /> {t("settings.gcal.unlinkShort")}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button size="sm" onClick={handleGcalLink} className="bg-blue-500 hover:bg-blue-600 text-white">
-                      <Calendar className="w-4 h-4 mr-1" /> {t("settings.gcal.linkShort")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* LINE */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#06C755]/10 flex items-center justify-center shrink-0">
-                  <MessageCircle className="w-4 h-4 text-[#06C755]" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-sm mb-0.5">{t("settings.line.section")}</h3>
-                  <p className="text-xs text-muted-foreground mb-2">{t("settings.line.trainerShortDescription")}</p>
-                  {isLineLinked ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#06C755]">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("settings.gcal.linkedShort")}
-                      </div>
-                      <Button size="sm" variant="outline" onClick={handleLineUnlink}>
-                        <Unlink className="w-3.5 h-3.5 mr-1" /> {t("settings.gcal.unlinkShort")}
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button size="sm" onClick={handleLineLink} className="bg-[#06C755] hover:bg-[#05b34c] text-white">
-                      <MessageCircle className="w-4 h-4 mr-1" /> {t("settings.gcal.linkShort")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      )}
 
       {/* === 使い方ガイド === */}
       <section className="space-y-3">

@@ -50,20 +50,30 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (profile?.display_name) setDisplayName(profile.display_name);
   }, [profile]);
 
-  const checkGcalStatus = async () => {
+  const checkGcalStatus = async (silent = false) => {
     if (!user) return;
-    setGcalLoading(true);
+    if (!silent) setGcalLoading(true);
     const { data } = await supabase
       .from("google_calendar_tokens" as any)
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
     setGcalLinked(!!data);
-    setGcalLoading(false);
+    if (!silent) setGcalLoading(false);
   };
 
   useEffect(() => {
     checkGcalStatus();
+    // 画面復帰時（OAuthタブから戻った時など）に連携状態を静かに再取得する
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkGcalStatus(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [user]);
 
   useEffect(() => {

@@ -82,3 +82,84 @@ export function wrapEmailHtml(html: string): string {
 
   return out;
 }
+
+const MAX_ASCII_HTML_LINE_CHARS = 48;
+const ENTITY_RE = /^&(?:#\d+|#x[0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]+);/;
+
+function appendAsciiHtmlToken(out: string, token: string, lineChars: number) {
+  if (lineChars > 0 && lineChars + token.length > MAX_ASCII_HTML_LINE_CHARS) {
+    out += "<!--\n-->";
+    lineChars = 3; // 新しい物理行の先頭 "-->" の分
+  }
+
+  out += token;
+  lineChars += token.length;
+  return { out, lineChars };
+}
+
+/**
+ * HTML の表示テキストだけを ASCII 安全な数値文字参照へ変換する。
+ *
+ * 予約確認メールで「・」「▼」など一部記号が iOS Mail 上で U+FFFD に
+ * 化けるケースが残っていたため、HTML パートはタグ/属性を壊さず、テキスト
+ * ノードだけを ASCII 化する。見た目はメールクライアント側で通常の日本語に
+ * デコードされるが、送信経路がどこで折り返しても UTF-8 バイト列は分断されない。
+ */
+export function makeEmailHtmlAsciiSafe(html: string): string {
+  let out = "";
+  let lineChars = 0;
+  let insideTag = false;
+
+  for (let i = 0; i < html.length; ) {
+    const codePoint = html.codePointAt(i)!;
+    const ch = String.fromCodePoint(codePoint);
+    const width = ch.length;
+
+    if (ch === "\n") {
+      out += "\n";
+      lineChars = 0;
+      i += width;
+      continue;
+    }
+
+    if (insideTag) {
+      out += ch;
+      lineChars += 1;
+      if (ch === ">") insideTag = false;
+      i += width;
+      continue;
+    }
+
+    if (ch === "<") {
+      insideTag = true;
+      out += ch;
+      lineChars += 1;
+      i += width;
+      continue;
+    }
+
+    let token: string;
+    if (ch === "&") {
+      const entity = html.slice(i).match(ENTITY_RE)?.[0];
+      if (entity) {
+        token = entity;
+        i += entity.length;
+      } else {
+        token = "&amp;";
+        i += width;
+      }
+    } else if (codePoint > 0x7f) {
+      token = `&#${codePoint};`;
+      i += width;
+    } else {
+      token = ch;
+      i += width;
+    }
+
+    const next = appendAsciiHtmlToken(out, token, lineChars);
+    out = next.out;
+    lineChars = next.lineChars;
+  }
+
+  return out;
+}

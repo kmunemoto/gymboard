@@ -524,13 +524,12 @@ const CustomerBooking = () => {
                   fromDate={startOfDay(getJSTNow())}
                   toDate={addMonths(startOfDay(getJSTNow()), 1)}
                   disabled={(date) => {
-                    // `date` is in browser local TZ; build the JST 20:15 instant
-                    // for that calendar day using a JST-anchored ISO.
                     const yyyyMMdd = format(date, "yyyy-MM-dd");
                     // [6月/7月の棲み分け対応] Salute御所南×2026年6月は選択不可
                     if (isSaluteJuneLocked(yyyyMMdd)) return true;
-                    const latestSlot = new Date(`${yyyyMMdd}T20:15:00+09:00`);
-                    return latestSlot.getTime() - Date.now() < 24 * 60 * 60 * 1000;
+                    // 予約日の0:00 JST を過ぎたら（＝当日以降）締切。前日までは終日予約可。
+                    // スロット側の tooSoon 判定（isBookingDayClosed）と同一基準に揃える。
+                    return isBookingDayClosed(yyyyMMdd);
                   }}
                   className="pointer-events-auto"
                   components={{

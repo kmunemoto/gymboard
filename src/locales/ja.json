@@ -321,7 +321,7 @@
   "booking": {
     "title": "予約する",
     "selectDateTimePrompt": "ご希望の日時を選択してください",
-    "advanceNotice": "※ご予約は24時間前までにお願いいたします",
+    "advanceNotice": "※ご予約は前日までにお願いいたします（当日のご予約はできません）",
     "currentPlan": "現在のプラン：{{plan}}",
     "usagePeriod": "利用期間：{{start}}〜{{end}}",
     "expired": "（期限切れ）",

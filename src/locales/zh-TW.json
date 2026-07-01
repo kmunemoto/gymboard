@@ -321,7 +321,7 @@
   "booking": {
     "title": "預約",
     "selectDateTimePrompt": "請選擇您希望的日期與時間",
-    "advanceNotice": "※ 請於24小時前完成預約",
+    "advanceNotice": "※ 請於前一天之前預約（不可當天預約）",
     "currentPlan": "目前方案:{{plan}}",
     "usagePeriod": "使用期間:{{start}}〜{{end}}",
     "expired": "(已逾期)",

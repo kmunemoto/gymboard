@@ -321,7 +321,7 @@
   "booking": {
     "title": "预约",
     "selectDateTimePrompt": "请选择您希望的日期和时间",
-    "advanceNotice": "※ 请于24小时前进行预约",
+    "advanceNotice": "※ 请于前一天之前预约（不可当天预约）",
     "currentPlan": "当前套餐:{{plan}}",
     "usagePeriod": "使用期间:{{start}}〜{{end}}",
     "expired": "(已过期)",

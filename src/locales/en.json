@@ -321,7 +321,7 @@
   "booking": {
     "title": "Book a Session",
     "selectDateTimePrompt": "Please choose your preferred date and time",
-    "advanceNotice": "* Bookings must be made at least 24 hours in advance",
+    "advanceNotice": "* Please book by the day before (same-day booking is not available)",
     "currentPlan": "Current plan: {{plan}}",
     "usagePeriod": "Usage period: {{start}} – {{end}}",
     "expired": "(Expired)",

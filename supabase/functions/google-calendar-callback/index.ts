@@ -6,6 +6,75 @@ const corsHeaders = {
 };
 
 /**
+ * OAuth コールバックの結果画面。
+ * - モバイルでも確実に HTML として描画されるよう、DOCTYPE / charset / viewport を持つ
+ *   完全なドキュメントを返す（簡易 HTML だとソースがそのまま表示されることがあるため）。
+ * - opener があれば postMessage で結果を通知し、可能なら自動で閉じる。
+ * - モバイルでは window.close() が効かないため、閉じられなくても分かるよう完了文言を表示する。
+ */
+function resultPage(success: boolean, title: string, message: string): Response {
+  const color = success ? "#3b82f6" : "#ef4444";
+  const bg = success ? "rgba(59,130,246,0.15)" : "rgba(239,68,68,0.15)";
+  const iconPath = success
+    ? `<polyline points="20 6 9 17 4 12"></polyline>`
+    : `<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Googleカレンダー連携</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+    background: #0b0b0f;
+    color: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  }
+  .card { max-width: 340px; text-align: center; }
+  .icon {
+    width: 56px; height: 56px; margin: 0 auto 16px;
+    border-radius: 9999px;
+    display: flex; align-items: center; justify-content: center;
+    background: ${bg}; color: ${color};
+  }
+  h1 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+  p { font-size: 14px; line-height: 1.6; color: #a1a1aa; margin: 0; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconPath}</svg>
+    </div>
+    <h1>${title}</h1>
+    <p>${message}</p>
+  </div>
+  <script>
+    try {
+      if (window.opener) {
+        window.opener.postMessage({ type: 'google-calendar-result', success: ${success} }, '*');
+      }
+    } catch (e) {}
+    setTimeout(function () { try { window.close(); } catch (e) {} }, 400);
+  </script>
+</body>
+</html>`;
+
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+    status: 200,
+  });
+}
+
+/**
  * Look up an oauth_states row by nonce, verify it belongs to the expected provider,
  * is not expired, and not previously consumed. Marks the row as used atomically.
  * Returns the bound user_id, or null if invalid.
@@ -45,10 +114,7 @@ Deno.serve(async (req) => {
   const error = url.searchParams.get("error");
 
   if (error || !code || !state) {
-    return new Response(
-      `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:false},'*');window.close();</script><p>認証に失敗しました。このウィンドウを閉じてください。</p></body></html>`,
-      { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-    );
+    return resultPage(false, "認証に失敗しました", "お手数ですが、この画面を閉じてアプリからもう一度お試しください。");
   }
 
   try {
@@ -63,10 +129,7 @@ Deno.serve(async (req) => {
     const userId = await consumeOauthState(supabase, state, "google_calendar");
     if (!userId) {
       console.warn("Invalid or expired google_calendar oauth state");
-      return new Response(
-        `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:false},'*');window.close();</script><p>セッションが無効です。もう一度お試しください。</p></body></html>`,
-        { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-      );
+      return resultPage(false, "セッションが無効です", "お手数ですが、この画面を閉じてアプリからもう一度連携してください。");
     }
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-calendar-callback`;
@@ -106,15 +169,9 @@ Deno.serve(async (req) => {
       throw new Error("Failed to save tokens");
     }
 
-    return new Response(
-      `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:true},'*');window.close();</script><p>Googleカレンダー連携が完了しました！このウィンドウを閉じてください。</p></body></html>`,
-      { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-    );
+    return resultPage(true, "Googleカレンダー連携が完了しました", "この画面を閉じて、アプリに戻ってください。");
   } catch (e) {
     console.error("google-calendar-callback error:", e);
-    return new Response(
-      `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:false},'*');window.close();</script><p>エラーが発生しました。このウィンドウを閉じてください。</p></body></html>`,
-      { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-    );
+    return resultPage(false, "エラーが発生しました", "お手数ですが、この画面を閉じてアプリからもう一度お試しください。");
   }
 });

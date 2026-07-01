@@ -45,6 +45,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [gcalLinked, setGcalLinked] = useState(false);
   const [gcalLoading, setGcalLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const gcalLinkedRef = useRef(false);
 
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
@@ -58,7 +59,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
-    setGcalLinked(!!data);
+    const nowLinked = !!data;
+    // 連携が新たに完了した瞬間（未連携→連携済み）にトースト表示
+    if (silent && nowLinked && !gcalLinkedRef.current) {
+      toast.success(t("settings.gcal.linkSuccess"));
+    }
+    gcalLinkedRef.current = nowLinked;
+    setGcalLinked(nowLinked);
     if (!silent) setGcalLoading(false);
   };
 
@@ -192,7 +199,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (!user) return;
     const { error } = await supabase.from("google_calendar_tokens" as any).delete().eq("user_id", user.id);
     if (error) toast.error(t("settings.gcal.unlinkFailed"));
-    else { toast.success(t("settings.gcal.unlinked")); setGcalLinked(false); }
+    else { toast.success(t("settings.gcal.unlinked")); setGcalLinked(false); gcalLinkedRef.current = false; }
   };
 
   const handleSyncAll = async () => {

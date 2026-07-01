@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell, BellOff, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, AlertCircle, Check } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +34,7 @@ const TrainerNotificationSettings = () => {
   const [gcalLinked, setGcalLinked] = useState(false);
   const [gcalLoading, setGcalLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const gcalLinkedRef = useRef(false);
 
   const checkGcalStatus = async (silent = false) => {
     if (!user) return;
@@ -43,7 +44,13 @@ const TrainerNotificationSettings = () => {
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
-    setGcalLinked(!!data);
+    const nowLinked = !!data;
+    // 連携が新たに完了した瞬間（未連携→連携済み）にトースト表示
+    if (silent && nowLinked && !gcalLinkedRef.current) {
+      toast.success(t("settings.gcal.linkSuccess"));
+    }
+    gcalLinkedRef.current = nowLinked;
+    setGcalLinked(nowLinked);
     if (!silent) setGcalLoading(false);
   };
 
@@ -152,6 +159,7 @@ const TrainerNotificationSettings = () => {
     } else {
       toast.success(t("settings.gcal.unlinked"));
       setGcalLinked(false);
+      gcalLinkedRef.current = false;
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Settings, User, Pencil, MessageCircle, CheckCircle2, Unlink, LogOut, History, Clock, Dumbbell, Award, Bone, Smartphone, Calendar, FileText, Shield as ShieldIcon, ChevronRight, Gamepad2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,7 +26,7 @@ import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import PushNotificationSection from "./PushNotificationSection";
-import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_ENABLED, APPLE_CONNECTION_ENABLED } from "@/lib/featureFlags";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_CUSTOMER_ENABLED, APPLE_CONNECTION_ENABLED } from "@/lib/featureFlags";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();
@@ -54,6 +54,7 @@ const CustomerSettings = () => {
   // Google Calendar state
   const [gcalLinked, setGcalLinked] = useState(false);
   const [gcalLoading, setGcalLoading] = useState(true);
+  const gcalLinkedRef = useRef(false);
 
   useEffect(() => {
     setDisplayName(profile?.display_name || "");
@@ -61,21 +62,37 @@ const CustomerSettings = () => {
 
   // Check Google Calendar link status
   useEffect(() => {
-    const checkGcalStatus = async () => {
+    const checkGcalStatus = async (silent = false) => {
       if (!user) {
-        setGcalLoading(false);
+        if (!silent) setGcalLoading(false);
         return;
       }
-      setGcalLoading(true);
+      if (!silent) setGcalLoading(true);
       const { data } = await supabase
         .from("google_calendar_tokens" as any)
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
-      setGcalLinked(!!data);
-      setGcalLoading(false);
+      const nowLinked = !!data;
+      // 連携が新たに完了した瞬間（未連携→連携済み）にトースト表示
+      if (silent && nowLinked && !gcalLinkedRef.current) {
+        toast.success(t("settings.gcal.linkSuccess"));
+      }
+      gcalLinkedRef.current = nowLinked;
+      setGcalLinked(nowLinked);
+      if (!silent) setGcalLoading(false);
     };
     checkGcalStatus();
+    // 画面復帰時（OAuthタブから戻った時など）に連携状態を静かに再取得する
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkGcalStatus(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [user]);
 
   // Listen for Google Calendar callback
@@ -129,6 +146,7 @@ const CustomerSettings = () => {
     } else {
       toast.success(t("settings.gcal.unlinked"));
       setGcalLinked(false);
+      gcalLinkedRef.current = false;
     }
   };
 
@@ -311,7 +329,7 @@ const CustomerSettings = () => {
       {/*
         Googleカレンダー連携セクション（顧客向け）。表示可否は featureFlags.ts で一元管理。
       */}
-      {GOOGLE_CALENDAR_ENABLED && (
+      {GOOGLE_CALENDAR_CUSTOMER_ENABLED && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell, BellOff, BellRing, Settings, Shield, MessageCircle, CheckCircle2, Unlink, Calendar, RefreshCw, AlertCircle, Check } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
-import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_ENABLED } from "@/lib/featureFlags";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_TRAINER_ENABLED } from "@/lib/featureFlags";
 
 const TrainerNotificationSettings = () => {
   const { t } = useTranslation();
@@ -34,21 +34,38 @@ const TrainerNotificationSettings = () => {
   const [gcalLinked, setGcalLinked] = useState(false);
   const [gcalLoading, setGcalLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const gcalLinkedRef = useRef(false);
 
-  const checkGcalStatus = async () => {
+  const checkGcalStatus = async (silent = false) => {
     if (!user) return;
-    setGcalLoading(true);
+    if (!silent) setGcalLoading(true);
     const { data } = await supabase
       .from("google_calendar_tokens" as any)
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
-    setGcalLinked(!!data);
-    setGcalLoading(false);
+    const nowLinked = !!data;
+    // 連携が新たに完了した瞬間（未連携→連携済み）にトースト表示
+    if (silent && nowLinked && !gcalLinkedRef.current) {
+      toast.success(t("settings.gcal.linkSuccess"));
+    }
+    gcalLinkedRef.current = nowLinked;
+    setGcalLinked(nowLinked);
+    if (!silent) setGcalLoading(false);
   };
 
   useEffect(() => {
     checkGcalStatus();
+    // 画面復帰時（OAuthタブから戻った時など）に連携状態を静かに再取得する
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkGcalStatus(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [user]);
 
 
@@ -142,6 +159,7 @@ const TrainerNotificationSettings = () => {
     } else {
       toast.success(t("settings.gcal.unlinked"));
       setGcalLinked(false);
+      gcalLinkedRef.current = false;
     }
   };
 
@@ -182,7 +200,7 @@ const TrainerNotificationSettings = () => {
 
       <div className="space-y-4 max-w-lg">
         {/* Googleカレンダー連携セクション。表示可否は featureFlags.ts で一元管理。 */}
-        {GOOGLE_CALENDAR_ENABLED && (
+        {GOOGLE_CALENDAR_TRAINER_ENABLED && (
           <Card>
             <CardContent className="p-5">
               <div className="flex items-start gap-4">

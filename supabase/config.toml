@@ -1,6 +1,14 @@
 project_id = "rrbfwitprzuevzytykrq"
 
 [functions]
+  # Googleカレンダー連携。ブラウザ/リダイレクトから叩かれる callback は verify_jwt=false 必須。
+  # auth-url / sync は関数内で verifyCaller により認証するため false で問題ない。
+  [functions.google-calendar-auth-url]
+    verify_jwt = false
+  [functions.google-calendar-callback]
+    verify_jwt = false
+  [functions.google-calendar-sync]
+    verify_jwt = false
   [functions.send-push-notification]
     verify_jwt = false
   [functions.auth-email-hook]

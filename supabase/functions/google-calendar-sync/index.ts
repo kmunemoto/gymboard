@@ -8,6 +8,73 @@ const corsHeaders = {
 
 const ALLOWED_ACTIONS = new Set(["create", "delete", "sync_all"]);
 
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * リクエスト対象のテナントIDを判定する。
+ * - sync_all: 呼び出したトレーナー自身が所属するテナント。
+ * - create / delete: 予約行(bookings / trial_bookings)の tenant_id。
+ */
+async function resolveTenantId(
+  supabase: ReturnType<typeof createClient>,
+  action: string,
+  booking_id: string | undefined,
+  is_trial: boolean | undefined,
+  callerUserId: string | null,
+): Promise<string | null> {
+  if (action === "sync_all") {
+    if (!callerUserId) return null;
+    const { data } = await supabase
+      .from("tenant_members")
+      .select("tenant_id")
+      .eq("user_id", callerUserId)
+      .eq("status", "active")
+      .in("role", ["owner", "trainer"])
+      .limit(1);
+    return (data as any)?.[0]?.tenant_id ?? null;
+  }
+  if (!booking_id) return null;
+  const table = is_trial ? "trial_bookings" : "bookings";
+  const { data } = await supabase
+    .from(table)
+    .select("tenant_id")
+    .eq("id", booking_id)
+    .maybeSingle();
+  return (data as any)?.tenant_id ?? null;
+}
+
+/**
+ * テナントの「Googleカレンダー連携済みのジム側ユーザー(owner/trainer)」のトークンを返す。
+ * マルチテナントのため、予約が属するテナントのジム担当者を対象にする。
+ * （単一テナント時代の get_trainer_ids()[0] だと別テナントの担当者を拾ってしまい、
+ *   連携済みでも予約が同期されない不具合になっていた）
+ */
+async function getTenantCalendarToken(
+  supabase: ReturnType<typeof createClient>,
+  tenantId: string,
+): Promise<any | null> {
+  const { data: staff } = await supabase
+    .from("tenant_members")
+    .select("user_id")
+    .eq("tenant_id", tenantId)
+    .eq("status", "active")
+    .in("role", ["owner", "trainer"]);
+  const staffIds = (staff || []).map((s: any) => s.user_id);
+  if (staffIds.length === 0) return null;
+
+  const { data: tokens } = await supabase
+    .from("google_calendar_tokens")
+    .select("*")
+    .in("user_id", staffIds)
+    .limit(1);
+  return tokens?.[0] ?? null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -16,18 +83,12 @@ Deno.serve(async (req) => {
   try {
     // ---- AUTH ----
     const caller = await verifyCaller(req);
-    if (!caller) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!caller) return json({ error: "Unauthorized" }, 401);
 
     const { action, booking_id, booking_date, booking_type, client_name, google_event_id, is_trial } = await req.json();
     if (!action || !ALLOWED_ACTIONS.has(action)) {
       console.warn("google-calendar-sync: invalid action", action);
-      return new Response(JSON.stringify({ error: "Invalid action" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Invalid action" }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -44,14 +105,10 @@ Deno.serve(async (req) => {
       const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
       if (!isTrainer) {
         if (action === "sync_all" || is_trial) {
-          return new Response(JSON.stringify({ error: "Forbidden" }), {
-            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return json({ error: "Forbidden" }, 403);
         }
         if (!booking_id || typeof booking_id !== "string") {
-          return new Response(JSON.stringify({ error: "booking_id required" }), {
-            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return json({ error: "booking_id required" }, 400);
         }
         const { data: bk } = await supabase
           .from("bookings")
@@ -59,31 +116,25 @@ Deno.serve(async (req) => {
           .eq("id", booking_id)
           .maybeSingle();
         if (!bk || bk.user_id !== caller.userId) {
-          return new Response(JSON.stringify({ error: "Forbidden" }), {
-            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return json({ error: "Forbidden" }, 403);
         }
       }
     }
 
-
-    const { data: trainerIds } = await supabase.rpc("get_trainer_ids");
-    const trainerId = trainerIds?.[0]?.user_id;
-    if (!trainerId) {
-      return new Response(JSON.stringify({ skipped: true, reason: "no trainer" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // ---- テナント & その連携済みカレンダー(トークン)を解決 ----
+    const tenantId = await resolveTenantId(supabase, action, booking_id, is_trial, caller.userId);
+    console.log(`[gcal-sync] action=${action} caller=${caller.userId ?? "service"} tenant=${tenantId ?? "null"}`);
+    if (!tenantId) {
+      return json({ skipped: true, reason: "no tenant" });
     }
 
-    const { data: tokenRow } = await supabase
-      .from("google_calendar_tokens").select("*").eq("user_id", trainerId).maybeSingle();
-
+    const tokenRow = await getTenantCalendarToken(supabase, tenantId);
+    console.log(`[gcal-sync] tokenFound=${!!tokenRow} tokenUser=${(tokenRow as any)?.user_id ?? "none"} calendar=${(tokenRow as any)?.calendar_id ?? "-"}`);
     if (!tokenRow) {
-      return new Response(JSON.stringify({ skipped: true, reason: "no google calendar linked" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ skipped: true, reason: "no google calendar linked" });
     }
 
+    // ---- アクセストークン（期限切れならリフレッシュ）----
     let accessToken = tokenRow.access_token;
     if (new Date(tokenRow.expires_at) <= new Date()) {
       const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -97,14 +148,12 @@ Deno.serve(async (req) => {
       const refreshData = await refreshRes.json();
       if (!refreshRes.ok || !refreshData.access_token) {
         console.error("Token refresh failed:", refreshData);
-        return new Response(JSON.stringify({ error: "Token refresh failed" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Token refresh failed" }, 500);
       }
       accessToken = refreshData.access_token;
       const newExpiry = new Date(Date.now() + refreshData.expires_in * 1000).toISOString();
       await supabase.from("google_calendar_tokens")
-        .update({ access_token: accessToken, expires_at: newExpiry }).eq("user_id", trainerId);
+        .update({ access_token: accessToken, expires_at: newExpiry }).eq("user_id", tokenRow.user_id);
     }
 
     const calendarId = tokenRow.calendar_id || "primary";
@@ -131,9 +180,7 @@ Deno.serve(async (req) => {
       const created = await createRes.json();
       if (!createRes.ok) {
         console.error("Google Calendar create error:", created);
-        return new Response(JSON.stringify({ error: "Failed to create event", detail: created }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Failed to create event", detail: created }, 500);
       }
 
       if (booking_id && created.id) {
@@ -141,14 +188,10 @@ Deno.serve(async (req) => {
         await supabase.from(table).update({ google_event_id: created.id }).eq("id", booking_id);
       }
 
-      return new Response(JSON.stringify({ success: true, event_id: created.id }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, event_id: created.id });
     } else if (action === "delete") {
       if (!google_event_id) {
-        return new Response(JSON.stringify({ skipped: true, reason: "no event id" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ skipped: true, reason: "no event id" });
       }
 
       const deleteRes = await fetch(`${baseUrl}/${google_event_id}`, {
@@ -159,9 +202,7 @@ Deno.serve(async (req) => {
       if (!deleteRes.ok && deleteRes.status !== 404 && deleteRes.status !== 410) {
         const errText = await deleteRes.text();
         console.error("Google Calendar delete error:", errText);
-        return new Response(JSON.stringify({ error: "Failed to delete event", detail: errText }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Failed to delete event", detail: errText }, 200);
       }
 
       if (booking_id) {
@@ -169,29 +210,33 @@ Deno.serve(async (req) => {
         await supabase.from(table).update({ google_event_id: null }).eq("id", booking_id);
       }
 
-      return new Response(JSON.stringify({ success: true, already_gone: deleteRes.status === 410 || deleteRes.status === 404 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true, already_gone: deleteRes.status === 410 || deleteRes.status === 404 });
     } else if (action === "sync_all") {
+      // このテナントの、未キャンセル・今後の予約を対象にする。
+      // 既に google_event_id を持つ予約も、そのIDのイベントが現カレンダーに実在するか
+      // 確認し、無ければ（過去の不具合で別カレンダーに作られた/消えた場合）作り直す。
+      const nowIso = new Date().toISOString();
       const { data: bookings } = await supabase.from("bookings")
         .select("id, booking_date, booking_type, user_id, google_event_id")
-        .is("google_event_id", null).neq("status", "キャンセル済み")
-        .gte("booking_date", new Date().toISOString());
+        .eq("tenant_id", tenantId)
+        .neq("status", "キャンセル済み")
+        .gte("booking_date", nowIso);
 
       const { data: trialBookings } = await supabase.from("trial_bookings")
         .select("id, booking_date, booking_type, guest_name, google_event_id")
-        .is("google_event_id", null).neq("status", "キャンセル済み")
-        .gte("booking_date", new Date().toISOString());
+        .eq("tenant_id", tenantId)
+        .neq("status", "キャンセル済み")
+        .gte("booking_date", nowIso);
 
       const allItems = [
         ...(bookings || []).map((b) => ({ ...b, source: "bookings" as const })),
         ...(trialBookings || []).map((t) => ({ ...t, user_id: null, source: "trial_bookings" as const, guest_name: t.guest_name })),
       ];
 
+      console.log(`[gcal-sync] sync_all tenant=${tenantId} bookings=${bookings?.length ?? 0} trial=${trialBookings?.length ?? 0} total=${allItems.length}`);
+
       if (allItems.length === 0) {
-        return new Response(JSON.stringify({ success: true, synced: 0 }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ success: true, synced: 0, total: 0, reason: "no upcoming bookings for tenant" });
       }
 
       const userIds = [...new Set(allItems.filter((b) => b.source === "bookings" && b.user_id).map((b) => b.user_id!))];
@@ -203,7 +248,17 @@ Deno.serve(async (req) => {
       }
 
       let synced = 0;
+      let alreadyPresent = 0;
       for (const item of allItems) {
+        // 既存IDがあり、そのイベントが現カレンダーに実在するならスキップ（重複防止）
+        if (item.google_event_id) {
+          const checkRes = await fetch(`${baseUrl}/${encodeURIComponent(item.google_event_id)}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (checkRes.ok) { alreadyPresent++; continue; }
+          // 404/410 等 → このカレンダーには無い → 以下で作り直す
+        }
+
         const startDt = new Date(item.booking_date);
         const endDt = new Date(startDt.getTime() + 60 * 60 * 1000);
         const cName = item.source === "trial_bookings"
@@ -235,18 +290,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      return new Response(JSON.stringify({ success: true, synced }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.log(`[gcal-sync] sync_all done tenant=${tenantId} synced=${synced} alreadyPresent=${alreadyPresent} total=${allItems.length}`);
+      return json({ success: true, synced, alreadyPresent, total: allItems.length });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Invalid action" }, 400);
   } catch (e) {
     console.error("google-calendar-sync error:", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: (e as Error).message }, 500);
   }
 });

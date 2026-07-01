@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { wrapEmailHtml } from "../../supabase/functions/_shared/email-encoding";
+import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from "../../supabase/functions/_shared/email-encoding";
 
 // パスワード再設定メール本文（recovery.tsx の本文と同一）。
 // 送信経路の固定幅折り返しで「パスワード」が「パスワ???ード」と化けていた回帰対象。
@@ -59,5 +59,24 @@ describe("wrapEmailHtml（メール文字化け対策・QP対応版）", () => {
 
   it("ASCII のみのテキストはそのまま（既存挙動を維持）", () => {
     expect(wrapEmailHtml("<p>Hello, world!</p>")).toBe("<p>Hello, world!</p>");
+  });
+});
+
+describe("makeEmailHtmlAsciiSafe（予約メール文字化け対策）", () => {
+  it("HTMLテキストだけをASCII安全な数値文字参照にし、見た目の日本語は維持する", () => {
+    const html = `<p>アプリからキャンセル・変更が可能です。</p><a href="https://gymboard.app">▼ アプリを開く</a>`;
+    const out = makeEmailHtmlAsciiSafe(wrapEmailHtml(html));
+
+    expect(out).not.toContain("アプリ");
+    expect(out).toContain("&#12450;"); // ア
+    expect(out).toContain("&#12539;"); // ・
+    expect(out).toContain("&#9660;"); // ▼
+    expect(out).toContain('href="https://gymboard.app"');
+
+    const decoded = out
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+      .replace(/&amp;/g, "&");
+    expect(decoded).toBe(html);
   });
 });

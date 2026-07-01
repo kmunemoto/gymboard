@@ -1,9 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// OAuth 完了後の遷移先。
+// Edge Function から HTML を返すと、この環境ではブラウザが text/plain 扱いで
+// 生ソース表示＋文字化けになってしまう（line-login-callback が HTML ではなく
+// リダイレクトを使っているのと同じ理由）。そのためアプリへ 302 リダイレクトする。
+const appUrl = "https://app.gymboard.app";
+
+function redirect(path: string): Response {
+  return new Response(null, { status: 302, headers: { Location: `${appUrl}${path}` } });
+}
 
 /**
  * Look up an oauth_states row by nonce, verify it belongs to the expected provider,
@@ -15,7 +20,6 @@ async function consumeOauthState(
   nonce: string,
   provider: string,
 ): Promise<string | null> {
-  // Try to parse uuid; reject malformed input early
   if (!/^[0-9a-fA-F-]{36}$/.test(nonce)) return null;
 
   const { data, error } = await supabase
@@ -35,20 +39,13 @@ async function consumeOauthState(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
   if (error || !code || !state) {
-    return new Response(
-      `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:false},'*');window.close();</script><p>認証に失敗しました。このウィンドウを閉じてください。</p></body></html>`,
-      { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-    );
+    return redirect("/?gcal_link=error");
   }
 
   try {
@@ -63,10 +60,7 @@ Deno.serve(async (req) => {
     const userId = await consumeOauthState(supabase, state, "google_calendar");
     if (!userId) {
       console.warn("Invalid or expired google_calendar oauth state");
-      return new Response(
-        `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:false},'*');window.close();</script><p>セッションが無効です。もう一度お試しください。</p></body></html>`,
-        { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-      );
+      return redirect("/?gcal_link=error");
     }
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-calendar-callback`;
@@ -83,7 +77,7 @@ Deno.serve(async (req) => {
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
       console.error("Token exchange failed:", tokenData);
-      throw new Error("Token exchange failed");
+      return redirect("/?gcal_link=error");
     }
 
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
@@ -103,18 +97,12 @@ Deno.serve(async (req) => {
 
     if (dbError) {
       console.error("DB upsert error:", dbError);
-      throw new Error("Failed to save tokens");
+      return redirect("/?gcal_link=error");
     }
 
-    return new Response(
-      `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:true},'*');window.close();</script><p>Googleカレンダー連携が完了しました！このウィンドウを閉じてください。</p></body></html>`,
-      { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-    );
+    return redirect("/?gcal_link=success");
   } catch (e) {
     console.error("google-calendar-callback error:", e);
-    return new Response(
-      `<html><body><script>window.opener?.postMessage({type:'google-calendar-result',success:false},'*');window.close();</script><p>エラーが発生しました。このウィンドウを閉じてください。</p></body></html>`,
-      { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
-    );
+    return redirect("/?gcal_link=error");
   }
 });

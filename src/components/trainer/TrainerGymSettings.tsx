@@ -19,6 +19,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import BackgroundImagePicker from "@/components/BackgroundImagePicker";
 import { useTranslation } from "react-i18next";
+import { BILLING_ENABLED } from "@/lib/featureFlags";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -126,13 +127,17 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       <Separator />
 
-      {/* === プラン・お支払い（GymBoard SaaS） === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
-        <TrainerBilling />
-      </section>
+      {/* === プラン・お支払い（GymBoard SaaS）。課金無効化中は非表示 === */}
+      {BILLING_ENABLED && (
+        <>
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
+            <TrainerBilling />
+          </section>
 
-      <Separator />
+          <Separator />
+        </>
+      )}
 
       {/* === 言語 / Language === */}
       <LanguageSwitcher variant="trainer" />

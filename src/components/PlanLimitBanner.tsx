@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useTenantLimit } from "@/hooks/useTenantLimit";
+import { BILLING_ENABLED } from "@/lib/featureFlags";
 
 interface Props {
   onUpgrade?: () => void;
@@ -18,6 +19,7 @@ const PlanLimitBanner = ({ onUpgrade, onManageCustomers }: Props) => {
   const { t } = useTranslation();
   const { status, role } = useTenantLimit();
   const isNative = Capacitor.isNativePlatform();
+  if (!BILLING_ENABLED) return null; // 課金無効化中は上限警告を出さない
   if (!status || !status.over_limit) return null;
 
   const parts: string[] = [];

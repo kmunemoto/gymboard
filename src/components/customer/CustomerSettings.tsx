@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Settings, User, Pencil, MessageCircle, CheckCircle2, Unlink, LogOut, History, Clock, Dumbbell, Award, Bone, Smartphone, Calendar, FileText, Shield as ShieldIcon, ChevronRight, Gamepad2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +54,7 @@ const CustomerSettings = () => {
   // Google Calendar state
   const [gcalLinked, setGcalLinked] = useState(false);
   const [gcalLoading, setGcalLoading] = useState(true);
+  const gcalLinkedRef = useRef(false);
 
   useEffect(() => {
     setDisplayName(profile?.display_name || "");
@@ -72,7 +73,13 @@ const CustomerSettings = () => {
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
-      setGcalLinked(!!data);
+      const nowLinked = !!data;
+      // 連携が新たに完了した瞬間（未連携→連携済み）にトースト表示
+      if (silent && nowLinked && !gcalLinkedRef.current) {
+        toast.success(t("settings.gcal.linkSuccess"));
+      }
+      gcalLinkedRef.current = nowLinked;
+      setGcalLinked(nowLinked);
       if (!silent) setGcalLoading(false);
     };
     checkGcalStatus();
@@ -139,6 +146,7 @@ const CustomerSettings = () => {
     } else {
       toast.success(t("settings.gcal.unlinked"));
       setGcalLinked(false);
+      gcalLinkedRef.current = false;
     }
   };
 

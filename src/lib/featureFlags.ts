@@ -37,4 +37,4 @@ export const SOCIAL_LOGIN_ENABLED = false;
 //    （supabase/migrations/..._disable_billing_enforcement.sql）で無効化する。
 // 復活方法: この値を true に戻し、上記マイグレーションを差し戻すだけ。
 // コードは一切削除しないため、課金機能はそのまま温存される。
-export const BILLING_ENABLED = false;
+export const BILLING_ENABLED = true;

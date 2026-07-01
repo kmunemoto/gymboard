@@ -27,3 +27,14 @@ export const WAITLIST_ENABLED = false;
 // 遷移してしまう（Web では SDK が認可URLへ遷移するためコード側で抑止できない）。
 // プロバイダー設定が完了したら true に戻すだけでログイン画面に再表示される。
 export const SOCIAL_LOGIN_ENABLED = false;
+
+// ジムボードの課金システム（GymBoard SaaS の料金・トライアル・席数上限・延滞ブロック）。
+// false にすると課金まわりを一括で無効化し、ジムは無料・無制限で利用できる。
+//   - 課金UI（設定の「プラン・お支払い」= TrainerBilling）を非表示
+//   - 席数超過/延滞の警告バナー（PlanLimitBanner / SubscriptionBlockedBanner）を非表示
+//   - クライアントの延滞判定 isTenantSubscriptionBlocked を常に false に
+// ※ サーバー側の実強制（DBトリガー enforce_tenant_plan_limit）は別マイグレーション
+//    （supabase/migrations/..._disable_billing_enforcement.sql）で無効化する。
+// 復活方法: この値を true に戻し、上記マイグレーションを差し戻すだけ。
+// コードは一切削除しないため、課金機能はそのまま温存される。
+export const BILLING_ENABLED = false;

@@ -24,6 +24,65 @@ export interface CycleWindow {
 const normCycleMonths = (cycleMonths?: number | null): number =>
   cycleMonths && cycleMonths > 0 ? Math.floor(cycleMonths) : 1;
 
+/** 猶予日数を正規化（未設定/不正は0＝猶予なし）。 */
+const normGraceDays = (graceDays?: number | null): number =>
+  graceDays && graceDays > 0 ? Math.floor(graceDays) : 0;
+
+/**
+ * プラン名 + tenant_plans 定義から猶予日数を解決する（既定 0）。
+ * 「期限を graceDays 日過ぎても、前サイクルが未消化なら前サイクル分として大目に見る」。
+ */
+export const resolveGraceDays = (
+  planName: string | null | undefined,
+  tenantPlans: ReadonlyArray<{ plan_name: string; grace_days?: number | null }> | null | undefined,
+): number => {
+  if (!planName || !tenantPlans) return 0;
+  const p = tenantPlans.find((tp) => tp.plan_name === planName);
+  return normGraceDays(p?.grace_days);
+};
+
+type DatedBooking = { booking_date: string; status: string };
+
+const countActiveInRange = (bookings: DatedBooking[], from: Date, toExclusive: Date): number =>
+  bookings.filter((b) => {
+    if (b.status === "キャンセル済み") return false;
+    const d = toJSTDate(b.booking_date);
+    return d >= from && d < toExclusive;
+  }).length;
+
+/**
+ * 猶予（grace）で「参照サイクル窓 [windowStart, windowEnd) の中から、直前サイクルへ
+ * 繰り入れる（大目に見た消化とみなす）予約の件数」を返す。
+ * = min(直前サイクルの残り回数, 猶予帯 [windowStart, windowStart+graceDays) の予約数)。
+ * この件数を現サイクルの消化数から差し引くことで、大目に見た回が「新サイクルの1回目」
+ * として誤表示されるのを防ぐ。無制限プラン・graceDays=0・最初の窓では 0。
+ */
+export const graceLentToPrevCount = (params: {
+  cycleStartDate: string;
+  maxSessions: number | null;
+  cycleMonths?: number | null;
+  graceDays?: number | null;
+  windowStart: Date;
+  windowEnd: Date;
+  bookings: DatedBooking[];
+}): number => {
+  const graceDays = normGraceDays(params.graceDays);
+  const { maxSessions, cycleStartDate, cycleMonths, windowStart, windowEnd, bookings } = params;
+  if (graceDays <= 0 || maxSessions == null || maxSessions <= 0) return 0;
+  const startISO = startOfDay(parseISO(cycleStartDate));
+  if (windowStart.getTime() <= startISO.getTime()) return 0; // 最初の窓＝前サイクル無し
+  const prev = getCycleWindow(cycleStartDate, addDays(windowStart, -1), cycleMonths);
+  if (!prev) return 0;
+  const prevCount = countActiveInRange(bookings, prev.start, windowStart);
+  const capacity = maxSessions - prevCount;
+  if (capacity <= 0) return 0;
+  const graceTailEnd = addDays(windowStart, graceDays);
+  // 猶予帯（窓の先頭 graceDays 日）の予約数。窓を越える分は含めない。
+  const tailEnd = graceTailEnd < windowEnd ? graceTailEnd : windowEnd;
+  const tailCount = countActiveInRange(bookings, windowStart, tailEnd);
+  return Math.min(capacity, tailCount);
+};
+
 /**
  * プラン名 + tenant_plans 定義からサイクル月数を解決する（既定 1）。
  * ジム／プランごとに利用期間（応当日ベースの月数）を設定できる。
@@ -152,18 +211,24 @@ export const computeCourseProgress = (
  * ジムの運用「期限は1回目のトレーニング日から1ヶ月」に合わせるための判定。
  * 発動する条件（すべて安全側）:
  *   - 起算日が未設定（初回契約）
- *   - 予約日を含むサイクル窓に有効予約が0件で、かつ
+ *   - 予約日を含むサイクル窓に「前サイクルへ繰り入れない」有効予約が0件で、かつ
  *       (a) その窓が最初の窓（＝起算日リセット直後・未使用の起算日）か、
  *       (b) 直前のサイクルを回数上限まで消化済み（きっちり使い切って次へ）
- * 発動しない例: 「大目に見た消化」（前サイクル未消化のまま期限超過で消化した回）は
- * (b) を満たさないため起算日は動かない。無制限プランは (a) のみ。
- * 過去日への予約（起算日より前）は動かさない。
+ * 発動しない例: 「大目に見た消化」（前サイクル未消化のまま期限を graceDays 日まで
+ * 超過して消化した回）は前サイクル分として繰り入れられるため起算日は動かない。
+ * 無制限プランは (a) のみ。過去日への予約（起算日より前）は動かさない。
+ *
+ * graceDays（猶予日数）を渡すと、猶予帯 [window.start, window.start+graceDays) の予約は
+ * 前サイクルに空きがある限り前サイクル分とみなし、(b) の「上限まで消化済み」判定にも
+ * 繰り入れて数える（graceDays=0 は従来挙動と完全一致）。
  */
 export const shouldRebaseCycleStart = (params: {
   cycleStartDate: string | null | undefined;
   /** プランの回数上限。null = 無制限 */
   maxSessions: number | null;
   cycleMonths?: number | null;
+  /** 猶予日数（既定 0＝猶予なし） */
+  graceDays?: number | null;
   /** 新規予約の日付キー（yyyy-MM-dd） */
   bookingDateKey: string;
   /** その顧客の既存予約（新規作成分は含めない） */
@@ -175,28 +240,54 @@ export const shouldRebaseCycleStart = (params: {
   // 起算日より過去の日付への予約（過去分の記録など）では動かさない
   if (bookingDateKey < cycleStartDate) return false;
 
+  const graceDays = normGraceDays(params.graceDays);
   const active = existingBookings.filter((b) => b.status !== "キャンセル済み");
-  const window = getCycleWindow(cycleStartDate, parseISO(bookingDateKey), cycleMonths);
+  const bookingDate = parseISO(bookingDateKey);
+  const window = getCycleWindow(cycleStartDate, bookingDate, cycleMonths);
   if (!window) return false;
 
-  const inWindow = active.filter((b) => {
-    const d = toJSTDate(b.booking_date);
-    return d >= window.start && d < window.end;
-  }).length;
-  if (inWindow > 0) return false; // すでにこのルーティンの予約がある
+  const isFirstWindow = window.start.getTime() === startOfDay(parseISO(cycleStartDate)).getTime();
+
+  // 猶予: この予約自身が「大目に見た前サイクル分」に繰り入れられるなら次のルーティンではない
+  if (graceDays > 0 && !isFirstWindow && maxSessions != null && maxSessions > 0) {
+    const graceTailEnd = addDays(window.start, graceDays);
+    const inGraceTail = bookingDate >= window.start && bookingDate < graceTailEnd;
+    if (inGraceTail) {
+      const prevWindow = getCycleWindow(cycleStartDate, addDays(window.start, -1), cycleMonths);
+      if (prevWindow) {
+        const prevCount = countActiveInRange(active, prevWindow.start, window.start);
+        const prevCapacity = maxSessions - prevCount;
+        // 自分より前に猶予帯へ入った予約が先に前サイクルへ充当される
+        const tailBefore = countActiveInRange(active, window.start, bookingDate);
+        if (prevCapacity > 0 && tailBefore < prevCapacity) return false;
+      }
+    }
+  }
+
+  // 現サイクル窓の予約から前サイクルへ繰り入れる分（大目に見た消化）を除いた「本来の」件数
+  const inWindow = countActiveInRange(active, window.start, window.end);
+  const lent = graceLentToPrevCount({
+    cycleStartDate,
+    maxSessions,
+    cycleMonths,
+    graceDays,
+    windowStart: window.start,
+    windowEnd: window.end,
+    bookings: active,
+  });
+  const coreInWindow = inWindow - lent;
+  if (coreInWindow > 0) return false; // すでにこのルーティンの（繰り入れ以外の）予約がある
 
   // 最初の窓（リセット直後・まだ一度も使っていない起算日）なら予約日に合わせる
-  if (window.start.getTime() === startOfDay(parseISO(cycleStartDate)).getTime()) return true;
+  if (isFirstWindow) return true;
 
   // ロール済みの窓: 直前サイクルを上限まで消化済みのときだけ「次のルーティン」とみなす
   if (maxSessions == null || maxSessions <= 0) return false; // 無制限は自動では動かさない
   const prevWindow = getCycleWindow(cycleStartDate, addDays(window.start, -1), cycleMonths);
   if (!prevWindow) return false;
-  const prevCount = active.filter((b) => {
-    const d = toJSTDate(b.booking_date);
-    return d >= prevWindow.start && d < prevWindow.end;
-  }).length;
-  return prevCount >= maxSessions;
+  // 前サイクルの物理予約数 + 猶予で繰り入れた分が上限に達していれば「次のルーティン」
+  const prevCount = countActiveInRange(active, prevWindow.start, window.start);
+  return prevCount + lent >= maxSessions;
 };
 
 /**

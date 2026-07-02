@@ -8,14 +8,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useStreak } from "@/hooks/useStreak";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addMonths, addDays, parseISO, differenceInDays, isBefore } from "date-fns";
+import { format, addMonths, addDays, differenceInDays, isBefore } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow, toJSTDate, formatJST } from "@/lib/timezone";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
 import MuscleGroupBadge from "./MuscleGroupBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
-import { getCycleWindow as getSharedCycleWindow } from "@/lib/courseProgress";
+import { getCycleWindow as getSharedCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
 import { useTranslation } from "react-i18next";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
@@ -24,10 +24,6 @@ interface Props {
   onBack: () => void;
 }
 
-const getCycleWindow = (cycleStartDate: string, targetDate: Date) => {
-  const w = getSharedCycleWindow(cycleStartDate, targetDate);
-  return w ?? { start: parseISO(cycleStartDate), end: addDays(addMonths(parseISO(cycleStartDate), 1), 1) };
-};
 
 const CustomerMonthlyReport = ({ onBack }: Props) => {
   const { t } = useTranslation();
@@ -53,28 +49,30 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
   const [loading, setLoading] = useState(true);
 
   const cycleStartDate = profile?.cycle_start_date;
+  // サイクル月数（ジム／プランごとに設定可能・既定1）。offset での移動幅にも使う。
+  const cycleMonths = resolveCycleMonths(profile?.plan, tenantPlans);
 
   const { cycleStart, cycleEnd, prevCycleStart, prevCycleEnd, isCurrentCycle } = useMemo(() => {
     if (!cycleStartDate) {
       const now = getJSTNow();
       const base = new Date(now.getFullYear(), now.getMonth(), 1);
-      const shifted = addMonths(base, cycleOffset);
+      const shifted = addMonths(base, cycleOffset * cycleMonths);
       return {
         cycleStart: shifted,
-        cycleEnd: addMonths(shifted, 1),
-        prevCycleStart: addMonths(shifted, -1),
+        cycleEnd: addMonths(shifted, cycleMonths),
+        prevCycleStart: addMonths(shifted, -cycleMonths),
         prevCycleEnd: shifted,
         isCurrentCycle: cycleOffset === 0,
       };
     }
     const now = getJSTNow();
-    const currentCycle = getCycleWindow(cycleStartDate, now);
+    const currentCycle = getSharedCycleWindow(cycleStartDate, now, cycleMonths)!;
     const shifted = {
-      start: addMonths(currentCycle.start, cycleOffset),
-      end: addMonths(currentCycle.end, cycleOffset),
+      start: addMonths(currentCycle.start, cycleOffset * cycleMonths),
+      end: addMonths(currentCycle.end, cycleOffset * cycleMonths),
     };
     const prevRef = addDays(shifted.start, -1);
-    const prev = getCycleWindow(cycleStartDate, prevRef);
+    const prev = getSharedCycleWindow(cycleStartDate, prevRef, cycleMonths)!;
     return {
       cycleStart: shifted.start,
       cycleEnd: shifted.end,
@@ -82,7 +80,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       prevCycleEnd: prev.end,
       isCurrentCycle: cycleOffset === 0,
     };
-  }, [cycleStartDate, cycleOffset]);
+  }, [cycleStartDate, cycleOffset, cycleMonths]);
 
   const canGoNext = cycleOffset < 0;
 
@@ -278,7 +276,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     return parts.join(" ");
   };
 
-  const periodLabel = `${format(cycleStart, "M/d", { locale: ja })}〜${format(addMonths(cycleStart, 1), "M/d", { locale: ja })}`;
+  const periodLabel = `${format(cycleStart, "M/d", { locale: ja })}〜${format(addMonths(cycleStart, cycleMonths), "M/d", { locale: ja })}`;
 
   if (loading) {
     return (

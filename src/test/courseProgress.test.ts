@@ -4,6 +4,7 @@ import {
   getCycleWindow,
   computeCourseProgress,
   getBookingProgressIndex,
+  resolveCycleMonths,
   type BookingForProgress,
 } from "@/lib/courseProgress";
 import { toJSTDate } from "@/lib/timezone";
@@ -30,6 +31,38 @@ describe("getCycleWindow", () => {
     expect(w.start.getDate()).toBe(20);
     expect(w.end.getMonth()).toBe(6); // July
     expect(w.end.getDate()).toBe(21);
+  });
+
+  it("cycleMonths=2 なら 6/20〜8/21（2ヶ月ごと・応当日翌日が排他上限）", () => {
+    const w = getCycleWindow("2026-06-20", NOW, 2)!;
+    expect(w.start.getMonth()).toBe(5); // June
+    expect(w.start.getDate()).toBe(20);
+    expect(w.end.getMonth()).toBe(7); // August（= addMonths(6/20,2)=8/20 の翌日）
+    expect(w.end.getDate()).toBe(21);
+  });
+
+  it("cycleMonths 未指定は 1ヶ月扱い", () => {
+    const a = getCycleWindow("2026-06-20", NOW)!;
+    const b = getCycleWindow("2026-06-20", NOW, null)!;
+    const c = getCycleWindow("2026-06-20", NOW, 1)!;
+    expect(a.end.getTime()).toBe(b.end.getTime());
+    expect(a.end.getTime()).toBe(c.end.getTime());
+  });
+});
+
+describe("resolveCycleMonths", () => {
+  const plans = [
+    { plan_name: "月4回", cycle_months: null },
+    { plan_name: "2ヶ月8回", cycle_months: 2 },
+    { plan_name: "不正", cycle_months: 0 },
+  ];
+  it("プランの cycle_months を返し、null/0/未一致は1にフォールバック", () => {
+    expect(resolveCycleMonths("2ヶ月8回", plans)).toBe(2);
+    expect(resolveCycleMonths("月4回", plans)).toBe(1);
+    expect(resolveCycleMonths("不正", plans)).toBe(1);
+    expect(resolveCycleMonths("該当なし", plans)).toBe(1);
+    expect(resolveCycleMonths(null, plans)).toBe(1);
+    expect(resolveCycleMonths("月4回", null)).toBe(1);
   });
 });
 

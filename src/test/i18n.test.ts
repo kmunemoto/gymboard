@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import i18n, { SUPPORTED_LANGUAGES, changeLanguage, loadLocale } from "@/lib/i18n";
 
 describe("i18n configuration", () => {

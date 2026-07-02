@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageCircle, Bell } from "lucide-react";
 import { toast } from "sonner";
@@ -11,18 +11,12 @@ import CustomerChat from "./CustomerChat";
 import CustomerSettings from "./CustomerSettings";
 import PwaInstallBanner from "./PwaInstallBanner";
 import { Button } from "@/components/ui/button";
-import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import LazyBoundary from "@/components/LazyBoundary";
 
 // 重いタブ（グラフ recharts / 姿勢分析）は開いたときに読み込む（バンドル最適化）
 const CustomerTraining = lazy(() => import("./CustomerTraining"));
 const CustomerPosture = lazy(() => import("./CustomerPosture"));
 const CustomerMonthlyReport = lazy(() => import("./CustomerMonthlyReport"));
-
-const TabFallback = () => (
-  <div className="flex items-center justify-center py-20">
-    <DumbbellLoader className="w-6 h-6 text-accent" />
-  </div>
-);
 
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
@@ -105,7 +99,7 @@ const CustomerView = () => {
       <div className="pt-14" style={{ marginTop: "env(safe-area-inset-top, 0px)" }} key={tab}>
 
         <PlanLimitBanner />
-        <Suspense fallback={<TabFallback />}>
+        <LazyBoundary>
           {tab === "home" && <CustomerHome onNavigate={setTab} />}
           {tab === "booking" && <CustomerBooking />}
           {tab === "training" && <CustomerTraining />}
@@ -114,7 +108,7 @@ const CustomerView = () => {
           {tab === "settings" && <CustomerSettings />}
           {tab === "posture" && <CustomerPosture />}
           {tab === "report" && <CustomerMonthlyReport onBack={() => setTab("home")} />}
-        </Suspense>
+        </LazyBoundary>
       </div>
       <BottomNav activeTab={tab} onTabChange={setTab} unreadChat={unreadChat} />
       <PwaInstallBanner />

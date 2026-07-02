@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Languages, Check } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { cn } from "@/lib/utils";
-import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage } from "@/lib/i18n";
+import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, changeLanguage } from "@/lib/i18n";
 
 const LANGUAGE_OPTIONS: { code: SupportedLanguage; nativeLabel: string; subLabel: string }[] = [
   { code: "ja", nativeLabel: "日本語", subLabel: "Japanese" },
@@ -19,18 +22,31 @@ interface LanguageSwitcherProps {
 
 const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
   const { t } = useTranslation();
+  // 切替中の言語（多重タップの直列化＋スピナー表示に使う）
+  const [pending, setPending] = useState<SupportedLanguage | null>(null);
   const rawLang = i18n.resolvedLanguage || i18n.language || "ja";
   const currentLang = (SUPPORTED_LANGUAGES as readonly string[]).includes(rawLang)
     ? rawLang
     : rawLang.split("-")[0];
 
-  const handleChange = (lng: SupportedLanguage) => {
-    if (lng === currentLang) return;
-    i18n.changeLanguage(lng);
+  const handleChange = async (lng: SupportedLanguage) => {
+    if (pending) return; // 切替処理中は無視（連打での競合を防ぐ）
+    setPending(lng);
     try {
-      localStorage.setItem("i18nextLng", lng);
-    } catch {
-      // ignore
+      // ロケールは遅延読込のため、読み込んでから切り替える（i18n.ts の changeLanguage）。
+      // 読込失敗時は言語を変えず、保存もしない（不整合を作らない）。
+      const ok = await changeLanguage(lng);
+      if (!ok) {
+        toast.error(t("settings.languageLoadFailed"));
+        return;
+      }
+      try {
+        localStorage.setItem("i18nextLng", lng);
+      } catch {
+        // ignore
+      }
+    } finally {
+      setPending(null);
     }
   };
 
@@ -61,6 +77,7 @@ const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
                       type="button"
                       variant="outline"
                       onClick={() => handleChange(code)}
+                      disabled={pending !== null}
                       className={cn(
                         "h-auto py-2.5 px-3 justify-between text-left",
                         active && "border-accent bg-accent/5 text-foreground"
@@ -70,7 +87,11 @@ const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
                         <span className="text-sm font-bold leading-tight">{opt.nativeLabel}</span>
                         <span className="text-[10px] text-muted-foreground leading-tight">{opt.subLabel}</span>
                       </span>
-                      {active && <Check className="w-4 h-4 text-accent shrink-0" />}
+                      {pending === code ? (
+                        <DumbbellLoader className="w-4 h-4 text-accent shrink-0" />
+                      ) : (
+                        active && <Check className="w-4 h-4 text-accent shrink-0" />
+                      )}
                     </Button>
                   );
                 })}

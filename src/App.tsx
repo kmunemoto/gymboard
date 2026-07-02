@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import PushBootstrap from "@/components/PushBootstrap";
+import LazyBoundary from "@/components/LazyBoundary";
 
 // ルート単位でコード分割し、初期バンドルを小さく保つ。
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -36,7 +37,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <PushBootstrap />
-          <Suspense fallback={<RouteFallback />}>
+          <LazyBoundary fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
@@ -54,7 +55,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Suspense>
+          </LazyBoundary>
         </AuthProvider>
       </BrowserRouter>
       <Sonner />

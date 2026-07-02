@@ -32,6 +32,8 @@ const TrainerView = () => {
   const { t } = useTranslation();
   const [tab, setTab] = useState<TrainerTab>("dashboard");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  // 離脱アラートの「声かけ」等からメッセージ画面を開くときの宛先（開いたら選択済みにする）
+  const [messageClientId, setMessageClientId] = useState<string | null>(null);
   const { signOut } = useAuth();
   const { user } = useAuth();
   const { count: unreadMessages, refetch: refetchUnread } = useUnreadCount();
@@ -47,6 +49,13 @@ const TrainerView = () => {
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
     setTab("clients");
+  };
+
+  // 指定顧客との会話を開いた状態でメッセージタブへ移動（ワンタップ声かけ）
+  const handleMessageClient = (clientId: string) => {
+    setMessageClientId(clientId);
+    setSelectedClientId(null);
+    setTab("messages");
   };
 
   const handleBackToList = () => {
@@ -90,6 +99,7 @@ const TrainerView = () => {
   useEffect(() => {
     if (tab !== "messages") {
       refetchUnread();
+      setMessageClientId(null); // 声かけの宛先指定は一度使ったらリセット
     }
   }, [tab]);
 
@@ -140,11 +150,11 @@ const TrainerView = () => {
           />
           <main className="flex-1 ml-0 md:ml-60 p-3 sm:p-4 md:p-8 max-w-6xl" key={`${tab}-${selectedClientId}`}>
             <LazyBoundary>
-              {tab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} />}
+              {tab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} onMessageClient={handleMessageClient} />}
               {tab === "clients" && !selectedClientId && <TrainerClientList onSelectClient={handleSelectClient} />}
               {tab === "clients" && selectedClientId && <TrainerClientDetail clientId={selectedClientId} onBack={handleBackToList} />}
               {tab === "schedule" && <TrainerSchedule />}
-              {tab === "messages" && <TrainerMessages />}
+              {tab === "messages" && <TrainerMessages initialCustomerId={messageClientId} />}
               {tab === "exercises" && <TrainerExerciseManager />}
               {tab === "counseling" && <CounselingResponseList />}
               {tab === "announcements" && <TrainerAnnouncementManager />}

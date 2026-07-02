@@ -1940,7 +1940,8 @@
     "title": "フォローが必要な顧客",
     "lapsed": "{{days}}日前に来店・予約なし",
     "neverBooked": "まだ予約がありません",
-    "more": "他 {{count}}名"
+    "more": "他 {{count}}名",
+    "message": "声かけ"
   },
   "renewal": {
     "title": "更新が近い顧客",

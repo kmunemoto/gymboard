@@ -1940,7 +1940,8 @@
     "title": "Customers needing follow-up",
     "lapsed": "Last visit {{days}}d ago · no upcoming booking",
     "neverBooked": "No bookings yet",
-    "more": "+{{count}} more"
+    "more": "+{{count}} more",
+    "message": "Message"
   },
   "renewal": {
     "title": "Customers up for renewal",

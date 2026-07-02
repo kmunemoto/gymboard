@@ -1940,7 +1940,8 @@
     "title": "需要跟進的客戶",
     "lapsed": "{{days}} 天前到店 · 無後續預約",
     "neverBooked": "尚無預約",
-    "more": "其他 {{count}} 名"
+    "more": "其他 {{count}} 名",
+    "message": "傳訊息"
   },
   "renewal": {
     "title": "即將續約的客戶",

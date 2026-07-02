@@ -334,6 +334,115 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    } else if (purpose === "waitlist_slot_freed") {
+      // ---- 認証必須: 予約キャンセルで空いた枠を、その枠のキャンセル待ちへ通知 ----
+      // 受信者はサーバー側で booking_waitlist から解決する（RLSにより顧客の
+      // クライアントからは他人の待機行を読めないため）。本文もサーバー生成。
+      const caller = await verifyCaller(req);
+      if (!caller) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { tenant_id, booking_date } = payloadJson;
+      if (!tenant_id || typeof tenant_id !== "string" || !booking_date || typeof booking_date !== "string") {
+        return new Response(JSON.stringify({ error: "tenant_id and booking_date required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const cancelledAt = new Date(booking_date);
+      if (Number.isNaN(cancelledAt.getTime())) {
+        return new Response(JSON.stringify({ error: "invalid booking_date" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // 呼び出し元がそのテナントの所属（顧客 or トレーナー）であること
+      if (!caller.isServiceRole) {
+        const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
+        if (!isTrainer) {
+          const { data: prof } = await adminClient
+            .from("profiles")
+            .select("tenant_id")
+            .eq("user_id", caller.userId!)
+            .maybeSingle();
+          if (!prof || prof.tenant_id !== tenant_id) {
+            return new Response(JSON.stringify({ error: "Forbidden" }), {
+              status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+
+      // JST の日付キーと開始時刻（分）
+      const jst = new Date(cancelledAt.getTime() + 9 * 3600 * 1000);
+      const pad2 = (n: number) => String(n).padStart(2, "0");
+      const dateKey = `${jst.getUTCFullYear()}-${pad2(jst.getUTCMonth() + 1)}-${pad2(jst.getUTCDate())}`;
+      const cancelledMin = jst.getUTCHours() * 60 + jst.getUTCMinutes();
+
+      // その日のキャンセル待ちと、キャンセル後も残っている予約を取得
+      const dayStart = new Date(`${dateKey}T00:00:00+09:00`).toISOString();
+      const dayEnd = new Date(`${dateKey}T23:59:59+09:00`).toISOString();
+      const [waitRes, remainRes] = await Promise.all([
+        adminClient
+          .from("booking_waitlist")
+          .select("user_id, start_time")
+          .eq("tenant_id", tenant_id)
+          .eq("booking_date", dateKey),
+        adminClient
+          .from("bookings")
+          .select("booking_date")
+          .eq("tenant_id", tenant_id)
+          .eq("status", "予約済み")
+          .gte("booking_date", dayStart)
+          .lte("booking_date", dayEnd),
+      ]);
+      const toMin = (t: string) => {
+        const [h, m] = String(t).split(":").map(Number);
+        return (h || 0) * 60 + (m || 0);
+      };
+      const remainingMins = (remainRes.data ?? []).map((r: { booking_date: string }) => {
+        const j = new Date(new Date(r.booking_date).getTime() + 9 * 3600 * 1000);
+        return j.getUTCHours() * 60 + j.getUTCMinutes();
+      });
+      // 「空いたか」は DB トリガー check_booking_overlap と同じ 75 分間隔で判定:
+      // 今回キャンセルされた枠の近傍で、かつ残りの予約では埋まっていない待機だけ通知
+      const WINDOW = 75;
+      const freed = (waitRes.data ?? []).filter((w: { user_id: string; start_time: string }) => {
+        const m = toMin(w.start_time);
+        if (Math.abs(m - cancelledMin) >= WINDOW) return false;
+        return !remainingMins.some((b: number) => Math.abs(m - b) < WINDOW);
+      });
+      user_ids = [...new Set(freed.map((w: { user_id: string }) => w.user_id))];
+      if (user_ids.length === 0) {
+        return new Response(JSON.stringify({ sent: 0, message: "No waitlist match" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 冪等: 同一枠の連続通知を10分抑止（trial_booking と同じ仕組み）
+      const hhmm = `${pad2(Math.floor(cancelledMin / 60))}:${pad2(cancelledMin % 60)}`;
+      const idempotencyKey = `waitlist-${tenant_id}-${dateKey}-${hhmm}`;
+      const { data: existingDedupe } = await adminClient
+        .from("notification_dedupe")
+        .select("idempotency_key, sent_at")
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      if (existingDedupe?.sent_at) {
+        const ageMs = Date.now() - new Date(existingDedupe.sent_at as string).getTime();
+        if (ageMs < 10 * 60 * 1000) {
+          return new Response(JSON.stringify({ sent: 0, skipped: true, reason: "duplicate" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      await adminClient
+        .from("notification_dedupe")
+        .upsert({ idempotency_key: idempotencyKey, sent_at: new Date().toISOString() });
+
+      // サーバー生成の固定文言（クライアント指定は無視）
+      title = "キャンセル待ちの枠に空きが出ました";
+      body = `${jst.getUTCMonth() + 1}/${jst.getUTCDate()} ${hhmm}前後の枠に空きが出ました。先着順のためお早めにご予約ください`;
+      tag = idempotencyKey;
     } else {
       // ---- Authenticated path ----
       const caller = await verifyCaller(req);

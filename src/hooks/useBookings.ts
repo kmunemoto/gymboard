@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toJSTDate, formatJST } from "@/lib/timezone";
 import { getGymNameForUser } from "@/lib/tenantLookup";
+import { WAITLIST_ENABLED } from "@/lib/featureFlags";
 
 export interface BookingRow {
   id: string;
@@ -346,7 +347,7 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
   // Fetch booking details before deleting
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("id, user_id, booking_date, booking_type, google_event_id")
+    .select("id, user_id, booking_date, booking_type, google_event_id, tenant_id")
     .eq("id", bookingId)
     .maybeSingle();
 
@@ -390,6 +391,18 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
     sendCancelPushNotification(booking, cancelledByTrainer).catch((e) =>
       console.error("sendCancelPushNotification failed:", e)
     );
+    // キャンセル待ちへの空き通知（fire-and-forget）。
+    // 受信者はサーバー側（send-push-notification の waitlist_slot_freed）で
+    // booking_waitlist から解決する（RLSにより顧客からは他人の待機行を読めないため）。
+    if (WAITLIST_ENABLED && booking.tenant_id) {
+      supabase.functions.invoke("send-push-notification", {
+        body: {
+          purpose: "waitlist_slot_freed",
+          tenant_id: booking.tenant_id,
+          booking_date: booking.booking_date,
+        },
+      }).catch((e) => console.error("waitlist notify failed:", e));
+    }
   } else if (error) {
     console.error("cancelBooking: 削除エラー", error);
   }

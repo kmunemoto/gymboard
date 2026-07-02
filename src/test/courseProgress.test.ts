@@ -5,6 +5,7 @@ import {
   computeCourseProgress,
   getBookingProgressIndex,
   resolveCycleMonths,
+  shouldRebaseCycleStart,
   type BookingForProgress,
 } from "@/lib/courseProgress";
 import { toJSTDate } from "@/lib/timezone";
@@ -104,5 +105,61 @@ describe("getBookingProgressIndex", () => {
     expect(r).not.toBeNull();
     expect(r!.index).toBe(2);
     expect(r!.total).toBe(6);
+  });
+});
+
+describe("shouldRebaseCycleStart（1回目の予約で起算日を自動設定してよいか）", () => {
+  const mk = (dates: string[]): BookingForProgress[] =>
+    dates.map((d, i) => ({ id: String(i), booking_date: `${d}T10:00:00+09:00`, status: "予約済み" }));
+
+  it("起算日未設定（初回契約）は true", () => {
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: null, maxSessions: 6, bookingDateKey: "2026-07-10", existingBookings: [] }),
+    ).toBe(true);
+  });
+
+  it("リセット直後（最初の窓・予約0件）は true", () => {
+    // トレーナーが起算日を 7/2 にリセット → 1回目の予約 7/10 で起算日を 7/10 に補正してよい
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-07-02", maxSessions: 6, bookingDateKey: "2026-07-10", existingBookings: [] }),
+    ).toBe(true);
+  });
+
+  it("今サイクルに既に予約があれば false（2回目以降）", () => {
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-07-02", maxSessions: 6, bookingDateKey: "2026-07-20", existingBookings: mk(["2026-07-10"]) }),
+    ).toBe(false);
+  });
+
+  it("前サイクルを上限まで消化してロールした窓は true（きっちり消化→次のルーティン）", () => {
+    // 起算日 6/2、前サイクル 6/2〜7/2 で6回消化済み → 7/10 の予約は次のルーティンの1回目
+    const prev = mk(["2026-06-03", "2026-06-08", "2026-06-13", "2026-06-18", "2026-06-24", "2026-06-30"]);
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, bookingDateKey: "2026-07-10", existingBookings: prev }),
+    ).toBe(true);
+  });
+
+  it("前サイクル未消化のままロールした窓は false（大目に見た消化で誤発動しない）", () => {
+    // 起算日 6/2、前サイクルは5回のみ消化 → 7/5 の「大目に見た6回目」で起算日を動かさない
+    const prev = mk(["2026-06-03", "2026-06-08", "2026-06-13", "2026-06-18", "2026-06-24"]);
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, bookingDateKey: "2026-07-05", existingBookings: prev }),
+    ).toBe(false);
+  });
+
+  it("起算日より過去の日付への予約では動かさない", () => {
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-07-02", maxSessions: 6, bookingDateKey: "2026-06-28", existingBookings: [] }),
+    ).toBe(false);
+  });
+
+  it("無制限プランはロール済み窓では動かさない（リセット直後のみ true）", () => {
+    const prev = mk(["2026-06-10"]);
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: null, bookingDateKey: "2026-07-10", existingBookings: prev }),
+    ).toBe(false);
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-07-02", maxSessions: null, bookingDateKey: "2026-07-10", existingBookings: [] }),
+    ).toBe(true);
   });
 });

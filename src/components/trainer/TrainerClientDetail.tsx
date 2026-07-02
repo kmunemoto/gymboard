@@ -39,7 +39,8 @@ import { toast } from "sonner";
 import { format, addMonths, differenceInDays, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
+import { getJSTNow, getJSTToday, formatJST, toJSTDate } from "@/lib/timezone";
+import { getCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
 import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { applyRaidDamage, checkTrainingMilestones, computeSessionVolume, processSessionRewards, type MilestoneAchieved, type SessionRewardResult } from "@/lib/raidUtils";
@@ -728,17 +729,34 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   {t("clientDetail.resetToToday")}
                 </Button>
               </div>
-              {cycleStartDate && (
-                <p className="text-xs text-muted-foreground">
-                  {t("clientDetail.expiry", { date: format(addMonths(parseISO(cycleStartDate), 1), "yyyy年M月d日", { locale: ja }) })}
-                  {(() => {
-                    const remaining = differenceInDays(addMonths(parseISO(cycleStartDate), 1), getJSTNow());
-                    if (remaining < 0) return <span className="text-destructive font-bold ml-1">{t("clientDetail.expired")}</span>;
-                    if (remaining <= 3) return <span className="text-warning font-bold ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
-                    return <span className="ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
-                  })()}
-                </p>
-              )}
+              {cycleStartDate && (() => {
+                // 期限未確定判定: 今サイクルに有効予約が0件なら「1回目の予約待ち」。
+                // 期限は1回目のトレーニング日から決まるため、確定するまで日付を出さない
+                // （1回目の予約が入ると起算日が自動でその日に設定される）。
+                const cm = resolveCycleMonths(clientPlan, tenantPlans);
+                const win = getCycleWindow(cycleStartDate, getJSTNow(), cm);
+                const pending = !!win && !bookings.some((b: { date: string; status: string }) => {
+                  if (b.status === "キャンセル済み") return false;
+                  const d = toJSTDate(b.date);
+                  return d >= win.start && d < win.end;
+                });
+                if (pending) {
+                  return (
+                    <p className="text-xs text-muted-foreground">{t("clientDetail.expiryPending")}</p>
+                  );
+                }
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    {t("clientDetail.expiry", { date: format(addMonths(parseISO(cycleStartDate), cm), "yyyy年M月d日", { locale: ja }) })}
+                    {(() => {
+                      const remaining = differenceInDays(addMonths(parseISO(cycleStartDate), cm), getJSTNow());
+                      if (remaining < 0) return <span className="text-destructive font-bold ml-1">{t("clientDetail.expired")}</span>;
+                      if (remaining <= 3) return <span className="text-warning font-bold ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
+                      return <span className="ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
+                    })()}
+                  </p>
+                );
+              })()}
             </div>
 
             {/* Show Usage Period Toggle */}

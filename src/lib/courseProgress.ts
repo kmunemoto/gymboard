@@ -147,6 +147,59 @@ export const computeCourseProgress = (
 };
 
 /**
+ * 新しく作る予約が「次のルーティンの1回目」なら true（起算日をその日に合わせてよい）。
+ *
+ * ジムの運用「期限は1回目のトレーニング日から1ヶ月」に合わせるための判定。
+ * 発動する条件（すべて安全側）:
+ *   - 起算日が未設定（初回契約）
+ *   - 予約日を含むサイクル窓に有効予約が0件で、かつ
+ *       (a) その窓が最初の窓（＝起算日リセット直後・未使用の起算日）か、
+ *       (b) 直前のサイクルを回数上限まで消化済み（きっちり使い切って次へ）
+ * 発動しない例: 「大目に見た消化」（前サイクル未消化のまま期限超過で消化した回）は
+ * (b) を満たさないため起算日は動かない。無制限プランは (a) のみ。
+ * 過去日への予約（起算日より前）は動かさない。
+ */
+export const shouldRebaseCycleStart = (params: {
+  cycleStartDate: string | null | undefined;
+  /** プランの回数上限。null = 無制限 */
+  maxSessions: number | null;
+  cycleMonths?: number | null;
+  /** 新規予約の日付キー（yyyy-MM-dd） */
+  bookingDateKey: string;
+  /** その顧客の既存予約（新規作成分は含めない） */
+  existingBookings: BookingForProgress[];
+}): boolean => {
+  const { cycleStartDate, maxSessions, cycleMonths, bookingDateKey, existingBookings } = params;
+  if (!cycleStartDate) return true; // 起算日未設定 → 1回目の予約日を起算日に
+
+  // 起算日より過去の日付への予約（過去分の記録など）では動かさない
+  if (bookingDateKey < cycleStartDate) return false;
+
+  const active = existingBookings.filter((b) => b.status !== "キャンセル済み");
+  const window = getCycleWindow(cycleStartDate, parseISO(bookingDateKey), cycleMonths);
+  if (!window) return false;
+
+  const inWindow = active.filter((b) => {
+    const d = toJSTDate(b.booking_date);
+    return d >= window.start && d < window.end;
+  }).length;
+  if (inWindow > 0) return false; // すでにこのルーティンの予約がある
+
+  // 最初の窓（リセット直後・まだ一度も使っていない起算日）なら予約日に合わせる
+  if (window.start.getTime() === startOfDay(parseISO(cycleStartDate)).getTime()) return true;
+
+  // ロール済みの窓: 直前サイクルを上限まで消化済みのときだけ「次のルーティン」とみなす
+  if (maxSessions == null || maxSessions <= 0) return false; // 無制限は自動では動かさない
+  const prevWindow = getCycleWindow(cycleStartDate, addDays(window.start, -1), cycleMonths);
+  if (!prevWindow) return false;
+  const prevCount = active.filter((b) => {
+    const d = toJSTDate(b.booking_date);
+    return d >= prevWindow.start && d < prevWindow.end;
+  }).length;
+  return prevCount >= maxSessions;
+};
+
+/**
  * 特定の予約がそのお客様の今回の何回目に当たるかを返す
  * 戻り値: { index: 1始まり, total: 月間回数 or null(通い放題/未設定) }
  */

@@ -98,3 +98,30 @@ describe("resolvePlanUsageInput", () => {
     expect(resolvePlanUsageInput(null, null, "2026-06-20")).toBeNull();
   });
 });
+
+describe("periodPending（期限未確定: 1回目の予約待ち）", () => {
+  it("サブスクで今サイクルに予約が無ければ true、1件でも入れば false", () => {
+    const none = computePlanUsage(
+      { planType: "subscription", maxSessions: 6, validityDays: null, startDate: "2026-07-02" },
+      [],
+      NOW,
+    );
+    expect(none.periodPending).toBe(true);
+
+    const withBooking = computePlanUsage(
+      { planType: "subscription", maxSessions: 6, validityDays: null, startDate: "2026-07-02" },
+      [b("2026-07-15T10:00:00+09:00")],
+      NOW,
+    );
+    expect(withBooking.periodPending).toBe(false);
+  });
+
+  it("回数券(ticket)・期間(period)は購入日起算のため常に false", () => {
+    const ticket = computePlanUsage(
+      { planType: "ticket", maxSessions: 10, validityDays: 90, startDate: "2026-07-02" },
+      [],
+      NOW,
+    );
+    expect(ticket.periodPending).toBe(false);
+  });
+});

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageCircle, Bell } from "lucide-react";
 import { toast } from "sonner";
@@ -8,12 +8,21 @@ import CustomerHome from "./CustomerHome";
 import CustomerBooking from "./CustomerBooking";
 import CustomerMeals from "./CustomerMeals";
 import CustomerChat from "./CustomerChat";
-import CustomerTraining from "./CustomerTraining";
 import CustomerSettings from "./CustomerSettings";
-import CustomerPosture from "./CustomerPosture";
-import CustomerMonthlyReport from "./CustomerMonthlyReport";
 import PwaInstallBanner from "./PwaInstallBanner";
 import { Button } from "@/components/ui/button";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+
+// 重いタブ（グラフ recharts / 姿勢分析）は開いたときに読み込む（バンドル最適化）
+const CustomerTraining = lazy(() => import("./CustomerTraining"));
+const CustomerPosture = lazy(() => import("./CustomerPosture"));
+const CustomerMonthlyReport = lazy(() => import("./CustomerMonthlyReport"));
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-20">
+    <DumbbellLoader className="w-6 h-6 text-accent" />
+  </div>
+);
 
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
@@ -96,14 +105,16 @@ const CustomerView = () => {
       <div className="pt-14" style={{ marginTop: "env(safe-area-inset-top, 0px)" }} key={tab}>
 
         <PlanLimitBanner />
-        {tab === "home" && <CustomerHome onNavigate={setTab} />}
-        {tab === "booking" && <CustomerBooking />}
-        {tab === "training" && <CustomerTraining />}
-        {tab === "meals" && <CustomerMeals />}
-        {tab === "chat" && <CustomerChat />}
-        {tab === "settings" && <CustomerSettings />}
-        {tab === "posture" && <CustomerPosture />}
-        {tab === "report" && <CustomerMonthlyReport onBack={() => setTab("home")} />}
+        <Suspense fallback={<TabFallback />}>
+          {tab === "home" && <CustomerHome onNavigate={setTab} />}
+          {tab === "booking" && <CustomerBooking />}
+          {tab === "training" && <CustomerTraining />}
+          {tab === "meals" && <CustomerMeals />}
+          {tab === "chat" && <CustomerChat />}
+          {tab === "settings" && <CustomerSettings />}
+          {tab === "posture" && <CustomerPosture />}
+          {tab === "report" && <CustomerMonthlyReport onBack={() => setTab("home")} />}
+        </Suspense>
       </div>
       <BottomNav activeTab={tab} onTabChange={setTab} unreadChat={unreadChat} />
       <PwaInstallBanner />

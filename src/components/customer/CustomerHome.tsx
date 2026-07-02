@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import ProgressCharts from "./ProgressCharts";
+// グラフ(recharts ~400KB)は遅延読込し、ホームの初期表示を軽くする
+const ProgressCharts = lazy(() => import("./ProgressCharts"));
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { CustomerTab } from "./CustomerView";
@@ -378,8 +379,10 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         </Card>
       </section>
 
-      {/* 5. Progress Charts */}
-      <ProgressCharts />
+      {/* 5. Progress Charts（遅延読込。読込中は高さを確保してレイアウト飛びを防ぐ） */}
+      <Suspense fallback={<div className="h-40" aria-hidden />}>
+        <ProgressCharts />
+      </Suspense>
 
       {/* 6. Latest Workout */}
       {latestSession && latestSession.exerciseCount > 0 && (

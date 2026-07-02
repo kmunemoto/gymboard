@@ -1,12 +1,21 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageSquare } from "lucide-react";
 
 import TrainerSidebar from "./TrainerSidebar";
-import TrainerDashboard from "./TrainerDashboard";
 import TrainerClientList from "./TrainerClientList";
-import TrainerClientDetail from "./TrainerClientDetail";
 import TrainerSchedule from "./TrainerSchedule";
+import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+
+// グラフ(recharts)を含む重い画面は開いたときに読み込む（バンドル最適化）
+const TrainerDashboard = lazy(() => import("./TrainerDashboard"));
+const TrainerClientDetail = lazy(() => import("./TrainerClientDetail"));
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-20">
+    <DumbbellLoader className="w-6 h-6 text-accent" />
+  </div>
+);
 import TrainerMessages from "./TrainerMessages";
 import TrainerExerciseManager from "./TrainerExerciseManager";
 import TrainerGymSettings from "./TrainerGymSettings";
@@ -136,6 +145,7 @@ const TrainerView = () => {
             unreadCounseling={unreadCounseling}
           />
           <main className="flex-1 ml-0 md:ml-60 p-3 sm:p-4 md:p-8 max-w-6xl" key={`${tab}-${selectedClientId}`}>
+            <Suspense fallback={<TabFallback />}>
               {tab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} />}
               {tab === "clients" && !selectedClientId && <TrainerClientList onSelectClient={handleSelectClient} />}
               {tab === "clients" && selectedClientId && <TrainerClientDetail clientId={selectedClientId} onBack={handleBackToList} />}
@@ -146,7 +156,8 @@ const TrainerView = () => {
               {tab === "announcements" && <TrainerAnnouncementManager />}
               {tab === "notifications" && <TrainerNotificationSettings />}
               {tab === "gym-settings" && <TrainerGymSettings onSignOut={signOut} />}
-            </main>
+            </Suspense>
+          </main>
         </div>
       </div>
     </div>

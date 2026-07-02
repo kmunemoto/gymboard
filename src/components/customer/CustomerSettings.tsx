@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo, useRef } from "react";
 import { Settings, User, Pencil, MessageCircle, CheckCircle2, Unlink, LogOut, History, Clock, Dumbbell, Award, Bone, Smartphone, Calendar, FileText, Shield as ShieldIcon, ChevronRight, Gamepad2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +16,8 @@ import { getCycleWindow } from "@/lib/courseProgress";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import { formatDate } from "@/lib/dateFormat";
-import DiagnosisHistorySection from "./posture/DiagnosisHistorySection";
+// 骨格診断履歴はグラフ(recharts)を含むため遅延読込（バンドル最適化）
+const DiagnosisHistorySection = lazy(() => import("./posture/DiagnosisHistorySection"));
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
@@ -507,8 +508,10 @@ const CustomerSettings = () => {
         })()}
       </section>
 
-      {/* 骨格診断履歴 */}
-      <DiagnosisHistorySection userId={user?.id} />
+      {/* 骨格診断履歴（遅延読込） */}
+      <Suspense fallback={<div className="h-24" aria-hidden />}>
+        <DiagnosisHistorySection userId={user?.id} />
+      </Suspense>
 
       {/* Logout */}
       <section className="pt-2 space-y-3">

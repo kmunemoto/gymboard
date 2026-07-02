@@ -3,7 +3,7 @@ import { Languages, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage } from "@/lib/i18n";
+import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, changeLanguage } from "@/lib/i18n";
 
 const LANGUAGE_OPTIONS: { code: SupportedLanguage; nativeLabel: string; subLabel: string }[] = [
   { code: "ja", nativeLabel: "日本語", subLabel: "Japanese" },
@@ -24,9 +24,10 @@ const LanguageSwitcher = ({ variant = "customer" }: LanguageSwitcherProps) => {
     ? rawLang
     : rawLang.split("-")[0];
 
-  const handleChange = (lng: SupportedLanguage) => {
+  const handleChange = async (lng: SupportedLanguage) => {
     if (lng === currentLang) return;
-    i18n.changeLanguage(lng);
+    // ロケールは遅延読込のため、読み込んでから切り替える（i18n.ts の changeLanguage）
+    await changeLanguage(lng);
     try {
       localStorage.setItem("i18nextLng", lng);
     } catch {

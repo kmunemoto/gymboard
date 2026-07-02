@@ -19,6 +19,7 @@ const GROUP_MAP: Record<string, MuscleKey> = {
   "肩": "shoulder",
   "脚": "legs",
   "臀部": "glutes",
+  "お尻": "glutes",
   "腕": "biceps",
   "二頭筋": "biceps",
   "上腕二頭筋": "biceps",
@@ -29,12 +30,19 @@ const GROUP_MAP: Record<string, MuscleKey> = {
   "脚・臀部": "legs",
 };
 
+// 複数の筋肉にまたがる曖昧なラベル。種目名キーワードで細分化を試みる
+// （例:「腕」→ アームカールなら二頭筋、キックバックなら三頭筋）。
+const AMBIGUOUS_GROUPS = new Set(["腕", "脚・臀部"]);
+
 export function getMuscleKey(exerciseName: string, muscleGroup?: string | null): MuscleKey | null {
+  // 部位（muscle_group）が明示されていればそれを優先し、バッジ表示と画像を一致させる。
+  // 例: スミスブルガリアンスクワットを「お尻」で登録 → キーワードの「脚」ではなくお尻の画像。
+  const groupKey = muscleGroup ? GROUP_MAP[muscleGroup] : undefined;
+  if (groupKey && !AMBIGUOUS_GROUPS.has(muscleGroup!)) return groupKey;
   for (const { keywords, muscle } of KEYWORD_MAP) {
     if (keywords.some((kw) => exerciseName.includes(kw))) return muscle;
   }
-  if (muscleGroup && GROUP_MAP[muscleGroup]) return GROUP_MAP[muscleGroup];
-  return null;
+  return groupKey ?? null;
 }
 
 export function getMuscleIconUrl(

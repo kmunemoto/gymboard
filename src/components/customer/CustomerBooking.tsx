@@ -17,7 +17,7 @@ import { sendBookingNotification } from "@/lib/bookingNotification";
 import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
-import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
 import PlanUsageCard from "./PlanUsageCard";
 import { formatDate } from "@/lib/dateFormat";
 import { useWaitlist } from "@/hooks/useWaitlist";
@@ -448,6 +448,7 @@ const CustomerBooking = () => {
                                   profile?.cycle_start_date,
                                   profile?.plan,
                                   bookingsForProgress,
+                                  resolveCycleMonths(profile?.plan, tenantPlans),
                                 );
                                 if (!progress || progress.isUnconfigured) return null;
                                 return (

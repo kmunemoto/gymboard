@@ -80,7 +80,7 @@ describe("computePlanUsage", () => {
 describe("resolvePlanUsageInput", () => {
   it("tenant_plans があればそれを正とする", () => {
     const input = resolvePlanUsageInput("回数券10", { plan_type: "ticket", max_sessions: 10, validity_days: 90 }, "2026-06-20");
-    expect(input).toEqual({ planType: "ticket", maxSessions: 10, validityDays: 90, startDate: "2026-06-20" });
+    expect(input).toEqual({ planType: "ticket", maxSessions: 10, validityDays: 90, startDate: "2026-06-20", cycleMonths: null });
   });
 
   it("tenant_plans に無い『月N回』は subscription として解決（旧データ互換）", () => {

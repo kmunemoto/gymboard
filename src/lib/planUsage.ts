@@ -22,6 +22,8 @@ export interface PlanUsageInput {
   validityDays?: number | null;
   /** 起算日（cycle_start_date / plan_start_date 等）ISO 文字列 */
   startDate?: string | null;
+  /** サブスクのサイクル月数（tenant_plans.cycle_months）。null/未設定は1ヶ月 */
+  cycleMonths?: number | null;
 }
 
 export interface PlanUsageBooking {
@@ -68,7 +70,7 @@ export function computePlanUsage(
   bookings: PlanUsageBooking[],
   now: Date = getJSTNow(),
 ): PlanUsage {
-  const { planType, maxSessions, validityDays, startDate } = input;
+  const { planType, maxSessions, validityDays, startDate, cycleMonths } = input;
   if (!startDate) return UNCONFIGURED;
 
   const anchor = startOfDay(parseISO(startDate));
@@ -81,9 +83,9 @@ export function computePlanUsage(
     windowStart = anchor;
     windowEnd = validityDays && validityDays > 0 ? addDays(anchor, validityDays) : null;
   } else {
-    // subscription（既定）。月N回は毎月リセット。
+    // subscription（既定）。月N回は cycleMonths ヶ月ごとにリセット（既定1ヶ月）。
     kind = "subscription";
-    const cycle = getCycleWindow(startDate, now);
+    const cycle = getCycleWindow(startDate, now, cycleMonths);
     if (!cycle) return UNCONFIGURED;
     windowStart = cycle.start;
     windowEnd = cycle.end;
@@ -123,7 +125,7 @@ export function computePlanUsage(
 // tenant_plans に該当があればそれを正とし、無ければ名称から推定（旧データ互換）。
 export function resolvePlanUsageInput(
   planName: string | null | undefined,
-  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null } | null | undefined,
+  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null; cycle_months?: number | null } | null | undefined,
   startDate: string | null | undefined,
 ): PlanUsageInput | null {
   if (!planName) return null;
@@ -133,6 +135,7 @@ export function resolvePlanUsageInput(
       maxSessions: tenantPlan.max_sessions ?? null,
       validityDays: tenantPlan.validity_days ?? null,
       startDate: startDate ?? null,
+      cycleMonths: tenantPlan.cycle_months ?? null,
     };
   }
   // 旧データ互換: tenant_plans に無い名称

@@ -33,6 +33,8 @@ export interface TenantPlan {
   max_sessions: number | null;
   price: number;
   validity_days: number | null;
+  /** サブスクのサイクル月数（応当日ベース）。null/未設定は1ヶ月 */
+  cycle_months: number | null;
   sort_order: number;
   is_active: boolean;
 }

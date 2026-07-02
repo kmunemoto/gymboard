@@ -20,33 +20,56 @@ export interface CycleWindow {
   end: Date;
 }
 
+/** サイクル月数を正規化（未設定/不正は1）。 */
+const normCycleMonths = (cycleMonths?: number | null): number =>
+  cycleMonths && cycleMonths > 0 ? Math.floor(cycleMonths) : 1;
+
+/**
+ * プラン名 + tenant_plans 定義からサイクル月数を解決する（既定 1）。
+ * ジム／プランごとに利用期間（応当日ベースの月数）を設定できる。
+ */
+export const resolveCycleMonths = (
+  planName: string | null | undefined,
+  tenantPlans: ReadonlyArray<{ plan_name: string; cycle_months?: number | null }> | null | undefined,
+): number => {
+  if (!planName || !tenantPlans) return 1;
+  const p = tenantPlans.find((tp) => tp.plan_name === planName);
+  return normCycleMonths(p?.cycle_months);
+};
+
 /**
  * cycle_start_date を起算日として、targetDate を含むサイクル期間 [start, end) を求める。
+ * cycleMonths でサイクルの長さ（月数・応当日ベース）を指定できる（既定 1ヶ月）。
  *
- * 仕様: アニバーサリー日（起算日と同じ日付）は「前サイクルの最終日」として扱う。
- * 例: cycle_start_date = 2026-05-19 の場合
+ * 仕様: アニバーサリー日（起算日の cycleMonths ヶ月後の同日）は「前サイクルの最終日」として扱う。
+ * 例: cycle_start_date = 2026-05-19, cycleMonths=1 の場合
  *   - サイクル1: 2026-05-19 〜 2026-06-19（6/19 を含む）
  *   - サイクル2: 2026-06-20 〜 2026-07-19（6/20 から開始）
  * 返り値の end はアニバーサリー翌日の 00:00（排他的上限）。
  * 比較は暦日（startOfDay）基準で行い、時刻成分の影響を排除する。
  */
-export const getCycleWindow = (cycleStartDate: string | null | undefined, targetDate: Date): CycleWindow | null => {
+export const getCycleWindow = (
+  cycleStartDate: string | null | undefined,
+  targetDate: Date,
+  cycleMonths?: number | null,
+): CycleWindow | null => {
   if (!cycleStartDate) return null;
+  const m = normCycleMonths(cycleMonths);
   const initialStart = parseISO(cycleStartDate);
   const targetDay = startOfDay(targetDate);
 
   // 契約起算日より前は、最初のサイクルを返す（架空の「前回」を作らない）
   if (targetDay < initialStart) {
-    return { start: initialStart, end: addDays(addMonths(initialStart, 1), 1) };
+    return { start: initialStart, end: addDays(addMonths(initialStart, m), 1) };
   }
 
-  // アニバーサリー日（addMonths(start,1)）が targetDay より「厳密に前」のときだけ次サイクルへ進める。
+  // アニバーサリー日（addMonths(start,m)）が targetDay より「厳密に前」のときだけ次サイクルへ進める。
   // → アニバーサリー日と一致する日は現サイクルに含める。
   let start = initialStart;
-  while (addMonths(start, 1) < targetDay) {
-    start = addDays(addMonths(start, 1), 1);
+  while (addMonths(start, m) < targetDay) {
+    start = addDays(addMonths(start, m), 1);
   }
-  return { start, end: addDays(addMonths(start, 1), 1) };
+  return { start, end: addDays(addMonths(start, m), 1) };
 };
 
 export interface BookingForProgress {
@@ -76,12 +99,13 @@ export const computeCourseProgress = (
   plan: string | null | undefined,
   bookings: BookingForProgress[],
   referenceDate: Date = getJSTNow(),
+  cycleMonths?: number | null,
 ): CourseProgress => {
   const monthlyTotal = getMonthlySessionCount(plan);
   const isUnlimited = monthlyTotal === -1;
   const isUnconfigured = monthlyTotal === null || !cycleStartDate;
 
-  const cycle = getCycleWindow(cycleStartDate, referenceDate);
+  const cycle = getCycleWindow(cycleStartDate, referenceDate, cycleMonths);
 
   if (!cycle) {
     return {
@@ -131,11 +155,12 @@ export const getBookingProgressIndex = (
   cycleStartDate: string | null | undefined,
   plan: string | null | undefined,
   bookings: BookingForProgress[],
+  cycleMonths?: number | null,
 ): { index: number; total: number | null; isUnlimited: boolean; isUnconfigured: boolean; isOverflow: boolean } | null => {
   const target = bookings.find((b) => b.id === bookingId);
   if (!target) return null;
   const targetDate = toJSTDate(target.booking_date);
-  const progress = computeCourseProgress(cycleStartDate, plan, bookings, targetDate);
+  const progress = computeCourseProgress(cycleStartDate, plan, bookings, targetDate, cycleMonths);
   if (!progress.cycle) {
     return { index: 0, total: progress.monthlyTotal, isUnlimited: progress.isUnlimited, isUnconfigured: progress.isUnconfigured, isOverflow: false };
   }

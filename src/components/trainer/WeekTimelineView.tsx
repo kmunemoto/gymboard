@@ -3,7 +3,7 @@ import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import { BookingWithTime } from "@/hooks/useBookings";
-import { getBookingProgressIndex, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
 
 export interface ProfileLite {
   user_id: string;
@@ -16,6 +16,8 @@ interface WeekTimelineViewProps {
   bookings: BookingWithTime[];
   onSelectBooking?: (booking: BookingWithTime) => void;
   profiles?: ProfileLite[];
+  /** サイクル月数の解決用（プランごとの利用期間）。 */
+  tenantPlans?: ReadonlyArray<{ plan_name: string; cycle_months?: number | null }>;
 }
 
 const START_HOUR = 9;
@@ -29,7 +31,7 @@ const timeToMin = (t: string) => {
   return h * 60 + m;
 };
 
-const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [] }: WeekTimelineViewProps) => {
+const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [] }: WeekTimelineViewProps) => {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   // user_id ごとの予約一覧（進捗計算用）
@@ -155,6 +157,7 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [] 
                           profile.cycle_start_date,
                           profile.plan,
                           bookingsByUser.get(b.user_id) || [],
+                          resolveCycleMonths(profile.plan, tenantPlans),
                         )
                       : null;
                   const progressLabel = progress

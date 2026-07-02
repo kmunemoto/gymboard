@@ -11,7 +11,7 @@ import { addDays, startOfDay } from "date-fns";
 import CounselingResponseList from "./CounselingResponseList";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
-import { getBookingProgressIndex, computeCourseProgress, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, computeCourseProgress, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
 import { RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { useTenant } from "@/hooks/useTenant";
@@ -199,7 +199,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
     const list: Renewal[] = [];
     profiles.forEach((p) => {
       if (!p.cycle_start_date || !p.plan) return;
-      const progress = computeCourseProgress(p.cycle_start_date, p.plan, bookingsByUser.get(p.user_id) || [], now);
+      const progress = computeCourseProgress(p.cycle_start_date, p.plan, bookingsByUser.get(p.user_id) || [], now, resolveCycleMonths(p.plan, tenantPlans));
       if (!progress.cycle || progress.isUnconfigured) return;
       const anniversary = addDays(progress.cycle.end, -1); // サイクル最終日（満了日）
       const days = Math.round((startOfDay(anniversary).getTime() - todayStart.getTime()) / 86400000);
@@ -364,7 +364,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
                 .map((b) => {
                   const profile = profiles.find((pr) => pr.user_id === b.user_id);
                   const progress = profile
-                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [])
+                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans))
                     : null;
 
                   return (

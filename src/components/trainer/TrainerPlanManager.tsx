@@ -36,6 +36,7 @@ interface FormState {
   max_sessions: string;
   price: string;
   validity_days: string;
+  cycle_months: string;
   is_active: boolean;
 }
 
@@ -45,6 +46,7 @@ const emptyForm: FormState = {
   max_sessions: "",
   price: "",
   validity_days: "",
+  cycle_months: "",
   is_active: true,
 };
 
@@ -99,6 +101,7 @@ const TrainerPlanManager = () => {
       max_sessions: plan.max_sessions != null ? String(plan.max_sessions) : "",
       price: String(plan.price ?? ""),
       validity_days: plan.validity_days != null ? String(plan.validity_days) : "",
+      cycle_months: plan.cycle_months != null ? String(plan.cycle_months) : "",
       is_active: plan.is_active,
     });
     setDialogOpen(true);
@@ -128,6 +131,11 @@ const TrainerPlanManager = () => {
           ? form.validity_days
             ? parseInt(form.validity_days)
             : null
+          : null,
+      // 利用期間（サイクル月数）はサブスクのみ。未入力は null（＝1ヶ月）。
+      cycle_months:
+        form.plan_type === "subscription" && form.cycle_months
+          ? Math.max(1, parseInt(form.cycle_months) || 1)
           : null,
       is_active: form.is_active,
     };
@@ -200,6 +208,7 @@ const TrainerPlanManager = () => {
 
   const showMaxSessions = form.plan_type !== "period";
   const showValidity = form.plan_type !== "subscription";
+  const showCycleMonths = form.plan_type === "subscription";
 
   return (
     <div className="space-y-3">
@@ -232,6 +241,7 @@ const TrainerPlanManager = () => {
                     ¥{plan.price.toLocaleString()}
                     {plan.max_sessions != null && ` / ${t("settings.plans.sessionsSuffix", { count: plan.max_sessions })}`}
                     {plan.validity_days != null && ` / ${t("settings.plans.daysSuffix", { count: plan.validity_days })}`}
+                    {plan.plan_type === "subscription" && plan.cycle_months != null && plan.cycle_months > 1 && ` / ${t("settings.plans.cycleMonthsSuffix", { count: plan.cycle_months })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -324,6 +334,20 @@ const TrainerPlanManager = () => {
                   onChange={(e) => setForm({ ...form, validity_days: e.target.value })}
                   placeholder={t("settings.plans.validityPlaceholder")}
                 />
+              </div>
+            )}
+            {showCycleMonths && (
+              <div>
+                <Label>{t("settings.plans.cycleMonths")}</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={form.cycle_months}
+                  onChange={(e) => setForm({ ...form, cycle_months: e.target.value })}
+                  placeholder={t("settings.plans.cycleMonthsPlaceholder")}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">{t("settings.plans.cycleMonthsHint")}</p>
               </div>
             )}
             <div className="flex items-center justify-between pt-1">

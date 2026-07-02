@@ -1940,7 +1940,8 @@
     "title": "팔로우가 필요한 고객",
     "lapsed": "{{days}}일 전 방문 · 예약 없음",
     "neverBooked": "아직 예약이 없습니다",
-    "more": "외 {{count}}명"
+    "more": "외 {{count}}명",
+    "message": "메시지"
   },
   "renewal": {
     "title": "갱신이 임박한 고객",

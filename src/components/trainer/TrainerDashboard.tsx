@@ -1,6 +1,7 @@
-import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight } from "lucide-react";
+import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { useAllCustomerProfiles, useProfile } from "@/hooks/useProfile";
@@ -18,6 +19,8 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;
+  /** 離脱アラートの「声かけ」: 指定顧客との会話を開いた状態でメッセージ画面へ */
+  onMessageClient?: (clientId: string) => void;
 }
 
 type RevenueProfile = {
@@ -73,7 +76,7 @@ const getRevenueCycleStartDates = (
   return starts;
 };
 
-const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
+const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardProps) => {
   const { t } = useTranslation();
   const { profiles, loading } = useAllCustomerProfiles();
   const { bookings, loading: bookingsLoading } = useAllBookings();
@@ -273,6 +276,20 @@ const TrainerDashboard = ({ onSelectClient }: TrainerDashboardProps) => {
                           : t("retention.neverBooked")}
                       </p>
                     </div>
+                    {onMessageClient && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 h-8"
+                        onClick={(e) => {
+                          e.stopPropagation(); // 行タップ（顧客詳細）と分離
+                          onMessageClient(c.user_id);
+                        }}
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                        {t("retention.message")}
+                      </Button>
+                    )}
                     <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                   </CardContent>
                 </Card>

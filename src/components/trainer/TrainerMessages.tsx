@@ -16,11 +16,16 @@ interface CustomerInfo {
   avatar_initial: string;
 }
 
-const TrainerMessages = () => {
+interface TrainerMessagesProps {
+  /** 開いたときに選択しておく顧客（離脱アラートの「声かけ」等からの遷移用） */
+  initialCustomerId?: string | null;
+}
+
+const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [customers, setCustomers] = useState<CustomerInfo[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(initialCustomerId);
   const [newMsg, setNewMsg] = useState("");
   const [lastMessages, setLastMessages] = useState<Record<string, { content: string; time: string }>>({});
   const bottomRef = useRef<HTMLDivElement>(null);

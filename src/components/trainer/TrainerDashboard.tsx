@@ -253,6 +253,67 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
       </div>
 
       <div className="space-y-4 sm:space-y-6">
+        {/* Today's Schedule - REAL DATA（本日のセッションを最上部に） */}
+        <section>
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <CalendarDays className="w-3.5 h-3.5" />
+            {t("dashboard.todaySchedule")}
+          </h2>
+          {todayBookings.length === 0 ? (
+            <Card>
+              <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                {t("dashboard.noTodayBookings")}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {todayBookings
+                .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                .map((b) => {
+                  const profile = profiles.find((pr) => pr.user_id === b.user_id);
+                  const progress = profile
+                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans))
+                    : null;
+
+                  return (
+                  <Card key={b.id} className="card-hover cursor-pointer" onClick={() => {
+                    // Find profile by user_id for navigation
+                    if (profile) onSelectClient(profile.user_id);
+                  }}>
+                    <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl gym-gradient flex items-center justify-center text-primary-foreground font-bold text-xs sm:text-sm shrink-0">
+                        {b.clientName[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate">{b.clientName}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                            {b.booking_type}
+                          </Badge>
+                          {progress && (
+                            <CourseProgressBadge
+                              index={progress.index}
+                              total={progress.total}
+                              isUnlimited={progress.isUnlimited}
+                              isUnconfigured={progress.isUnconfigured}
+                              isOverflow={progress.isOverflow}
+                              className="mt-0"
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold">{b.startTime}</p>
+                        <p className="text-xs text-muted-foreground">{t("dashboard.minutes60")}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  );
+                })}
+            </div>
+          )}
+        </section>
+
         {/* フォローが必要な顧客（離脱検知） */}
         {atRiskCustomers.length > 0 && (
           <section>
@@ -346,67 +407,6 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
             </div>
           </section>
         )}
-
-        {/* Today's Schedule - REAL DATA */}
-        <section>
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-            <CalendarDays className="w-3.5 h-3.5" />
-            {t("dashboard.todaySchedule")}
-          </h2>
-          {todayBookings.length === 0 ? (
-            <Card>
-              <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                {t("dashboard.noTodayBookings")}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {todayBookings
-                .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                .map((b) => {
-                  const profile = profiles.find((pr) => pr.user_id === b.user_id);
-                  const progress = profile
-                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans))
-                    : null;
-
-                  return (
-                  <Card key={b.id} className="card-hover cursor-pointer" onClick={() => {
-                    // Find profile by user_id for navigation
-                    if (profile) onSelectClient(profile.user_id);
-                  }}>
-                    <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl gym-gradient flex items-center justify-center text-primary-foreground font-bold text-xs sm:text-sm shrink-0">
-                        {b.clientName[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm truncate">{b.clientName}</p>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                            {b.booking_type}
-                          </Badge>
-                          {progress && (
-                            <CourseProgressBadge
-                              index={progress.index}
-                              total={progress.total}
-                              isUnlimited={progress.isUnlimited}
-                              isUnconfigured={progress.isUnconfigured}
-                              isOverflow={progress.isOverflow}
-                              className="mt-0"
-                            />
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold">{b.startTime}</p>
-                        <p className="text-xs text-muted-foreground">{t("dashboard.minutes60")}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  );
-                })}
-            </div>
-          )}
-        </section>
 
         {/* Counseling Responses */}
         <section>

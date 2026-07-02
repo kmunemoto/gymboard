@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Info } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Info, Repeat } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAllBookings, checkSlotBlocked, createBooking, cancelBooking } from "@/hooks/useBookings";
+import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking } from "@/hooks/useBookings";
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
-import { getJSTNow } from "@/lib/timezone";
+import { getJSTNow, formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
 import { sendBookingNotification } from "@/lib/bookingNotification";
 import {
@@ -45,6 +45,8 @@ const TrainerSchedule = () => {
   const [proxyTime, setProxyTime] = useState<string>("");
   const [proxyClient, setProxyClient] = useState<string>("");
   const [proxyBookingType, setProxyBookingType] = useState<string>("");
+  // 定期予約: 毎週同じ曜日・時間で何回分まとめて予約するか（1=この回のみ）
+  const [proxyRepeatWeeks, setProxyRepeatWeeks] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; clientName: string; date: string; startTime: string; isBlocked?: boolean } | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -134,30 +136,54 @@ const TrainerSchedule = () => {
     }
 
     setSubmitting(true);
-    const { data: bookingData, error } = await createBooking(proxyClient, proxyDateKey, proxyTime, proxyBookingType, true);
 
-    if (error) {
-      toast.error(t("schedule.errorAddFailed"));
-      setSubmitting(false);
-      return;
+    // 定期予約: proxyRepeatWeeks > 1 なら毎週同じ曜日・時間でまとめて作成。
+    // 満枠の週はスキップされる（結果はトーストで通知）。
+    let firstBooking: { id: string; date: string } | null = null;
+    const client = profiles.find((p) => p.user_id === proxyClient);
+    if (proxyRepeatWeeks > 1) {
+      const { booked, skipped } = await createRecurringBookings(
+        proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true,
+      );
+      if (booked.length === 0) {
+        toast.error(t("schedule.errorAddFailed"));
+        setSubmitting(false);
+        return;
+      }
+      firstBooking = booked[0];
+      toast.success(t("booking.repeatResult", { count: booked.length }));
+      if (skipped.length > 0) {
+        const dates = skipped
+          .map((d) => formatJST(`${d}T00:00:00+09:00`, "M/d", { locale: ja }))
+          .join("、");
+        toast.info(t("booking.repeatSkipped", { count: skipped.length, dates }));
+      }
+    } else {
+      const { data: bookingData, error } = await createBooking(proxyClient, proxyDateKey, proxyTime, proxyBookingType, true);
+      if (error) {
+        toast.error(t("schedule.errorAddFailed"));
+        setSubmitting(false);
+        return;
+      }
+      firstBooking = bookingData?.id ? { id: bookingData.id, date: proxyDateKey } : null;
+      toast.success(t("schedule.addedToast", { name: client?.display_name || t("schedule.clientFallback"), date: format(proxyDate, "M/d"), time: proxyTime }));
     }
 
-    const client = profiles.find((p) => p.user_id === proxyClient);
     const [hh, mm] = proxyTime.split(":").map(Number);
     const endMin = hh * 60 + mm + 60;
     const proxyEndTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
-    toast.success(t("schedule.addedToast", { name: client?.display_name || t("schedule.clientFallback"), date: format(proxyDate, "M/d"), time: proxyTime }));
     setProxyDialogOpen(false);
     setProxyDate(undefined);
     setProxyTime("");
     setProxyClient("");
     setProxyBookingType("");
+    setProxyRepeatWeeks(1);
     setSubmitting(false);
     void refetch();
 
-    if (bookingData?.id) {
-      sendBookingNotification(bookingData.id, client?.display_name || t("schedule.clientFallback"), proxyDateKey, proxyTime, proxyEndTime, proxyBookingType, proxyClient);
+    if (firstBooking?.id) {
+      sendBookingNotification(firstBooking.id, client?.display_name || t("schedule.clientFallback"), firstBooking.date, proxyTime, proxyEndTime, proxyBookingType, proxyClient);
     }
   };
 
@@ -663,6 +689,37 @@ const TrainerSchedule = () => {
                 </div>
               </div>
             )}
+            {/* 定期予約: 毎週同じ曜日・時間でまとめて予約 */}
+            {proxyDate && proxyTime && (
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <Repeat className="w-3 h-3" />
+                  {t("booking.repeatTitle")}
+                </p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[1, 2, 3, 4].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setProxyRepeatWeeks(n)}
+                      aria-pressed={proxyRepeatWeeks === n}
+                      className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        proxyRepeatWeeks === n
+                          ? "bg-accent text-accent-foreground shadow-sm"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {n === 1 ? t("booking.repeatOnce") : t("booking.repeatTimes", { count: n })}
+                    </button>
+                  ))}
+                </div>
+                {proxyRepeatWeeks > 1 && (
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    {t("booking.repeatWeeklyDesc", { count: proxyRepeatWeeks })}
+                  </p>
+                )}
+              </div>
+            )}
             {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月は案内バナー */}
             {isSaluteJuneLocked(proxyDateKey) && (
               <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
@@ -675,7 +732,7 @@ const TrainerSchedule = () => {
             <Button variant="outline" onClick={() => setProxyDialogOpen(false)} className="w-full sm:w-auto">{t("common.cancel")}</Button>
             <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting || isSaluteJuneLocked(proxyDateKey)} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-              {t("schedule.bookNow")}
+              {proxyRepeatWeeks > 1 ? t("booking.confirmRepeatBooking", { count: proxyRepeatWeeks }) : t("schedule.bookNow")}
             </Button>
           </DialogFooter>
         </DialogContent>

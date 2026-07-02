@@ -37,6 +37,7 @@ interface FormState {
   price: string;
   validity_days: string;
   cycle_months: string;
+  grace_days: string;
   is_active: boolean;
 }
 
@@ -47,6 +48,7 @@ const emptyForm: FormState = {
   price: "",
   validity_days: "",
   cycle_months: "",
+  grace_days: "",
   is_active: true,
 };
 
@@ -102,6 +104,7 @@ const TrainerPlanManager = () => {
       price: String(plan.price ?? ""),
       validity_days: plan.validity_days != null ? String(plan.validity_days) : "",
       cycle_months: plan.cycle_months != null ? String(plan.cycle_months) : "",
+      grace_days: plan.grace_days != null ? String(plan.grace_days) : "",
       is_active: plan.is_active,
     });
     setDialogOpen(true);
@@ -136,6 +139,11 @@ const TrainerPlanManager = () => {
       cycle_months:
         form.plan_type === "subscription" && form.cycle_months
           ? Math.max(1, parseInt(form.cycle_months) || 1)
+          : null,
+      // 猶予日数はサブスクのみ。未入力は null（＝0＝猶予なし）。
+      grace_days:
+        form.plan_type === "subscription" && form.grace_days
+          ? Math.max(0, parseInt(form.grace_days) || 0)
           : null,
       is_active: form.is_active,
     };
@@ -242,6 +250,7 @@ const TrainerPlanManager = () => {
                     {plan.max_sessions != null && ` / ${t("settings.plans.sessionsSuffix", { count: plan.max_sessions })}`}
                     {plan.validity_days != null && ` / ${t("settings.plans.daysSuffix", { count: plan.validity_days })}`}
                     {plan.plan_type === "subscription" && plan.cycle_months != null && plan.cycle_months > 1 && ` / ${t("settings.plans.cycleMonthsSuffix", { count: plan.cycle_months })}`}
+                    {plan.plan_type === "subscription" && plan.grace_days != null && plan.grace_days > 0 && ` / ${t("settings.plans.graceDaysSuffix", { count: plan.grace_days })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -348,6 +357,20 @@ const TrainerPlanManager = () => {
                   placeholder={t("settings.plans.cycleMonthsPlaceholder")}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">{t("settings.plans.cycleMonthsHint")}</p>
+              </div>
+            )}
+            {showCycleMonths && (
+              <div>
+                <Label>{t("settings.plans.graceDays")}</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={form.grace_days}
+                  onChange={(e) => setForm({ ...form, grace_days: e.target.value })}
+                  placeholder={t("settings.plans.graceDaysPlaceholder")}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">{t("settings.plans.graceDaysHint")}</p>
               </div>
             )}
             <div className="flex items-center justify-between pt-1">

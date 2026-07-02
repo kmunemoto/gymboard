@@ -243,13 +243,14 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
       .maybeSingle();
     if (!prof?.plan) return;
 
-    // プラン定義（回数上限・サイクル月数）。サブスク以外（回数券・期間）は購入日起算のため動かさない。
+    // プラン定義（回数上限・サイクル月数・猶予日数）。サブスク以外（回数券・期間）は購入日起算のため動かさない。
     let maxSessions: number | null = null;
     let cycleMonths: number | null = null;
+    let graceDays: number | null = null;
     if (prof.tenant_id) {
       const { data: tp } = await supabase
         .from("tenant_plans")
-        .select("plan_type, max_sessions, cycle_months")
+        .select("plan_type, max_sessions, cycle_months, grace_days")
         .eq("tenant_id", prof.tenant_id)
         .eq("plan_name", prof.plan)
         .maybeSingle();
@@ -257,6 +258,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
         if (tp.plan_type && tp.plan_type !== "subscription") return;
         maxSessions = tp.max_sessions ?? null;
         cycleMonths = tp.cycle_months ?? null;
+        graceDays = tp.grace_days ?? null;
       } else {
         const n = getMonthlySessionCount(prof.plan);
         if (n === null) return; // プラン名から判定できない → 触らない
@@ -274,6 +276,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
       cycleStartDate: prof.cycle_start_date,
       maxSessions,
       cycleMonths,
+      graceDays,
       bookingDateKey: dateKey,
       existingBookings: (rows ?? []).map((r) => ({ id: "", booking_date: r.booking_date, status: r.status })),
     });

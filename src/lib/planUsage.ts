@@ -1,5 +1,5 @@
 import { addDays, differenceInDays, parseISO, startOfDay } from "date-fns";
-import { getCycleWindow } from "./courseProgress";
+import { getCycleWindow, graceLentToPrevCount } from "./courseProgress";
 import { getJSTNow, toJSTDate } from "./timezone";
 
 // GymBoard 共通: お客様のプラン消化状況（今サイクルであと何回予約できるか）を算出する。
@@ -24,6 +24,8 @@ export interface PlanUsageInput {
   startDate?: string | null;
   /** サブスクのサイクル月数（tenant_plans.cycle_months）。null/未設定は1ヶ月 */
   cycleMonths?: number | null;
+  /** 猶予日数（tenant_plans.grace_days）。期限を過ぎても前サイクル分として大目に見る日数。null/未設定は0 */
+  graceDays?: number | null;
 }
 
 export interface PlanUsageBooking {
@@ -77,7 +79,7 @@ export function computePlanUsage(
   bookings: PlanUsageBooking[],
   now: Date = getJSTNow(),
 ): PlanUsage {
-  const { planType, maxSessions, validityDays, startDate, cycleMonths } = input;
+  const { planType, maxSessions, validityDays, startDate, cycleMonths, graceDays } = input;
   if (!startDate) return UNCONFIGURED;
 
   const anchor = startOfDay(parseISO(startDate));
@@ -98,7 +100,7 @@ export function computePlanUsage(
     windowEnd = cycle.end;
   }
 
-  const used = bookings.filter((b) => {
+  const rawUsed = bookings.filter((b) => {
     if (isCancelled(b.status)) return false;
     // 予約は絶対時刻。窓(JST擬似Date)と比較するため toJSTDate でJST基準に揃える。
     const d = toJSTDate(b.booking_date);
@@ -106,6 +108,24 @@ export function computePlanUsage(
     if (windowEnd && d >= windowEnd) return false;
     return true;
   }).length;
+
+  // 猶予: 今サイクルの先頭 graceDays 日に入った予約のうち、前サイクルの残り回数ぶんは
+  // 「大目に見た前サイクル分」として今サイクルの消化数から差し引く（サブスクのみ）。
+  // これにより、その回は「新サイクルの1回目」ではなく前サイクルの消化として扱われ、
+  // 今サイクルは（他に予約が無ければ）期限未確定（periodPending）のままになる。
+  const lentToPrev =
+    kind === "subscription"
+      ? graceLentToPrevCount({
+          cycleStartDate: startDate,
+          maxSessions: maxSessions ?? null,
+          cycleMonths,
+          graceDays,
+          windowStart,
+          windowEnd: windowEnd!,
+          bookings,
+        })
+      : 0;
+  const used = Math.max(0, rawUsed - lentToPrev);
 
   // period は常に無制限。subscription/ticket は max_sessions が null なら無制限（例: 通い放題）。
   const isUnlimited = kind === "period" || maxSessions == null;
@@ -134,7 +154,7 @@ export function computePlanUsage(
 // tenant_plans に該当があればそれを正とし、無ければ名称から推定（旧データ互換）。
 export function resolvePlanUsageInput(
   planName: string | null | undefined,
-  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null; cycle_months?: number | null } | null | undefined,
+  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null; cycle_months?: number | null; grace_days?: number | null } | null | undefined,
   startDate: string | null | undefined,
 ): PlanUsageInput | null {
   if (!planName) return null;
@@ -145,6 +165,7 @@ export function resolvePlanUsageInput(
       validityDays: tenantPlan.validity_days ?? null,
       startDate: startDate ?? null,
       cycleMonths: tenantPlan.cycle_months ?? null,
+      graceDays: tenantPlan.grace_days ?? null,
     };
   }
   // 旧データ互換: tenant_plans に無い名称

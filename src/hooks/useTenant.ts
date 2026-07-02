@@ -35,6 +35,8 @@ export interface TenantPlan {
   validity_days: number | null;
   /** サブスクのサイクル月数（応当日ベース）。null/未設定は1ヶ月 */
   cycle_months: number | null;
+  /** サブスクの猶予日数。期限超過後この日数までは前サイクル分として大目に見る。null/未設定は0 */
+  grace_days: number | null;
   sort_order: number;
   is_active: boolean;
 }

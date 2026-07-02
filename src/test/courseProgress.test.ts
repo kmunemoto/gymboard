@@ -163,3 +163,44 @@ describe("shouldRebaseCycleStart（1回目の予約で起算日を自動設定�
     ).toBe(true);
   });
 });
+
+describe("shouldRebaseCycleStart × 猶予（grace_days）", () => {
+  const mk = (dates: string[]): BookingForProgress[] =>
+    dates.map((d, i) => ({ id: String(i), booking_date: `${d}T10:00:00+09:00`, status: "予約済み" }));
+  // 起算日 6/2・月6回。前サイクル[6/2,7/3)は5回のみ消化（残り1回）。
+  const prev5 = mk(["2026-06-03", "2026-06-08", "2026-06-13", "2026-06-18", "2026-06-24"]);
+
+  it("猶予帯の予約（前サイクルへ繰り入れ）では起算日を動かさない", () => {
+    // 7/5 は猶予帯 [7/3,7/10)。前サイクルに空き(1)があるので大目に見た6回目 → 起算日据え置き
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, graceDays: 7, bookingDateKey: "2026-07-05", existingBookings: prev5 }),
+    ).toBe(false);
+  });
+
+  it("猶予で前サイクルが埋まった後の次の予約は起算日を動かす（次のルーティンの1回目）", () => {
+    // 7/5 が繰入で前サイクル6回目 → 7/8 は次のルーティンの1回目
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, graceDays: 7, bookingDateKey: "2026-07-08", existingBookings: [...prev5, ...mk(["2026-07-05"])] }),
+    ).toBe(true);
+  });
+
+  it("猶予帯を過ぎた予約は繰り入れず、前サイクル未消化なら従来どおり動かさない", () => {
+    // 7/12 は [7/3,7/10) の外。前サイクル未消化なので安全側で据え置き（graceDays=0 と一致）
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, graceDays: 7, bookingDateKey: "2026-07-12", existingBookings: prev5 }),
+    ).toBe(false);
+  });
+
+  it("graceDays 未指定は従来挙動（前サイクル未消化なら動かさない）", () => {
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, bookingDateKey: "2026-07-05", existingBookings: prev5 }),
+    ).toBe(false);
+  });
+
+  it("前サイクルを使い切っていれば猶予帯の予約でも次のルーティンの1回目として動かす", () => {
+    const prev6 = [...prev5, ...mk(["2026-06-28"])];
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, graceDays: 7, bookingDateKey: "2026-07-05", existingBookings: prev6 }),
+    ).toBe(true);
+  });
+});

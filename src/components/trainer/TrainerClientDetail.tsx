@@ -40,7 +40,7 @@ import { format, addMonths, differenceInDays, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow, getJSTToday, formatJST, toJSTDate } from "@/lib/timezone";
-import { getCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
+import { getCycleWindow, resolveCycleMonths, resolveGraceDays, graceLentToPrevCount, getMonthlySessionCount } from "@/lib/courseProgress";
 import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { applyRaidDamage, checkTrainingMilestones, computeSessionVolume, processSessionRewards, type MilestoneAchieved, type SessionRewardResult } from "@/lib/raidUtils";
@@ -733,13 +733,24 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 // 期限未確定判定: 今サイクルに有効予約が0件なら「1回目の予約待ち」。
                 // 期限は1回目のトレーニング日から決まるため、確定するまで日付を出さない
                 // （1回目の予約が入ると起算日が自動でその日に設定される）。
+                // 猶予（grace）で前サイクルへ繰り入れる回は今サイクルの消化に数えない。
                 const cm = resolveCycleMonths(clientPlan, tenantPlans);
+                const gd = resolveGraceDays(clientPlan, tenantPlans);
                 const win = getCycleWindow(cycleStartDate, getJSTNow(), cm);
-                const pending = !!win && !bookings.some((b: { date: string; status: string }) => {
-                  if (b.status === "キャンセル済み") return false;
-                  const d = toJSTDate(b.date);
-                  return d >= win.start && d < win.end;
-                });
+                const planForMax = tenantPlans.find((p) => p.plan_name === clientPlan);
+                const maxSessions = planForMax
+                  ? planForMax.max_sessions ?? null
+                  : (() => { const n = getMonthlySessionCount(clientPlan); return n === -1 ? null : n; })();
+                const activeBk = bookings
+                  .filter((b: { status: string }) => b.status !== "キャンセル済み")
+                  .map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status }));
+                const inWin = win
+                  ? activeBk.filter((b) => { const d = toJSTDate(b.booking_date); return d >= win.start && d < win.end; }).length
+                  : 0;
+                const lent = win
+                  ? graceLentToPrevCount({ cycleStartDate, maxSessions, cycleMonths: cm, graceDays: gd, windowStart: win.start, windowEnd: win.end, bookings: activeBk })
+                  : 0;
+                const pending = !!win && inWin - lent <= 0;
                 if (pending) {
                   return (
                     <p className="text-xs text-muted-foreground">{t("clientDetail.expiryPending")}</p>

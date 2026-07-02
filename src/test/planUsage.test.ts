@@ -80,7 +80,7 @@ describe("computePlanUsage", () => {
 describe("resolvePlanUsageInput", () => {
   it("tenant_plans があればそれを正とする", () => {
     const input = resolvePlanUsageInput("回数券10", { plan_type: "ticket", max_sessions: 10, validity_days: 90 }, "2026-06-20");
-    expect(input).toEqual({ planType: "ticket", maxSessions: 10, validityDays: 90, startDate: "2026-06-20", cycleMonths: null });
+    expect(input).toEqual({ planType: "ticket", maxSessions: 10, validityDays: 90, startDate: "2026-06-20", cycleMonths: null, graceDays: null });
   });
 
   it("tenant_plans に無い『月N回』は subscription として解決（旧データ互換）", () => {
@@ -123,5 +123,72 @@ describe("periodPending（期限未確定: 1回目の予約待ち）", () => {
       NOW,
     );
     expect(ticket.periodPending).toBe(false);
+  });
+});
+
+describe("猶予（grace_days）: 大目に見た消化を前サイクルへ繰り入れる", () => {
+  // 現在 = 2026-07-08 12:00 JST（現サイクル[7/3,8/4)の中）
+  const GNOW = toJSTDate("2026-07-08T12:00:00+09:00");
+  // 起算日 6/2・月6回。前サイクル[6/2,7/3)は5回のみ消化（残り1回）。
+  const prev5 = [
+    b("2026-06-03T10:00:00+09:00"),
+    b("2026-06-08T10:00:00+09:00"),
+    b("2026-06-13T10:00:00+09:00"),
+    b("2026-06-18T10:00:00+09:00"),
+    b("2026-06-24T10:00:00+09:00"),
+  ];
+
+  it("猶予帯の予約は前サイクルの残り回数ぶん現サイクルの消化から外れ、期限未確定を維持", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 6, validityDays: null, startDate: "2026-06-02", graceDays: 7 },
+      [...prev5, b("2026-07-05T10:00:00+09:00")], // 7/5 は猶予帯 [7/3,7/10)
+      GNOW,
+    );
+    expect(usage.used).toBe(0); // 7/5 は前サイクル6回目として繰入 → 現サイクルは0
+    expect(usage.remaining).toBe(6);
+    expect(usage.periodPending).toBe(true);
+  });
+
+  it("前サイクルの残りより多い猶予帯の予約は、超過分が現サイクルの消化になる", () => {
+    // capacity=1。7/5 が繰入（前サイクル6回目）、7/8 は現サイクル1回目。
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 6, validityDays: null, startDate: "2026-06-02", graceDays: 7 },
+      [...prev5, b("2026-07-05T10:00:00+09:00"), b("2026-07-08T10:00:00+09:00")],
+      GNOW,
+    );
+    expect(usage.used).toBe(1);
+    expect(usage.periodPending).toBe(false);
+  });
+
+  it("graceDays 未設定(0)なら猶予帯でも現サイクルの1回目として消化される（従来挙動）", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 6, validityDays: null, startDate: "2026-06-02" },
+      [...prev5, b("2026-07-05T10:00:00+09:00")],
+      GNOW,
+    );
+    expect(usage.used).toBe(1);
+    expect(usage.periodPending).toBe(false);
+  });
+
+  it("前サイクルを使い切っていれば猶予帯でも繰り入れない（現サイクルの消化）", () => {
+    const prev6 = [...prev5, b("2026-06-28T10:00:00+09:00")]; // 6回消化＝満了
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 6, validityDays: null, startDate: "2026-06-02", graceDays: 7 },
+      [...prev6, b("2026-07-05T10:00:00+09:00")],
+      GNOW,
+    );
+    expect(usage.used).toBe(1); // capacity 0 → 繰入なし
+    expect(usage.periodPending).toBe(false);
+  });
+
+  it("猶予帯を過ぎた予約（graceDays 日以降）は繰り入れない", () => {
+    // 7/12 は [7/3,7/10) の外 → 前サイクルが未消化でも現サイクルの1回目
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 6, validityDays: null, startDate: "2026-06-02", graceDays: 7 },
+      [...prev5, b("2026-07-12T10:00:00+09:00")],
+      toJSTDate("2026-07-12T12:00:00+09:00"),
+    );
+    expect(usage.used).toBe(1);
+    expect(usage.periodPending).toBe(false);
   });
 });

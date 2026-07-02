@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { ja } from "date-fns/locale";
 import { CreditCard, Clock, CalendarCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,7 +53,9 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, classN
           <div className="flex items-center gap-2">
             <Clock className={`w-4 h-4 shrink-0 ${isExpired ? "text-destructive" : isExpiringSoon ? "text-warning" : "text-accent"}`} />
             <span className="text-xs text-muted-foreground">
-              {t("booking.usagePeriod", { start: format(usage.windowStart, "M/d", { locale: ja }), end: format(usage.windowEnd, "M/d", { locale: ja }) })}
+              {/* windowEnd は排他的上限（[start, end)）。表示は最終利用日 = end - 1日 にする
+                  （例: 6/20起算の月次なら 6/20〜7/20。トレーナー側の満了日判定と同じ規則）。 */}
+              {t("booking.usagePeriod", { start: format(usage.windowStart, "M/d", { locale: ja }), end: format(subDays(usage.windowEnd, 1), "M/d", { locale: ja }) })}
               {isExpired ? (
                 <span className="font-bold text-destructive ml-1">{t("booking.expired")}</span>
               ) : daysLeft !== null ? (

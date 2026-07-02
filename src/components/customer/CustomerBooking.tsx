@@ -174,7 +174,7 @@ const CustomerBooking = () => {
   };
 
   const slots = dateKey ? generateSlots() : [];
-  const { isOnWaitlist, toggle: toggleWaitlist } = useWaitlist(dateKey || null);
+  const { isOnWaitlist, toggle: toggleWaitlist, refresh: refreshWaitlist } = useWaitlist(dateKey || null);
 
   const handleWaitlistToggle = async (time: string) => {
     if (!dateKey) return;
@@ -254,6 +254,17 @@ const CustomerBooking = () => {
     setSubmitting(false);
     refetch();
     fetchBookedSlots(dateKey);
+
+    // この枠のキャンセル待ちに入っていたら解除する（予約できたため不要）
+    if (WAITLIST_ENABLED) {
+      supabase
+        .from("booking_waitlist" as any)
+        .delete()
+        .eq("user_id", user.id)
+        .eq("booking_date", dateKey)
+        .eq("start_time", slot.time)
+        .then(() => refreshWaitlist());
+    }
 
     // Fire-and-forget notification email to trainer
     sendBookingNotification(data.id, profile?.display_name || t("booking.customerFallback"), dateKey, slot.time, endTime, selectedPlan, user.id, user.email);

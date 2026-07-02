@@ -15,9 +15,13 @@ export const GOOGLE_CALENDAR_CUSTOMER_ENABLED = true; // お客様設定の連�
 export const APPLE_CONNECTION_ENABLED = false; // Apple連携セクション（App Store審査中）
 
 // キャンセル待ち（満枠スロットへの登録）。
-// 既定 OFF。DBマイグレーション(booking_waitlist + RLS)を適用・検証してから true にする。
-// OFF の間は予約フローの挙動は一切変わらない。
-export const WAITLIST_ENABLED = false;
+// ON: 満枠スロットにキャンセル待ち登録でき、キャンセルで枠が空くと
+// その枠の待機者へプッシュ通知が届く（send-push-notification の
+// waitlist_slot_freed。受信者解決・文言生成はサーバー側）。
+// 予約成立時は自分の該当待機を自動解除する。
+// 前提: DBマイグレーション booking_waitlist（20260624120000）と
+// send-push-notification の再デプロイが適用済みであること。
+export const WAITLIST_ENABLED = true;
 
 // ソーシャルログイン（Appleでサインイン / Googleでログイン）のボタン表示。
 // 既定 OFF。Supabase の Authentication → Providers で Apple / Google を

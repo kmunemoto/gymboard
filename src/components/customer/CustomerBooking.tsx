@@ -33,7 +33,7 @@ const BOOKING_BUFFER_MINUTES = 15;
 const CustomerBooking = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();
   const { tenant, plans: tenantPlans } = useTenant();
 
@@ -279,6 +279,7 @@ const CustomerBooking = () => {
     // plan is auto-assigned, no need to reset
     setSubmitting(false);
     refetch();
+    refetchProfile(); // 1回目の予約で起算日が自動設定された場合に利用期間カードを更新
     fetchBookedSlots(dateKey);
 
     // この枠のキャンセル待ちに入っていたら解除する（予約できたため不要）

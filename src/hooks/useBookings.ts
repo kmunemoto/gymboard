@@ -6,6 +6,7 @@ import { ja } from "date-fns/locale";
 import { toJSTDate, formatJST } from "@/lib/timezone";
 import { getGymNameForUser } from "@/lib/tenantLookup";
 import { WAITLIST_ENABLED } from "@/lib/featureFlags";
+import { shouldRebaseCycleStart, getMonthlySessionCount } from "@/lib/courseProgress";
 
 export interface BookingRow {
   id: string;
@@ -227,6 +228,64 @@ export const checkSlotBlocked = (bookings: BookingWithTime[], date: string, star
   });
 };
 
+/**
+ * 新しいルーティンの1回目の予約なら、起算日（profiles.cycle_start_date）を
+ * その予約日に自動設定する。ジムの運用「期限は1回目のトレーニング日から」に合わせ、
+ * 1回目の予約が入るまでは期限未確定（PlanUsageCard 側で非表示）にできる。
+ * 発動条件の詳細は shouldRebaseCycleStart（courseProgress.ts）を参照。失敗しても予約は成立させる。
+ */
+async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, excludeBookingId: string): Promise<void> {
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("plan, cycle_start_date, tenant_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!prof?.plan) return;
+
+    // プラン定義（回数上限・サイクル月数）。サブスク以外（回数券・期間）は購入日起算のため動かさない。
+    let maxSessions: number | null = null;
+    let cycleMonths: number | null = null;
+    if (prof.tenant_id) {
+      const { data: tp } = await supabase
+        .from("tenant_plans")
+        .select("plan_type, max_sessions, cycle_months")
+        .eq("tenant_id", prof.tenant_id)
+        .eq("plan_name", prof.plan)
+        .maybeSingle();
+      if (tp) {
+        if (tp.plan_type && tp.plan_type !== "subscription") return;
+        maxSessions = tp.max_sessions ?? null;
+        cycleMonths = tp.cycle_months ?? null;
+      } else {
+        const n = getMonthlySessionCount(prof.plan);
+        if (n === null) return; // プラン名から判定できない → 触らない
+        maxSessions = n === -1 ? null : n;
+      }
+    }
+
+    const { data: rows } = await supabase
+      .from("bookings")
+      .select("booking_date, status")
+      .eq("user_id", userId)
+      .neq("id", excludeBookingId);
+
+    const ok = shouldRebaseCycleStart({
+      cycleStartDate: prof.cycle_start_date,
+      maxSessions,
+      cycleMonths,
+      bookingDateKey: dateKey,
+      existingBookings: (rows ?? []).map((r) => ({ id: "", booking_date: r.booking_date, status: r.status })),
+    });
+    if (!ok) return;
+
+    await supabase.from("profiles").update({ cycle_start_date: dateKey }).eq("user_id", userId);
+    console.log(`[cycle] 起算日を1回目の予約日に自動設定: ${userId} -> ${dateKey}`);
+  } catch (e) {
+    console.warn("rebaseCycleStartIfNeeded failed:", e);
+  }
+}
+
 export const createBooking = async (
   userId: string,
   date: string,
@@ -244,6 +303,10 @@ export const createBooking = async (
     .single();
 
   if (!error && data) {
+    // 新しいルーティンの1回目なら起算日を予約日に自動設定（期限＝1回目から1ヶ月）。
+    // 後続処理（表示更新・定期予約の2回目以降）が新しい起算日を見られるよう await する。
+    await rebaseCycleStartIfNeeded(userId, date, data.id);
+
     // Notify customer about their booking (gated by feature flag)
     if (NOTIFY_CUSTOMER_LINE_ON_BOOKING) {
       sendBookingConfirmationToCustomer(userId, date, startTime, bookingType, isProxyBooking).catch(console.error);

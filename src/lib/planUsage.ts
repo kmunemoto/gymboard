@@ -48,6 +48,12 @@ export interface PlanUsage {
   daysLeft: number | null;
   isExpired: boolean;
   isUnconfigured: boolean;
+  /**
+   * 期限未確定（サブスクで、今サイクルに予約が1件も無い状態）。
+   * ジムの運用では期限は「1回目のトレーニング日から」決まるため、
+   * 1回目の予約が入るまでは期限を表示しない（表示側で案内文言に差し替える）。
+   */
+  periodPending: boolean;
 }
 
 const isCancelled = (s: string) => s === "キャンセル済み";
@@ -63,6 +69,7 @@ const UNCONFIGURED: PlanUsage = {
   daysLeft: null,
   isExpired: false,
   isUnconfigured: true,
+  periodPending: false,
 };
 
 export function computePlanUsage(
@@ -118,6 +125,8 @@ export function computePlanUsage(
     daysLeft,
     isExpired,
     isUnconfigured: false,
+    // サブスクは「1回目の予約」が入るまで期限が確定しない（起算日は予約時に自動設定）
+    periodPending: kind === "subscription" && used === 0,
   };
 }
 

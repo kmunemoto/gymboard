@@ -35,8 +35,9 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, classN
   if (usage.isUnconfigured) return null;
 
   const daysLeft = usage.daysLeft;
-  const isExpired = usage.isExpired;
-  const isExpiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+  // 期限未確定（1回目の予約待ち）の間は期限切れ・期限間近の警告も出さない
+  const isExpired = usage.isExpired && !usage.periodPending;
+  const isExpiringSoon = !usage.periodPending && daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
 
   return (
     <Card className={`border-l-4 ${isExpired ? "border-l-destructive bg-destructive/5" : isExpiringSoon ? "border-l-warning bg-warning/5" : "border-l-accent bg-accent/5"} ${className ?? ""}`}>
@@ -49,7 +50,13 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, classN
           <PlanUsageBadge usage={usage} />
         </div>
 
-        {usage.windowStart && usage.windowEnd && (
+        {usage.periodPending ? (
+          /* 期限未確定: 1回目の予約が入るまで期限は決まっていない（予約時に起算日へ自動設定） */
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{t("booking.periodPending")}</span>
+          </div>
+        ) : usage.windowStart && usage.windowEnd && (
           <div className="flex items-center gap-2">
             <Clock className={`w-4 h-4 shrink-0 ${isExpired ? "text-destructive" : isExpiringSoon ? "text-warning" : "text-accent"}`} />
             <span className="text-xs text-muted-foreground">

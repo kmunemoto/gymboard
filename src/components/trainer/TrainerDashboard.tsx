@@ -201,6 +201,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
       if (!p.cycle_start_date || !p.plan) return;
       const progress = computeCourseProgress(p.cycle_start_date, p.plan, bookingsByUser.get(p.user_id) || [], now, resolveCycleMonths(p.plan, tenantPlans));
       if (!progress.cycle || progress.isUnconfigured) return;
+      // 期限未確定（今サイクルに予約0件＝1回目の予約待ち）は更新リマインド対象外
+      if (progress.totalUsed === 0) return;
       const anniversary = addDays(progress.cycle.end, -1); // サイクル最終日（満了日）
       const days = Math.round((startOfDay(anniversary).getTime() - todayStart.getTime()) / 86400000);
       if (days < 0 || days > RENEWAL_SOON_DAYS) return;

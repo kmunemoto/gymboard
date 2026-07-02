@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat } from "lucide-react";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useMyBookings, createBooking, cancelBooking, BookingWithTime } from "@/hooks/useBookings";
+import { useMyBookings, createBooking, createRecurringBookings, cancelBooking, BookingWithTime } from "@/hooks/useBookings";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, addMonths, startOfDay } from "date-fns";
@@ -61,6 +61,8 @@ const CustomerBooking = () => {
   const [lastBooked, setLastBooked] = useState<BookingWithTime | null>(null);
   const [lastCancelled, setLastCancelled] = useState<BookingWithTime | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // 定期予約: 毎週同じ曜日・時間で何回分まとめて予約するか（1=この回のみ）
+  const [repeatWeeks, setRepeatWeeks] = useState(1);
 
   // Booked slots fetched via SECURITY DEFINER RPC — sees ALL bookings regardless of RLS
   const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean }[]>([]);
@@ -224,12 +226,35 @@ const CustomerBooking = () => {
     }
 
     setSubmitting(true);
-    const { data, error } = await createBooking(user.id, dateKey, slot.time, selectedPlan);
 
-    if (error) {
-      toast.error(t("booking.errorBookingFailed"));
-      setSubmitting(false);
-      return;
+    // 定期予約: repeatWeeks > 1 なら毎週同じ曜日・時間でまとめて作成。
+    // 満枠の週はスキップされる（結果はトーストで通知）。
+    let firstBooking: { id: string; date: string };
+    if (repeatWeeks > 1) {
+      const { booked, skipped } = await createRecurringBookings(
+        user.id, dateKey, slot.time, selectedPlan, repeatWeeks,
+      );
+      if (booked.length === 0) {
+        toast.error(t("booking.errorBookingFailed"));
+        setSubmitting(false);
+        return;
+      }
+      firstBooking = booked[0];
+      toast.success(t("booking.repeatResult", { count: booked.length }));
+      if (skipped.length > 0) {
+        const dates = skipped
+          .map((d) => formatJST(`${d}T00:00:00+09:00`, "M/d", { locale: ja }))
+          .join("、");
+        toast.info(t("booking.repeatSkipped", { count: skipped.length, dates }));
+      }
+    } else {
+      const { data, error } = await createBooking(user.id, dateKey, slot.time, selectedPlan);
+      if (error) {
+        toast.error(t("booking.errorBookingFailed"));
+        setSubmitting(false);
+        return;
+      }
+      firstBooking = { id: data.id, date: dateKey };
     }
 
     const [h, m] = slot.time.split(":").map(Number);
@@ -237,9 +262,9 @@ const CustomerBooking = () => {
     const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
     const newBooking: BookingWithTime = {
-      id: data.id,
+      id: firstBooking.id,
       user_id: user.id,
-      date: dateKey,
+      date: firstBooking.date,
       startTime: slot.time,
       endTime,
       clientName: profile?.display_name || t("common.me"),
@@ -250,6 +275,7 @@ const CustomerBooking = () => {
     setLastBooked(newBooking);
     setSelectedSlot(null);
     setSelectedDate(undefined);
+    setRepeatWeeks(1);
     // plan is auto-assigned, no need to reset
     setSubmitting(false);
     refetch();
@@ -267,7 +293,7 @@ const CustomerBooking = () => {
     }
 
     // Fire-and-forget notification email to trainer
-    sendBookingNotification(data.id, profile?.display_name || t("booking.customerFallback"), dateKey, slot.time, endTime, selectedPlan, user.id, user.email);
+    sendBookingNotification(firstBooking.id, profile?.display_name || t("booking.customerFallback"), firstBooking.date, slot.time, endTime, selectedPlan, user.id, user.email);
 
     // Fire-and-forget LINE message to customer
     // Gated by feature flag — customer LINE booking notifications are currently disabled
@@ -290,9 +316,9 @@ const CustomerBooking = () => {
           body: {
             user_ids: [...trainerIds, user.id],
             title: "新しい予約",
-            body: `${profile?.display_name || "お客様"}が${format(selectedDate!, "M月d日", { locale: ja })} ${slot.time}〜${endTime}を予約しました`,
+            body: `${profile?.display_name || "お客様"}が${format(selectedDate!, "M月d日", { locale: ja })} ${slot.time}〜${endTime}を予約しました${repeatWeeks > 1 ? `（毎週同時刻×${repeatWeeks}回の定期予約）` : ""}`,
             url: "/",
-            tag: `booking-${data.id}`,
+            tag: `booking-${firstBooking.id}`,
           },
         }).catch((e) => console.error("Push notification failed:", e));
       }
@@ -680,11 +706,42 @@ const CustomerBooking = () => {
                       </span>
                       （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
+                    {/* 定期予約: 毎週同じ曜日・時間でまとめて予約 */}
+                    <div className="mb-3 text-left">
+                      <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Repeat className="w-3 h-3" />
+                        {t("booking.repeatTitle")}
+                      </p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[1, 2, 3, 4].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setRepeatWeeks(n)}
+                            aria-pressed={repeatWeeks === n}
+                            className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              repeatWeeks === n
+                                ? "bg-accent text-accent-foreground shadow-sm"
+                                : "bg-secondary text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {n === 1 ? t("booking.repeatOnce") : t("booking.repeatTimes", { count: n })}
+                          </button>
+                        ))}
+                      </div>
+                      {repeatWeeks > 1 && (
+                        <p className="text-[11px] text-muted-foreground mt-1.5">
+                          {t("booking.repeatWeeklyDesc", { count: repeatWeeks })}
+                        </p>
+                      )}
+                    </div>
                     <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting || isSaluteJuneLocked(dateKey)}>
                       {submitting ? (
                         <DumbbellLoader className="w-4 h-4 mr-2" />
                       ) : null}
-                      {t("booking.confirmBooking")}
+                      {repeatWeeks > 1
+                        ? t("booking.confirmRepeatBooking", { count: repeatWeeks })
+                        : t("booking.confirmBooking")}
                     </Button>
                   </div>
                 )}

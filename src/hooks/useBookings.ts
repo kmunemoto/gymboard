@@ -273,6 +273,37 @@ export const createBooking = async (
   return { data, error };
 };
 
+/**
+ * 定期予約: 毎週同じ曜日・時刻で weeks 回分をまとめて作成する。
+ * 各回は個別に作成し、満枠（DBトリガー check_booking_overlap による拒否）等で
+ * 失敗した週はスキップして続行する。成功・スキップした日付を返す。
+ * 通知（トレーナーLINE・Googleカレンダー同期）は createBooking 内で回ごとに行われる。
+ */
+export const createRecurringBookings = async (
+  userId: string,
+  firstDate: string, // yyyy-MM-dd（1回目の日付）
+  startTime: string,
+  bookingType: string,
+  weeks: number,
+  isProxyBooking = false,
+): Promise<{ booked: { id: string; date: string }[]; skipped: string[] }> => {
+  const booked: { id: string; date: string }[] = [];
+  const skipped: string[] = [];
+  const [y, mo, da] = firstDate.split("-").map(Number);
+  for (let i = 0; i < weeks; i++) {
+    // ローカル日付で +7日ずつ（時刻を持たない日付演算のためTZずれ無し）
+    const d = new Date(y, mo - 1, da + i * 7);
+    const dateKey = format(d, "yyyy-MM-dd");
+    const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking);
+    if (error || !data) {
+      skipped.push(dateKey);
+    } else {
+      booked.push({ id: data.id, date: dateKey });
+    }
+  }
+  return { booked, skipped };
+};
+
 async function sendBookingConfirmationToCustomer(
   userId: string,
   date: string,

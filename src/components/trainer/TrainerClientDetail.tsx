@@ -717,12 +717,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Clock className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium">{t("clientDetail.cycleStart")}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Input
                   type="date"
                   value={cycleStartDate}
                   onChange={(e) => handleCycleStartDateChange(e.target.value)}
-                  className="flex-1 h-9 text-sm"
+                  className="flex-1 min-w-0 h-9 text-sm"
                 />
                 <Button variant="outline" size="sm" onClick={handleResetCycleToToday} className="shrink-0 h-9 text-xs gap-1">
                   <RotateCcw className="w-3 h-3" />

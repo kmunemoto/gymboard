@@ -1492,6 +1492,7 @@ export type Database = {
           paid_this_month: boolean
           plan: string | null
           show_usage_period: boolean
+          tenant_id: string | null
           training_goal: string | null
           trial_completed: boolean
           updated_at: string
@@ -1511,6 +1512,7 @@ export type Database = {
           paid_this_month?: boolean
           plan?: string | null
           show_usage_period?: boolean
+          tenant_id?: string | null
           training_goal?: string | null
           trial_completed?: boolean
           updated_at?: string
@@ -1530,12 +1532,21 @@ export type Database = {
           paid_this_month?: boolean
           plan?: string | null
           show_usage_period?: boolean
+          tenant_id?: string | null
           training_goal?: string | null
           trial_completed?: boolean
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       progress_photos: {
         Row: {
@@ -2343,6 +2354,8 @@ export type Database = {
         Row: {
           allow_overflow: boolean | null
           created_at: string
+          cycle_months: number | null
+          grace_days: number | null
           id: string
           is_active: boolean | null
           max_sessions: number | null
@@ -2356,6 +2369,8 @@ export type Database = {
         Insert: {
           allow_overflow?: boolean | null
           created_at?: string
+          cycle_months?: number | null
+          grace_days?: number | null
           id?: string
           is_active?: boolean | null
           max_sessions?: number | null
@@ -2369,6 +2384,8 @@ export type Database = {
         Update: {
           allow_overflow?: boolean | null
           created_at?: string
+          cycle_months?: number | null
+          grace_days?: number | null
           id?: string
           is_active?: boolean | null
           max_sessions?: number | null

@@ -192,3 +192,49 @@ describe("猶予（grace_days）: 大目に見た消化を前サイクルへ繰�
     expect(usage.periodPending).toBe(false);
   });
 });
+
+describe("実効サイクル（回数使い切り後の期限内スタートで自動ロール）", () => {
+  // 起算日 6/5・月8回。8回を 6/25 までに消化。現在 = 2026-07-03 12:00 JST。
+  const NOW3 = toJSTDate("2026-07-03T12:00:00+09:00");
+  const eight = [
+    "2026-06-06", "2026-06-08", "2026-06-10", "2026-06-12",
+    "2026-06-15", "2026-06-18", "2026-06-21", "2026-06-25",
+  ].map((d) => b(`${d}T10:00:00+09:00`));
+
+  it("10件（9件目=6/28）→ 期限の終わりを待たず 6/28 起点の新ルーティン 2/8 になる", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 8, validityDays: null, startDate: "2026-06-05" },
+      [...eight, b("2026-06-28T10:00:00+09:00"), b("2026-07-02T10:00:00+09:00")],
+      NOW3,
+    );
+    expect(usage.used).toBe(2);
+    expect(usage.remaining).toBe(6);
+    expect(usage.windowStart!.getMonth()).toBe(5); // June
+    expect(usage.windowStart!.getDate()).toBe(28);
+    expect(usage.windowEnd!.getMonth()).toBe(6); // July（最終利用日 7/28 の翌日 = 7/29 が排他上限）
+    expect(usage.windowEnd!.getDate()).toBe(29);
+    expect(usage.periodPending).toBe(false);
+  });
+
+  it("ちょうど 8/8 ならロールしない（従来どおり）", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 8, validityDays: null, startDate: "2026-06-05" },
+      eight,
+      NOW3,
+    );
+    expect(usage.used).toBe(8);
+    expect(usage.remaining).toBe(0);
+    expect(usage.windowStart!.getDate()).toBe(5);
+  });
+
+  it("9件目が未来日（7/4）でも予約が入った時点で新ルーティンとして扱う", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 8, validityDays: null, startDate: "2026-06-05" },
+      [...eight, b("2026-07-04T10:00:00+09:00")],
+      NOW3,
+    );
+    expect(usage.used).toBe(1);
+    expect(usage.windowStart!.getMonth()).toBe(6); // July
+    expect(usage.windowStart!.getDate()).toBe(4);
+  });
+});

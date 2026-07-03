@@ -1,5 +1,5 @@
 import { addDays, differenceInDays, parseISO, startOfDay } from "date-fns";
-import { getCycleWindow, graceLentToPrevCount } from "./courseProgress";
+import { resolveEffectiveCycle } from "./courseProgress";
 import { getJSTNow, toJSTDate } from "./timezone";
 
 // GymBoard 共通: お客様のプラン消化状況（今サイクルであと何回予約できるか）を算出する。
@@ -86,46 +86,39 @@ export function computePlanUsage(
   let kind: PlanKind;
   let windowStart: Date;
   let windowEnd: Date | null;
+  let used: number;
 
   if (planType === "ticket" || planType === "period") {
     kind = planType;
     windowStart = anchor;
     windowEnd = validityDays && validityDays > 0 ? addDays(anchor, validityDays) : null;
+    used = bookings.filter((b) => {
+      if (isCancelled(b.status)) return false;
+      // 予約は絶対時刻。窓(JST擬似Date)と比較するため toJSTDate でJST基準に揃える。
+      const d = toJSTDate(b.booking_date);
+      if (d < windowStart) return false;
+      if (windowEnd && d >= windowEnd) return false;
+      return true;
+    }).length;
   } else {
     // subscription（既定）。月N回は cycleMonths ヶ月ごとにリセット（既定1ヶ月）。
+    // 実効サイクル（resolveEffectiveCycle）で解決する:
+    //  - 回数を使い切った後の期限内予約は「新ルーティンの1回目」として窓を引き直す（自動ロール）
+    //  - 猶予（graceDays）で前サイクルへ繰り入れた回は今サイクルの消化に数えない
     kind = "subscription";
-    const cycle = getCycleWindow(startDate, now, cycleMonths);
-    if (!cycle) return UNCONFIGURED;
-    windowStart = cycle.start;
-    windowEnd = cycle.end;
+    const eff = resolveEffectiveCycle({
+      cycleStartDate: startDate,
+      maxSessions: maxSessions ?? null,
+      cycleMonths,
+      graceDays,
+      bookings,
+      referenceDate: now,
+    });
+    if (!eff) return UNCONFIGURED;
+    windowStart = eff.window.start;
+    windowEnd = eff.window.end;
+    used = eff.used;
   }
-
-  const rawUsed = bookings.filter((b) => {
-    if (isCancelled(b.status)) return false;
-    // 予約は絶対時刻。窓(JST擬似Date)と比較するため toJSTDate でJST基準に揃える。
-    const d = toJSTDate(b.booking_date);
-    if (d < windowStart) return false;
-    if (windowEnd && d >= windowEnd) return false;
-    return true;
-  }).length;
-
-  // 猶予: 今サイクルの先頭 graceDays 日に入った予約のうち、前サイクルの残り回数ぶんは
-  // 「大目に見た前サイクル分」として今サイクルの消化数から差し引く（サブスクのみ）。
-  // これにより、その回は「新サイクルの1回目」ではなく前サイクルの消化として扱われ、
-  // 今サイクルは（他に予約が無ければ）期限未確定（periodPending）のままになる。
-  const lentToPrev =
-    kind === "subscription"
-      ? graceLentToPrevCount({
-          cycleStartDate: startDate,
-          maxSessions: maxSessions ?? null,
-          cycleMonths,
-          graceDays,
-          windowStart,
-          windowEnd: windowEnd!,
-          bookings,
-        })
-      : 0;
-  const used = Math.max(0, rawUsed - lentToPrev);
 
   // period は常に無制限。subscription/ticket は max_sessions が null なら無制限（例: 通い放題）。
   const isUnlimited = kind === "period" || maxSessions == null;

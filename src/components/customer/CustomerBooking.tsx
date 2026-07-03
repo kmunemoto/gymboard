@@ -851,8 +851,9 @@ const CustomerBooking = () => {
       </div>
 
       {cancelTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-lg">
+        /* 暗幕は bg-foreground だと文字トーン反転(bg-tone-dark)で白幕に化けるため固定の黒系 */
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background glass p-6 shadow-lg">
             <div className="space-y-2 text-center sm:text-left">
               <h3 className="text-lg font-semibold">{t("booking.cancelConfirmTitle")}</h3>
               <p className="text-sm text-muted-foreground">{cancelDescription}</p>

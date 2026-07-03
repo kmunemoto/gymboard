@@ -8,6 +8,12 @@
 
 import { resizeImageToJpeg } from "./imageResize";
 import { setBackgroundPhotoActive } from "./themeColor";
+import {
+  analyzeBackgroundTone,
+  applyBackgroundTone,
+  getStoredBackgroundTone,
+  storeBackgroundTone,
+} from "./backgroundTone";
 
 const STORAGE_KEY = "gymboard.backgroundImage";
 const CONFIG_KEY = "gymboard.backgroundImageConfig";
@@ -109,7 +115,7 @@ export function applyBackgroundConfig(config: BackgroundConfig): void {
   root.style.setProperty("--app-bg-position", `${posX}% ${posY}%`);
 }
 
-/** 表示設定を保存して即時反映する。 */
+/** 表示設定を保存して即時反映する。表示範囲が変わると明暗も変わるためトーンを再解析。 */
 export function setBackgroundConfig(config: BackgroundConfig): void {
   try {
     localStorage.setItem(CONFIG_KEY, JSON.stringify({ area: config.area }));
@@ -117,18 +123,45 @@ export function setBackgroundConfig(config: BackgroundConfig): void {
     // ignore
   }
   applyBackgroundConfig(config);
+  void recomputeBackgroundTone();
 }
 
-/** 背景画像を適用（null で解除）。画像 + 表示設定 + テーマクラスを更新する。 */
+/** 背景画像を適用（null で解除）。画像 + 表示設定 + テーマクラス + 文字トーンを更新する。 */
 export function applyBackgroundImage(dataUrl: string | null): void {
   const root = document.documentElement;
   if (dataUrl) {
     root.style.setProperty("--app-bg-image", `url("${dataUrl}")`);
     applyBackgroundConfig(getBackgroundConfig());
     setBackgroundPhotoActive(true);
+    // 保存済みトーンを即適用（起動時のちらつき防止）。解析は呼び出し元で行う。
+    applyBackgroundTone(getStoredBackgroundTone());
   } else {
     root.style.removeProperty("--app-bg-image");
     setBackgroundPhotoActive(false);
+    applyBackgroundTone(null);
+  }
+}
+
+/**
+ * 背景写真の表示範囲を解析し、写真上の文字トーン（黒系/白系）を自動決定する。
+ * 画像が無ければトーンを解除。解析失敗時は現状維持（既定の濃色文字）。
+ */
+async function recomputeBackgroundTone(): Promise<void> {
+  const url = getStoredBackgroundImage();
+  if (!url) {
+    storeBackgroundTone(null);
+    applyBackgroundTone(null);
+    return;
+  }
+  const tone = await analyzeBackgroundTone(
+    url,
+    getBackgroundConfig().area,
+    window.innerWidth,
+    window.innerHeight,
+  );
+  if (tone) {
+    storeBackgroundTone(tone);
+    applyBackgroundTone(tone);
   }
 }
 
@@ -147,11 +180,13 @@ export async function setBackgroundImageFromFile(file: File): Promise<void> {
     dataUrl = await blobToDataUrl(await resizeImageToJpeg(file, 1024, 0.5));
     localStorage.setItem(STORAGE_KEY, dataUrl);
   }
-  setBackgroundConfig({ area: null });
+  // 前の写真のトーンを引き継がない（新しい写真の解析結果が出るまでは既定の濃色文字）
+  storeBackgroundTone(null);
+  setBackgroundConfig({ area: null }); // 内部で新しい画像のトーンを再解析する
   applyBackgroundImage(dataUrl);
 }
 
-/** 背景画像を削除して既定に戻す（表示設定も初期化）。 */
+/** 背景画像を削除して既定に戻す（表示設定・文字トーンも初期化）。 */
 export function clearBackgroundImage(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
@@ -159,12 +194,37 @@ export function clearBackgroundImage(): void {
   } catch {
     // ignore
   }
+  storeBackgroundTone(null);
   applyBackgroundConfig(DEFAULT_BACKGROUND_CONFIG);
   applyBackgroundImage(null);
+}
+
+// 画面の縦横が変わると cover 表示の可視領域が変わりトーンも変わり得るため、
+// 回転時に再解析する。生の resize は Android のキーボード開閉でも発火するので
+// orientation の matchMedia を使い、軽くデバウンスする。多重登録は防止。
+let orientationWatchArmed = false;
+function armOrientationRecompute(): void {
+  if (orientationWatchArmed || typeof window.matchMedia !== "function") return;
+  orientationWatchArmed = true;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const onChange = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => void recomputeBackgroundTone(), 300);
+  };
+  try {
+    window.matchMedia("(orientation: portrait)").addEventListener("change", onChange);
+  } catch {
+    // 古いWebViewは addEventListener 未対応（addListener は非推奨のため何もしない）
+  }
 }
 
 /** 起動時に保存済みの背景画像・表示設定を適用する（main.tsx から呼ぶ）。 */
 export function initBackgroundImage(): void {
   const url = getStoredBackgroundImage();
-  if (url) applyBackgroundImage(url);
+  if (url) {
+    applyBackgroundImage(url); // 保存済みトーンを即適用（ちらつきなし）
+    // 既存ユーザー（トーン未保存）や画面サイズ変化に備え、非同期で再解析して自己修復
+    void recomputeBackgroundTone();
+  }
+  armOrientationRecompute();
 }

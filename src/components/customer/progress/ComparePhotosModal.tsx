@@ -79,7 +79,8 @@ const ComparePhotosModal = ({ open, onClose, photos }: Props) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-background flex flex-col">
+    // glass: 写真背景（theme-glass）でパネルが透過して背後と文字が混ざらないよう白フロスト面にする
+    <div className="fixed inset-0 z-[60] bg-background glass flex flex-col">
       <div
         className="flex items-center justify-between px-4 py-3 border-b"
         style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}

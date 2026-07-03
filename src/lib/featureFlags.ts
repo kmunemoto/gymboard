@@ -1,5 +1,5 @@
-export const STREAK_ENABLED = false;         // 連続来店記録（ストリーク）
-export const MONTHLY_REPORT_ENABLED = false; // 月次レポート画面
+export const STREAK_ENABLED = true;          // 連続来店記録（ストリーク）: ホームのストリークカード＋共有カードの週連続表示
+export const MONTHLY_REPORT_ENABLED = true;  // 月次レポート画面: トレーナーのお客様詳細から月次レポートを開く導線
 
 // 外部連携の有効/無効フラグ。
 // App Store / Google OAuth 審査の都合で一時的に非表示にしているセクションを

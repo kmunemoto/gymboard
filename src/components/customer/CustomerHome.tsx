@@ -27,6 +27,8 @@ import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
 import PlanUsageCard from "./PlanUsageCard";
+import StreakCard from "./StreakCard";
+import { STREAK_ENABLED } from "@/lib/featureFlags";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 // Fallback for legacy Salute plans when tenant_plans has no match
@@ -44,7 +46,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { plans: tenantPlans } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
   const { chartData, latest, loading: metricsLoading, saveMeasurement } = useMeasurements(user?.id);
-  const { currentStreak, loading: streakLoading } = useStreak(user?.id);
+  const { currentStreak, bestStreak, hasFutureBookingThisWeek, loading: streakLoading } = useStreak(user?.id);
   const streakNotifiedRef = useRef(false);
   const [latestWorkouts, setLatestWorkouts] = useState<RawWorkout[]>([]);
   const [latestDate, setLatestDate] = useState<string | null>(null);
@@ -278,6 +280,13 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       />
 
       {/* 3. Streak */}
+      {STREAK_ENABLED && !streakLoading && (currentStreak > 0 || bestStreak > 0) && (
+        <StreakCard
+          currentStreak={currentStreak}
+          bestStreak={bestStreak}
+          hasFutureBookingThisWeek={hasFutureBookingThisWeek}
+        />
+      )}
 
       {/* 4. Weight / Body Fat Cards */}
       {latest && (latest.weight != null || latest.body_fat != null) && (

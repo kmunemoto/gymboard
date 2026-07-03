@@ -116,13 +116,17 @@ Deno.serve(async (req) => {
     }
 
     // ===== 3. GymBoard 既存 exercises を取得 (name で照合) =====
+    // exercises の一意制約は (tenant_id, name)。他テナントの同名種目を誤って
+    // マッピングしないよう、このテナント所属の行のみ照合する。tenant_id が NULL の行は
+    // RESTRICTIVE RLS で全ユーザーから不可視 (マッピングするとアプリで種目名が
+    // 表示できない) ため照合対象にせず、テナント所属の行を新規作成する。
     const { data: existingEx, error: exFetchErr } = await admin
       .from("exercises")
-      .select("id, name, tenant_id");
+      .select("id, name")
+      .eq("tenant_id", TENANT_ID);
     if (exFetchErr) throw new Error(`exercises fetch: ${exFetchErr.message}`);
     const existingByName = new Map<string, string>();
     for (const e of existingEx ?? []) {
-      // name はテーブル全体で UNIQUE。テナントを超えて重複させない。
       existingByName.set(e.name, e.id);
     }
 

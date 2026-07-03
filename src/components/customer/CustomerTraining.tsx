@@ -48,12 +48,12 @@ interface WorkoutWithExercise {
   muscle_group: string | null;
 }
 
-const CustomerTraining = () => {
+const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "workout" | "photos" }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { avatar } = useAvatar();
   const gender: "male" | "female" = avatar?.gender === "female" ? "female" : "male";
-  const [subTab, setSubTab] = useState<"workout" | "photos">("workout");
+  const [subTab, setSubTab] = useState<"workout" | "photos">(initialSubTab);
   const [workouts, setWorkouts] = useState<WorkoutWithExercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [shareDate, setShareDate] = useState<string | null>(null);

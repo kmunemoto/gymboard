@@ -2343,8 +2343,6 @@ export type Database = {
         Row: {
           allow_overflow: boolean | null
           created_at: string
-          cycle_months: number | null
-          grace_days: number | null
           id: string
           is_active: boolean | null
           max_sessions: number | null
@@ -2358,8 +2356,6 @@ export type Database = {
         Insert: {
           allow_overflow?: boolean | null
           created_at?: string
-          cycle_months?: number | null
-          grace_days?: number | null
           id?: string
           is_active?: boolean | null
           max_sessions?: number | null
@@ -2373,8 +2369,6 @@ export type Database = {
         Update: {
           allow_overflow?: boolean | null
           created_at?: string
-          cycle_months?: number | null
-          grace_days?: number | null
           id?: string
           is_active?: boolean | null
           max_sessions?: number | null

@@ -204,3 +204,42 @@ describe("shouldRebaseCycleStart × 猶予（grace_days）", () => {
     ).toBe(true);
   });
 });
+
+describe("shouldRebaseCycleStart × 回数使い切り後の期限内予約（期限の終わりを待たない）", () => {
+  const mk = (dates: string[]): BookingForProgress[] =>
+    dates.map((d, i) => ({ id: `${d}-${i}`, booking_date: `${d}T10:00:00+09:00`, status: "予約済み" }));
+  // 起算日 6/5・月8回。8回を期限（7/5）前の 6/25 までに消化。
+  const eight = mk([
+    "2026-06-06", "2026-06-08", "2026-06-10", "2026-06-12",
+    "2026-06-15", "2026-06-18", "2026-06-21", "2026-06-25",
+  ]);
+
+  it("使い切った後の期限内予約（9回目）は新ルーティンの1回目として true", () => {
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-05", maxSessions: 8, bookingDateKey: "2026-06-28", existingBookings: eight }),
+    ).toBe(true);
+  });
+
+  it("まだ使い切っていなければ false（8回目は同じルーティン）", () => {
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-05", maxSessions: 8, bookingDateKey: "2026-06-28", existingBookings: eight.slice(0, 7) }),
+    ).toBe(false);
+  });
+
+  it("ロール後の窓での2件目は false（新ルーティンの2回目）", () => {
+    // 9件目(6/28)で新ルーティン開始済み → 7/2 の予約は新ルーティンの2回目
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-05", maxSessions: 8, bookingDateKey: "2026-07-02", existingBookings: [...eight, ...mk(["2026-06-28"])] }),
+    ).toBe(false);
+  });
+
+  it("ロール後の窓も使い切ったら、次の予約でまた true（連続ロール）", () => {
+    const second = mk([
+      "2026-06-28", "2026-06-30", "2026-07-02", "2026-07-04",
+      "2026-07-07", "2026-07-09", "2026-07-11", "2026-07-14",
+    ]);
+    expect(
+      shouldRebaseCycleStart({ cycleStartDate: "2026-06-05", maxSessions: 8, bookingDateKey: "2026-07-16", existingBookings: [...eight, ...second] }),
+    ).toBe(true);
+  });
+});

@@ -11,7 +11,8 @@ import { addDays, startOfDay } from "date-fns";
 import CounselingResponseList from "./CounselingResponseList";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
-import { getBookingProgressIndex, computeCourseProgress, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
+import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { useTenant } from "@/hooks/useTenant";
@@ -190,7 +191,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
 
   // 更新が近い顧客（プラン更新リマインド）:
   //  現在のサイクル満了（=月次更新/支払いの起点）まで RENEWAL_SOON_DAYS 日以内の顧客。
-  //  既存の computeCourseProgress（実績ロジック）を流用。スキーマ変更なし。
+  //  消化状況カードと同じ computePlanUsage（実効サイクル）で判定し、
+  //  回数使い切り後の自動ロール・猶予・期限未確定と表示が食い違わないようにする。
   const RENEWAL_SOON_DAYS = 7;
   const renewalSoon = useMemo(() => {
     const now = getJSTNow();
@@ -199,20 +201,20 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
     const list: Renewal[] = [];
     profiles.forEach((p) => {
       if (!p.cycle_start_date || !p.plan) return;
-      const progress = computeCourseProgress(p.cycle_start_date, p.plan, bookingsByUser.get(p.user_id) || [], now, resolveCycleMonths(p.plan, tenantPlans));
-      if (!progress.cycle || progress.isUnconfigured) return;
+      const tenantPlan = tenantPlans.find((tp) => tp.plan_name === p.plan) ?? null;
+      const input = resolvePlanUsageInput(p.plan, tenantPlan, p.cycle_start_date);
+      if (!input) return;
+      const usage = computePlanUsage(input, bookingsByUser.get(p.user_id) || [], now);
+      if (usage.kind !== "subscription" || usage.isUnconfigured || !usage.windowEnd) return;
       // 期限未確定（今サイクルに予約0件＝1回目の予約待ち）は更新リマインド対象外
-      if (progress.totalUsed === 0) return;
-      const anniversary = addDays(progress.cycle.end, -1); // サイクル最終日（満了日）
+      if (usage.periodPending) return;
+      const anniversary = addDays(usage.windowEnd, -1); // サイクル最終日（満了日）
       const days = Math.round((startOfDay(anniversary).getTime() - todayStart.getTime()) / 86400000);
       if (days < 0 || days > RENEWAL_SOON_DAYS) return;
-      const remaining = !progress.isUnlimited && progress.monthlyTotal != null
-        ? Math.max(0, progress.monthlyTotal - progress.totalUsed)
-        : null;
-      list.push({ user_id: p.user_id, name: p.display_name || t("common.nameUnset"), days, remaining, isUnlimited: progress.isUnlimited });
+      list.push({ user_id: p.user_id, name: p.display_name || t("common.nameUnset"), days, remaining: usage.remaining, isUnlimited: usage.isUnlimited });
     });
     return list.sort((a, b) => a.days - b.days);
-  }, [profiles, bookingsByUser, t]);
+  }, [profiles, bookingsByUser, tenantPlans, t]);
 
   if (loading || bookingsLoading) {
     return (

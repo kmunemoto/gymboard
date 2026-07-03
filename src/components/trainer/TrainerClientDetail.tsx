@@ -36,11 +36,11 @@ import {
 } from "@/components/ui/select";
 import { TrendingUp } from "lucide-react";
 import { toast } from "sonner";
-import { format, addMonths, differenceInDays, parseISO } from "date-fns";
+import { format, subDays } from "date-fns";
 import { ja } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { getJSTNow, getJSTToday, formatJST, toJSTDate } from "@/lib/timezone";
-import { getCycleWindow, resolveCycleMonths, resolveGraceDays, graceLentToPrevCount, getMonthlySessionCount } from "@/lib/courseProgress";
+import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
+import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { applyRaidDamage, checkTrainingMilestones, computeSessionVolume, processSessionRewards, type MilestoneAchieved, type SessionRewardResult } from "@/lib/raidUtils";
@@ -730,41 +730,37 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 </Button>
               </div>
               {cycleStartDate && (() => {
-                // 期限未確定判定: 今サイクルに有効予約が0件なら「1回目の予約待ち」。
-                // 期限は1回目のトレーニング日から決まるため、確定するまで日付を出さない
-                // （1回目の予約が入ると起算日が自動でその日に設定される）。
-                // 猶予（grace）で前サイクルへ繰り入れる回は今サイクルの消化に数えない。
-                const cm = resolveCycleMonths(clientPlan, tenantPlans);
-                const gd = resolveGraceDays(clientPlan, tenantPlans);
-                const win = getCycleWindow(cycleStartDate, getJSTNow(), cm);
-                const planForMax = tenantPlans.find((p) => p.plan_name === clientPlan);
-                const maxSessions = planForMax
-                  ? planForMax.max_sessions ?? null
-                  : (() => { const n = getMonthlySessionCount(clientPlan); return n === -1 ? null : n; })();
-                const activeBk = bookings
-                  .filter((b: { status: string }) => b.status !== "キャンセル済み")
-                  .map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status }));
-                const inWin = win
-                  ? activeBk.filter((b) => { const d = toJSTDate(b.booking_date); return d >= win.start && d < win.end; }).length
-                  : 0;
-                const lent = win
-                  ? graceLentToPrevCount({ cycleStartDate, maxSessions, cycleMonths: cm, graceDays: gd, windowStart: win.start, windowEnd: win.end, bookings: activeBk })
-                  : 0;
-                const pending = !!win && inWin - lent <= 0;
-                if (pending) {
+                // 有効期限は消化状況カードと同じ computePlanUsage（実効サイクル）から計算し、
+                // 「利用期間：6/5〜7/5（残り2日）」と「有効期限：7月5日（残り2日）」を常に一致させる。
+                // 期限未確定（1回目の予約待ち）・回数使い切り後の自動ロールもカードと同じ挙動になる。
+                const tenantPlan = tenantPlans.find((p) => p.plan_name === clientPlan) ?? null;
+                const input = resolvePlanUsageInput(clientPlan, tenantPlan, cycleStartDate);
+                const usage = input
+                  ? computePlanUsage(
+                      input,
+                      bookings.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status })),
+                      getJSTNow(),
+                    )
+                  : null;
+                if (!usage || usage.isUnconfigured) return null;
+                if (usage.periodPending) {
                   return (
                     <p className="text-xs text-muted-foreground">{t("clientDetail.expiryPending")}</p>
                   );
                 }
+                if (!usage.windowEnd) return null; // 無期限（期限表示なし）
+                const remaining = usage.daysLeft ?? 0;
                 return (
                   <p className="text-xs text-muted-foreground">
-                    {t("clientDetail.expiry", { date: format(addMonths(parseISO(cycleStartDate), cm), "yyyy年M月d日", { locale: ja }) })}
-                    {(() => {
-                      const remaining = differenceInDays(addMonths(parseISO(cycleStartDate), cm), getJSTNow());
-                      if (remaining < 0) return <span className="text-destructive font-bold ml-1">{t("clientDetail.expired")}</span>;
-                      if (remaining <= 3) return <span className="text-warning font-bold ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
-                      return <span className="ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>;
-                    })()}
+                    {/* windowEnd は排他的上限（[start, end)）。表示は最終利用日 = end - 1日。 */}
+                    {t("clientDetail.expiry", { date: format(subDays(usage.windowEnd, 1), "yyyy年M月d日", { locale: ja }) })}
+                    {usage.isExpired ? (
+                      <span className="text-destructive font-bold ml-1">{t("clientDetail.expired")}</span>
+                    ) : remaining <= 3 ? (
+                      <span className="text-warning font-bold ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>
+                    ) : (
+                      <span className="ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>
+                    )}
                   </p>
                 );
               })()}

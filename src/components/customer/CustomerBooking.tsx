@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X } from "lucide-react";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useMyBookings, createBooking, createRecurringBookings, cancelBooking, BookingWithTime } from "@/hooks/useBookings";
+import { useMyBookings, createBooking, createRecurringBookings, cancelBooking, rescheduleBooking, BookingWithTime } from "@/hooks/useBookings";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, addMonths, startOfDay } from "date-fns";
@@ -63,6 +63,8 @@ const CustomerBooking = () => {
   const [submitting, setSubmitting] = useState(false);
   // 定期予約: 毎週同じ曜日・時間で何回分まとめて予約するか（1=この回のみ）
   const [repeatWeeks, setRepeatWeeks] = useState(1);
+  // 予約の日時変更（リスケジュール）モード: 対象の既存予約（null=通常の新規予約モード）
+  const [rescheduleTarget, setRescheduleTarget] = useState<BookingWithTime | null>(null);
 
   // Booked slots fetched via SECURITY DEFINER RPC — sees ALL bookings regardless of RLS
   const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean }[]>([]);
@@ -145,6 +147,9 @@ const CustomerBooking = () => {
     // buffer is enforced before and after every booking.
     return bookedSlots.some((b) => {
       if (b.date !== date) return false;
+      // 予約変更中は、変更対象（旧枠）を占有としてカウントしない。
+      // これで同日の近い時刻（旧枠のバッファ内）にも移動できる（旧枠は削除して作り直すため）。
+      if (rescheduleTarget && b.date === rescheduleTarget.date && b.startTime === rescheduleTarget.startTime) return false;
       const bMin = timeToMin(b.startTime);
       // 既存予約側にも同じ15分バッファを足し、前後どちらの間隔も確保する
       // （トレーナー側 checkSlotBlocked と挙動を一致させる）。
@@ -327,6 +332,62 @@ const CustomerBooking = () => {
 
   };
 
+  // 予約変更モードに入る: 対象を記録し、日付・スロット選択をリセットしてカレンダーへ誘導
+  const startReschedule = (b: BookingWithTime) => {
+    if (isSaluteJuneLocked(b.date)) {
+      toast.info(JUNE_LOCK_MESSAGE);
+      return;
+    }
+    setRescheduleTarget(b);
+    setSelectedDate(undefined);
+    setSelectedSlot(null);
+    setRepeatWeeks(1);
+    setTimeout(() => document.getElementById("calendar-section")?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
+
+  const cancelReschedule = () => {
+    setRescheduleTarget(null);
+    setSelectedDate(undefined);
+    setSelectedSlot(null);
+  };
+
+  // 選択した新しい日時へ予約を変更する（旧枠削除→新枠作成、失敗時は旧枠復元）
+  const handleReschedule = async () => {
+    if (!rescheduleTarget || submitting) return;
+    if (!selectedDate || !selectedSlot) return;
+    const slot = slots.find((s) => s.id === selectedSlot);
+    if (!slot) return;
+    if (isBookingDayClosed(dateKey)) {
+      toast.error(t("booking.errorAdvance"));
+      setSelectedSlot(null);
+      return;
+    }
+    if (isSlotBlocked(dateKey, slot.time)) {
+      toast.error(t("booking.errorSlotTaken"));
+      setSelectedSlot(null);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time);
+      if (error) {
+        toast.error(t("booking.errorRescheduleFailed"));
+        return;
+      }
+      toast.success(t("booking.rescheduleDone"));
+      const oldKey = rescheduleTarget.date;
+      setRescheduleTarget(null);
+      setSelectedDate(undefined);
+      setSelectedSlot(null);
+      refetch();
+      refetchProfile();
+      fetchBookedSlots(dateKey);
+      if (oldKey && oldKey !== dateKey) fetchBookedSlots(oldKey);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleCancel = async () => {
     if (!cancelTarget || cancelling) return;
     // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可
@@ -481,6 +542,17 @@ const CustomerBooking = () => {
                         >
                           <CalendarPlus className="w-4 h-4" />
                         </button>
+                        {/* 日時変更（リスケジュール）。6月ロック中は不可 */}
+                        {!isSaluteJuneLocked(b.date) && (
+                          <button
+                            type="button"
+                            onClick={() => startReschedule(b)}
+                            className="text-muted-foreground hover:text-accent transition-colors p-2"
+                            title={t("booking.reschedule")}
+                          >
+                            <CalendarClock className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可 */}
                         {isSaluteJuneLocked(b.date) ? (
                           <span
@@ -521,11 +593,26 @@ const CustomerBooking = () => {
         {/* Date & time selection (plan auto-assigned) */}
         {selectedPlan && (
           <section id="calendar-section" className="slide-up scroll-mt-4">
+            {/* 予約変更モードのバナー: どの予約を変更中かを明示し、やめる導線も出す */}
+            {rescheduleTarget && (
+              <div className="mb-3 p-3 rounded-xl bg-accent/10 border border-accent/30 flex items-center gap-2">
+                <CalendarClock className="w-4 h-4 text-accent shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold">{t("booking.rescheduleModeTitle")}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {formatJST(`${rescheduleTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja })} {rescheduleTarget.startTime}〜 → {t("booking.rescheduleModeHint")}
+                  </p>
+                </div>
+                <button type="button" onClick={cancelReschedule} className="text-muted-foreground hover:text-foreground shrink-0 p-1" title={t("common.cancel")}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-2 mb-3">
               <div className="flex-1">
                 <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  {t("booking.selectDateTime")}
+                  {rescheduleTarget ? t("booking.selectNewDateTime") : t("booking.selectDateTime")}
                 </h2>
               </div>
               <Badge variant="outline" className="text-xs shrink-0">
@@ -708,42 +795,52 @@ const CustomerBooking = () => {
                       </span>
                       （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
-                    {/* 定期予約: 毎週同じ曜日・時間でまとめて予約 */}
-                    <div className="mb-3 text-left">
-                      <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <Repeat className="w-3 h-3" />
-                        {t("booking.repeatTitle")}
-                      </p>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {[1, 2, 3, 4].map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setRepeatWeeks(n)}
-                            aria-pressed={repeatWeeks === n}
-                            className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
-                              repeatWeeks === n
-                                ? "bg-accent text-accent-foreground shadow-sm"
-                                : "bg-secondary text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {n === 1 ? t("booking.repeatOnce") : t("booking.repeatTimes", { count: n })}
-                          </button>
-                        ))}
-                      </div>
-                      {repeatWeeks > 1 && (
-                        <p className="text-[11px] text-muted-foreground mt-1.5">
-                          {t("booking.repeatWeeklyDesc", { count: repeatWeeks })}
+                    {/* 定期予約: 毎週同じ曜日・時間でまとめて予約（変更モードでは非表示） */}
+                    {!rescheduleTarget && (
+                      <div className="mb-3 text-left">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
+                          <Repeat className="w-3 h-3" />
+                          {t("booking.repeatTitle")}
                         </p>
-                      )}
-                    </div>
-                    <Button variant="accent" size="lg" className="w-full" onClick={handleBook} disabled={submitting || isSaluteJuneLocked(dateKey)}>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[1, 2, 3, 4].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => setRepeatWeeks(n)}
+                              aria-pressed={repeatWeeks === n}
+                              className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                repeatWeeks === n
+                                  ? "bg-accent text-accent-foreground shadow-sm"
+                                  : "bg-secondary text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {n === 1 ? t("booking.repeatOnce") : t("booking.repeatTimes", { count: n })}
+                            </button>
+                          ))}
+                        </div>
+                        {repeatWeeks > 1 && (
+                          <p className="text-[11px] text-muted-foreground mt-1.5">
+                            {t("booking.repeatWeeklyDesc", { count: repeatWeeks })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <Button
+                      variant="accent"
+                      size="lg"
+                      className="w-full"
+                      onClick={rescheduleTarget ? handleReschedule : handleBook}
+                      disabled={submitting || isSaluteJuneLocked(dateKey)}
+                    >
                       {submitting ? (
                         <DumbbellLoader className="w-4 h-4 mr-2" />
                       ) : null}
-                      {repeatWeeks > 1
-                        ? t("booking.confirmRepeatBooking", { count: repeatWeeks })
-                        : t("booking.confirmBooking")}
+                      {rescheduleTarget
+                        ? t("booking.confirmReschedule")
+                        : repeatWeeks > 1
+                          ? t("booking.confirmRepeatBooking", { count: repeatWeeks })
+                          : t("booking.confirmBooking")}
                     </Button>
                   </div>
                 )}

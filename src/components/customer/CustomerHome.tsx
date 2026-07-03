@@ -1,5 +1,5 @@
 import { lazy, useEffect, useRef, useState } from "react";
-import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save } from "lucide-react";
+import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -521,6 +521,26 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                       return parts.length > 0 ? parts.join(" / ") : t("home.checkData");
                     })()}
                   </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* 7.5 Body Progress Photos (before/after) */}
+      <section>
+        <Card className="card-hover border-l-4 border-l-accent cursor-pointer" onClick={() => onNavigate?.("photos")}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl accent-gradient flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm flex items-center gap-1.5"><Camera className="w-4 h-4" />{t("home.bodyProgress")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("home.bodyProgressDesc")}</p>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />

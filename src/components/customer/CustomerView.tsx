@@ -24,7 +24,7 @@ import AnnouncementsDialog from "./AnnouncementsDialog";
 import PlanLimitBanner from "@/components/PlanLimitBanner";
 import { useTenant } from "@/hooks/useTenant";
 
-export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report";
+export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report" | "photos";
 
 const CustomerView = () => {
   const { t } = useTranslation();
@@ -102,7 +102,8 @@ const CustomerView = () => {
         <LazyBoundary>
           {tab === "home" && <CustomerHome onNavigate={setTab} />}
           {tab === "booking" && <CustomerBooking />}
-          {tab === "training" && <CustomerTraining />}
+          {tab === "training" && <CustomerTraining initialSubTab="workout" />}
+          {tab === "photos" && <CustomerTraining initialSubTab="photos" />}
           {tab === "meals" && <CustomerMeals />}
           {tab === "chat" && <CustomerChat />}
           {tab === "settings" && <CustomerSettings />}

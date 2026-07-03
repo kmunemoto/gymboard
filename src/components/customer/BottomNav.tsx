@@ -25,7 +25,8 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
     >
       <div className="max-w-md mx-auto flex items-end">
         {tabs.map((tab) => {
-          const active = activeTab === tab.id;
+          // 「体の変化」写真タブ(photos)はトレーニング内のサブ画面なので、トレーニングを点灯扱いにする
+          const active = activeTab === tab.id || (tab.id === "training" && activeTab === "photos");
 
           if (tab.center) {
             return (

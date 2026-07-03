@@ -295,6 +295,7 @@ export const createBooking = async (
   startTime: string,
   bookingType: string = "通常",
   isProxyBooking = false,
+  opts: { silent?: boolean } = {},
 ) => {
   const bookingDate = `${date}T${startTime}:00+09:00`;
   const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
@@ -310,12 +311,15 @@ export const createBooking = async (
     // 後続処理（表示更新・定期予約の2回目以降）が新しい起算日を見られるよう await する。
     await rebaseCycleStartIfNeeded(userId, date, data.id);
 
-    // Notify customer about their booking (gated by feature flag)
-    if (NOTIFY_CUSTOMER_LINE_ON_BOOKING) {
-      sendBookingConfirmationToCustomer(userId, date, startTime, bookingType, isProxyBooking).catch(console.error);
+    // silent: 予約変更（reschedule）の内部呼び出し。通知は呼び出し側が「変更」1通にまとめる。
+    if (!opts.silent) {
+      // Notify customer about their booking (gated by feature flag)
+      if (NOTIFY_CUSTOMER_LINE_ON_BOOKING) {
+        sendBookingConfirmationToCustomer(userId, date, startTime, bookingType, isProxyBooking).catch(console.error);
+      }
+      // Always notify trainer about new bookings (skip if trainer is the one booking for themselves)
+      sendNewBookingLineToTrainer(userId, date, startTime, bookingType).catch(console.error);
     }
-    // Always notify trainer about new bookings (skip if trainer is the one booking for themselves)
-    sendNewBookingLineToTrainer(userId, date, startTime, bookingType).catch(console.error);
 
     // Sync to Google Calendar (fire-and-forget)
     supabase
@@ -369,6 +373,100 @@ export const createRecurringBookings = async (
   }
   return { booked, skipped };
 };
+
+/**
+ * 予約の日時をワンタップで変更（リスケジュール）する。
+ * RLS/DBトリガーの制約（顧客のUPDATEポリシー無し・重複防止トリガーがINSERT限定）を避けるため、
+ * 「旧予約を静かに削除 → 新枠で作成」で実現する。旧枠を先に消すことで、同日近接時刻への移動
+ * （旧枠の前後75分バッファとの自己重複）でも作成できる。新枠作成に失敗（他者が先約 等）した
+ * 場合は旧予約を復元してエラーを返すため、予約が消えたままになることはない。
+ * 通知はキャンセル/新規の二重送信を避け、トレーナーへ「変更」1通（LINE＋プッシュ）だけ送る。
+ */
+export const rescheduleBooking = async (
+  bookingId: string,
+  newDate: string,
+  newStartTime: string,
+): Promise<{ data: { id: string } | null; error: unknown }> => {
+  const { data: old, error: fetchError } = await supabase
+    .from("bookings")
+    .select("id, user_id, booking_date, booking_type, tenant_id, source")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (fetchError || !old) return { data: null, error: fetchError ?? new Error("booking not found") };
+
+  const newBookingDate = `${newDate}T${newStartTime}:00+09:00`;
+  // booking_date は timestamptz（SELECT時はUTC表記）なので瞬時(getTime)で同一判定する
+  if (new Date(old.booking_date).getTime() === new Date(newBookingDate).getTime()) {
+    return { data: { id: old.id }, error: null }; // 変更なし
+  }
+
+  const oldDateKey = old.booking_date; // 通知・復元用に保持
+  // 旧枠の JST 日付・時刻（UTC表記の文字列をそのまま切らず、JSTへ整形して取り出す）
+  const oldJstDate = formatJST(oldDateKey, "yyyy-MM-dd");
+  const oldJstTime = formatJST(oldDateKey, "HH:mm");
+
+  // 1) 旧予約を静かに削除（旧枠のGoogleカレンダー予定も削除。キャンセル通知は出さない）
+  const { error: delError } = await cancelBooking(bookingId, false, { silent: true });
+  if (delError) return { data: null, error: delError };
+
+  // 2) 新枠で作成（重複防止トリガーで満枠を検証。通知は出さない）
+  const { data: created, error: createError } = await createBooking(
+    old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true },
+  );
+
+  if (createError || !created) {
+    // 失敗（満枠等）→ 旧予約を復元して予約消失を防ぐ
+    await createBooking(old.user_id, oldJstDate, oldJstTime, old.booking_type, false, { silent: true })
+      .catch((e) => console.error("reschedule rollback failed:", e));
+    return { data: null, error: createError ?? new Error("reschedule create failed") };
+  }
+
+  // 3) トレーナーへ「変更」通知を1通だけ（LINE＋プッシュ、fire-and-forget）
+  sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type).catch((e) =>
+    console.error("sendRescheduleToTrainer failed:", e),
+  );
+
+  return { data: { id: created.id }, error: null };
+};
+
+async function sendRescheduleToTrainer(
+  userId: string,
+  oldBookingDate: string, // ISO（旧日時）
+  newDate: string,
+  newStartTime: string,
+  bookingType: string,
+) {
+  const [{ data: profile }, { data: trainerIds }] = await Promise.all([
+    supabase.from("profiles").select("display_name").eq("user_id", userId).maybeSingle(),
+    supabase.rpc("get_trainer_ids"),
+  ]);
+  const customerName = profile?.display_name || "顧客";
+  const trainerId = trainerIds?.[0]?.user_id;
+  if (!trainerId) return;
+
+  const oldStr = formatJST(oldBookingDate, "M月d日（E） HH:mm", { locale: ja });
+  const newStr = formatJST(`${newDate}T${newStartTime}:00+09:00`, "M月d日（E） HH:mm", { locale: ja });
+  const gymName = await getGymNameForUser(userId);
+
+  await supabase.functions.invoke("send-line-message", {
+    body: {
+      user_id: trainerId,
+      message: `🔄 予約変更通知\n\n${oldStr}\n　↓\n${newStr}\n\n${customerName}様が予約日時を変更しました。\n\nプラン：${bookingType}\n\n${gymName}`,
+    },
+  }).catch((e) => console.error("reschedule LINE failed:", e));
+
+  // トレーナー＋本人へプッシュ通知
+  const shortNew = formatJST(`${newDate}T${newStartTime}:00+09:00`, "M月d日 HH:mm", { locale: ja });
+  supabase.functions.invoke("send-push-notification", {
+    body: {
+      user_ids: [trainerId, userId],
+      title: "予約日時の変更",
+      body: `${customerName}様が予約を${shortNew}に変更しました`,
+      url: "/",
+      tag: `reschedule-${trainerId}-${newDate}`,
+    },
+  }).catch((e) => console.error("reschedule push failed:", e));
+}
 
 async function sendBookingConfirmationToCustomer(
   userId: string,
@@ -431,7 +529,7 @@ async function sendNewBookingLineToTrainer(
 // Prevents duplicate LINE notifications from double-taps or StrictMode double-invocation.
 const inFlightCancels = new Set<string>();
 
-export const cancelBooking = async (bookingId: string, cancelledByTrainer = false) => {
+export const cancelBooking = async (bookingId: string, cancelledByTrainer = false, opts: { silent?: boolean } = {}) => {
   // In-flight guard: prevent duplicate cancel calls for the same booking from
   // sending duplicate LINE/email notifications when the user double-taps or
   // when React StrictMode runs effects twice.
@@ -474,7 +572,10 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
     .delete()
     .eq("id", bookingId);
 
-  if (!error && booking) {
+  if (!error && booking && opts.silent) {
+    // 予約変更（reschedule）の内部呼び出し: 旧枠のGoogleカレンダー削除・行削除だけ行い、
+    // キャンセル通知は送らない（呼び出し側が「変更」1通にまとめる）。空き枠通知も出さない。
+  } else if (!error && booking) {
     console.log("LINE通知送信開始", booking.id, { cancelledByTrainer });
     // Send LINE cancel notification (fire-and-forget)
     sendCancelLineNotification(booking, cancelledByTrainer).catch((e) =>

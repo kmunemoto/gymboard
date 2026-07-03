@@ -260,6 +260,38 @@ html.theme-photo body {
   min-height: 100vh;
 }
 
+/* =========================================================
+   写真背景の文字色自動切替（backgroundTone.ts）。
+   背景写真の表示範囲の平均輝度を端末内で解析し、暗い写真なら
+   <html> に bg-tone-dark を付与。写真の上に直接乗る文字
+   （フロスト面の外の見出し・補助テキスト・アウトラインボタン等）を
+   白系へ反転し、暗い写真でも読めるようにする。
+   白フロスト面（.bg-card / .glass）やダイアログの中は面単位で
+   CSS変数を戻し、従来どおり濃色文字のまま（挙動を変えない）。
+   明るい写真では bg-tone-dark が付かず、従来の濃色文字のまま。
+   ========================================================= */
+html.theme-photo.bg-tone-dark {
+  --foreground: 0 0% 100%;
+  --muted-foreground: 220 12% 88%;
+  --secondary-foreground: 0 0% 98%;
+}
+/* 明るい面の中は濃色文字へ戻す。変数の再宣言だけでは body で計算済みの
+   継承 color が白のまま残るため、面のルートで color を再評価して子へ継承させる。
+   [data-sonner-toaster] はトースト（ポータル配置でフロスト面の祖先を持たない）、
+   [class*="bg-card/"] は bg-card/60 等の透明度付きトークン（.bg-card に一致しない）対策。 */
+html.theme-photo.bg-tone-dark :is(.bg-card, .glass, .bg-popover, [role="dialog"], [role="alertdialog"], [data-sonner-toaster], [class*="bg-card/"]) {
+  --foreground: 220 10% 28%;
+  --muted-foreground: 220 10% 32%;
+  --secondary-foreground: 220 10% 28%;
+  color: hsl(var(--foreground));
+}
+/* Tabs のアクティブピル（data-[state=active]:bg-background）はトークン不一致で
+   透過されず不透明なほぼ白のまま描画されるため、文字だけ濃色へ戻す */
+html.theme-photo.bg-tone-dark [role="tab"][data-state="active"] {
+  --foreground: 220 10% 28%;
+  color: hsl(var(--foreground));
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

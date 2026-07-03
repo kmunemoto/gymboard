@@ -231,7 +231,8 @@ const TrainerAnnouncementManager = () => {
       {showForm && (
         <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
           <div
-            className="bg-background rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-4"
+            /* glass: 写真背景（theme-glass）でパネルが透過しないよう白フロスト面にする */
+            className="bg-background glass rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-bold">{editing ? t("announcement.editTitle") : t("announcement.newTitle")}</h2>

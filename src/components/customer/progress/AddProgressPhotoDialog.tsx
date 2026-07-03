@@ -88,7 +88,8 @@ const AddProgressPhotoDialog = ({ open, onClose, onUploaded }: Props) => {
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center" onClick={handleClose}>
       <div
-        className="bg-background w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto slide-up"
+        /* glass: 写真背景（theme-glass）でパネルが透過しないよう白フロスト面にする */
+        className="bg-background glass w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

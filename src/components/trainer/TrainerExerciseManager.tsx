@@ -436,7 +436,8 @@ const TrainerExerciseManager = () => {
           onClick={() => setDeleteTarget(null)}
         >
           <div
-            className="bg-background rounded-2xl p-5 w-full max-w-sm shadow-2xl"
+            /* glass: 写真背景（theme-glass）でパネルが透過しないよう白フロスト面にする */
+            className="bg-background glass rounded-2xl p-5 w-full max-w-sm shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-bold mb-2">{t("exercise.deleteTitle")}</h3>

@@ -38,7 +38,8 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-background flex flex-col w-full max-w-md mx-auto">
+    // glass: 写真背景（theme-glass）でパネルが透過して背後と文字が混ざらないよう白フロスト面にする
+    <div className="fixed inset-0 z-[60] bg-background glass flex flex-col w-full max-w-md mx-auto">
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3 border-b border-border bg-card"

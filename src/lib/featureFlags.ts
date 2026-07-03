@@ -21,7 +21,9 @@ export const APPLE_CONNECTION_ENABLED = false; // Apple連携セクション（A
 // 予約成立時は自分の該当待機を自動解除する。
 // 前提: DBマイグレーション booking_waitlist（20260624120000）と
 // send-push-notification の再デプロイが適用済みであること。
-export const WAITLIST_ENABLED = true;
+// 満枠の表示が「キャンセル待ち」だらけで見づらいという要望により、満枠は従来の「満枠」表示へ戻す（OFF）。
+// true に戻せばキャンセル待ち機能（登録・空き通知）が再度有効になる。
+export const WAITLIST_ENABLED = false;
 
 // ソーシャルログイン（Appleでサインイン / Googleでログイン）のボタン表示。
 // 既定 OFF。Supabase の Authentication → Providers で Apple / Google を

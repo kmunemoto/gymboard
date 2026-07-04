@@ -31,3 +31,7 @@ project_id = "rrbfwitprzuevzytykrq"
     verify_jwt = false
   [functions.sync-trial-cancel-to-salute]
     verify_jwt = false
+  # 公開の体験予約作成API。外部予約サイトから認証なしで呼ばれる前提
+  # (関数内で入力検証・営業枠チェック・回数制限を行う)。
+  [functions.trial-book]
+    verify_jwt = false

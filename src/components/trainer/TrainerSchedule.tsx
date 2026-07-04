@@ -20,7 +20,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import WeekTimelineView from "./WeekTimelineView";
 import CourseProgressBadge from "./CourseProgressBadge";
-import { getBookingProgressIndex, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 // ============================================================
@@ -99,6 +99,7 @@ const TrainerSchedule = () => {
       profile.plan,
       bookingsByUser.get(booking.user_id) || [],
       resolveCycleMonths(profile.plan, plans),
+      resolveGraceDays(profile.plan, plans),
     );
   };
 

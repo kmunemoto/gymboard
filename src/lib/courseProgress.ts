@@ -378,6 +378,10 @@ export const shouldRebaseCycleStart = (params: {
 /**
  * 特定の予約がそのお客様の今回の何回目に当たるかを返す
  * 戻り値: { index: 1始まり, total: 月間回数 or null(通い放題/未設定) }
+ *
+ * graceDays（猶予日数）を渡すと、期限明けの猶予帯で前サイクルへ繰り入れられた
+ * 予約（大目に見た消化）は「前サイクルの続きの回数」として数える。
+ * 例: 月8回・前サイクル7回消化・期限翌日の予約 → 「8/8」（新ルーティンの1/8ではなく）。
  */
 export const getBookingProgressIndex = (
   bookingId: string,
@@ -385,6 +389,7 @@ export const getBookingProgressIndex = (
   plan: string | null | undefined,
   bookings: BookingForProgress[],
   cycleMonths?: number | null,
+  graceDays?: number | null,
 ): { index: number; total: number | null; isUnlimited: boolean; isUnconfigured: boolean; isOverflow: boolean } | null => {
   const target = bookings.find((b) => b.id === bookingId);
   if (!target) return null;
@@ -396,6 +401,45 @@ export const getBookingProgressIndex = (
   const rawIndex = progress.cycleBookings.findIndex((b) => b.id === bookingId) + 1;
   if (rawIndex === 0) return null;
   const total = progress.monthlyTotal;
+
+  // 猶予: この窓の先頭で前サイクルへ繰り入れられた予約なら「前サイクルの n 回目」として返す。
+  // 繰り入れは窓先頭の予約から順に（前サイクルの残り回数ぶんまで）適用される。
+  if (!progress.isUnlimited && total !== null && total > 0 && cycleStartDate) {
+    const active = bookings.filter((b) => b.status !== "キャンセル済み");
+    const lent = graceLentToPrevCount({
+      cycleStartDate,
+      maxSessions: total,
+      cycleMonths,
+      graceDays,
+      windowStart: progress.cycle.start,
+      windowEnd: progress.cycle.end,
+      bookings: active,
+    });
+    if (lent > 0) {
+      if (rawIndex <= lent) {
+        // 前サイクルの消化数 + 繰入順 = 前サイクルとしての回数（例: 7消化 + 1件目 = 8/8）
+        const prevWindow = getCycleWindow(cycleStartDate, addDays(progress.cycle.start, -1), cycleMonths);
+        const prevCount = prevWindow ? countActiveInRange(active, prevWindow.start, progress.cycle.start) : 0;
+        return {
+          index: Math.min(total, prevCount + rawIndex),
+          total,
+          isUnlimited: progress.isUnlimited,
+          isUnconfigured: progress.isUnconfigured,
+          isOverflow: false,
+        };
+      }
+      // 繰入より後の予約は、繰入分を除いた順番で数える（新ルーティンの1回目から）
+      const adjusted = rawIndex - lent;
+      return {
+        index: ((adjusted - 1) % total) + 1,
+        total,
+        isUnlimited: progress.isUnlimited,
+        isUnconfigured: progress.isUnconfigured,
+        isOverflow: false,
+      };
+    }
+  }
+
   // ルーティン循環: プラン回数を超えたら次のルーティンの1回目として扱う
   const index = (!progress.isUnlimited && total !== null && total > 0)
     ? ((rawIndex - 1) % total) + 1

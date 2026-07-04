@@ -11,7 +11,7 @@ import { addDays, startOfDay } from "date-fns";
 import CounselingResponseList from "./CounselingResponseList";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
-import { getBookingProgressIndex, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { RefreshCw } from "lucide-react";
 import { useMemo } from "react";
@@ -274,7 +274,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
                 .map((b) => {
                   const profile = profiles.find((pr) => pr.user_id === b.user_id);
                   const progress = profile
-                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans))
+                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans), resolveGraceDays(profile.plan, tenantPlans))
                     : null;
 
                   return (

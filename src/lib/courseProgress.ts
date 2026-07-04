@@ -94,6 +94,10 @@ export const graceLentToPrevCount = (params: {
  * サイクル窓内の有効予約（猶予繰入を除く）が回数上限を超えた場合は、(上限+1)回目の予約日を
  * 新しい起算日として窓を引き直す。期限の終わりを待たず、期限内に始まった新しい1回目から
  * 次のルーティンが始まる。referenceDate を含む窓に到達するまで繰り返す。
+ *
+ * ただしロールは「新ルーティンの1回目の日が実際に来てから」。1回目がまだ未来の予約なら、
+ * その日までは現在の窓（ジムが設定した利用期間）のまま表示し、超過予約は次ルーティン分
+ * として消化数に数えない（上限で頭打ち）。
  * 上限なし（通い放題）・回数不明のプランではロールせず、従来の暦窓と一致する。
  */
 export const resolveEffectiveCycle = (params: {
@@ -135,6 +139,11 @@ export const resolveEffectiveCycle = (params: {
     if (maxSessions != null && maxSessions > 0 && inWindow.length - lent > maxSessions) {
       // 回数上限を超過 → (上限+1)回目（猶予繰入はスキップ）の予約日を新しい起算日にロール
       const rollDate = inWindow[lent + maxSessions];
+      // ただし新ルーティンの1回目がまだ先の日付なら、その日が来るまでは現在の窓のまま表示する
+      // （ジムが設定した利用期間を維持。超過予約は次ルーティン分なので消化数は上限で頭打ち）。
+      if (startOfDay(rollDate) > refDay) {
+        return { cycleStartDate: anchorKey, window, lent, used: maxSessions };
+      }
       const newKey = format(rollDate, "yyyy-MM-dd");
       if (newKey <= anchorKey) break; // 同日多重予約などでの無限ループ防止
       anchorKey = newKey;

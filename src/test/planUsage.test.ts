@@ -227,14 +227,55 @@ describe("実効サイクル（回数使い切り後の期限内スタートで�
     expect(usage.windowStart!.getDate()).toBe(5);
   });
 
-  it("9件目が未来日（7/4）でも予約が入った時点で新ルーティンとして扱う", () => {
+  it("9件目が未来日（7/4）なら、その日が来るまでは現在の期間のまま（消化は上限で頭打ち）", () => {
+    // ジムが設定した利用期間を勝手に先回りしない。9件目はまだ未来なので現在の窓 6/5〜7/5 を表示し、
+    // 超過分（未来の9件目）は消化数に数えない（8/8のまま）。
     const usage = computePlanUsage(
       { planType: "subscription", maxSessions: 8, validityDays: null, startDate: "2026-06-05" },
       [...eight, b("2026-07-04T10:00:00+09:00")],
-      NOW3,
+      NOW3, // 7/3
+    );
+    expect(usage.used).toBe(8);
+    expect(usage.remaining).toBe(0);
+    expect(usage.windowStart!.getMonth()).toBe(5); // June（設定どおり 6/5 起点のまま）
+    expect(usage.windowStart!.getDate()).toBe(5);
+  });
+
+  it("9件目の日（7/4）が来たら新ルーティンへロールする", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 8, validityDays: null, startDate: "2026-06-05" },
+      [...eight, b("2026-07-04T10:00:00+09:00")],
+      toJSTDate("2026-07-04T12:00:00+09:00"),
     );
     expect(usage.used).toBe(1);
     expect(usage.windowStart!.getMonth()).toBe(6); // July
     expect(usage.windowStart!.getDate()).toBe(4);
+  });
+
+  it("ジム設定の利用期間を維持: 月4回・起算日6/18・期間内に6件（5件目=未来の7/17）→ 今日は 6/18〜7/18 のまま 4/4", () => {
+    // 実際に報告されたケース: 起算日 6/18 なのにカードが未来の期間 7/17〜8/17 を表示していた
+    const four = ["2026-06-18", "2026-06-25", "2026-07-02", "2026-07-09"].map((d) => b(`${d}T10:00:00+09:00`));
+    const nextRoutine = ["2026-07-17", "2026-07-18"].map((d) => b(`${d}T10:00:00+09:00`));
+    const now = toJSTDate("2026-07-04T13:00:00+09:00");
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-06-18" },
+      [...four, ...nextRoutine],
+      now,
+    );
+    // ジムが設定した期間のまま（6/18〜7/18）。未来の次ルーティン2件は数えない
+    expect(usage.windowStart!.getMonth()).toBe(5); // June
+    expect(usage.windowStart!.getDate()).toBe(18);
+    expect(usage.used).toBe(4);
+    expect(usage.remaining).toBe(0);
+
+    // 7/17 が来たら新ルーティンの期間 7/17〜8/17 に切り替わる
+    const usageAfter = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-06-18" },
+      [...four, ...nextRoutine],
+      toJSTDate("2026-07-17T12:00:00+09:00"),
+    );
+    expect(usageAfter.windowStart!.getMonth()).toBe(6); // July
+    expect(usageAfter.windowStart!.getDate()).toBe(17);
+    expect(usageAfter.used).toBe(2);
   });
 });

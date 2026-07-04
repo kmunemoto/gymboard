@@ -1935,7 +1935,9 @@
   "courseBadge": {
     "unconfigured": "未设置课程",
     "unlimited": "本期第 {{index}} 次（无限次）",
-    "normal": "本期第 {{index}}/{{total}} 次"
+    "normal": "本期第 {{index}}/{{total}} 次",
+    "graceCarryover": "本期第 {{index}}/{{total}} 次（上期计入）",
+    "graceCarryoverShort": "上期"
   },
   "muscleBalance": {
     "title": "训练部位平衡",

@@ -1935,7 +1935,9 @@
   "courseBadge": {
     "unconfigured": "No course set",
     "unlimited": "Visit {{index}} this cycle (unlimited)",
-    "normal": "{{index}}/{{total}} this cycle"
+    "normal": "{{index}}/{{total}} this cycle",
+    "graceCarryover": "{{index}}/{{total}} (prev. cycle)",
+    "graceCarryoverShort": "prev."
   },
   "muscleBalance": {
     "title": "Training Muscle Balance",

@@ -394,13 +394,13 @@ export const getBookingProgressIndex = (
   bookings: BookingForProgress[],
   cycleMonths?: number | null,
   graceDays?: number | null,
-): { index: number; total: number | null; isUnlimited: boolean; isUnconfigured: boolean; isOverflow: boolean } | null => {
+): { index: number; total: number | null; isUnlimited: boolean; isUnconfigured: boolean; isOverflow: boolean; isGraceCarryover: boolean } | null => {
   const target = bookings.find((b) => b.id === bookingId);
   if (!target) return null;
   const targetDate = toJSTDate(target.booking_date);
   const progress = computeCourseProgress(cycleStartDate, plan, bookings, targetDate, cycleMonths);
   if (!progress.cycle) {
-    return { index: 0, total: progress.monthlyTotal, isUnlimited: progress.isUnlimited, isUnconfigured: progress.isUnconfigured, isOverflow: false };
+    return { index: 0, total: progress.monthlyTotal, isUnlimited: progress.isUnlimited, isUnconfigured: progress.isUnconfigured, isOverflow: false, isGraceCarryover: false };
   }
   const rawIndex = progress.cycleBookings.findIndex((b) => b.id === bookingId) + 1;
   if (rawIndex === 0) return null;
@@ -430,6 +430,7 @@ export const getBookingProgressIndex = (
           isUnlimited: progress.isUnlimited,
           isUnconfigured: progress.isUnconfigured,
           isOverflow: false,
+          isGraceCarryover: true, // 大目に見た消化（前サイクルへ繰入）
         };
       }
       // 繰入より後の予約は、繰入分を除いた順番で数える（新ルーティンの1回目から）
@@ -440,6 +441,7 @@ export const getBookingProgressIndex = (
         isUnlimited: progress.isUnlimited,
         isUnconfigured: progress.isUnconfigured,
         isOverflow: false,
+        isGraceCarryover: false,
       };
     }
   }
@@ -455,5 +457,6 @@ export const getBookingProgressIndex = (
     isUnlimited: progress.isUnlimited,
     isUnconfigured: progress.isUnconfigured,
     isOverflow: false,
+    isGraceCarryover: false,
   };
 };

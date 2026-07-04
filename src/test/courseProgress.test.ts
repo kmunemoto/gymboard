@@ -228,11 +228,17 @@ describe("getBookingProgressIndex × 猶予（大目に見た回は前サイク�
   ]);
   const graceBooking: BookingForProgress = { id: "grace-1", booking_date: "2026-07-05T12:45:00+09:00", status: "予約済み" };
 
-  it("猶予帯の予約は「8/8」（前サイクルの続き）として数える", () => {
+  it("猶予帯の予約は「8/8」（前サイクルの続き）として数え、繰入フラグが立つ", () => {
     const r = getBookingProgressIndex("grace-1", "2026-06-04", "月8回", [...seven, graceBooking], 1, 7);
     expect(r).not.toBeNull();
     expect(r!.index).toBe(8);
     expect(r!.total).toBe(8);
+    expect(r!.isGraceCarryover).toBe(true); // バッジに「前回分」ラベルを出すためのフラグ
+  });
+
+  it("通常の消化には繰入フラグが立たない", () => {
+    const r = getBookingProgressIndex(seven[0].id, "2026-06-04", "月8回", [...seven, graceBooking], 1, 7);
+    expect(r!.isGraceCarryover).toBe(false);
   });
 
   it("猶予未設定なら従来どおり新ルーティンの1回目（1/8）", () => {

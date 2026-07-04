@@ -1935,7 +1935,9 @@
   "courseBadge": {
     "unconfigured": "コース未設定",
     "unlimited": "今回 {{index}} 回（通い放題）",
-    "normal": "今回 {{index}}/{{total}} 回目"
+    "normal": "今回 {{index}}/{{total}} 回目",
+    "graceCarryover": "今回 {{index}}/{{total}} 回目（前回分）",
+    "graceCarryoverShort": "前回分"
   },
   "muscleBalance": {
     "title": "トレーニング部位バランス",

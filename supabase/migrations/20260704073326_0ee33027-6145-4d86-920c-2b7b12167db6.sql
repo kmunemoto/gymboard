@@ -1,0 +1,1 @@
+ALTER TABLE public.notification_preferences ADD COLUMN IF NOT EXISTS reminder_period boolean NOT NULL DEFAULT true;

@@ -5,6 +5,7 @@ import {
   computeCourseProgress,
   getBookingProgressIndex,
   resolveCycleMonths,
+  resolveGraceDays,
   shouldRebaseCycleStart,
   type BookingForProgress,
 } from "@/lib/courseProgress";
@@ -202,6 +203,18 @@ describe("shouldRebaseCycleStart × 猶予（grace_days）", () => {
     expect(
       shouldRebaseCycleStart({ cycleStartDate: "2026-06-02", maxSessions: 6, graceDays: 7, bookingDateKey: "2026-07-05", existingBookings: prev6 }),
     ).toBe(true);
+  });
+});
+
+describe("resolveGraceDays × お客様ごとのON/OFF（grace_enabled）", () => {
+  const plans = [{ plan_name: "月8回", grace_days: 7 }];
+  it("既定（null/undefined/true）はプランの猶予日数を返す", () => {
+    expect(resolveGraceDays("月8回", plans)).toBe(7);
+    expect(resolveGraceDays("月8回", plans, null)).toBe(7);
+    expect(resolveGraceDays("月8回", plans, true)).toBe(7);
+  });
+  it("false のお客様には適用しない（0）", () => {
+    expect(resolveGraceDays("月8回", plans, false)).toBe(0);
   });
 });
 

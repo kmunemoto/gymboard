@@ -464,6 +464,7 @@ const CustomerBooking = () => {
           cycleStartDate={profile?.cycle_start_date}
           tenantPlans={tenantPlans}
           bookings={myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
+          graceEnabled={profile?.grace_enabled}
         />
 
 
@@ -511,7 +512,7 @@ const CustomerBooking = () => {
                                   profile?.plan,
                                   bookingsForProgress,
                                   resolveCycleMonths(profile?.plan, tenantPlans),
-                                  resolveGraceDays(profile?.plan, tenantPlans),
+                                  resolveGraceDays(profile?.plan, tenantPlans, profile?.grace_enabled),
                                 );
                                 if (!progress || progress.isUnconfigured) return null;
                                 return (

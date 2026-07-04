@@ -9,6 +9,8 @@ export interface ProfileLite {
   user_id: string;
   plan: string | null;
   cycle_start_date: string | null;
+  /** 猶予（大目に見る）をこのお客様に適用するか。null/true=適用（既定） */
+  grace_enabled?: boolean | null;
 }
 
 interface WeekTimelineViewProps {
@@ -158,7 +160,7 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                           profile.plan,
                           bookingsByUser.get(b.user_id) || [],
                           resolveCycleMonths(profile.plan, tenantPlans),
-                          resolveGraceDays(profile.plan, tenantPlans),
+                          resolveGraceDays(profile.plan, tenantPlans, profile.grace_enabled),
                         )
                       : null;
                   const progressLabel = progress

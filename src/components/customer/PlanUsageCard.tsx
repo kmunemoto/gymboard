@@ -17,19 +17,23 @@ interface PlanUsageCardProps {
   tenantPlans: TenantPlan[];
   /** お客様の予約一覧（booking_date は ISO 文字列） */
   bookings: PlanUsageBooking[];
+  /** 猶予（大目に見る）をこのお客様に適用するか（profiles.grace_enabled）。false で無効、null/未指定は適用 */
+  graceEnabled?: boolean | null;
   className?: string;
 }
 
 // 予約種別ではないもの（体験・未設定）はカードを出さない
 const EXCLUDED_PLAN_NAMES = new Set(["初回無料体験", "プラン未設定"]);
 
-const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, className }: PlanUsageCardProps) => {
+const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceEnabled, className }: PlanUsageCardProps) => {
   const { t } = useTranslation();
 
   if (!planName || EXCLUDED_PLAN_NAMES.has(planName)) return null;
   const tenantPlan = tenantPlans.find((p) => p.plan_name === planName) ?? null;
   const input = resolvePlanUsageInput(planName, tenantPlan, cycleStartDate);
   if (!input) return null;
+  // 猶予OFFのお客様には猶予を適用しない（期限どおり厳格に扱う）
+  if (graceEnabled === false) input.graceDays = 0;
 
   const usage = computePlanUsage(input, bookings, getJSTNow());
   if (usage.isUnconfigured) return null;

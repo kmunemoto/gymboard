@@ -1486,7 +1486,6 @@ export type Database = {
           cycle_start_date: string | null
           display_name: string | null
           game_mode_enabled: boolean
-          grace_enabled: boolean | null
           id: string
           last_streak_notified: number
           line_user_id: string | null
@@ -1507,7 +1506,6 @@ export type Database = {
           cycle_start_date?: string | null
           display_name?: string | null
           game_mode_enabled?: boolean
-          grace_enabled?: boolean | null
           id?: string
           last_streak_notified?: number
           line_user_id?: string | null
@@ -1528,7 +1526,6 @@ export type Database = {
           cycle_start_date?: string | null
           display_name?: string | null
           game_mode_enabled?: boolean
-          grace_enabled?: boolean | null
           id?: string
           last_streak_notified?: number
           line_user_id?: string | null

@@ -22,6 +22,8 @@ const Onboarding = lazy(() => import("./pages/Onboarding.tsx"));
 const JoinGym = lazy(() => import("./pages/JoinGym.tsx"));
 const DeleteAccount = lazy(() => import("./pages/DeleteAccount.tsx"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword.tsx"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent.tsx"));
+
 
 const queryClient = new QueryClient();
 
@@ -53,6 +55,8 @@ const App = () => (
               <Route path="/join/:code" element={<JoinGym />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </LazyBoundary>

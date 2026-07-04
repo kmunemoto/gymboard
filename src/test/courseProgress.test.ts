@@ -205,6 +205,46 @@ describe("shouldRebaseCycleStart × 猶予（grace_days）", () => {
   });
 });
 
+describe("getBookingProgressIndex × 猶予（大目に見た回は前サイクルの回数として表示）", () => {
+  // 長尾さんのケース: 起算日 6/4・月8回・期限 7/4。7回消化済みで、期限翌日 7/5 に8回目。
+  const mk = (dates: string[]): BookingForProgress[] =>
+    dates.map((d, i) => ({ id: `${d}-${i}`, booking_date: `${d}T10:00:00+09:00`, status: "予約済み" }));
+  const seven = mk([
+    "2026-06-06", "2026-06-10", "2026-06-14", "2026-06-18",
+    "2026-06-24", "2026-06-29", "2026-07-02",
+  ]);
+  const graceBooking: BookingForProgress = { id: "grace-1", booking_date: "2026-07-05T12:45:00+09:00", status: "予約済み" };
+
+  it("猶予帯の予約は「8/8」（前サイクルの続き）として数える", () => {
+    const r = getBookingProgressIndex("grace-1", "2026-06-04", "月8回", [...seven, graceBooking], 1, 7);
+    expect(r).not.toBeNull();
+    expect(r!.index).toBe(8);
+    expect(r!.total).toBe(8);
+  });
+
+  it("猶予未設定なら従来どおり新ルーティンの1回目（1/8）", () => {
+    const r = getBookingProgressIndex("grace-1", "2026-06-04", "月8回", [...seven, graceBooking], 1);
+    expect(r!.index).toBe(1);
+  });
+
+  it("繰入で前サイクルが埋まった後の予約は新ルーティンの1回目（1/8）", () => {
+    // 7/5 が繰入で8回目 → 7/8 の予約は次のルーティンの1回目
+    const next: BookingForProgress = { id: "next-1", booking_date: "2026-07-08T10:00:00+09:00", status: "予約済み" };
+    const r = getBookingProgressIndex("next-1", "2026-06-04", "月8回", [...seven, graceBooking, next], 1, 7);
+    expect(r!.index).toBe(1);
+    expect(r!.total).toBe(8);
+  });
+
+  it("前サイクルを使い切っていれば猶予帯でも繰り入れず 1/8", () => {
+    const eight = mk([
+      "2026-06-06", "2026-06-10", "2026-06-14", "2026-06-18",
+      "2026-06-24", "2026-06-27", "2026-06-29", "2026-07-02",
+    ]);
+    const r = getBookingProgressIndex("grace-1", "2026-06-04", "月8回", [...eight, graceBooking], 1, 7);
+    expect(r!.index).toBe(1);
+  });
+});
+
 describe("shouldRebaseCycleStart × 回数使い切り後の期限内予約（期限の終わりを待たない）", () => {
   const mk = (dates: string[]): BookingForProgress[] =>
     dates.map((d, i) => ({ id: `${d}-${i}`, booking_date: `${d}T10:00:00+09:00`, status: "予約済み" }));

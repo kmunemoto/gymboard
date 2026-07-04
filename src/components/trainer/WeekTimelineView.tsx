@@ -3,7 +3,7 @@ import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import { BookingWithTime } from "@/hooks/useBookings";
-import { getBookingProgressIndex, resolveCycleMonths, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 
 export interface ProfileLite {
   user_id: string;
@@ -158,6 +158,7 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                           profile.plan,
                           bookingsByUser.get(b.user_id) || [],
                           resolveCycleMonths(profile.plan, tenantPlans),
+                          resolveGraceDays(profile.plan, tenantPlans),
                         )
                       : null;
                   const progressLabel = progress

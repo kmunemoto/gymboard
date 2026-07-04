@@ -491,6 +491,7 @@ const TrainerSchedule = () => {
                                         isUnlimited={p.isUnlimited}
                                         isUnconfigured={p.isUnconfigured}
                                         isOverflow={p.isOverflow}
+                                        isGraceCarryover={p.isGraceCarryover}
                                         className="mt-1"
                                       />
                                     );
@@ -549,6 +550,7 @@ const TrainerSchedule = () => {
                                     isUnlimited={p.isUnlimited}
                                     isUnconfigured={p.isUnconfigured}
                                     isOverflow={p.isOverflow}
+                                    isGraceCarryover={p.isGraceCarryover}
                                     className="mt-1"
                                   />
                                 );

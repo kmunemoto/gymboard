@@ -522,6 +522,7 @@ const CustomerBooking = () => {
                                     isUnlimited={progress.isUnlimited}
                                     isUnconfigured={progress.isUnconfigured}
                                     isOverflow={progress.isOverflow}
+                                    isGraceCarryover={progress.isGraceCarryover}
                                   />
                                 );
                               } catch (e) {

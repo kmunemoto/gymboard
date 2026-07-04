@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
@@ -34,6 +35,7 @@ const timeToMin = (t: string) => {
 };
 
 const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [] }: WeekTimelineViewProps) => {
+  const { t } = useTranslation();
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   // user_id ごとの予約一覧（進捗計算用）
@@ -168,7 +170,7 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                       ? `${progress.index}回目`
                       : progress.isUnconfigured || progress.total === null
                         ? null
-                        : `${progress.index}/${progress.total}`
+                        : `${progress.index}/${progress.total}${progress.isGraceCarryover ? ` ${t("courseBadge.graceCarryoverShort")}` : ""}`
                     : null;
 
                   return (

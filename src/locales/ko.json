@@ -1935,7 +1935,9 @@
   "courseBadge": {
     "unconfigured": "코스 미설정",
     "unlimited": "이번 {{index}}회 (무제한)",
-    "normal": "이번 {{index}}/{{total}}회"
+    "normal": "이번 {{index}}/{{total}}회",
+    "graceCarryover": "이번 {{index}}/{{total}}회 (이전 회차분)",
+    "graceCarryoverShort": "이전분"
   },
   "muscleBalance": {
     "title": "트레이닝 부위 밸런스",

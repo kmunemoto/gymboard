@@ -300,6 +300,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
                               isUnlimited={progress.isUnlimited}
                               isUnconfigured={progress.isUnconfigured}
                               isOverflow={progress.isOverflow}
+                              isGraceCarryover={progress.isGraceCarryover}
                               className="mt-0"
                             />
                           )}

@@ -1914,7 +1914,9 @@
     "dayBefore": "Day-before reminder",
     "dayBeforeDesc": "We'll notify you of the next day's booking at 9 PM the day before",
     "hourBefore": "1-hour reminder",
-    "hourBeforeDesc": "We'll notify you about an hour before your booking starts"
+    "hourBeforeDesc": "We'll notify you about an hour before your booking starts",
+    "period": "Plan expiry reminder",
+    "periodDesc": "We'll remind you (7 and 3 days before) when your plan is expiring and you still have sessions left"
   },
   "customerChat": {
     "defaultTrainer": "Coach",

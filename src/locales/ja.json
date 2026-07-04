@@ -1914,7 +1914,9 @@
     "dayBefore": "前日にお知らせ",
     "dayBeforeDesc": "前日21時に翌日のご予約をお知らせします",
     "hourBefore": "1時間前にお知らせ",
-    "hourBeforeDesc": "予約開始の約1時間前にお知らせします"
+    "hourBeforeDesc": "予約開始の約1時間前にお知らせします",
+    "period": "利用期限のお知らせ",
+    "periodDesc": "残り回数があり期限が近いとき（7日前・3日前）にお知らせします"
   },
   "customerChat": {
     "defaultTrainer": "コーチ",

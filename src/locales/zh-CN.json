@@ -1914,7 +1914,9 @@
     "dayBefore": "前一天提醒",
     "dayBeforeDesc": "在前一天 21 点提醒您次日的预约",
     "hourBefore": "提前 1 小时提醒",
-    "hourBeforeDesc": "在预约开始前约 1 小时提醒您"
+    "hourBeforeDesc": "在预约开始前约 1 小时提醒您",
+    "period": "使用期限提醒",
+    "periodDesc": "当还有剩余次数且期限临近时（7天前、3天前）提醒您"
   },
   "customerChat": {
     "defaultTrainer": "教练",

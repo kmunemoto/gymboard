@@ -27,6 +27,7 @@ const PushNotificationSection = () => {
   const [prefs, setPrefs] = useState<NotificationPreferences>({
     reminder_day_before: true,
     reminder_hour_before: true,
+    reminder_period: true,
   });
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
@@ -152,6 +153,18 @@ const PushNotificationSection = () => {
                   checked={prefs.reminder_hour_before}
                   disabled={!prefsLoaded}
                   onCheckedChange={(v) => handlePrefToggle("reminder_hour_before", v)}
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">{t("pushSection.period")}</p>
+                  <p className="text-xs text-muted-foreground break-all">{t("pushSection.periodDesc")}</p>
+                </div>
+                <Switch
+                  checked={prefs.reminder_period}
+                  disabled={!prefsLoaded}
+                  onCheckedChange={(v) => handlePrefToggle("reminder_period", v)}
                 />
               </div>
             </div>

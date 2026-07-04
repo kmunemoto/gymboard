@@ -148,7 +148,9 @@ const TrainerView = () => {
             unreadMessages={unreadMessages}
             unreadCounseling={unreadCounseling}
           />
-          <main className="flex-1 ml-0 md:ml-60 p-3 sm:p-4 md:p-8 max-w-6xl" key={`${tab}-${selectedClientId}`}>
+          {/* min-w-0: フレックス子の既定 min-width:auto を解除。これが無いと中身（日付入力等）の
+              intrinsic 幅に引っ張られて main が画面幅を超え、右端要素が見切れる（Android で顕著）。 */}
+          <main className="flex-1 min-w-0 ml-0 md:ml-60 p-3 sm:p-4 md:p-8 max-w-6xl" key={`${tab}-${selectedClientId}`}>
             <LazyBoundary>
               {tab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} onMessageClient={handleMessageClient} />}
               {tab === "clients" && !selectedClientId && <TrainerClientList onSelectClient={handleSelectClient} />}

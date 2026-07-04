@@ -170,7 +170,10 @@ const TrialBooking = () => {
       if (error || !result?.ok) {
         console.error("Trial booking failed:", error ?? result);
         toast.error(result?.error || t("trialBooking.errBookingFailed"));
-        if (result?.code === "slot_taken") fetchExistingSlots();
+        if (result?.code === "slot_taken") {
+          setSelectedSlot(null);
+          fetchExistingSlots();
+        }
         setSubmitting(false);
         return;
       }

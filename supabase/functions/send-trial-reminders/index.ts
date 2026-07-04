@@ -28,6 +28,11 @@ Deno.serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+  // trial-booking-reminder テンプレートは Salute御所南の住所を本文に固定で含むため、
+  // 他テナントのお客様へ誤った住所のリマインドを送らないよう、当面 Salute テナントに限定する
+  // (テナント別住所の差し込み対応まで)。
+  const SALUTE_TENANT_ID = 'ceda19b0-d5e0-4928-ab2e-996a0b823af4'
+
   // Compute tomorrow's date in JST
   const jstOffset = 9 * 60 * 60 * 1000
   const jstNow = new Date(Date.now() + jstOffset)
@@ -43,6 +48,7 @@ Deno.serve(async (req) => {
   const { data: bookings, error } = await supabase
     .from('trial_bookings')
     .select('*')
+    .eq('tenant_id', SALUTE_TENANT_ID)
     .eq('status', '予約済み')
     .gte('booking_date', `${tomorrowStr}T00:00:00+09:00`)
     .lt('booking_date', `${tomorrowStr}T23:59:59+09:00`)

@@ -61,32 +61,32 @@ const TrialBooking = () => {
     })();
   }, [tenantId]);
 
+  const effectiveTenantId = tenantId || tenant?.id || null;
+
+  // テナント限定の埋まり枠を60日分まとめて1回で取得する (get_tenant_booked_slots)
   const fetchExistingSlots = useCallback(async () => {
-    const slots: TrialSlotBooking[] = [];
+    if (!effectiveTenantId) return;
     const today = getJSTNow();
-    const promises = [];
-    for (let i = 0; i < 60; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      const dateStr = format(d, "yyyy-MM-dd");
-      promises.push(
-        supabase.rpc("get_booked_slots", { check_date: dateStr }).then(({ data }: { data: any }) => {
-          data?.forEach((r: { booking_date: string; end_booking_date: string; status: string }) => {
-            if (r.status === "キャンセル済み") return;
-            const dt = toJSTDate(r.booking_date);
-            const endDt = toJSTDate(r.end_booking_date);
-            slots.push({
-              date: format(dt, "yyyy-MM-dd"),
-              startTime: `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
-              endTime: `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`,
-            });
-          });
-        })
-      );
-    }
-    await Promise.all(promises);
+    const end = new Date(today);
+    end.setDate(today.getDate() + 59);
+    const { data } = await supabase.rpc("get_tenant_booked_slots" as any, {
+      p_tenant_id: effectiveTenantId,
+      from_date: format(today, "yyyy-MM-dd"),
+      to_date: format(end, "yyyy-MM-dd"),
+    });
+    const slots: TrialSlotBooking[] = [];
+    (data as { booking_date: string; end_booking_date: string; status: string }[] | null)?.forEach((r) => {
+      if (r.status === "キャンセル済み") return;
+      const dt = toJSTDate(r.booking_date);
+      const endDt = toJSTDate(r.end_booking_date);
+      slots.push({
+        date: format(dt, "yyyy-MM-dd"),
+        startTime: `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
+        endTime: `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`,
+      });
+    });
     setExistingBookings(slots);
-  }, []);
+  }, [effectiveTenantId]);
 
   useEffect(() => {
     fetchExistingSlots();
@@ -148,27 +148,29 @@ const TrialBooking = () => {
 
     const bookingDate = `${dateKey}T${slot.time}:00+09:00`;
 
-    const bookingId = crypto.randomUUID();
-    const insertedBooking = { id: bookingId, booking_date: bookingDate };
+    const insertTenantId = tenantId || tenant?.id;
+    if (!insertTenantId) {
+      toast.error(t("trialBooking.errInvalidLink"));
+      setSubmitting(false);
+      return;
+    }
 
+    // 予約作成と通知 (確認メール・トレーナー通知・カレンダー登録) はサーバー側の
+    // trial-book で完結する。業務上の拒否は 200 + {ok:false, error} で返る。
     try {
-      const insertTenantId = tenantId || tenant?.id;
-      if (!insertTenantId) {
-        toast.error(t("trialBooking.errInvalidLink"));
-        setSubmitting(false);
-        return;
-      }
-      const { error } = await supabase.from("trial_bookings").insert({
-        id: bookingId,
-        guest_name: guestName.trim(),
-        guest_contact: guestEmail.trim(),
-        booking_date: bookingDate,
-        tenant_id: insertTenantId,
-      } as any);
-
-      if (error) {
-        console.error("Trial booking failed:", error);
-        toast.error(t("trialBooking.errBookingFailed"));
+      const { data, error } = await supabase.functions.invoke("trial-book", {
+        body: {
+          tenant_id: insertTenantId,
+          guest_name: guestName.trim(),
+          guest_contact: guestEmail.trim(),
+          booking_date: bookingDate,
+        },
+      });
+      const result = data as { ok?: boolean; error?: string; code?: string } | null;
+      if (error || !result?.ok) {
+        console.error("Trial booking failed:", error ?? result);
+        toast.error(result?.error || t("trialBooking.errBookingFailed"));
+        if (result?.code === "slot_taken") fetchExistingSlots();
         setSubmitting(false);
         return;
       }
@@ -177,19 +179,6 @@ const TrialBooking = () => {
       toast.error(t("trialBooking.errBookingFailed"));
       setSubmitting(false);
       return;
-    }
-
-    if (insertedBooking) {
-      supabase.functions.invoke("google-calendar-sync", {
-        body: {
-          action: "create",
-          booking_id: insertedBooking.id,
-          booking_date: insertedBooking.booking_date,
-          booking_type: "初回無料体験",
-          client_name: `🆕 ${guestName.trim()}`,
-          is_trial: true,
-        },
-      }).catch(console.error);
     }
 
     const [h, m] = slot.time.split(":").map(Number);
@@ -205,92 +194,6 @@ const TrialBooking = () => {
     });
     setCompleted(true);
     setSubmitting(false);
-
-    const formattedDate = format(selectedDate, "M月d日（E）", { locale: ja });
-
-    (async () => {
-      try {
-        await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "trial-booking-confirmation",
-            recipientEmail: guestEmail.trim(),
-            idempotencyKey: `trial-confirm-${guestEmail.trim()}-${bookingDate}`,
-            templateData: {
-              customerName: guestName.trim(),
-              bookingDate: formattedDate,
-              bookingTime: `${slot.time}〜${endTime}`,
-            },
-          },
-        });
-      } catch (e) {
-        console.error("Booking confirmation email failed:", e);
-      }
-    })();
-
-    (async () => {
-      try {
-        const { data: trainerRoles } = await supabase.rpc("get_trainer_ids");
-        const trainerId = trainerRoles?.[0]?.user_id;
-        if (!trainerId) return;
-
-        const message = t("trialBooking.lineNewBooking", {
-          gym: gymName,
-          name: guestName.trim(),
-          date: formattedDate,
-          start: slot.time,
-          end: endTime,
-        });
-
-        await supabase.functions.invoke("send-line-message", {
-          body: { user_id: trainerId, message },
-        });
-      } catch (e) {
-        console.error("LINE notification failed:", e);
-      }
-    })();
-
-    (async () => {
-      try {
-        const { data: trainerRoles } = await supabase.rpc("get_trainer_ids");
-        const trainerId = trainerRoles?.[0]?.user_id;
-        if (!trainerId) return;
-
-        await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "new-booking-notification",
-            recipientEmail: "_resolve_trainer_",
-            idempotencyKey: `trial-notify-${guestEmail.trim()}-${bookingDate}`,
-            templateData: {
-              customerName: `🆕 ${t("trialBooking.notifTrainerSubject", { name: guestName.trim() })}`,
-              bookingDate: formattedDate,
-              bookingTime: `${slot.time}〜${endTime}`,
-              planName: t("trialBooking.trialPlanName"),
-              dashboardUrl: window.location.origin,
-              trainerUserId: trainerId,
-            },
-          },
-        });
-      } catch (e) {
-        console.error("Trainer email notification failed:", e);
-      }
-    })();
-
-    (async () => {
-      try {
-        await supabase.functions.invoke("send-push-notification", {
-          body: {
-            purpose: "trial_booking",
-            trial_booking_id: bookingId,
-            title: t("trialBooking.pushTitle"),
-            body: t("trialBooking.pushBody", { name: guestName.trim() }),
-            url: "/",
-            tag: `trial-${bookingId}`,
-          },
-        });
-      } catch (e) {
-        console.error("Trial push notification failed:", e);
-      }
-    })();
   };
 
   if (completed && completedInfo) {

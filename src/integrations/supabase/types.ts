@@ -1345,6 +1345,7 @@ export type Database = {
           created_at: string
           reminder_day_before: boolean
           reminder_hour_before: boolean
+          reminder_period: boolean
           updated_at: string
           user_id: string
         }
@@ -1352,6 +1353,7 @@ export type Database = {
           created_at?: string
           reminder_day_before?: boolean
           reminder_hour_before?: boolean
+          reminder_period?: boolean
           updated_at?: string
           user_id: string
         }
@@ -1359,6 +1361,7 @@ export type Database = {
           created_at?: string
           reminder_day_before?: boolean
           reminder_hour_before?: boolean
+          reminder_period?: boolean
           updated_at?: string
           user_id?: string
         }

@@ -220,7 +220,7 @@ export function usePushSubscription() {
     try {
       const { data } = await supabase
         .from("notification_preferences" as any)
-        .select("reminder_day_before, reminder_hour_before")
+        .select("reminder_day_before, reminder_hour_before, reminder_period")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!data) return DEFAULT_PREFS;
@@ -228,6 +228,7 @@ export function usePushSubscription() {
       return {
         reminder_day_before: row.reminder_day_before ?? true,
         reminder_hour_before: row.reminder_hour_before ?? true,
+        reminder_period: row.reminder_period ?? true,
       };
     } catch (e) {
       console.warn("[Push] getNotificationPreferences failed:", e);

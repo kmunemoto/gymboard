@@ -11,11 +11,14 @@ export type NotificationPermission = "default" | "granted" | "denied";
 export type NotificationPreferences = {
   reminder_day_before: boolean;
   reminder_hour_before: boolean;
+  /** 利用期間リマインド（期限が近く残り回数があるときに期限7日前・3日前に通知） */
+  reminder_period: boolean;
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   reminder_day_before: true,
   reminder_hour_before: true,
+  reminder_period: true,
 };
 
 export const isNativePush = (): boolean => Capacitor.isNativePlatform();

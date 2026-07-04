@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Info, Repeat } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Repeat } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking } from "@/hooks/useBookings";
@@ -23,20 +23,8 @@ import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
-// ============================================================
-// 6月/7月の棲み分け対応・移行完了後に削除
-// Salute御所南テナントのみ、2026年6月の予約日の新規作成・キャンセルを
-// GymBoard 上で不可にする（従来の Salute アプリで管理）。
-// ============================================================
-const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
-const isJune2026Date = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
-// ============================================================
-
-
-
 const TrainerSchedule = () => {
   const { t } = useTranslation();
-  const JUNE_LOCK_MESSAGE = t("booking.juneLockMessage");
   const { user } = useAuth();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(getJSTNow(), { weekStartsOn: 1 }));
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("week");
@@ -57,7 +45,7 @@ const TrainerSchedule = () => {
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
-  const { tenant, plans } = useTenant();
+  const { plans } = useTenant();
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
   // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
   // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
@@ -68,9 +56,6 @@ const TrainerSchedule = () => {
     const base = tenantPlanNames.length > 0 ? tenantPlanNames : ["月4回", "月6回", "月8回", "通い放題"];
     return [PROXY_NO_PLAN, ...base.filter((n) => n !== PROXY_NO_PLAN)];
   })();
-  // [6月/7月の棲み分け対応] Salute御所南テナントかつ予約日が2026年6月か
-  const isSaluteJuneLocked = (d: string) =>
-    tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026Date(d);
 
   // user_id ごとの予約一覧（進捗計算用）
   const bookingsByUser = (() => {
@@ -126,12 +111,6 @@ const TrainerSchedule = () => {
       toast.error(t("schedule.errorSelectAll"));
       return;
     }
-    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可
-    if (isSaluteJuneLocked(proxyDateKey)) {
-      toast.info(JUNE_LOCK_MESSAGE);
-      return;
-    }
-
     if (checkSlotBlocked(bookings, proxyDateKey, proxyTime)) {
       toast.error(t("schedule.errorSlotTaken"));
       return;
@@ -193,12 +172,6 @@ const TrainerSchedule = () => {
     if (!deleteTarget || deleting) return;
 
     const target = deleteTarget;
-    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可（ブロックは対象外）
-    if (!target.isBlocked && isSaluteJuneLocked(target.date)) {
-      toast.info(JUNE_LOCK_MESSAGE);
-      setDeleteTarget(null);
-      return;
-    }
     setDeleting(true);
 
     // Blocked slot → delete from blocked_slots table
@@ -725,17 +698,10 @@ const TrainerSchedule = () => {
                 )}
               </div>
             )}
-            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月は案内バナー */}
-            {isSaluteJuneLocked(proxyDateKey) && (
-              <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
-                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
-              </div>
-            )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setProxyDialogOpen(false)} className="w-full sm:w-auto">{t("common.cancel")}</Button>
-            <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting || isSaluteJuneLocked(proxyDateKey)} className="w-full sm:w-auto">
+            <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               {proxyRepeatWeeks > 1 ? t("booking.confirmRepeatBooking", { count: proxyRepeatWeeks }) : t("schedule.bookNow")}
             </Button>
@@ -753,13 +719,6 @@ const TrainerSchedule = () => {
                 : deleteTarget && t("schedule.deleteDesc", { name: deleteTarget.clientName, date: deleteTarget.date, time: deleteTarget.startTime })
               }
             </p>
-            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約は案内バナー */}
-            {deleteTarget && !deleteTarget.isBlocked && isSaluteJuneLocked(deleteTarget.date) && (
-              <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3 mt-2">
-                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
-              </div>
-            )}
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full sm:w-auto">
@@ -767,7 +726,7 @@ const TrainerSchedule = () => {
             </Button>
             <Button
               variant="destructive"
-              disabled={deleting || (!!deleteTarget && !deleteTarget.isBlocked && isSaluteJuneLocked(deleteTarget.date))}
+              disabled={deleting}
               onClick={() => void handleDeleteBooking()}
               className="w-full sm:w-auto"
             >

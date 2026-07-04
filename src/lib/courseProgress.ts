@@ -31,11 +31,15 @@ const normGraceDays = (graceDays?: number | null): number =>
 /**
  * プラン名 + tenant_plans 定義から猶予日数を解決する（既定 0）。
  * 「期限を graceDays 日過ぎても、前サイクルが未消化なら前サイクル分として大目に見る」。
+ * graceEnabled（profiles.grace_enabled）が false のお客様には適用しない（=0）。
+ * null/undefined は「適用する」（既定）。
  */
 export const resolveGraceDays = (
   planName: string | null | undefined,
   tenantPlans: ReadonlyArray<{ plan_name: string; grace_days?: number | null }> | null | undefined,
+  graceEnabled?: boolean | null,
 ): number => {
+  if (graceEnabled === false) return 0;
   if (!planName || !tenantPlans) return 0;
   const p = tenantPlans.find((tp) => tp.plan_name === planName);
   return normGraceDays(p?.grace_days);

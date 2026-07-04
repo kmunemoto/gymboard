@@ -204,6 +204,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
       const tenantPlan = tenantPlans.find((tp) => tp.plan_name === p.plan) ?? null;
       const input = resolvePlanUsageInput(p.plan, tenantPlan, p.cycle_start_date);
       if (!input) return;
+      if (p.grace_enabled === false) input.graceDays = 0; // 猶予OFFのお客様は期限どおり
       const usage = computePlanUsage(input, bookingsByUser.get(p.user_id) || [], now);
       if (usage.kind !== "subscription" || usage.isUnconfigured || !usage.windowEnd) return;
       // 期限未確定（今サイクルに予約0件＝1回目の予約待ち）は更新リマインド対象外
@@ -274,7 +275,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
                 .map((b) => {
                   const profile = profiles.find((pr) => pr.user_id === b.user_id);
                   const progress = profile
-                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans), resolveGraceDays(profile.plan, tenantPlans))
+                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans), resolveGraceDays(profile.plan, tenantPlans, profile.grace_enabled))
                     : null;
 
                   return (

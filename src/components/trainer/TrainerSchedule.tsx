@@ -99,7 +99,7 @@ const TrainerSchedule = () => {
       profile.plan,
       bookingsByUser.get(booking.user_id) || [],
       resolveCycleMonths(profile.plan, plans),
-      resolveGraceDays(profile.plan, plans),
+      resolveGraceDays(profile.plan, plans, profile.grace_enabled),
     );
   };
 

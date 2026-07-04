@@ -277,6 +277,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         cycleStartDate={profile?.cycle_start_date}
         tenantPlans={tenantPlans}
         bookings={bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
+        graceEnabled={profile?.grace_enabled}
       />
 
       {/* 3. Streak */}

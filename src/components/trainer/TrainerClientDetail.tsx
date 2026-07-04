@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { MONTHLY_REPORT_ENABLED } from "@/lib/featureFlags";
-import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target } from "lucide-react";
+import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target, Timer } from "lucide-react";
 import { exerciseCategories } from "@/lib/dummyData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import { ja } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
+import { resolveGraceDays } from "@/lib/courseProgress";
 import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { applyRaidDamage, checkTrainingMilestones, computeSessionVolume, processSessionRewards, type MilestoneAchieved, type SessionRewardResult } from "@/lib/raidUtils";
@@ -70,6 +71,8 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
   const [showUsagePeriod, setShowUsagePeriod] = useState(true);
+  // 猶予（大目に見る）をこのお客様に適用するか（profiles.grace_enabled、既定ON）
+  const [graceEnabled, setGraceEnabled] = useState(true);
   const [clientPlan, setClientPlan] = useState<string>('');
   const [bodyWeight, setBodyWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
@@ -131,6 +134,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         setCycleStartDate(data.cycle_start_date || "");
         setTrainingGoal((data as any).training_goal || "");
         setShowUsagePeriod(data.show_usage_period ?? true);
+        setGraceEnabled((data as any).grace_enabled ?? true);
       } else {
         setHasProfile(false);
       }
@@ -521,6 +525,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     toast.success(checked ? t("clientDetail.shownToast") : t("clientDetail.hiddenToast"));
   };
 
+  // 猶予（大目に見る）のお客様ごとのON/OFF。false=このお客様は期限どおり厳格に扱う
+  const handleGraceToggle = async (checked: boolean) => {
+    const { error } = await supabase.from("profiles").update({ grace_enabled: checked } as any).eq("user_id", clientId);
+    if (error) { toast.error(t("clientDetail.updateFailed")); return; }
+    setGraceEnabled(checked);
+    toast.success(checked ? t("clientDetail.graceOnToast") : t("clientDetail.graceOffToast"));
+  };
+
   const handleGenderChange = async (g: "male" | "female") => {
     // Ensure avatar row exists, then update
     const { data: existing } = await supabase
@@ -709,6 +721,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               cycleStartDate={cycleStartDate}
               tenantPlans={tenantPlans}
               bookings={bookings.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status }))}
+              graceEnabled={graceEnabled}
             />
 
             {/* Cycle Start Date */}
@@ -735,6 +748,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 // 期限未確定（1回目の予約待ち）・回数使い切り後の自動ロールもカードと同じ挙動になる。
                 const tenantPlan = tenantPlans.find((p) => p.plan_name === clientPlan) ?? null;
                 const input = resolvePlanUsageInput(clientPlan, tenantPlan, cycleStartDate);
+                if (input && !graceEnabled) input.graceDays = 0; // 猶予OFFのお客様は期限どおり
                 const usage = input
                   ? computePlanUsage(
                       input,
@@ -779,6 +793,27 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Switch checked={showUsagePeriod} onCheckedChange={handleShowUsagePeriodToggle} />
               </div>
             </div>
+
+            {/* 猶予（大目に見る）のお客様ごとのON/OFF。プランに猶予日数が設定されているときだけ表示 */}
+            {resolveGraceDays(clientPlan, tenantPlans) > 0 && (
+              <div className="pt-2 border-t border-border space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{t("clientDetail.graceTitle")}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold ${graceEnabled ? 'text-success' : 'text-muted-foreground'}`}>
+                      {graceEnabled ? t("clientDetail.graceOn") : t("clientDetail.graceOff")}
+                    </span>
+                    <Switch checked={graceEnabled} onCheckedChange={handleGraceToggle} />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("clientDetail.graceHint", { days: resolveGraceDays(clientPlan, tenantPlans) })}
+                </p>
+              </div>
+            )}
 
             {/* Gender Setting */}
             <div className="pt-2 border-t border-border space-y-2">

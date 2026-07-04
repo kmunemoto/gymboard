@@ -238,7 +238,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
   try {
     const { data: prof } = await supabase
       .from("profiles")
-      .select("plan, cycle_start_date, tenant_id")
+      .select("plan, cycle_start_date, tenant_id, grace_enabled")
       .eq("user_id", userId)
       .maybeSingle();
     if (!prof?.plan) return;
@@ -258,7 +258,8 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
         if (tp.plan_type && tp.plan_type !== "subscription") return;
         maxSessions = tp.max_sessions ?? null;
         cycleMonths = tp.cycle_months ?? null;
-        graceDays = tp.grace_days ?? null;
+        // 猶予OFFのお客様（profiles.grace_enabled=false）には猶予を適用しない
+        graceDays = (prof as any).grace_enabled === false ? 0 : tp.grace_days ?? null;
       } else {
         const n = getMonthlySessionCount(prof.plan);
         if (n === null) return; // プラン名から判定できない → 触らない

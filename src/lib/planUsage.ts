@@ -49,6 +49,12 @@ export interface PlanUsage {
   /** 窓終了までの残り日数（無期限は null） */
   daysLeft: number | null;
   isExpired: boolean;
+  /**
+   * 期間がまだ始まっていない（1回目の予約が未来日）。
+   * この間は「残り◯日」ではなく「◯/◯から開始」と表示する
+   * （始まっていない期間の残数を今日から数えると1ヶ月プランで38日等になり混乱するため）。
+   */
+  notStarted: boolean;
   isUnconfigured: boolean;
   /**
    * 期限未確定（サブスクで、今サイクルに予約が1件も無い状態）。
@@ -70,6 +76,7 @@ const UNCONFIGURED: PlanUsage = {
   windowEnd: null,
   daysLeft: null,
   isExpired: false,
+  notStarted: false,
   isUnconfigured: true,
   periodPending: false,
 };
@@ -128,6 +135,8 @@ export function computePlanUsage(
   const remaining = total != null ? Math.max(0, total - used) : null;
   const daysLeft = windowEnd ? differenceInDays(windowEnd, now) : null;
   const isExpired = windowEnd ? now >= windowEnd : false;
+  // 期間開始前（1回目の予約が未来日）。「残り◯日」ではなく「◯/◯から開始」を表示する
+  const notStarted = now < windowStart;
 
   return {
     kind,
@@ -139,6 +148,7 @@ export function computePlanUsage(
     windowEnd,
     daysLeft,
     isExpired,
+    notStarted,
     isUnconfigured: false,
     // サブスクは「1回目の予約」が入るまで期限が確定しない（起算日は予約時に自動設定）
     periodPending: kind === "subscription" && used === 0,

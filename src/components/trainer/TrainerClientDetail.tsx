@@ -770,6 +770,9 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     {t("clientDetail.expiry", { date: format(subDays(usage.windowEnd, 1), "yyyy年M月d日", { locale: ja }) })}
                     {usage.isExpired ? (
                       <span className="text-destructive font-bold ml-1">{t("clientDetail.expired")}</span>
+                    ) : usage.notStarted && usage.windowStart ? (
+                      /* 期間開始前は「残り◯日」を出さない（未開始の期間を今日から数えると混乱するため） */
+                      <span className="text-accent font-bold ml-1">{t("clientDetail.startsOn", { date: format(usage.windowStart, "M/d", { locale: ja }) })}</span>
                     ) : remaining <= 3 ? (
                       <span className="text-warning font-bold ml-1">{t("clientDetail.daysLeft", { count: remaining })}</span>
                     ) : (

@@ -50,12 +50,6 @@ const TrialBookingConfirmationEmail = ({
           <Text style={value}>{ADDRESS_LINE_2}</Text>
         </Section>
 
-        <Section style={detailSection}>
-          <Text style={sectionTitle}>当日のご案内</Text>
-          <Text style={text}>・動きやすい服装でお越しください</Text>
-          <Text style={text}>・室内シューズをご持参ください</Text>
-          <Text style={text}>・お水はこちらでご用意しております</Text>
-        </Section>
 
         <Section style={detailSection}>
           <Text style={sectionTitle}>キャンセル・変更</Text>

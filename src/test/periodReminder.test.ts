@@ -12,21 +12,22 @@ const twoBookings = [b("2026-06-06T10:00:00+09:00"), b("2026-06-10T10:00:00+09:0
 const usageAt = (now: Date) => computePlanUsage(plan, twoBookings, now);
 
 describe("decidePeriodReminder", () => {
-  it("期限7日前（6/28）に残り回数ありなら 7日前リマインド", () => {
-    const now = toJSTDate("2026-06-28T12:00:00+09:00");
+  // 1回目の予約日は 6/6 なので、利用期間は 6/6〜7/6（最終利用日 7/6）。
+  it("期限7日前（6/29）に残り回数ありなら 7日前リマインド", () => {
+    const now = toJSTDate("2026-06-29T12:00:00+09:00");
     const r = decidePeriodReminder(usageAt(now), now);
     expect(r.daysLeft).toBe(7);
     expect(r.remaining).toBe(6);
   });
 
-  it("期限3日前（7/2）に残り回数ありなら 3日前リマインド", () => {
-    const now = toJSTDate("2026-07-02T12:00:00+09:00");
+  it("期限3日前（7/3）に残り回数ありなら 3日前リマインド", () => {
+    const now = toJSTDate("2026-07-03T12:00:00+09:00");
     const r = decidePeriodReminder(usageAt(now), now);
     expect(r.daysLeft).toBe(3);
   });
 
-  it("節目でない日（5日前=6/30）は送らない", () => {
-    const now = toJSTDate("2026-06-30T12:00:00+09:00");
+  it("節目でない日（5日前=7/1）は送らない", () => {
+    const now = toJSTDate("2026-07-01T12:00:00+09:00");
     expect(decidePeriodReminder(usageAt(now), now).daysLeft).toBeNull();
   });
 

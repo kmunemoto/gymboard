@@ -95,8 +95,10 @@ export function computeSubscriptionUsage(params: {
   graceDays?: number | null;
   bookingIsos: string[];
   nowJstYmd: string;
+  /** 表示用: サイクル窓を実際の1回目の予約日起点に引き直す（クライアント computePlanUsage と一致） */
+  anchorToFirstBooking?: boolean;
 }): EffectiveUsage | null {
-  const { startYmd, maxSessions, cycleMonths, graceDays: g, bookingIsos, nowJstYmd } = params;
+  const { startYmd, maxSessions, cycleMonths, graceDays: g, bookingIsos, nowJstYmd, anchorToFirstBooking } = params;
   if (!startYmd) return null;
   const graceDays = normGraceDays(g);
   const dates = bookingIsos.map((iso) => ymdToEpoch(isoToJstYmd(iso))).sort((a, b) => a - b);
@@ -113,13 +115,33 @@ export function computeSubscriptionUsage(params: {
 
   const isUnlimited = maxSessions == null;
 
+  const finalizeWin = (w: Win, lent: number, inWin: number[]): EffectiveUsage => {
+    const used = Math.max(0, inWin.length - lent);
+    if (anchorToFirstBooking && used > 0) {
+      const firstCore = inWin[lent];
+      if (firstCore != null && firstCore > w.start) {
+        const key = isoToJstYmd(new Date(firstCore).toISOString());
+        w = getCycleWindow(key, firstCore, cycleMonths);
+      }
+    }
+    const remaining = isUnlimited || maxSessions == null ? null : Math.max(0, maxSessions - used);
+    return {
+      windowStart: w.start,
+      windowEnd: w.end,
+      used,
+      remaining,
+      isUnlimited,
+      periodPending: !isUnlimited && used === 0,
+    };
+  };
+
   for (let i = 0; i < 240; i++) {
     const { lent, inWin } = summarize(win, anchor);
     if (maxSessions != null && maxSessions > 0 && inWin.length - lent > maxSessions) {
       const rollDate = inWin[lent + maxSessions];
       if (rollDate > refDay) {
         // 1回目がまだ未来 → 現在の窓を維持、消化は上限で頭打ち
-        return finalize(win, maxSessions, isUnlimited);
+        return finalizeWin(win, lent, inWin.slice(0, lent + maxSessions));
       }
       const newKey = isoToJstYmd(new Date(rollDate).toISOString());
       if (ymdToEpoch(newKey) <= ymdToEpoch(anchor)) break;
@@ -128,27 +150,14 @@ export function computeSubscriptionUsage(params: {
       continue;
     }
     if (refDay < win.end) {
-      const used = Math.max(0, inWin.length - lent);
-      return finalize(win, used, isUnlimited);
+      return finalizeWin(win, lent, inWin);
     }
     const next = dates.find((d) => d >= win.end);
     const target = next != null && next < refDay ? next : refDay;
     win = getCycleWindow(anchor, target, cycleMonths);
   }
   const { lent, inWin } = summarize(win, anchor);
-  return finalize(win, Math.max(0, inWin.length - lent), isUnlimited);
-
-  function finalize(w: Win, used: number, unlimited: boolean): EffectiveUsage {
-    const remaining = unlimited || maxSessions == null ? null : Math.max(0, maxSessions - used);
-    return {
-      windowStart: w.start,
-      windowEnd: w.end,
-      used,
-      remaining,
-      isUnlimited: unlimited,
-      periodPending: !unlimited && used === 0,
-    };
-  }
+  return finalizeWin(win, lent, inWin);
 }
 
 /** 期限前リマインドの節目判定。最終利用日(= windowEnd-1日)までの暦日残り日数。 */

@@ -107,8 +107,10 @@ export const resolveEffectiveCycle = (params: {
   graceDays?: number | null;
   bookings: DatedBooking[];
   referenceDate: Date;
+  /** 表示用: サイクル窓を「実際の1回目のトレーニング日」起点に引き直す（既定 false=暦窓のまま） */
+  anchorToFirstBooking?: boolean;
 }): { cycleStartDate: string; window: CycleWindow; lent: number; used: number } | null => {
-  const { maxSessions, cycleMonths, graceDays, bookings, referenceDate } = params;
+  const { maxSessions, cycleMonths, graceDays, bookings, referenceDate, anchorToFirstBooking } = params;
   let anchorKey = params.cycleStartDate;
   if (!anchorKey) return null;
   let window = getCycleWindow(anchorKey, startOfDay(parseISO(anchorKey)), cycleMonths);
@@ -134,6 +136,28 @@ export const resolveEffectiveCycle = (params: {
     return { lent, inWindow };
   };
 
+  // 解決した窓を「実際の1回目のトレーニング日」起点に引き直して返す（表示用）。
+  // ジムの運用「期限は1回目のトレーニング日から1ヶ月」に合わせ、暦の応当日境界（例 7/1）ではなく
+  // そのサイクルで最初に予約した日（例 7/5）を利用期間の開始として見せる。
+  // 猶予繰入分（lent）はこのサイクルの消化ではないので、繰入を除いた最初の予約（＝本来の1回目）を基準にする。
+  // anchorToFirstBooking=false（既定, rebase 判定など内部用途）では引き直さず暦窓のまま返す。
+  const finalizeWindow = (
+    w: CycleWindow,
+    lent: number,
+    inWindow: Date[],
+  ): { cycleStartDate: string; window: CycleWindow; lent: number; used: number } => {
+    const used = Math.max(0, inWindow.length - lent);
+    if (anchorToFirstBooking && used > 0) {
+      const firstCore = inWindow[lent]; // 繰入分を飛ばした最初の予約＝本来の1回目
+      if (firstCore && startOfDay(firstCore).getTime() > w.start.getTime()) {
+        const key = format(startOfDay(firstCore), "yyyy-MM-dd");
+        const rebased = getCycleWindow(key, firstCore, cycleMonths);
+        if (rebased) return { cycleStartDate: key, window: rebased, lent, used };
+      }
+    }
+    return { cycleStartDate: anchorKey, window: w, lent, used };
+  };
+
   for (let i = 0; i < 240; i++) {
     const { lent, inWindow } = summarize(window, anchorKey);
     if (maxSessions != null && maxSessions > 0 && inWindow.length - lent > maxSessions) {
@@ -142,7 +166,7 @@ export const resolveEffectiveCycle = (params: {
       // ただし新ルーティンの1回目がまだ先の日付なら、その日が来るまでは現在の窓のまま表示する
       // （ジムが設定した利用期間を維持。超過予約は次ルーティン分なので消化数は上限で頭打ち）。
       if (startOfDay(rollDate) > refDay) {
-        return { cycleStartDate: anchorKey, window, lent, used: maxSessions };
+        return finalizeWindow(window, lent, inWindow.slice(0, lent + maxSessions));
       }
       const newKey = format(rollDate, "yyyy-MM-dd");
       if (newKey <= anchorKey) break; // 同日多重予約などでの無限ループ防止
@@ -151,7 +175,7 @@ export const resolveEffectiveCycle = (params: {
       continue;
     }
     if (refDay < window.end) {
-      return { cycleStartDate: anchorKey, window, lent, used: Math.max(0, inWindow.length - lent) };
+      return finalizeWindow(window, lent, inWindow);
     }
     // referenceDate はこの窓より後 → 次に予約のある日（無ければ referenceDate）まで暦窓を進める
     const next = activeDates.find((d) => d >= window.end);
@@ -162,7 +186,7 @@ export const resolveEffectiveCycle = (params: {
   // ガード超過時のフォールバック（通常は到達しない）
   const w = getCycleWindow(anchorKey, referenceDate, cycleMonths)!;
   const { lent, inWindow } = summarize(w, anchorKey);
-  return { cycleStartDate: anchorKey, window: w, lent, used: Math.max(0, inWindow.length - lent) };
+  return finalizeWindow(w, lent, inWindow);
 };
 
 /**

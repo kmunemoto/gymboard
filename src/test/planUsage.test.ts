@@ -216,7 +216,7 @@ describe("実効サイクル（回数使い切り後の期限内スタートで�
     expect(usage.periodPending).toBe(false);
   });
 
-  it("ちょうど 8/8 ならロールしない（従来どおり）", () => {
+  it("ちょうど 8/8 ならロールしない（窓は1回目の予約日6/6起点）", () => {
     const usage = computePlanUsage(
       { planType: "subscription", maxSessions: 8, validityDays: null, startDate: "2026-06-05" },
       eight,
@@ -224,11 +224,12 @@ describe("実効サイクル（回数使い切り後の期限内スタートで�
     );
     expect(usage.used).toBe(8);
     expect(usage.remaining).toBe(0);
-    expect(usage.windowStart!.getDate()).toBe(5);
+    // 表示は「実際の1回目のトレーニング日（6/6）から1ヶ月」。起算日6/5そのままではない。
+    expect(usage.windowStart!.getDate()).toBe(6);
   });
 
   it("9件目が未来日（7/4）なら、その日が来るまでは現在の期間のまま（消化は上限で頭打ち）", () => {
-    // ジムが設定した利用期間を勝手に先回りしない。9件目はまだ未来なので現在の窓 6/5〜7/5 を表示し、
+    // 9件目はまだ未来なので先回りしない。現在の窓（1回目6/6起点）を表示し、
     // 超過分（未来の9件目）は消化数に数えない（8/8のまま）。
     const usage = computePlanUsage(
       { planType: "subscription", maxSessions: 8, validityDays: null, startDate: "2026-06-05" },
@@ -237,8 +238,8 @@ describe("実効サイクル（回数使い切り後の期限内スタートで�
     );
     expect(usage.used).toBe(8);
     expect(usage.remaining).toBe(0);
-    expect(usage.windowStart!.getMonth()).toBe(5); // June（設定どおり 6/5 起点のまま）
-    expect(usage.windowStart!.getDate()).toBe(5);
+    expect(usage.windowStart!.getMonth()).toBe(5); // June
+    expect(usage.windowStart!.getDate()).toBe(6); // 1回目の予約日 6/6 起点
   });
 
   it("9件目の日（7/4）が来たら新ルーティンへロールする", () => {
@@ -277,5 +278,22 @@ describe("実効サイクル（回数使い切り後の期限内スタートで�
     expect(usageAfter.windowStart!.getMonth()).toBe(6); // July
     expect(usageAfter.windowStart!.getDate()).toBe(17);
     expect(usageAfter.used).toBe(2);
+  });
+
+  it("利用期間は『実際の1回目のトレーニング日』起点で表示（林山さんのケース）", () => {
+    // 起算日が過去(5/30)でも、実際の予約は7/5開始。応当日境界の7/1ではなく、
+    // 1回目の予約日 7/5 起点＝7/5〜8/5 で表示する（ジムの運用「1回目から1ヶ月」）。
+    const july = ["2026-07-05", "2026-07-12", "2026-07-19", "2026-07-26"].map((d) => b(`${d}T10:00:00+09:00`));
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-05-30" },
+      july,
+      toJSTDate("2026-07-05T13:00:00+09:00"),
+    );
+    expect(usage.windowStart!.getMonth()).toBe(6); // July
+    expect(usage.windowStart!.getDate()).toBe(5); // 応当日境界の 7/1 ではなく 1回目の 7/5
+    expect(usage.windowEnd!.getMonth()).toBe(7); // August（最終利用日 8/5 の翌日 8/6）
+    expect(usage.windowEnd!.getDate()).toBe(6);
+    expect(usage.used).toBe(4);
+    expect(usage.periodPending).toBe(false);
   });
 });

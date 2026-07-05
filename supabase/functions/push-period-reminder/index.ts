@@ -99,6 +99,7 @@ Deno.serve(async (req) => {
         graceDays,
         bookingIsos: bookingsByUser.get(p.user_id) ?? [],
         nowJstYmd,
+        anchorToFirstBooking: true, // 表示（クライアント）と同じ「1回目の予約日起点」で期限を判定
       });
       if (!usage || usage.periodPending || usage.isUnlimited) continue;
       const remaining = usage.remaining ?? 0;

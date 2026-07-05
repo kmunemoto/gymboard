@@ -45,6 +45,7 @@ describe("Deno cycle port ↔ client computePlanUsage パリティ", () => {
         graceDays: s.graceDays,
         bookingIsos: s.dates.map((d) => `${d}T10:00:00+09:00`),
         nowJstYmd: s.now,
+        anchorToFirstBooking: true,
       })!;
 
       // 残り回数・期限未確定・無制限が一致

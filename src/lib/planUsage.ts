@@ -113,6 +113,8 @@ export function computePlanUsage(
       graceDays,
       bookings,
       referenceDate: now,
+      // 表示は「実際の1回目のトレーニング日から1ヶ月」で見せる（応当日境界ではなく最初の予約日起点）
+      anchorToFirstBooking: true,
     });
     if (!eff) return UNCONFIGURED;
     windowStart = eff.window.start;

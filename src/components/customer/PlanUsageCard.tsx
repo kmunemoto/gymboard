@@ -69,6 +69,9 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceE
               {t("booking.usagePeriod", { start: format(usage.windowStart, "M/d", { locale: ja }), end: format(subDays(usage.windowEnd, 1), "M/d", { locale: ja }) })}
               {isExpired ? (
                 <span className="font-bold text-destructive ml-1">{t("booking.expired")}</span>
+              ) : usage.notStarted ? (
+                /* 期間開始前は「残り◯日」を出さない（未開始の期間を今日から数えると混乱するため） */
+                <span className="font-bold ml-1 text-accent">{t("booking.startsOn", { date: format(usage.windowStart, "M/d", { locale: ja }) })}</span>
               ) : daysLeft !== null ? (
                 <span className={`font-bold ml-1 ${isExpiringSoon ? "text-warning" : "text-foreground"}`}>{t("booking.daysLeft", { count: daysLeft })}</span>
               ) : null}

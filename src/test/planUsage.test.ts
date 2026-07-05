@@ -280,6 +280,29 @@ describe("実効サイクル（回数使い切り後の期限内スタートで�
     expect(usageAfter.used).toBe(2);
   });
 
+  it("期間開始前（1回目の予約が未来日）は notStarted=true（「残り◯日」を出さず「◯/◯から開始」表示にする）", () => {
+    // デモさんのケース: 今日7/5、1回目の予約が7/12 → 期間 7/12〜8/12 はまだ始まっていない。
+    // 「残り38日」と出すと1ヶ月プランなのに意味不明なので、notStarted で表示を切り替える。
+    const july = ["2026-07-12", "2026-07-19"].map((d) => b(`${d}T21:00:00+09:00`));
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-06-12" },
+      july,
+      toJSTDate("2026-07-05T12:00:00+09:00"),
+    );
+    expect(usage.windowStart!.getMonth()).toBe(6); // July
+    expect(usage.windowStart!.getDate()).toBe(12);
+    expect(usage.notStarted).toBe(true);
+    expect(usage.isExpired).toBe(false);
+
+    // 期間が始まったら notStarted=false（通常の「残り◯日」に戻る）
+    const started = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-06-12" },
+      july,
+      toJSTDate("2026-07-12T22:30:00+09:00"),
+    );
+    expect(started.notStarted).toBe(false);
+  });
+
   it("利用期間は『実際の1回目のトレーニング日』起点で表示（林山さんのケース）", () => {
     // 起算日が過去(5/30)でも、実際の予約は7/5開始。応当日境界の7/1ではなく、
     // 1回目の予約日 7/5 起点＝7/5〜8/5 で表示する（ジムの運用「1回目から1ヶ月」）。

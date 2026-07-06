@@ -1,0 +1,2 @@
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS push_sent_at timestamptz;
+CREATE INDEX IF NOT EXISTS idx_announcements_push_due ON public.announcements (published_at) WHERE push_sent_at IS NULL;

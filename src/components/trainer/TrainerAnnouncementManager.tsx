@@ -141,6 +141,13 @@ const TrainerAnnouncementManager = () => {
     setShowForm(false);
     resetForm();
     fetchAll();
+
+    // 公開済み・未送信のお知らせをプッシュ配信（fire-and-forget）。
+    // 即時公開ならすぐ届く。予約公開分は published_at 到来後に cron が同じ関数で配信する。
+    // 送信済み管理（push_sent_at の原子的クレーム）はサーバー側なので二重送信しない。
+    supabase.functions.invoke("push-announcements", { body: {} }).catch((e) =>
+      console.error("push-announcements invoke failed (non-blocking):", e),
+    );
   };
 
   const handleDelete = async () => {

@@ -53,7 +53,6 @@ export type Database = {
           image_url: string | null
           image_url2: string | null
           published_at: string
-          push_sent_at: string | null
           target: string
           tenant_id: string | null
           title: string
@@ -67,7 +66,6 @@ export type Database = {
           image_url?: string | null
           image_url2?: string | null
           published_at?: string
-          push_sent_at?: string | null
           target?: string
           tenant_id?: string | null
           title: string
@@ -81,7 +79,6 @@ export type Database = {
           image_url?: string | null
           image_url2?: string | null
           published_at?: string
-          push_sent_at?: string | null
           target?: string
           tenant_id?: string | null
           title?: string

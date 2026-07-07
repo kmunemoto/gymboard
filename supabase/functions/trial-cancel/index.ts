@@ -9,11 +9,10 @@
 //   - action: "info"   → キャンセル画面表示用に予約概要を返す (PII は最小限)
 //   - action: "cancel" → 実際にキャンセルする
 //
-// action:"cancel" の処理 (トレーナー画面のキャンセルと同等 + セルフキャンセル特有の通知):
+// action:"cancel" の処理:
 //   1. Google カレンダー連携イベントを削除 (連携時のみ・失敗してもキャンセルは継続)
 //   2. status を「キャンセル済み」に更新
-//   3. Salute レガシー予約へ逆同期 (sync-trial-cancel-to-salute・fire-and-forget)
-//   4. トレーナーへ通知 (push + LINE) — 枠が空いたことを即座に知らせる
+//   3. トレーナーへ通知 (push + LINE) — 枠が空いたことを即座に知らせる
 //
 // 業務上の拒否 (トークン不正・過去の予約) は HTTP 200 + { ok:false, code } で返す。
 // 予期しない失敗 (500) は詳細をログにのみ残し、汎用メッセージを返す。
@@ -172,13 +171,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, alreadyCancelled: true, booking: { ...summary, alreadyCancelled: true } });
     }
 
-    // 3) Salute レガシー予約へ逆同期 (fire-and-forget)
-    await invokeFn("sync-trial-cancel-to-salute", {
-      booking_date: booking.booking_date,
-      guest_name: booking.guest_name,
-    });
-
-    // 4) トレーナーへ通知 — 枠が空いたことを即座に知らせる。
+    // 3) トレーナーへ通知 — 枠が空いたことを即座に知らせる。
     //    宛先はこのテナントの trainer を優先、居なければ owner (trial-book と同じ解決)。
     const { data: staff } = await admin
       .from("tenant_members")

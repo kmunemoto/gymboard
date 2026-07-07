@@ -101,7 +101,7 @@ export const template = {
     customerName: '山田 太郎',
     bookingDate: '4月15日（火）',
     bookingTime: '14:00〜15:00',
-    cancelUrl: 'https://app.gymboard.app/trial-cancel/00000000-0000-0000-0000-000000000000',
+    cancelUrl: 'https://app.kyoto-salute.com/trial-cancel/00000000-0000-0000-0000-000000000000',
   },
 } satisfies TemplateEntry
 

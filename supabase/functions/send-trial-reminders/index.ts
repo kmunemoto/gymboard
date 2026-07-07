@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
           bookingDate: dateStr,
           bookingTime: timeStr,
           cancelUrl: booking.cancel_token
-            ? `https://app.gymboard.app/trial-cancel/${booking.cancel_token}`
+            ? `https://app.kyoto-salute.com/trial-cancel/${booking.cancel_token}`
             : undefined,
         },
       },

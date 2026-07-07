@@ -197,10 +197,10 @@ Deno.serve(async (req) => {
     }
     const trialBookingId = inserted.id as string;
     // お客様セルフキャンセル用リンク (確認メール・完了画面で使う)。
-    // ルートはアプリ本体 (app.gymboard.app) の /trial-cancel/:token にある
-    // (gymboard.app はランディング用。メールテンプレートの APP_URL と揃える)。
+    // 体験予約サイト (https://app.kyoto-salute.com/trial) と同じドメインで配信される
+    // SPA の /trial-cancel/:token ルートを指す。
     const cancelToken = inserted.cancel_token as string;
-    const cancelUrl = `https://app.gymboard.app/trial-cancel/${cancelToken}`;
+    const cancelUrl = `https://app.kyoto-salute.com/trial-cancel/${cancelToken}`;
 
     // ===== 表示用の日時文字列 (JST) =====
     const dowChars = ["日", "月", "火", "水", "木", "金", "土"];

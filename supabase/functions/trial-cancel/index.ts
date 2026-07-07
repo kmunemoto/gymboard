@@ -47,6 +47,18 @@ function escapeHtml(s: string): string {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }
 
+// 非ASCII(日本語)をすべて数値文字参照(&#NNN;)に変換して純ASCIIにする。
+// 配信経路やブラウザが文字コードを誤判定(UTF-8をShift_JIS等と解釈)しても、
+// 純ASCIIなら文字化けしない。メールの makeEmailHtmlAsciiSafe と同じ考え方。
+function asciiSafe(s: string): string {
+  let out = "";
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)!;
+    out += cp > 0x7f ? `&#${cp};` : ch;
+  }
+  return out;
+}
+
 // ---- HTML ページ生成 ----
 function htmlDoc(title: string, inner: string): string {
   return `<!doctype html>
@@ -133,7 +145,8 @@ function pageError(): string {
   `);
 }
 function htmlResponse(html: string, status = 200): Response {
-  return new Response(html, {
+  // 純ASCII化してから返す(文字コード誤判定による文字化け対策)。
+  return new Response(asciiSafe(html), {
     status,
     headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
   });

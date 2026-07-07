@@ -1422,7 +1422,26 @@
     "notifTrainerSubject": "{{name}} (첫 무료 체험)",
     "trialPlanName": "첫 무료 체험",
     "pushTitle": "첫 체험 신청",
-    "pushBody": "{{name}}님이 첫 무료 체험을 신청했습니다"
+    "pushBody": "{{name}}님이 첫 무료 체험을 신청했습니다",
+    "cancelLead": "일정이 바뀌셨다면",
+    "cancelLink": "여기에서 취소하실 수 있습니다"
+  },
+  "trialCancel": {
+    "loading": "예약 내용을 확인하고 있습니다...",
+    "confirmTitle": "예약을 취소하시겠습니까?",
+    "confirmBody": "아래 첫 무료 체험 예약을 취소합니다.",
+    "confirmButton": "이 예약을 취소하기",
+    "keepNote": "취소하지 않으시려면 이 페이지를 닫아 주세요.",
+    "doneTitle": "취소되었습니다",
+    "doneBody": "예약이 취소되었습니다. 다음 기회에 다시 뵙기를 바랍니다.",
+    "doneRebook": "다시 예약하시려면 체험 예약 페이지에서 신청해 주세요.",
+    "alreadyTitle": "이미 취소되었습니다",
+    "alreadyBody": "이 예약은 이미 취소되었습니다.",
+    "pastTitle": "예약 시간이 지났습니다",
+    "pastBody": "예약 시간이 지나 이곳에서는 취소할 수 없습니다. 번거로우시겠지만 헬스장으로 직접 연락해 주세요.",
+    "errTitle": "예약을 찾을 수 없습니다",
+    "errInvalidLink": "취소용 링크가 올바르지 않거나 유효 기간이 지났습니다. 번거로우시겠지만 헬스장으로 직접 연락해 주세요.",
+    "errGeneric": "오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
   },
   "terms": {
     "backToApp": "アプリに戻る",

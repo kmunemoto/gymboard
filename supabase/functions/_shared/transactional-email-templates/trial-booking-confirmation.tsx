@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Html, Preview, Text, Hr, Section, Link,
+  Body, Container, Head, Heading, Html, Preview, Text, Hr, Section, Link, Button,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -17,12 +17,14 @@ interface TrialBookingConfirmationProps {
   customerName?: string
   bookingDate?: string
   bookingTime?: string
+  cancelUrl?: string
 }
 
 const TrialBookingConfirmationEmail = ({
   customerName = 'お客様',
   bookingDate = '',
   bookingTime = '',
+  cancelUrl = '',
 }: TrialBookingConfirmationProps) => (
   <Html lang="ja" dir="ltr">
     <Head>
@@ -53,12 +55,29 @@ const TrialBookingConfirmationEmail = ({
 
         <Section style={detailSection}>
           <Text style={sectionTitle}>キャンセル・変更</Text>
-          <Text style={text}>
-            前日までに下記メールへご連絡ください。
-          </Text>
-          <Text style={text}>
-            <Link href="mailto:k.munemoto@gymboard.app" style={inlineLink}>k.munemoto@gymboard.app</Link>
-          </Text>
+          {cancelUrl ? (
+            <>
+              <Text style={text}>
+                ご都合が悪くなった場合は、下記のボタンからいつでもキャンセルできます。
+              </Text>
+              <Button href={cancelUrl} style={cancelButton}>予約をキャンセルする</Button>
+              <Text style={fallbackText}>
+                ボタンが押せない場合は、こちらのリンクをブラウザで開いてください。
+              </Text>
+              <Text style={fallbackText}>
+                <Link href={cancelUrl} style={inlineLink}>{cancelUrl}</Link>
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={text}>
+                前日までに下記メールへご連絡ください。
+              </Text>
+              <Text style={text}>
+                <Link href="mailto:k.munemoto@gymboard.app" style={inlineLink}>k.munemoto@gymboard.app</Link>
+              </Text>
+            </>
+          )}
         </Section>
 
         <Hr style={hr} />
@@ -82,6 +101,7 @@ export const template = {
     customerName: '山田 太郎',
     bookingDate: '4月15日（火）',
     bookingTime: '14:00〜15:00',
+    cancelUrl: 'https://app.kyoto-salute.com/trial-cancel/00000000-0000-0000-0000-000000000000',
   },
 } satisfies TemplateEntry
 
@@ -98,3 +118,5 @@ const value = { fontSize: '15px', color: '#000000', margin: '0 0 4px', fontWeigh
 const footer = { fontSize: '12px', color: '#999999', margin: '4px 0', lineHeight: '1.5', textAlign: 'center' as const }
 const footerLink = { fontSize: '12px', color: '#0ABAB5', textAlign: 'center' as const, display: 'block' }
 const inlineLink = { color: '#0ABAB5', textDecoration: 'underline' }
+const cancelButton = { backgroundColor: '#0ABAB5', color: '#ffffff', fontSize: '14px', fontWeight: '600' as const, borderRadius: '8px', padding: '12px 20px', textDecoration: 'none', textAlign: 'center' as const, display: 'block', margin: '8px 0' }
+const fallbackText = { fontSize: '12px', color: '#999999', lineHeight: '1.5', margin: '4px 0', wordBreak: 'break-all' as const }

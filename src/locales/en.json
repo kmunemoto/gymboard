@@ -1422,7 +1422,26 @@
     "notifTrainerSubject": "{{name}} (Free First Trial)",
     "trialPlanName": "Free First Trial",
     "pushTitle": "Trial booking request",
-    "pushBody": "{{name}} has requested a free first trial"
+    "pushBody": "{{name}} has requested a free first trial",
+    "cancelLead": "If your plans change,",
+    "cancelLink": "you can cancel here"
+  },
+  "trialCancel": {
+    "loading": "Checking your booking...",
+    "confirmTitle": "Cancel your booking?",
+    "confirmBody": "This will cancel your free first trial booking below.",
+    "confirmButton": "Cancel this booking",
+    "keepNote": "If you don't want to cancel, simply close this page.",
+    "doneTitle": "Cancelled",
+    "doneBody": "Your booking has been cancelled. We hope to see you another time.",
+    "doneRebook": "To book again, please use the trial booking page.",
+    "alreadyTitle": "Already cancelled",
+    "alreadyBody": "This booking has already been cancelled.",
+    "pastTitle": "Booking time has passed",
+    "pastBody": "This booking's time has already passed, so it can't be cancelled here. Please contact the gym directly.",
+    "errTitle": "Booking not found",
+    "errInvalidLink": "This cancellation link is invalid or has expired. Please contact the gym directly.",
+    "errGeneric": "Something went wrong. Please try again later."
   },
   "terms": {
     "backToApp": "アプリに戻る",

@@ -43,7 +43,7 @@ const TrialBooking = () => {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string; cancelToken?: string } | null>(null);
+  const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string; cancelUrl?: string } | null>(null);
   const [existingBookings, setExistingBookings] = useState<TrialSlotBooking[]>([]);
 
   useEffect(() => {
@@ -157,7 +157,7 @@ const TrialBooking = () => {
 
     // 予約作成と通知 (確認メール・トレーナー通知・カレンダー登録) はサーバー側の
     // trial-book で完結する。業務上の拒否は 200 + {ok:false, error} で返る。
-    let cancelToken: string | undefined;
+    let cancelUrl: string | undefined;
     try {
       const { data, error } = await supabase.functions.invoke("trial-book", {
         body: {
@@ -167,7 +167,7 @@ const TrialBooking = () => {
           booking_date: bookingDate,
         },
       });
-      const result = data as { ok?: boolean; error?: string; code?: string; cancel_token?: string } | null;
+      const result = data as { ok?: boolean; error?: string; code?: string; cancel_url?: string } | null;
       if (error || !result?.ok) {
         console.error("Trial booking failed:", error ?? result);
         toast.error(result?.error || t("trialBooking.errBookingFailed"));
@@ -178,7 +178,7 @@ const TrialBooking = () => {
         setSubmitting(false);
         return;
       }
-      cancelToken = result.cancel_token;
+      cancelUrl = result.cancel_url;
     } catch (error) {
       console.error("Trial booking failed:", error);
       toast.error(t("trialBooking.errBookingFailed"));
@@ -196,7 +196,7 @@ const TrialBooking = () => {
       rawDate: dateKey,
       rawStartTime: slot.time,
       rawEndTime: endTime,
-      cancelToken,
+      cancelUrl,
     });
     setCompleted(true);
     setSubmitting(false);
@@ -296,11 +296,11 @@ const TrialBooking = () => {
               <p>{t("trialBooking.noteWearable")}</p>
               <p>{t("trialBooking.noteContact")}</p>
             </div>
-            {completedInfo.cancelToken && (
+            {completedInfo.cancelUrl && (
               <p className="text-xs text-muted-foreground">
                 {t("trialBooking.cancelLead")}{" "}
                 <a
-                  href={`/trial-cancel/${completedInfo.cancelToken}`}
+                  href={completedInfo.cancelUrl}
                   className="text-accent underline font-medium"
                 >
                   {t("trialBooking.cancelLink")}

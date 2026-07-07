@@ -197,10 +197,10 @@ Deno.serve(async (req) => {
     }
     const trialBookingId = inserted.id as string;
     // お客様セルフキャンセル用リンク (確認メール・完了画面で使う)。
-    // 体験予約サイト (https://app.kyoto-salute.com/trial) と同じドメインで配信される
-    // SPA の /trial-cancel/:token ルートを指す。
+    // フロントの公開状態に依存しないよう、キャンセルページを直接HTMLで返す
+    // trial-cancel エッジ関数の URL を指す (verify_jwt=false でブラウザから直接開ける)。
     const cancelToken = inserted.cancel_token as string;
-    const cancelUrl = `https://app.kyoto-salute.com/trial-cancel/${cancelToken}`;
+    const cancelUrl = `${SUPABASE_URL}/functions/v1/trial-cancel?token=${cancelToken}`;
 
     // ===== 表示用の日時文字列 (JST) =====
     const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
@@ -328,6 +328,7 @@ Deno.serve(async (req) => {
       ok: true,
       trial_booking_id: trialBookingId,
       cancel_token: cancelToken,
+      cancel_url: cancelUrl,
       tenant_id: tenantId,
       booking_date: inserted.booking_date,
       notify,

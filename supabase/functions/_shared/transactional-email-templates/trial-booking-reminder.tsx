@@ -98,7 +98,7 @@ export const template = {
     guestName: '山田 太郎',
     bookingDate: '5月18日（月）',
     bookingTime: '15:00',
-    cancelUrl: 'https://app.kyoto-salute.com/trial-cancel/00000000-0000-0000-0000-000000000000',
+    cancelUrl: 'https://rrbfwitprzuevzytykrq.supabase.co/functions/v1/trial-cancel?token=00000000-0000-0000-0000-000000000000',
   },
 } satisfies TemplateEntry
 

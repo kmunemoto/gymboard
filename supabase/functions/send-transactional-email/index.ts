@@ -4,6 +4,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from '../_shared/email-encoding.ts'
 
+// この関数は _shared/transactional-email-templates のメールテンプレートを
+// デプロイ時にバンドルする。テンプレートを更新したら、必ず本関数を再デプロイして
+// 再バンドルすること（共有ファイルだけ変えても本関数の再デプロイが無いと反映されない）。
+// 2026-07: 体験予約メールにお客様セルフキャンセルのボタンを追加（cancelUrl）。
+
 // Configuration baked in at scaffold time — do NOT change these manually.
 // To update, re-run the email domain setup flow.
 const SITE_NAME = "パーソナルジムSalute御所南"

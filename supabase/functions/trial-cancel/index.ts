@@ -145,10 +145,13 @@ function pageError(): string {
   `);
 }
 function htmlResponse(html: string, status = 200): Response {
-  // 純ASCII化してから返す(文字コード誤判定による文字化け対策)。
+  // 本文は asciiSafe で純ASCII化済みのため charset 指定は不要。
+  // Content-Type に charset パラメータを付けると一部ゲートウェイがヘッダを落として
+  // text/plain 扱い(=ブラウザがソースを素のテキスト表示)になることがあるため、
+  // 動作実績のある image/png と同じく「パラメータ無しの型のみ」で返す。
   return new Response(asciiSafe(html), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+    headers: { ...corsHeaders, "Content-Type": "text/html" },
   });
 }
 function json(body: unknown, status = 200): Response {

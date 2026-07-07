@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
         // booking_type / status は DB デフォルト ('初回無料体験' / '予約済み')。
         // '予約済み' で入れることで send-trial-reminders の前日リマインドも対象になる。
       })
-      .select("id, booking_date")
+      .select("id, booking_date, cancel_token")
       .single();
 
     if (insErr) {
@@ -196,6 +196,11 @@ Deno.serve(async (req) => {
       return fail("insert", msg);
     }
     const trialBookingId = inserted.id as string;
+    // お客様セルフキャンセル用リンク (確認メール・完了画面で使う)。
+    // ルートはアプリ本体 (app.gymboard.app) の /trial-cancel/:token にある
+    // (gymboard.app はランディング用。メールテンプレートの APP_URL と揃える)。
+    const cancelToken = inserted.cancel_token as string;
+    const cancelUrl = `https://app.gymboard.app/trial-cancel/${cancelToken}`;
 
     // ===== 表示用の日時文字列 (JST) =====
     const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
@@ -258,6 +263,7 @@ Deno.serve(async (req) => {
             customerName: guestName,
             bookingDate: dateStr,
             bookingTime: timeStr,
+            cancelUrl,
           },
         }).then((ok) => { notify.customer_email = ok; }),
       );
@@ -321,6 +327,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       trial_booking_id: trialBookingId,
+      cancel_token: cancelToken,
       tenant_id: tenantId,
       booking_date: inserted.booking_date,
       notify,

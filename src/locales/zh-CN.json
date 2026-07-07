@@ -1422,7 +1422,26 @@
     "notifTrainerSubject": "{{name}}（首次免费体验）",
     "trialPlanName": "首次免费体验",
     "pushTitle": "首次体验申请",
-    "pushBody": "{{name}} 申请了首次免费体验"
+    "pushBody": "{{name}} 申请了首次免费体验",
+    "cancelLead": "如果您的安排有变，",
+    "cancelLink": "可在此取消"
+  },
+  "trialCancel": {
+    "loading": "正在确认您的预约...",
+    "confirmTitle": "要取消预约吗？",
+    "confirmBody": "将取消以下首次免费体验的预约。",
+    "confirmButton": "取消此预约",
+    "keepNote": "如果不取消，请直接关闭此页面。",
+    "doneTitle": "已取消",
+    "doneBody": "已为您取消预约。期待下次与您相见。",
+    "doneRebook": "如需重新预约，请通过体验预约页面申请。",
+    "alreadyTitle": "已经取消",
+    "alreadyBody": "此预约已经被取消。",
+    "pastTitle": "预约时间已过",
+    "pastBody": "预约时间已过，无法在此取消。请直接联系健身房。",
+    "errTitle": "找不到预约",
+    "errInvalidLink": "取消链接无效或已过期。请直接联系健身房。",
+    "errGeneric": "发生错误，请稍后再试。"
   },
   "terms": {
     "backToApp": "アプリに戻る",

@@ -35,3 +35,7 @@ project_id = "rrbfwitprzuevzytykrq"
   # (関数内で入力検証・営業枠チェック・回数制限を行う)。
   [functions.trial-book]
     verify_jwt = false
+  # 体験予約のお客様セルフキャンセルAPI。確認メール/完了画面のリンクから認証なしで
+  # 呼ばれる前提 (予約1件ごとの推測困難な cancel_token で本人確認する)。
+  [functions.trial-cancel]
+    verify_jwt = false

@@ -15,6 +15,7 @@ const AuthCallback = lazy(() => import("./pages/AuthCallback.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe.tsx"));
 const TrialBooking = lazy(() => import("./pages/TrialBooking.tsx"));
+const TrialCancel = lazy(() => import("./pages/TrialCancel.tsx"));
 const Privacy = lazy(() => import("./pages/Privacy.tsx"));
 const Terms = lazy(() => import("./pages/Terms.tsx"));
 const Tokushoho = lazy(() => import("./pages/Tokushoho.tsx"));
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/trial" element={<TrialBooking />} />
               <Route path="/trial/:tenantId" element={<TrialBooking />} />
+              <Route path="/trial-cancel/:token" element={<TrialCancel />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/tokushoho" element={<Tokushoho />} />

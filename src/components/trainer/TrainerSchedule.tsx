@@ -193,10 +193,10 @@ const TrainerSchedule = () => {
     const booking = bookings.find((b) => b.id === target.id);
     let error: { code?: string; message?: string } | null | undefined;
     if (booking?.user_id === "trial-guest") {
-      // Fetch google_event_id (+ booking_date/guest_name for the Salute reverse-sync) before cancelling
+      // Fetch google_event_id before cancelling (to delete the linked calendar event)
       const { data: trialData } = await supabase
         .from("trial_bookings")
-        .select("google_event_id, booking_date, guest_name")
+        .select("google_event_id")
         .eq("id", target.id)
         .maybeSingle();
 
@@ -216,26 +216,13 @@ const TrainerSchedule = () => {
         }
       }
 
-      // 体験予約はソフトキャンセル(status更新)にする。これにより、
-      //  - GymBoard の表示・重複判定はキャンセル済みを除外する(既存挙動を維持)
-      //  - sync-bookings-to-salute がこのキャンセルを Salute へ逆同期し、
-      //    初回無料体験の予約サイト側の該当枠が解放される
+      // 体験予約はソフトキャンセル(status更新)にする。
+      // GymBoard の表示・重複判定はキャンセル済みを除外する(既存挙動を維持)。
       const res = await supabase
         .from("trial_bookings")
         .update({ status: "キャンセル済み" })
         .eq("id", target.id);
       error = res.error;
-
-      // 即時逆同期: キャンセルをその場で Salute に伝え、予約サイトの該当枠をすぐ解放する。
-      // (1時間ごとの sync-bookings-to-salute バッチは安全網として残る)。
-      // fire-and-forget — 失敗してもバッチが後追いで再送するため致命的ではない。
-      if (!error && trialData?.booking_date && trialData?.guest_name) {
-        supabase.functions
-          .invoke("sync-trial-cancel-to-salute", {
-            body: { booking_date: trialData.booking_date, guest_name: trialData.guest_name },
-          })
-          .catch((e) => console.error("Realtime trial cancel sync failed:", e));
-      }
     } else {
       const res = await cancelBooking(target.id, true);
       error = res.error;

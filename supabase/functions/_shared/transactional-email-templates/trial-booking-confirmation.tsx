@@ -118,5 +118,5 @@ const value = { fontSize: '15px', color: '#000000', margin: '0 0 4px', fontWeigh
 const footer = { fontSize: '12px', color: '#999999', margin: '4px 0', lineHeight: '1.5', textAlign: 'center' as const }
 const footerLink = { fontSize: '12px', color: '#0ABAB5', textAlign: 'center' as const, display: 'block' }
 const inlineLink = { color: '#0ABAB5', textDecoration: 'underline' }
-const cancelButton = { backgroundColor: '#0ABAB5', color: '#ffffff', fontSize: '14px', fontWeight: '600' as const, borderRadius: '8px', padding: '12px 20px', textDecoration: 'none', textAlign: 'center' as const, display: 'block', margin: '8px 0' }
+const cancelButton = { backgroundColor: '#40E0D0', color: '#0A3D3B', fontSize: '15px', fontWeight: '700' as const, borderRadius: '8px', padding: '13px 20px', textDecoration: 'none', textAlign: 'center' as const, display: 'block', margin: '8px 0' }
 const fallbackText = { fontSize: '12px', color: '#999999', lineHeight: '1.5', margin: '4px 0', wordBreak: 'break-all' as const }

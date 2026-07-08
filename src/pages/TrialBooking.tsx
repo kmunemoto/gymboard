@@ -31,6 +31,12 @@ interface PublicTenant {
   primary_color: string | null;
 }
 
+// この体験予約サイト(app.kyoto-salute.com)は Salute御所南 専用。
+// テナント指定なしの /trial は必ずこのジムを既定にする。
+// (get_default_tenant_public は「作成が最も古いテナント」を返すため、別テナントが
+//  混ざり、空き状況のズレや予約が別テナントに作成される問題を招くため使わない)
+const DEFAULT_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+
 const TrialBooking = () => {
   const { t } = useTranslation();
   const { tenantId } = useParams<{ tenantId?: string }>();
@@ -48,20 +54,16 @@ const TrialBooking = () => {
 
   useEffect(() => {
     (async () => {
-      if (tenantId) {
-        const { data, error } = await supabase.rpc("get_tenant_public", { p_id: tenantId });
-        if (error) { console.error("Failed to load tenant:", error); return; }
-        const row = Array.isArray(data) ? data[0] : data;
-        if (row) setTenant(row as PublicTenant);
-        return;
-      }
-      const { data } = await supabase.rpc("get_default_tenant_public" as any);
+      // テナント指定なしの /trial は Salute御所南 を既定にする（このサイトはSalute専用）。
+      const resolveId = tenantId || DEFAULT_TENANT_ID;
+      const { data, error } = await supabase.rpc("get_tenant_public", { p_id: resolveId });
+      if (error) { console.error("Failed to load tenant:", error); return; }
       const row = Array.isArray(data) ? data[0] : data;
       if (row) setTenant(row as PublicTenant);
     })();
   }, [tenantId]);
 
-  const effectiveTenantId = tenantId || tenant?.id || null;
+  const effectiveTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
 
   // テナント限定の埋まり枠を60日分まとめて1回で取得する (get_tenant_booked_slots)
   const fetchExistingSlots = useCallback(async () => {
@@ -148,7 +150,7 @@ const TrialBooking = () => {
 
     const bookingDate = `${dateKey}T${slot.time}:00+09:00`;
 
-    const insertTenantId = tenantId || tenant?.id;
+    const insertTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
     if (!insertTenantId) {
       toast.error(t("trialBooking.errInvalidLink"));
       setSubmitting(false);

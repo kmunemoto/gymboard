@@ -323,7 +323,15 @@ const TrialBooking = () => {
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-accent/10 -translate-y-10 translate-x-10" />
         <div className="relative space-y-2">
           <div className="flex justify-center">
-            <GymLogo size="lg" />
+            {tenant?.logo_url ? (
+              <img
+                src={tenant.logo_url}
+                alt={gymName}
+                className="w-24 h-24 rounded object-contain"
+              />
+            ) : (
+              <GymLogo size="lg" />
+            )}
           </div>
           <h1 className="text-xl font-bold">{t("trialBooking.headerTitle")}</h1>
           <p className="text-sm opacity-80">{t("trialBooking.headerSub")}</p>

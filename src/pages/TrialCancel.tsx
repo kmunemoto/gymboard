@@ -5,12 +5,12 @@ import { CalendarDays, Clock, Check, CalendarX, AlertCircle } from "lucide-react
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import GymLogo from "@/components/GymLogo";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface BookingSummary {
   guestName: string;
   gymName: string;
+  logoUrl?: string | null;
   date: string;
   time: string;
   alreadyCancelled: boolean;
@@ -101,8 +101,14 @@ const TrialCancel = () => {
   );
 
   const GymFooter = () => (
-    <div className="flex justify-center pt-2">
-      <GymLogo size="sm" />
+    <div className="flex justify-center items-center pt-2">
+      {summary?.logoUrl && (
+        <img
+          src={summary.logoUrl}
+          alt={summary.gymName || ""}
+          className="w-8 h-8 rounded object-contain"
+        />
+      )}
       {summary?.gymName && (
         <span className="ml-2 text-sm font-bold text-muted-foreground">{summary.gymName}</span>
       )}

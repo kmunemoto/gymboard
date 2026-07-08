@@ -28,6 +28,7 @@ import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
 import PlanUsageCard from "./PlanUsageCard";
 import StreakCard from "./StreakCard";
+import MilestoneGoalCard from "./MilestoneGoalCard";
 import { STREAK_ENABLED } from "@/lib/featureFlags";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
@@ -279,6 +280,9 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         bookings={bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
         graceEnabled={profile?.grace_enabled}
       />
+
+      {/* 2.6 3ヶ月目標（棚卸し目標）: 設定しているお客様にのみ表示 */}
+      <MilestoneGoalCard milestoneGoal={profile?.milestone_goal} />
 
       {/* 3. Streak */}
       {STREAK_ENABLED && !streakLoading && (currentStreak > 0 || bestStreak > 0) && (

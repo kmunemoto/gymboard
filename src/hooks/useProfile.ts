@@ -18,6 +18,8 @@ export interface Profile {
   last_streak_notified: number;
   game_mode_enabled: boolean;
   training_goal: string | null;
+  milestone_goal: string | null;
+  milestone_goal_set_at: string | null;
   /** プランの猶予（大目に見る）をこのお客様に適用するか。null/true=適用（既定）、false=適用しない */
   grace_enabled: boolean | null;
   created_at: string;
@@ -239,6 +241,8 @@ export const useAllCustomerProfiles = () => {
         last_streak_notified: p?.last_streak_notified || 0,
         game_mode_enabled: (p as any)?.game_mode_enabled ?? true,
         training_goal: (p as any)?.training_goal ?? null,
+        milestone_goal: (p as any)?.milestone_goal ?? null,
+        milestone_goal_set_at: (p as any)?.milestone_goal_set_at ?? null,
         grace_enabled: (p as any)?.grace_enabled ?? null,
         created_at: p?.created_at || new Date().toISOString(),
         updated_at: p?.updated_at || new Date().toISOString(),

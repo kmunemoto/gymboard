@@ -1,4 +1,4 @@
-import { Users, Search, ChevronRight, Sparkles, UserCheck, Trash2, CalendarDays } from "lucide-react";
+import { Users, Search, ChevronRight, Sparkles, UserCheck, Trash2, CalendarDays, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAllCustomerProfiles, ProfileWithBooking } from "@/hooks/useProfile";
+import { isMilestoneOverdue } from "@/lib/milestoneGoal";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -69,6 +70,8 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
   };
 
   const deleteTargetName = profiles.find(p => p.user_id === deleteTarget)?.display_name || t("clientList.deleteFallback");
+
+  const now = new Date();
 
   if (loading) {
     return (
@@ -152,6 +155,12 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
                       ) : (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-muted-foreground">
                           {t("clientList.noBooking")}
+                        </Badge>
+                      )}
+                      {isMilestoneOverdue(c.milestone_goal_set_at, now) && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-warning/15 text-warning border-warning/40">
+                          <Target className="w-2.5 h-2.5" />
+                          {t("clientList.milestoneOverdueBadge")}
                         </Badge>
                       )}
                     </div>

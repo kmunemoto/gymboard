@@ -44,6 +44,7 @@ import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { resolveGraceDays } from "@/lib/courseProgress";
 import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
+import { isMilestoneOverdue } from "@/lib/milestoneGoal";
 import { applyRaidDamage, checkTrainingMilestones, computeSessionVolume, processSessionRewards, type MilestoneAchieved, type SessionRewardResult } from "@/lib/raidUtils";
 import { updateEventProgress } from "@/hooks/useSeasonEvents";
 import { getComboMultiplier } from "@/lib/comboSystem";
@@ -104,6 +105,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [editingGoal, setEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
   const [goalDraft, setGoalDraft] = useState<string>("");
+  const [milestoneGoal, setMilestoneGoal] = useState<string>("");
+  const [milestoneGoalSetAt, setMilestoneGoalSetAt] = useState<string | null>(null);
+  const [editingMilestone, setEditingMilestone] = useState(false);
+  const [savingMilestone, setSavingMilestone] = useState(false);
+  const [milestoneDraft, setMilestoneDraft] = useState<string>("");
   const [chatInput, setChatInput] = useState("");
   const [clientGender, setClientGender] = useState<"male" | "female" | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -133,6 +139,8 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
         setTrainingGoal((data as any).training_goal || "");
+        setMilestoneGoal((data as any).milestone_goal || "");
+        setMilestoneGoalSetAt((data as any).milestone_goal_set_at ?? null);
         setShowUsagePeriod(data.show_usage_period ?? true);
         setGraceEnabled((data as any).grace_enabled ?? true);
       } else {
@@ -504,6 +512,21 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     toast.success(t("clientDetail.goalSavedToast"));
   };
 
+  const handleSaveMilestone = async () => {
+    const trimmed = milestoneDraft.trim();
+    setSavingMilestone(true);
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ milestone_goal: trimmed || null, milestone_goal_set_at: nowIso } as any)
+      .eq("user_id", clientId);
+    setSavingMilestone(false);
+    if (error) { toast.error(t("clientDetail.milestoneSaveFailed")); return; }
+    setMilestoneGoal(trimmed);
+    setMilestoneGoalSetAt(nowIso);
+    setEditingMilestone(false);
+    toast.success(t("clientDetail.milestoneSavedToast"));
+  };
 
 
   const handleCycleStartDateChange = async (newDate: string) => {
@@ -678,6 +701,73 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Plus className="w-3 h-3" />
                 {t("clientDetail.goalSetBtn")}
               </Button>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* Milestone Goal (3ヶ月目標) */}
+      <section className="mb-4 sm:mb-6">
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <Target className="w-3.5 h-3.5" />
+          {t("clientDetail.sectionMilestone")}
+        </h2>
+        {editingMilestone ? (
+          <Card>
+            <CardContent className="p-3 sm:p-4 space-y-2">
+              <Textarea
+                value={milestoneDraft}
+                onChange={(e) => setMilestoneDraft(e.target.value)}
+                placeholder={t("clientDetail.milestonePlaceholder")}
+                rows={4}
+                className="text-sm resize-none break-all"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => { setEditingMilestone(false); setMilestoneDraft(milestoneGoal); }} disabled={savingMilestone} className="h-8 text-xs">
+                  {t("common.cancelShort")}
+                </Button>
+                <Button size="sm" onClick={handleSaveMilestone} disabled={savingMilestone} className="h-8 text-xs gap-1">
+                  <Save className="w-3 h-3" />
+                  {savingMilestone ? t("common.saving") : t("common.save")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : milestoneGoal ? (
+          <button
+            type="button"
+            onClick={() => { setMilestoneDraft(milestoneGoal); setEditingMilestone(true); }}
+            className="w-full text-left"
+          >
+            <Card className="bg-primary/5 border-primary/30 hover:bg-primary/10 transition-colors">
+              <CardContent className="p-3 sm:p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                  <Target className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium whitespace-pre-wrap break-all leading-relaxed">{milestoneGoal}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
+                    <Pencil className="w-3 h-3" />
+                    {t("clientDetail.milestoneTapEdit")}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </button>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="p-3 sm:p-4 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">{t("clientDetail.milestoneEmpty")}</span>
+                <Button size="sm" variant="outline" onClick={() => { setMilestoneDraft(""); setEditingMilestone(true); }} className="h-8 text-xs gap-1 shrink-0">
+                  <Plus className="w-3 h-3" />
+                  {t("clientDetail.milestoneSetBtn")}
+                </Button>
+              </div>
+              {(milestoneGoalSetAt === null || isMilestoneOverdue(milestoneGoalSetAt, new Date())) && (
+                <p className="text-[11px] text-warning font-medium">{t("clientDetail.milestoneOverdueHint")}</p>
+              )}
             </CardContent>
           </Card>
         )}

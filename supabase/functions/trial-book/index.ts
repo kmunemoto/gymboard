@@ -197,10 +197,10 @@ Deno.serve(async (req) => {
     }
     const trialBookingId = inserted.id as string;
     // お客様セルフキャンセル用リンク (確認メール・完了画面で使う)。
-    // フロントの公開状態に依存しないよう、キャンセルページを直接HTMLで返す
-    // trial-cancel エッジ関数の URL を指す (verify_jwt=false でブラウザから直接開ける)。
+    // ジム自身のドメイン上の React ページを指すことで、迷惑メール判定を避け、
+    // ブランドと一致した見た目を提供する。
     const cancelToken = inserted.cancel_token as string;
-    const cancelUrl = `${SUPABASE_URL}/functions/v1/trial-cancel?token=${cancelToken}`;
+    const cancelUrl = `https://app.kyoto-salute.com/trial-cancel/${cancelToken}`;
 
     // ===== 表示用の日時文字列 (JST) =====
     const dowChars = ["日", "月", "火", "水", "木", "金", "土"];

@@ -1,0 +1,1 @@
+UPDATE public.tenants SET logo_url = 'https://rrbfwitprzuevzytykrq.supabase.co/storage/v1/object/public/avatars/tenant-logos%2Fsalute-gosho-minami-2026-07-08-v2.png' WHERE id = 'ceda19b0-d5e0-4928-ab2e-996a0b823af4';

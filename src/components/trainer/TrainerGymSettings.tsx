@@ -18,6 +18,7 @@ import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import BackgroundImagePicker from "@/components/BackgroundImagePicker";
+import { resizeImageToJpeg } from "@/lib/imageResize";
 import { useTranslation } from "react-i18next";
 import { BILLING_ENABLED } from "@/lib/featureFlags";
 
@@ -63,9 +64,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (!tenant) { toast.error(t("settings.trainer.tenantUnavailable")); return; }
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
-      const filePath = `${tenant.id}/logo_${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("gym-assets").upload(filePath, file, { upsert: true });
+      // 表示は最大でも100px角程度のため、アップロード時に縮小・圧縮してから保存する。
+      // (元画像をそのまま保存すると、体験予約サイト等の公開ページで毎回フルサイズを
+      //  ダウンロードすることになり表示が遅くなる)
+      const resized = await resizeImageToJpeg(file, 512, 0.9);
+      const filePath = `${tenant.id}/logo_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("gym-assets")
+        .upload(filePath, resized, { upsert: true, contentType: "image/jpeg" });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("gym-assets").getPublicUrl(filePath);
       const url = `${urlData.publicUrl}?t=${Date.now()}`;

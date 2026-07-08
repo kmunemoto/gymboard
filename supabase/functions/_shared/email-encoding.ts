@@ -88,15 +88,7 @@ export function wrapEmailHtml(html: string): string {
       lineBytes = 0;
     }
 
-    if (ch === ">") {
-      insideTag = false;
-      // タグを閉じた瞬間に桁カウンタをリセットする。
-      // <p style="..."> のようなタグ内 ASCII が 60 バイト近く積み上がった状態から
-      // 直後の日本語テキストに移ると、必ず先頭で <!--\n--> が挿入される。
-      // 段落先頭に注入されたコメントも Gmail iOS ダークモード等で豆腐化することがあり、
-      // テキスト冒頭に見苦しい記号が並ぶ原因になるため、タグの直後は新規行として扱う。
-      lineBytes = 0;
-    }
+    if (ch === ">") insideTag = false;
   }
 
   return out;

@@ -6,8 +6,22 @@ import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = "パーソナルジムSalute御所南"
 const SITE_URL = "https://app.kyoto-salute.com"
-const ADDRESS_LINE_1 = '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A\u6BD8\u6C99\u9580\u753A533-1'
-const ADDRESS_LINE_2 = '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357' + '2' + '\u968E'
+// 住所は「1 行の生バイト長 < 20」に収まる短い塊に分割する。
+// email-encoding.ts の wrapEmailHtml が 20B 超で <!--\n--> を注入し、
+// Gmail iOS ダークモード等で豆腐化する事象を避けるため。
+const ADDRESS_LINES = [
+  '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A',              // 京都市中京区
+  '\u6BD8\u6C99\u9580\u753A533-1',                      // 毘沙門町533-1
+  '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357 2\u968E',       // プラザ御所南 2階
+]
+
+const AddressBlock = ({ style }: { style: React.CSSProperties }) => (
+  <>
+    {ADDRESS_LINES.map((line, i) => (
+      <Text key={i} style={style}>{line}</Text>
+    ))}
+  </>
+)
 
 interface Props {
   guestName?: string
@@ -44,8 +58,7 @@ const TrialBookingReminderEmail = ({
           <Text style={label}>内容</Text>
           <Text style={value}>カウンセリング＋トレーニング体験（計60分）</Text>
           <Text style={label}>場所</Text>
-          <Text style={value}>{ADDRESS_LINE_1}</Text>
-          <Text style={value}>{ADDRESS_LINE_2}</Text>
+          <AddressBlock style={value} />
         </Section>
 
         <Section style={detailSection}>
@@ -82,8 +95,7 @@ const TrialBookingReminderEmail = ({
         <Hr style={hr} />
         <Text style={footer}>{SITE_NAME}</Text>
         <Text style={footer}>〒604-0981</Text>
-        <Text style={footer}>{ADDRESS_LINE_1}</Text>
-        <Text style={footer}>{ADDRESS_LINE_2}</Text>
+        <AddressBlock style={footer} />
         <Link href={SITE_URL} style={footerLink}>{SITE_URL}</Link>
       </Container>
     </Body>

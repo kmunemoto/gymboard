@@ -164,6 +164,7 @@ function json(body: unknown, status = 200): Response {
 type LookupResult = {
   booking: any;
   gymName: string;
+  logoUrl: string | null;
   dateStr: string;
   timeStr: string;
   alreadyCancelled: boolean;
@@ -173,7 +174,7 @@ type LookupResult = {
 async function lookupByToken(admin: any, token: string): Promise<LookupResult | null> {
   const { data: booking, error } = await admin
     .from("trial_bookings")
-    .select("id, tenant_id, guest_name, booking_date, status, google_event_id, tenants(gym_name)")
+    .select("id, tenant_id, guest_name, booking_date, status, google_event_id, tenants(gym_name, logo_url)")
     .eq("cancel_token", token)
     .maybeSingle();
   if (error) {
@@ -182,11 +183,14 @@ async function lookupByToken(admin: any, token: string): Promise<LookupResult | 
   }
   if (!booking) return null;
   const tenantRel = (booking as any).tenants;
-  const gymName = (Array.isArray(tenantRel) ? tenantRel[0]?.gym_name : tenantRel?.gym_name) || "ジム";
+  const tenantRow = Array.isArray(tenantRel) ? tenantRel[0] : tenantRel;
+  const gymName = tenantRow?.gym_name || "ジム";
+  const logoUrl = tenantRow?.logo_url ?? null;
   const { dateStr, timeStr } = formatJst(booking.booking_date as string);
   return {
     booking,
     gymName,
+    logoUrl,
     dateStr,
     timeStr,
     alreadyCancelled: booking.status === CANCELLED,
@@ -316,6 +320,7 @@ Deno.serve(async (req) => {
         const summary = {
           guestName: info.booking.guest_name,
           gymName: info.gymName,
+          logoUrl: info.logoUrl,
           date: info.dateStr,
           time: info.timeStr,
           status: info.booking.status,

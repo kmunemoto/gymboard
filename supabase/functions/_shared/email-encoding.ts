@@ -25,7 +25,10 @@
 
 // 折り返し境界（76）を QP 展開後も超えないよう、生バイト長で十分小さく刻む。
 // （1 文字 = 最大 3 バイト → QP 9 文字。20 バイト ≒ QP 60 文字 + 余白 < 76）
-const MAX_LINE_BYTES = 20;
+// 24 バイト × QP 3 倍 + 折り返し先頭 "-->" (3 バイト) = 75 で 76 未満に収まる。
+// 20 だと 6 字ちょうどの短い日本語（例:「京都市中京区」）でも折り返しが 1 回発生し、
+// 挿入された <!--\n--> が Gmail iOS ダークモード等で豆腐化して見えることがあった。
+const MAX_LINE_BYTES = 24;
 
 function utf8ByteLength(codePoint: number): number {
   if (codePoint <= 0x7f) return 1;
@@ -77,7 +80,23 @@ export function wrapEmailHtml(html: string): string {
     out += ch; // 生の文字のまま（数値文字参照化しない）
     lineBytes += bytes;
 
-    if (ch === ">") insideTag = false;
+    // タグ外の半角スペース／タブは QP のソフト改行境界として安全に折り返せるため、
+    // ここで論理行の桁カウンタをリセットする。こうしないと pretty:true が挿入する
+    // 各要素前のインデント（20 スペース前後）が桁を食いつぶし、直後の短い日本語
+    // テキストの中で <!--\n--> が挿入され、Gmail iOS ダークモード等で豆腐化する。
+    if (!insideTag && (ch === " " || ch === "\t")) {
+      lineBytes = 0;
+    }
+
+    if (ch === ">") {
+      insideTag = false;
+      // タグを閉じた瞬間に桁カウンタをリセットする。
+      // <p style="..."> のようなタグ内 ASCII が 60 バイト近く積み上がった状態から
+      // 直後の日本語テキストに移ると、必ず先頭で <!--\n--> が挿入される。
+      // 段落先頭に注入されたコメントも Gmail iOS ダークモード等で豆腐化することがあり、
+      // テキスト冒頭に見苦しい記号が並ぶ原因になるため、タグの直後は新規行として扱う。
+      lineBytes = 0;
+    }
   }
 
   return out;
@@ -125,7 +144,14 @@ export function makeEmailHtmlAsciiSafe(html: string): string {
     if (insideTag) {
       out += ch;
       lineChars += 1;
-      if (ch === ">") insideTag = false;
+      if (ch === ">") {
+        insideTag = false;
+        // タグを抜けたらテキスト用の桁カウンタをリセットする。
+        // こうしないと <p style="..."> のようなタグ内 ASCII が桁を食いつぶし、
+        // 直後の短い日本語テキストの途中で <!--\n--> が挿入されてしまう。
+        // Gmail iOS ダークモード等でそのコメントが豆腐化して見える事象を避ける。
+        lineChars = 0;
+      }
       i += width;
       continue;
     }

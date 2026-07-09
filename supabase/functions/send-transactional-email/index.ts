@@ -16,10 +16,12 @@ const SITE_NAME = "パーソナルジムSalute御所南"
 // It MUST match the subdomain delegated to Lovable's nameservers — never the root domain.
 // The email API looks up this exact domain; a mismatch causes "No email domain record found".
 const SENDER_DOMAIN = "notify.kyoto-salute.com"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
-// When display_from_root is enabled, this can be the root domain for cleaner branding,
-// even though actual sending uses the subdomain above.
-const FROM_DOMAIN = "kyoto-salute.com"
+// FROM_DOMAIN is the domain shown in the From: header. Kept identical to SENDER_DOMAIN
+// (matches auth-email-hook.ts's convention) — the root domain (kyoto-salute.com) has no
+// SPF/DKIM alignment of its own, only the notify. subdomain is verified with Mailgun.
+// Using the root here would cause DMARC misalignment and silent rejection at the
+// receiving mail server (accepted by Mailgun, dropped by Gmail/etc with no visible error).
+const FROM_DOMAIN = "notify.kyoto-salute.com"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

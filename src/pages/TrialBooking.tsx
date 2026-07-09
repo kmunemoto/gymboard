@@ -295,7 +295,6 @@ const TrialBooking = () => {
               {t("trialBooking.addAppleCal")}
             </button>
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>{t("trialBooking.noteWearable")}</p>
               <p>{t("trialBooking.noteContact")}</p>
             </div>
             {completedInfo.cancelUrl && (

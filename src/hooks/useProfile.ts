@@ -18,8 +18,8 @@ export interface Profile {
   last_streak_notified: number;
   game_mode_enabled: boolean;
   training_goal: string | null;
-  milestone_goal: string | null;
-  milestone_goal_set_at: string | null;
+  milestone_goal?: string | null;
+  milestone_goal_set_at?: string | null;
   /** プランの猶予（大目に見る）をこのお客様に適用するか。null/true=適用（既定）、false=適用しない */
   grace_enabled: boolean | null;
   created_at: string;

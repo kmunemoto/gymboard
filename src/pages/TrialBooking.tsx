@@ -329,7 +329,13 @@ const TrialBooking = () => {
               <img
                 src={tenant.logo_url}
                 alt={gymName}
-                className="w-24 h-24 rounded object-contain"
+                width={96}
+                height={96}
+                loading="eager"
+                decoding="async"
+                // @ts-expect-error fetchpriority is valid but not yet in TS DOM types
+                fetchpriority="high"
+                className="w-24 h-24 rounded object-contain bg-white"
               />
             ) : (
               <GymLogo size="lg" />

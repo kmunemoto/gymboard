@@ -309,8 +309,20 @@ const TrialBooking = () => {
                 </a>
               </p>
             )}
-            <div className="flex justify-center pt-2">
-              <GymLogo size="sm" />
+            <div className="flex justify-center items-center pt-2">
+              {tenant?.logo_url ? (
+                <img
+                  src={tenant.logo_url}
+                  alt={gymName}
+                  width={32}
+                  height={32}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-8 h-8 rounded object-contain bg-white"
+                />
+              ) : (
+                <GymLogo size="sm" />
+              )}
               <span className="ml-2 text-sm font-bold text-muted-foreground">{gymName}</span>
             </div>
           </CardContent>

@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+/* Google Fonts の読み込みは index.html の <link> に移動済み（CSS @import は
+   レンダリングをブロックし、ブラウザのプリロードスキャナーにも発見されないため）。 */
 
 @tailwind base;
 @tailwind components;

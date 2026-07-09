@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- <link> にすることでブラウザのプリロードスキャナーが即座に発見できる
+         （CSSの @import はCSS解析が終わるまで発見されずレンダリングをブロックする）。 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
     <title>ジムボード</title>
     <meta name="description" content="ジムボード - パーソナルジム・ピラティス・ヨガ専用の予約・顧客管理アプリ">
     <meta name="author" content="Lovable" />

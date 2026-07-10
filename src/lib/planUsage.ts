@@ -62,6 +62,14 @@ export interface PlanUsage {
    * 1回目の予約が入るまでは期限を表示しない（表示側で案内文言に差し替える）。
    */
   periodPending: boolean;
+  /**
+   * 回数を使い切った（回数上限ありで残り0・期間は開始済み）。
+   * この状態では期限内で日数が残っていても「残り◯日」のカウントダウンは実質的に
+   * 意味を持たない（もう予約できない）。表示側では期限のカウントダウンを出さず、
+   * サブスクなら「次回のトレーニングから新しい期間が始まる」案内に差し替える
+   * （次の1回目の予約で窓が自動的に引き直されるため）。
+   */
+  consumed: boolean;
 }
 
 const isCancelled = (s: string) => s === "キャンセル済み";
@@ -79,6 +87,7 @@ const UNCONFIGURED: PlanUsage = {
   notStarted: false,
   isUnconfigured: true,
   periodPending: false,
+  consumed: false,
 };
 
 export function computePlanUsage(
@@ -137,6 +146,10 @@ export function computePlanUsage(
   const isExpired = windowEnd ? now >= windowEnd : false;
   // 期間開始前（1回目の予約が未来日）。「残り◯日」ではなく「◯/◯から開始」を表示する
   const notStarted = now < windowStart;
+  // 回数を使い切った（回数上限あり・残り0・期間は開始済み）。
+  // remaining===0 は total!=null（回数制）を含意する。未開始（notStarted）＝これから来る
+  // 予約がある状態は「消化済み」に含めない。
+  const consumed = remaining === 0 && !notStarted;
 
   return {
     kind,
@@ -152,6 +165,7 @@ export function computePlanUsage(
     isUnconfigured: false,
     // サブスクは「1回目の予約」が入るまで期限が確定しない（起算日は予約時に自動設定）
     periodPending: kind === "subscription" && used === 0,
+    consumed,
   };
 }
 

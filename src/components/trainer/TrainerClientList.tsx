@@ -1,4 +1,4 @@
-import { Users, Search, ChevronRight, Sparkles, UserCheck, Trash2, CalendarDays, Target, ArrowUpDown } from "lucide-react";
+import { Users, Search, ChevronRight, ChevronDown, ChevronUp, Sparkles, UserCheck, Trash2, CalendarDays, Target, ArrowUpDown, EyeOff, Moon, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllCustomerProfiles, ProfileWithBooking } from "@/hooks/useProfile";
 import { isMilestoneOverdue } from "@/lib/milestoneGoal";
+import { isDormant, daysSinceLastActivity, DEFAULT_DORMANT_DAYS } from "@/lib/dormancy";
+import { getJSTNow } from "@/lib/timezone";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -33,6 +35,12 @@ interface TrainerClientListProps {
 type SortMode = "action" | "booking" | "name" | "created";
 const SORT_MODES: readonly SortMode[] = ["action", "booking", "name", "created"];
 const SORT_STORAGE_KEY = "gymboard.clientListSortMode";
+
+// 「しばらく来ていない（休眠）お客様」を一覧下部に畳むしきい値。"off"=畳まない。
+type DormantThreshold = "off" | "30" | "60" | "90";
+const DORMANT_THRESHOLDS: readonly DormantThreshold[] = ["off", "30", "60", "90"];
+const DORMANT_STORAGE_KEY = "gymboard.clientListDormantDays";
+const DEFAULT_DORMANT_THRESHOLD = String(DEFAULT_DORMANT_DAYS) as DormantThreshold;
 
 const isUnnamed = (c: ProfileWithBooking) => !c.display_name || c.display_name === "名前未設定";
 
@@ -98,6 +106,12 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
     const saved = window.localStorage.getItem(SORT_STORAGE_KEY);
     return SORT_MODES.includes(saved as SortMode) ? (saved as SortMode) : "action";
   });
+  const [dormantThreshold, setDormantThreshold] = useState<DormantThreshold>(() => {
+    if (typeof window === "undefined") return DEFAULT_DORMANT_THRESHOLD;
+    const saved = window.localStorage.getItem(DORMANT_STORAGE_KEY);
+    return DORMANT_THRESHOLDS.includes(saved as DormantThreshold) ? (saved as DormantThreshold) : DEFAULT_DORMANT_THRESHOLD;
+  });
+  const [dormantOpen, setDormantOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -109,17 +123,42 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
     }
   }, [sortMode]);
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DORMANT_STORAGE_KEY, dormantThreshold);
+    } catch {
+      /* localStorage 非対応環境では保存をスキップ */
+    }
+  }, [dormantThreshold]);
+
   const searchFiltered = profiles.filter(c =>
     (c.display_name || "").includes(search) || (c.plan || "").includes(search)
   );
-  const maleCount = searchFiltered.filter(c => c.gender === "male").length;
-  const femaleCount = searchFiltered.filter(c => c.gender === "female").length;
-  const filtered = searchFiltered.filter(c => {
-    if (genderTab === "all") return true;
-    return c.gender === genderTab;
+
+  // 「しばらく来ていない（休眠）」お客様をメインリストから分離する。
+  // しきい値が "off" のときは分離せず全員をメイン表示（従来どおり）。
+  const nowJst = getJSTNow();
+  const thresholdDays = dormantThreshold === "off" ? null : Number(dormantThreshold);
+  const hidden = (c: ProfileWithBooking) => thresholdDays !== null && isDormant(c, thresholdDays, nowJst);
+  const activePool = thresholdDays === null ? searchFiltered : searchFiltered.filter(c => !hidden(c));
+  const dormantPool = thresholdDays === null ? [] : searchFiltered.filter(hidden);
+
+  // 性別タブのカウントは「メインに表示中」の人数に合わせる（タブ数字と行が一致するように）。
+  const maleCount = activePool.filter(c => c.gender === "male").length;
+  const femaleCount = activePool.filter(c => c.gender === "female").length;
+
+  const byGender = (arr: ProfileWithBooking[]) =>
+    genderTab === "all" ? arr : arr.filter(c => c.gender === genderTab);
+
+  // メインリスト: 選択中の並び替えモードで整列（検索・性別タブで絞った後）。
+  const sorted = [...byGender(activePool)].sort(makeComparator(sortMode, new Date()));
+  // 休眠ドロワー: 最終来店が新しい順（最近来た人が上＝一番長く来ていない人が下）。
+  const dormantSorted = [...byGender(dormantPool)].sort((a, b) => {
+    const av = a.last_visit_date || "";
+    const bv = b.last_visit_date || "";
+    if (av !== bv) return bv.localeCompare(av);
+    return a.user_id.localeCompare(b.user_id);
   });
-  // 選択中の並び替えモードで整列（検索・性別タブで絞った後にソート）。
-  const sorted = [...filtered].sort(makeComparator(sortMode, new Date()));
 
   const formatPrice = (planName: string) => {
     const match = tenantPlans.find((p) => p.plan_name === planName);
@@ -152,6 +191,77 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
 
   const now = new Date();
 
+  // 顧客カード1行の描画。メインリストと休眠ドロワーで共通利用する。
+  // dormantDays を渡すと「◯日来店なし」バッジを表示する。
+  const renderRow = (c: ProfileWithBooking, dormantDays?: number) => {
+    const initial = (c.display_name || "?")[0];
+    const nextBooking = formatNextBooking(c);
+    return (
+      <Card
+        key={c.user_id}
+        className="card-hover cursor-pointer"
+        onClick={() => onSelectClient(c.user_id)}
+      >
+        <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl gym-gradient flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0 relative">
+            {initial}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm truncate">{c.display_name || t("common.nameUnset")}</p>
+            <p className="text-xs text-muted-foreground truncate">{c.plan || t("clientList.noPlan")} {formatPrice(c.plan || "")}</p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {c.trial_completed ? (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                  <UserCheck className="w-2.5 h-2.5" />
+                  {t("clientList.existingClient")}
+                </Badge>
+              ) : (
+                <Badge className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-accent text-accent-foreground">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  {t("clientList.trialClient")}
+                </Badge>
+              )}
+              {nextBooking ? (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-primary border-primary/30">
+                  <CalendarDays className="w-2.5 h-2.5" />
+                  {t("clientList.nextBooking", { date: nextBooking.dateStr })}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-muted-foreground">
+                  {t("clientList.noBooking")}
+                </Badge>
+              )}
+              {isMilestoneOverdue(c.milestone_goal_set_at, now) && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-warning/15 text-warning border-warning/40">
+                  <Target className="w-2.5 h-2.5" />
+                  {t("clientList.milestoneOverdueBadge")}
+                </Badge>
+              )}
+              {dormantDays !== undefined && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-muted-foreground border-muted-foreground/30">
+                  <Clock className="w-2.5 h-2.5" />
+                  {t("clientList.dormantBadge", { days: dormantDays })}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex items-center gap-1">
+              <button
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                onClick={(e) => { e.stopPropagation(); setDeleteTarget(c.user_id); }}
+                title={t("clientList.deleteAria")}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -180,9 +290,9 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
         />
       </div>
 
-      <div className="flex items-center justify-end mb-3 sm:mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-3 sm:mb-4">
         <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-          <SelectTrigger className="h-9 w-[180px] text-xs gap-1.5" aria-label={t("clientList.sortLabel")}>
+          <SelectTrigger className="h-9 w-full text-xs gap-1.5" aria-label={t("clientList.sortLabel")}>
             <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <SelectValue />
           </SelectTrigger>
@@ -193,11 +303,23 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
             <SelectItem value="created">{t("clientList.sortCreated")}</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={dormantThreshold} onValueChange={(v) => setDormantThreshold(v as DormantThreshold)}>
+          <SelectTrigger className="h-9 w-full text-xs gap-1.5" aria-label={t("clientList.dormantThresholdLabel")}>
+            <EyeOff className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="off">{t("clientList.dormantOff")}</SelectItem>
+            <SelectItem value="30">{t("clientList.dormantDays", { count: 30 })}</SelectItem>
+            <SelectItem value="60">{t("clientList.dormantDays", { count: 60 })}</SelectItem>
+            <SelectItem value="90">{t("clientList.dormantDays", { count: 90 })}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs value={genderTab} onValueChange={(v) => setGenderTab(v as "all" | "male" | "female")} className="mb-3 sm:mb-4">
         <TabsList className="grid grid-cols-3 w-full h-9">
-          <TabsTrigger value="all" className="text-xs">{t("clientList.tabAll", { count: searchFiltered.length })}</TabsTrigger>
+          <TabsTrigger value="all" className="text-xs">{t("clientList.tabAll", { count: activePool.length })}</TabsTrigger>
           <TabsTrigger value="male" className="text-xs">{t("clientList.tabMale", { count: maleCount })}</TabsTrigger>
           <TabsTrigger value="female" className="text-xs">{t("clientList.tabFemale", { count: femaleCount })}</TabsTrigger>
         </TabsList>
@@ -211,71 +333,43 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
             <p className="text-xs mt-1">{t("clientList.emptyHelp")}</p>
           </CardContent>
         </Card>
+      ) : sorted.length === 0 && dormantSorted.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">{t("clientList.visibleEmpty")}</p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-2">
-          {sorted.map((c) => {
-            const initial = (c.display_name || "?")[0];
-            const nextBooking = formatNextBooking(c);
-            return (
-              <Card
-                key={c.user_id}
-                className="card-hover cursor-pointer"
-                onClick={() => onSelectClient(c.user_id)}
+        <>
+          {sorted.length > 0 && (
+            <div className="space-y-2">
+              {sorted.map((c) => renderRow(c))}
+            </div>
+          )}
+
+          {dormantSorted.length > 0 && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setDormantOpen((o) => !o)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border bg-muted/40 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+                aria-expanded={dormantOpen}
               >
-                <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl gym-gradient flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0 relative">
-                    {initial}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate">{c.display_name || t("common.nameUnset")}</p>
-                    <p className="text-xs text-muted-foreground truncate">{c.plan || t("clientList.noPlan")} {formatPrice(c.plan || "")}</p>
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      {c.trial_completed ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
-                          <UserCheck className="w-2.5 h-2.5" />
-                          {t("clientList.existingClient")}
-                        </Badge>
-                      ) : (
-                        <Badge className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-accent text-accent-foreground">
-                          <Sparkles className="w-2.5 h-2.5" />
-                          {t("clientList.trialClient")}
-                        </Badge>
-                      )}
-                      {nextBooking ? (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-primary border-primary/30">
-                          <CalendarDays className="w-2.5 h-2.5" />
-                          {t("clientList.nextBooking", { date: nextBooking.dateStr })}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-muted-foreground">
-                          {t("clientList.noBooking")}
-                        </Badge>
-                      )}
-                      {isMilestoneOverdue(c.milestone_goal_set_at, now) && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-warning/15 text-warning border-warning/40">
-                          <Target className="w-2.5 h-2.5" />
-                          {t("clientList.milestoneOverdueBadge")}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <div className="flex items-center gap-1">
-                      <button
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(c.user_id); }}
-                        title={t("clientList.deleteAria")}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                <span className="flex items-center gap-2">
+                  <Moon className="w-4 h-4" />
+                  {t("clientList.dormantSection", { count: dormantSorted.length })}
+                </span>
+                {dormantOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+              {dormantOpen && (
+                <div className="space-y-2 mt-2">
+                  {dormantSorted.map((c) => renderRow(c, daysSinceLastActivity(c, nowJst)))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

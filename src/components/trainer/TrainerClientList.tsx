@@ -1,15 +1,16 @@
-import { Users, Search, ChevronRight, Sparkles, UserCheck, Trash2, CalendarDays, Target } from "lucide-react";
+import { Users, Search, ChevronRight, Sparkles, UserCheck, Trash2, CalendarDays, Target, ArrowUpDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllCustomerProfiles, ProfileWithBooking } from "@/hooks/useProfile";
 import { isMilestoneOverdue } from "@/lib/milestoneGoal";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -23,14 +24,90 @@ interface TrainerClientListProps {
   onSelectClient: (clientId: string) => void;
 }
 
+// 顧客一覧の並び替え。ジム（トレーナー）側で選べるようにする。
+// - action  : 要対応順（既定）。再予約が要る既存→棚卸し時期→通常→未予約の体験客、の順。
+// - booking : 次回予約順。来店が近い順、予約なしは下にまとめる。
+// - name    : 名前順（localeCompare 'ja'）。名前未設定は末尾。
+//             ※読み仮名の列が無いため漢字はコードポイント順で、真の五十音順ではない。
+// - created : 登録順。状態が変わっても並びが動かない固定表示。
+type SortMode = "action" | "booking" | "name" | "created";
+const SORT_MODES: readonly SortMode[] = ["action", "booking", "name", "created"];
+const SORT_STORAGE_KEY = "gymboard.clientListSortMode";
+
+const isUnnamed = (c: ProfileWithBooking) => !c.display_name || c.display_name === "名前未設定";
+
+// 並び替えモードごとの比較関数を返す。再取得（realtime）で同点行がちらつかないよう、
+// どのモードでも最終キーは user_id で必ず一意化する。
+const makeComparator = (
+  sortMode: SortMode,
+  now: Date,
+): ((a: ProfileWithBooking, b: ProfileWithBooking) => number) => {
+  const byUserId = (a: ProfileWithBooking, b: ProfileWithBooking) => a.user_id.localeCompare(b.user_id);
+
+  switch (sortMode) {
+    case "name":
+      return (a, b) => {
+        const au = isUnnamed(a);
+        const bu = isUnnamed(b);
+        if (au !== bu) return au ? 1 : -1; // 名前未設定は末尾へ
+        return (
+          (a.display_name || "").localeCompare(b.display_name || "", "ja", { numeric: true, sensitivity: "base" }) ||
+          (a.created_at || "").localeCompare(b.created_at || "") ||
+          byUserId(a, b)
+        );
+      };
+
+    case "created":
+      return (a, b) => (a.created_at || "").localeCompare(b.created_at || "") || byUserId(a, b);
+
+    case "booking":
+      // 予約ありを上（近い順）、予約なしは下ブロック（登録順で安定化）。
+      return (a, b) =>
+        (a.next_booking_date ? 0 : 1) - (b.next_booking_date ? 0 : 1) ||
+        (a.next_booking_date || "").localeCompare(b.next_booking_date || "") ||
+        (a.created_at || "").localeCompare(b.created_at || "") ||
+        byUserId(a, b);
+
+    case "action":
+    default: {
+      // 先勝ち(first-match-wins)で要対応の層を割り当てる（0が最上位）。
+      const rank = (c: ProfileWithBooking) => {
+        const existing = c.trial_completed === true;
+        if (existing && !c.next_booking_date) return 0; // 既存なのに次回予約なし＝再予約が要る（離脱リスク）
+        if (existing && isMilestoneOverdue(c.milestone_goal_set_at ?? null, now)) return 1; // 棚卸し時期
+        if (!c.trial_completed && !c.next_booking_date) return 3; // 未予約の体験客は最下部
+        return 2; // 通常（順調な既存＋予約ありの体験）
+      };
+      return (a, b) =>
+        rank(a) - rank(b) ||
+        (a.next_booking_date || "").localeCompare(b.next_booking_date || "") ||
+        (a.created_at || "").localeCompare(b.created_at || "") ||
+        byUserId(a, b);
+    }
+  }
+};
+
 const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
   const { t } = useTranslation();
   const { profiles, loading, setProfiles } = useAllCustomerProfiles();
   const { plans: tenantPlans } = useTenant();
   const [search, setSearch] = useState("");
   const [genderTab, setGenderTab] = useState<"all" | "male" | "female">("all");
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    if (typeof window === "undefined") return "action";
+    const saved = window.localStorage.getItem(SORT_STORAGE_KEY);
+    return SORT_MODES.includes(saved as SortMode) ? (saved as SortMode) : "action";
+  });
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, sortMode);
+    } catch {
+      /* localStorage 非対応環境では保存をスキップ（並びは既定で動作） */
+    }
+  }, [sortMode]);
 
   const searchFiltered = profiles.filter(c =>
     (c.display_name || "").includes(search) || (c.plan || "").includes(search)
@@ -41,6 +118,8 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
     if (genderTab === "all") return true;
     return c.gender === genderTab;
   });
+  // 選択中の並び替えモードで整列（検索・性別タブで絞った後にソート）。
+  const sorted = [...filtered].sort(makeComparator(sortMode, new Date()));
 
   const formatPrice = (planName: string) => {
     const match = tenantPlans.find((p) => p.plan_name === planName);
@@ -101,6 +180,21 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
         />
       </div>
 
+      <div className="flex items-center justify-end mb-3 sm:mb-4">
+        <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+          <SelectTrigger className="h-9 w-[180px] text-xs gap-1.5" aria-label={t("clientList.sortLabel")}>
+            <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="action">{t("clientList.sortAction")}</SelectItem>
+            <SelectItem value="booking">{t("clientList.sortBooking")}</SelectItem>
+            <SelectItem value="name">{t("clientList.sortName")}</SelectItem>
+            <SelectItem value="created">{t("clientList.sortCreated")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Tabs value={genderTab} onValueChange={(v) => setGenderTab(v as "all" | "male" | "female")} className="mb-3 sm:mb-4">
         <TabsList className="grid grid-cols-3 w-full h-9">
           <TabsTrigger value="all" className="text-xs">{t("clientList.tabAll", { count: searchFiltered.length })}</TabsTrigger>
@@ -119,7 +213,7 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map((c) => {
+          {sorted.map((c) => {
             const initial = (c.display_name || "?")[0];
             const nextBooking = formatNextBooking(c);
             return (

@@ -852,6 +852,15 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     <p className="text-xs text-muted-foreground">{t("clientDetail.expiryPending")}</p>
                   );
                 }
+                if (usage.consumed) {
+                  // 回数消化済み: 期限が残っていても「残り◯日」は出さない。
+                  // サブスクは次回の予約で期間が更新される旨を案内する。
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      {usage.kind === "subscription" ? t("clientDetail.expiryConsumed") : t("clientDetail.ticketUsedUp")}
+                    </p>
+                  );
+                }
                 if (!usage.windowEnd) return null; // 無期限（期限表示なし）
                 const remaining = usage.daysLeft ?? 0;
                 return (

@@ -39,9 +39,9 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceE
   if (usage.isUnconfigured) return null;
 
   const daysLeft = usage.daysLeft;
-  // 期限未確定（1回目の予約待ち）の間は期限切れ・期限間近の警告も出さない
-  const isExpired = usage.isExpired && !usage.periodPending;
-  const isExpiringSoon = !usage.periodPending && daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+  // 期限未確定（1回目の予約待ち）・回数消化済みの間は期限切れ・期限間近の警告を出さない
+  const isExpired = usage.isExpired && !usage.periodPending && !usage.consumed;
+  const isExpiringSoon = !usage.periodPending && !usage.consumed && daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
 
   return (
     <Card className={`border-l-4 ${isExpired ? "border-l-destructive bg-destructive/5" : isExpiringSoon ? "border-l-warning bg-warning/5" : "border-l-accent bg-accent/5"} ${className ?? ""}`}>
@@ -59,6 +59,15 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceE
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 shrink-0 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t("booking.periodPending")}</span>
+          </div>
+        ) : usage.consumed ? (
+          /* 回数消化済み: 期限が残っていても「残り◯日」は出さない。
+             サブスクは次回のトレーニングで新しい期間が始まる旨を案内する。 */
+          <div className="flex items-center gap-2">
+            <CalendarCheck className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              {usage.kind === "subscription" ? t("booking.periodConsumed") : t("booking.ticketUsedUp")}
+            </span>
           </div>
         ) : usage.windowStart && usage.windowEnd && (
           <div className="flex items-center gap-2">

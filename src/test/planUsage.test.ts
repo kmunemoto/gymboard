@@ -320,3 +320,63 @@ describe("実効サイクル（回数使い切り後の期限内スタートで�
     expect(usage.periodPending).toBe(false);
   });
 });
+
+describe("consumed（回数使い切り: 期限が残っていても『残り◯日』を出さない）", () => {
+  it("月4回・4/4消化・期限内（残り2日）は consumed=true（IMG_0857 のケース）", () => {
+    // 起算日6/13・月4回。6/13〜7/13 の窓で4回すべて消化。今日7/11＝残り2日。
+    const four = ["2026-06-13", "2026-06-20", "2026-06-27", "2026-07-04"].map((d) => b(`${d}T10:00:00+09:00`));
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-06-13" },
+      four,
+      toJSTDate("2026-07-11T12:00:00+09:00"),
+    );
+    expect(usage.remaining).toBe(0);
+    expect(usage.notStarted).toBe(false);
+    expect(usage.daysLeft).toBeGreaterThan(0); // 期限内（まだ日数が残っている）
+    expect(usage.consumed).toBe(true);
+  });
+
+  it("回数が残っていれば consumed=false（2/4消化）", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-06-13" },
+      ["2026-06-13", "2026-06-20"].map((d) => b(`${d}T10:00:00+09:00`)),
+      toJSTDate("2026-07-11T12:00:00+09:00"),
+    );
+    expect(usage.remaining).toBe(2);
+    expect(usage.consumed).toBe(false);
+  });
+
+  it("期間がまだ始まっていない（未来の予約のみ）なら consumed=false", () => {
+    // 予約が全て未来 → 期間未開始（notStarted）。この間は「消化済み」に含めない
+    // （これから来る予約があるため）。
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 2, validityDays: null, startDate: "2026-06-12" },
+      ["2026-07-12", "2026-07-19"].map((d) => b(`${d}T21:00:00+09:00`)),
+      toJSTDate("2026-07-05T12:00:00+09:00"),
+    );
+    expect(usage.notStarted).toBe(true);
+    expect(usage.consumed).toBe(false);
+  });
+
+  it("通い放題（無制限）は consumed=false", () => {
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: null, validityDays: null, startDate: "2026-06-13" },
+      ["2026-06-13", "2026-06-20"].map((d) => b(`${d}T10:00:00+09:00`)),
+      toJSTDate("2026-07-11T12:00:00+09:00"),
+    );
+    expect(usage.consumed).toBe(false);
+  });
+
+  it("回数券を使い切ったら consumed=true（有効期間が残っていても）", () => {
+    const ten = ["2026-06-21","2026-06-24","2026-06-27","2026-06-30","2026-07-03","2026-07-05","2026-07-06","2026-07-07","2026-07-08","2026-07-09"].map((d) => b(`${d}T10:00:00+09:00`));
+    const usage = computePlanUsage(
+      { planType: "ticket", maxSessions: 10, validityDays: 90, startDate: "2026-06-20" },
+      ten,
+      toJSTDate("2026-07-11T12:00:00+09:00"),
+    );
+    expect(usage.kind).toBe("ticket");
+    expect(usage.remaining).toBe(0);
+    expect(usage.consumed).toBe(true);
+    expect(usage.daysLeft).toBeGreaterThan(0); // 有効期間はまだ残っている
+  });
+});

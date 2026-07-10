@@ -29,6 +29,8 @@ export interface Profile {
 export interface ProfileWithBooking extends Profile {
   next_booking_date: string | null;
   next_booking_type: string | null;
+  /** 最終来店日（過去の非キャンセル予約のうち最新のもの）。来店実績が無ければ null。 */
+  last_visit_date: string | null;
   gender: "male" | "female" | null;
 }
 
@@ -204,19 +206,22 @@ export const useAllCustomerProfiles = () => {
     const genderMap: Record<string, "male" | "female" | null> = {};
     (avatarRows || []).forEach((r: any) => { genderMap[r.user_id] = r.gender ?? null; });
 
-    // Build next-booking map: nearest FUTURE booking per user
+    // 予約マップを構築（allBookings は booking_date 昇順）:
+    //  - nextBookingMap: 各ユーザーの「今後の最も近い予約」
+    //  - lastVisitMap: 各ユーザーの「最終来店日（過去の非キャンセル予約の最新）」。
+    //    昇順走査で過去分を上書きすると、最終値が最新の過去予約になる。
     const now = new Date();
     const nextBookingMap: Record<string, { booking_date: string; booking_type: string }> = {};
+    const lastVisitMap: Record<string, string> = {};
     allBookings?.forEach((b) => {
-      if (new Date(b.booking_date) > now && !nextBookingMap[b.user_id]) {
-        nextBookingMap[b.user_id] = { booking_date: b.booking_date, booking_type: b.booking_type };
+      if (new Date(b.booking_date) > now) {
+        if (!nextBookingMap[b.user_id]) {
+          nextBookingMap[b.user_id] = { booking_date: b.booking_date, booking_type: b.booking_type };
+        }
+      } else {
+        lastVisitMap[b.user_id] = b.booking_date;
       }
     });
-
-    // Debug logging
-    console.log("[顧客一覧] customerIds:", customerIds);
-    console.log("[顧客一覧] profiles:", profileData?.length, "bookings:", allBookings?.length);
-    console.log("[顧客一覧] nextBookingMap:", nextBookingMap);
 
     // Build profile map
     const profileMap = new Map<string, Profile>();
@@ -248,11 +253,11 @@ export const useAllCustomerProfiles = () => {
         updated_at: p?.updated_at || new Date().toISOString(),
         next_booking_date: nextBookingMap[uid]?.booking_date || null,
         next_booking_type: nextBookingMap[uid]?.booking_type || null,
+        last_visit_date: lastVisitMap[uid] ?? null,
         gender: genderMap[uid] ?? null,
       };
     });
 
-    console.log("[顧客一覧] merged result:", merged);
     setProfiles(merged);
     setLoading(false);
   }, []);

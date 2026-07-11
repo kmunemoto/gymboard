@@ -118,20 +118,24 @@ const TrialBooking = () => {
     });
   };
 
-  const isSlotWithin24Hours = (date: string, time: string): boolean => {
-    const slotInstant = new Date(`${date}T${time}:00+09:00`).getTime();
-    return slotInstant - Date.now() < 24 * 60 * 60 * 1000;
+  // 体験予約の締切は会員予約と同じ「前日まで」。予約日の0:00 JST を過ぎたら（＝当日以降）締切。
+  // 「満枠(予約済み)」とは別概念なので、表示側でラベルを出し分ける。
+  const isBookingDayClosed = (date: string): boolean => {
+    const bookingDayStart = new Date(`${date}T00:00:00+09:00`).getTime();
+    return Date.now() >= bookingDayStart;
   };
 
   const generateSlots = () => {
-    const slots: { id: string; time: string; available: boolean }[] = [];
+    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
+    // 締切は日単位（当日以降は全枠締切）。カレンダー側で当日以降は選べないため通常は発生しないが、
+    // 日付選択後に日付が変わった場合の保険として枠側でも判定する。
+    const tooSoon = isBookingDayClosed(dateKey);
     for (let totalMin = 600; totalMin <= 1260; totalMin += 15) {
       const h = Math.floor(totalMin / 60);
       const m = totalMin % 60;
       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
       const blocked = isSlotBlocked(dateKey, time);
-      const tooSoon = isSlotWithin24Hours(dateKey, time);
-      slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon });
+      slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon, blocked, tooSoon });
     }
     return slots;
   };
@@ -425,8 +429,8 @@ const TrialBooking = () => {
                 locale={ja}
                 disabled={(date) => {
                   const yyyyMMdd = format(date, "yyyy-MM-dd");
-                  const latestSlot = new Date(`${yyyyMMdd}T20:15:00+09:00`);
-                  if (latestSlot.getTime() - Date.now() < 24 * 60 * 60 * 1000) return true;
+                  // 前日まで: 予約日の0:00 JST を過ぎたら（＝当日・過去）選べない
+                  if (isBookingDayClosed(yyyyMMdd)) return true;
                   const maxDate = new Date();
                   maxDate.setDate(maxDate.getDate() + TRIAL_BOOKING_MAX_DAYS_AHEAD);
                   return date.getTime() > maxDate.getTime();
@@ -464,7 +468,9 @@ const TrialBooking = () => {
                   >
                     <span>{slot.time}</span>
                     {!slot.available && (
-                      <span className="block text-[9px] text-destructive/70 font-medium">{t("trialBooking.slotFull")}</span>
+                      <span className="block text-[9px] text-destructive/70 font-medium">
+                        {slot.blocked ? t("trialBooking.slotFull") : t("trialBooking.slotClosed")}
+                      </span>
                     )}
                     {selectedSlot === slot.id && (
                       <Check className="w-2.5 h-2.5 absolute top-0.5 right-0.5" />

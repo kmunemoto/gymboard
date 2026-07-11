@@ -412,7 +412,18 @@
     "history": "トレーニング履歴",
     "exerciseCount": "{{count}}種目",
     "createShareImage": "シェア画像を作成",
-    "repsSuffix": "回"
+    "repsSuffix": "回",
+    "editAria": "記録を編集",
+    "editTitle": "記録を編集",
+    "editSubtitle": "重量・回数を修正できます",
+    "editWeight": "重量(kg)",
+    "editReps": "回数",
+    "setNum": "{{n}}セット目",
+    "addSet": "セットを追加",
+    "editSave": "保存する",
+    "editSaved": "記録を更新しました",
+    "editError": "更新に失敗しました。時間をおいて再度お試しください。",
+    "editNeedOneSet": "重量と回数を1セット以上入力してください"
   },
   "meals": {
     "title": "食事管理",

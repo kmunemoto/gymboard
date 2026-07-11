@@ -412,7 +412,18 @@
     "history": "Training History",
     "exerciseCount": "{{count}} exercises",
     "createShareImage": "Create share image",
-    "repsSuffix": "reps"
+    "repsSuffix": "reps",
+    "editAria": "Edit record",
+    "editTitle": "Edit record",
+    "editSubtitle": "You can fix the weight and reps",
+    "editWeight": "Weight (kg)",
+    "editReps": "Reps",
+    "setNum": "Set {{n}}",
+    "addSet": "Add set",
+    "editSave": "Save",
+    "editSaved": "Record updated",
+    "editError": "Failed to update. Please try again later.",
+    "editNeedOneSet": "Enter weight and reps for at least one set"
   },
   "meals": {
     "title": "Meal Tracking",

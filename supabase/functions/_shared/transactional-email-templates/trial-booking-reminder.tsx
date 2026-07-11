@@ -41,7 +41,7 @@ const TrialBookingReminderEmail = ({
       <meta charSet="UTF-8" />
       <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
     </Head>
-    <Preview>明日のご予約のお知らせ — {SITE_NAME}</Preview>
+    
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>明日のご予約のお知らせ</Heading>

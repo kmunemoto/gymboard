@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, CalendarX, AlertCircle } from "lucide-react";
+import { CalendarDays, Clock, Check, AlertCircle, CalendarClock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,10 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface BookingSummary {
   guestName: string;
+  guestContact?: string | null;
   gymName: string;
   logoUrl?: string | null;
+  tenantId?: string | null;
   date: string;
   time: string;
   alreadyCancelled: boolean;
@@ -23,11 +25,15 @@ type Phase = "loading" | "confirm" | "cancelling" | "done" | "past" | "error";
 const TrialCancel = () => {
   const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>("loading");
   const [summary, setSummary] = useState<BookingSummary | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   // 完了画面の見出しを「キャンセルしました」と「すでにキャンセル済み」で出し分ける
   const [wasAlready, setWasAlready] = useState(false);
+  // 日程変更ボタン専用のローディング状態（キャンセルボタンの cancelling とは別に管理し、
+  // どちらを押したかに応じて片方だけスピナー表示にする）
+  const [rescheduling, setRescheduling] = useState(false);
 
   const loadInfo = useCallback(async () => {
     if (!token) {
@@ -89,6 +95,38 @@ const TrialCancel = () => {
       console.error("Trial cancel failed:", e);
       setErrorMsg(t("trialCancel.errGeneric"));
       setPhase("confirm");
+    }
+  };
+
+  // 「日程を変更する」: 今の予約枠を解放（キャンセル）しつつ、同じジムの予約ページへ
+  // 氏名・メールを引き継いで遷移する。キャンセルボタンより先に選べる主要導線にすることで、
+  // 「行けない＝キャンセル」ではなく「日時を変えれば行ける」を最初に提示する。
+  const handleReschedule = async () => {
+    if (!token || !summary) return;
+    setErrorMsg("");
+    setRescheduling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("trial-cancel", {
+        body: { token, action: "cancel" },
+      });
+      const result = data as { ok?: boolean; error?: string; booking?: BookingSummary } | null;
+      if (error || !result?.ok) {
+        setErrorMsg(result?.error || t("trialCancel.errGeneric"));
+        setRescheduling(false);
+        return;
+      }
+      const tenantId = result.booking?.tenantId || summary.tenantId;
+      const params = new URLSearchParams();
+      if (summary.guestName) params.set("name", summary.guestName);
+      if (summary.guestContact) params.set("email", summary.guestContact);
+      const query = params.toString();
+      // tenantId が取れない場合でも遷移自体は失敗させない（/trial は既定ジムにフォールバックする）
+      const path = tenantId ? `/trial/${tenantId}` : "/trial";
+      navigate(`${path}${query ? `?${query}` : ""}`);
+    } catch (e) {
+      console.error("Trial reschedule (cancel step) failed:", e);
+      setErrorMsg(t("trialCancel.errGeneric"));
+      setRescheduling(false);
     }
   };
 
@@ -187,10 +225,11 @@ const TrialCancel = () => {
   }
 
   // phase === "confirm" | "cancelling"
+  const busy = phase === "cancelling" || rescheduling;
   return (
     <Shell>
-      <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-        <CalendarX className="w-8 h-8 text-destructive" />
+      <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
+        <CalendarClock className="w-8 h-8 text-accent" />
       </div>
       <div>
         <h1 className="text-xl font-bold">{t("trialCancel.confirmTitle")}</h1>
@@ -212,18 +251,30 @@ const TrialCancel = () => {
 
       {errorMsg && <p className="text-xs text-destructive">{errorMsg}</p>}
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <Button
-          variant="destructive"
           size="lg"
           className="w-full"
-          onClick={handleCancel}
-          disabled={phase === "cancelling"}
+          onClick={handleReschedule}
+          disabled={busy}
         >
-          {phase === "cancelling" ? <DumbbellLoader className="w-4 h-4 mr-2" /> : null}
-          {t("trialCancel.confirmButton")}
+          {rescheduling ? <DumbbellLoader className="w-4 h-4 mr-2" /> : <CalendarClock className="w-4 h-4 mr-1.5" />}
+          {t("trialCancel.rescheduleButton")}
         </Button>
-        <p className="text-xs text-muted-foreground">{t("trialCancel.keepNote")}</p>
+
+        <div className="space-y-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            onClick={handleCancel}
+            disabled={busy}
+          >
+            {phase === "cancelling" ? <DumbbellLoader className="w-4 h-4 mr-2" /> : null}
+            {t("trialCancel.confirmButton")}
+          </Button>
+          <p className="text-xs text-muted-foreground">{t("trialCancel.keepNote")}</p>
+        </div>
       </div>
 
       <GymFooter />

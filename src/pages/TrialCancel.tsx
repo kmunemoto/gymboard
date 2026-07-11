@@ -156,7 +156,7 @@ const TrialCancel = () => {
   if (phase === "loading") {
     return (
       <Shell>
-        <DumbbellLoader className="w-8 h-8 text-muted-foreground mx-auto" />
+        <DumbbellLoader className="w-16 h-16 text-muted-foreground mx-auto" />
         <p className="text-sm text-muted-foreground">{t("trialCancel.loading")}</p>
       </Shell>
     );

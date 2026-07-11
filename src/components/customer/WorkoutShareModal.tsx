@@ -714,7 +714,7 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
             color: "#fff",
           }}
         >
-          <DumbbellLoader className="w-8 h-8 text-accent" />
+          <DumbbellLoader className="w-16 h-16 text-accent" />
           <p className="text-sm font-bold">{t("workoutShare.generating")}</p>
         </div>
       )}

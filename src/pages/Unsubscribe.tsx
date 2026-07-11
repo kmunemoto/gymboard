@@ -49,7 +49,7 @@ const Unsubscribe = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardContent className="p-8 text-center space-y-4">
-          {status === "loading" && <DumbbellLoader className="w-8 h-8 mx-auto text-muted-foreground" />}
+          {status === "loading" && <DumbbellLoader className="w-16 h-16 mx-auto text-muted-foreground" />}
           {status === "valid" && (
             <>
               <MailX className="w-10 h-10 mx-auto text-muted-foreground" />

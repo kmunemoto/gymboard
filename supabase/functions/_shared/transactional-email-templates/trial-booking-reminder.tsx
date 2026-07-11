@@ -6,22 +6,30 @@ import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = "パーソナルジムSalute御所南"
 const SITE_URL = "https://app.kyoto-salute.com"
-// 住所は「1 行の生バイト長 < 20」に収まる短い塊に分割する。
-// email-encoding.ts の wrapEmailHtml が 20B 超で <!--\n--> を注入し、
-// Gmail iOS ダークモード等で豆腐化する事象を避けるため。
-const ADDRESS_LINES = [
-  '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A',              // 京都市中京区
-  '\u6BD8\u6C99\u9580\u753A533-1',                      // 毘沙門町533-1
-  '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357 2\u968E',       // プラザ御所南 2階
-]
+
+// react-email の renderAsync が UTF-8 チャンク境界でマルチバイト文字を分断し
+// U+FFFD 化する既知の症状を回避するため、住所と店舗名は ASCII 数値文字参照で描画する。
+const toHtmlEntities = (s: string): string =>
+  Array.from(s).map((ch) => {
+    const cp = ch.codePointAt(0)!
+    return cp > 0x7f ? `&#${cp};` : ch
+  }).join('')
+
+const SITE_NAME_HTML = toHtmlEntities(SITE_NAME)
+const ADDRESS_LINES_HTML = [
+  '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A',        // 京都市中京区
+  '\u6BD8\u6C99\u9580\u753A533-1',                // 毘沙門町533-1
+  '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357 2\u968E', // プラザ御所南 2階
+].map(toHtmlEntities)
 
 const AddressBlock = ({ style }: { style: React.CSSProperties }) => (
   <>
-    {ADDRESS_LINES.map((line, i) => (
-      <Text key={i} style={style}>{line}</Text>
+    {ADDRESS_LINES_HTML.map((line, i) => (
+      <Text key={i} style={style} dangerouslySetInnerHTML={{ __html: line }} />
     ))}
   </>
 )
+
 
 interface Props {
   guestName?: string

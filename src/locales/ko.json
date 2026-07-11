@@ -364,6 +364,7 @@
     "repeatTitle": "반복 예약",
     "repeatOnce": "이번만",
     "repeatTimes": "{{count}}회분",
+    "repeatLimitedByWindow": "예약 가능 기간(최대 1개월 전까지)의 제약으로 선택할 수 있는 횟수가 제한됩니다",
     "repeatWeeklyDesc": "매주 같은 요일·시간으로 {{count}}회분을 한 번에 예약합니다 (만석인 주는 건너뜀)",
     "confirmRepeatBooking": "매주 ×{{count}}회 예약하기",
     "repeatResult": "{{count}}건의 예약을 생성했습니다",

@@ -364,6 +364,7 @@
     "repeatTitle": "重复预约",
     "repeatOnce": "仅此一次",
     "repeatTimes": "{{count}}次",
+    "repeatLimitedByWindow": "由于可预约期间（最长1个月内）的限制，可选次数受限",
     "repeatWeeklyDesc": "每周同一星期几·同一时间连续预约{{count}}次（已满的周将跳过）",
     "confirmRepeatBooking": "每周预约 ×{{count}}次",
     "repeatResult": "已创建{{count}}个预约",

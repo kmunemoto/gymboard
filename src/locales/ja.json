@@ -364,6 +364,7 @@
     "repeatTitle": "くり返し予約",
     "repeatOnce": "この回のみ",
     "repeatTimes": "{{count}}回分",
+    "repeatLimitedByWindow": "予約可能期間（1ヶ月先まで）の関係で、選べる回数が制限されています",
     "repeatWeeklyDesc": "毎週同じ曜日・時間で{{count}}回分をまとめて予約します（満枠の週はスキップ）",
     "confirmRepeatBooking": "毎週×{{count}}回で予約する",
     "repeatResult": "{{count}}件の予約を作成しました",

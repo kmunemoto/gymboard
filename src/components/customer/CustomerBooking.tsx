@@ -17,6 +17,7 @@ import { sendBookingNotification } from "@/lib/bookingNotification";
 import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
+import { maxRepeatWeeksFor } from "@/lib/repeatBookingWindow";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import PlanUsageCard from "./PlanUsageCard";
 import { formatDate } from "@/lib/dateFormat";
@@ -234,10 +235,13 @@ const CustomerBooking = () => {
 
     // 定期予約: repeatWeeks > 1 なら毎週同じ曜日・時間でまとめて作成。
     // 満枠の週はスキップされる（結果はトーストで通知）。
+    // 念のため、予約可能期間（1ヶ月先まで）を超える回数が紛れ込んでいないか送信直前にも
+    // 絞り込む（UI側の自動絞り込みと合わせた二重防御。日付選択後に日をまたいだ等のケース向け）。
+    const effectiveRepeatWeeks = Math.min(repeatWeeks, maxRepeatWeeksFor(selectedDate));
     let firstBooking: { id: string; date: string };
-    if (repeatWeeks > 1) {
+    if (effectiveRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
-        user.id, dateKey, slot.time, selectedPlan, repeatWeeks,
+        user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks,
       );
       if (booked.length === 0) {
         toast.error(t("booking.errorBookingFailed"));
@@ -640,6 +644,10 @@ const CustomerBooking = () => {
                           .join("、");
                         toast.info(t("booking.alreadyBookedThisDay", { times }));
                       }
+                      // 定期予約の回数が、新しく選んだ日の予約可能期間（1ヶ月先まで）に
+                      // 収まらなくなった場合は、選べる上限まで自動的に絞り込む。
+                      const cap = maxRepeatWeeksFor(d);
+                      if (repeatWeeks > cap) setRepeatWeeks(cap);
                     }
                     setSelectedDate(d);
                     setSelectedSlot(null);
@@ -799,7 +807,10 @@ const CustomerBooking = () => {
                       （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
                     {/* 定期予約: 毎週同じ曜日・時間でまとめて予約（変更モードでは非表示） */}
-                    {!rescheduleTarget && (
+                    {!rescheduleTarget && selectedDate && (() => {
+                      // 選択中の日から、予約可能期間（1ヶ月先まで）に収まる回数の上限
+                      const repeatCap = maxRepeatWeeksFor(selectedDate);
+                      return (
                       <div className="mb-3 text-left">
                         <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
                           <Repeat className="w-3 h-3" />
@@ -812,23 +823,32 @@ const CustomerBooking = () => {
                               type="button"
                               onClick={() => setRepeatWeeks(n)}
                               aria-pressed={repeatWeeks === n}
+                              disabled={n > repeatCap}
                               className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                repeatWeeks === n
-                                  ? "bg-accent text-accent-foreground shadow-sm"
-                                  : "bg-secondary text-muted-foreground hover:text-foreground"
+                                n > repeatCap
+                                  ? "bg-secondary/50 text-muted-foreground/40 cursor-not-allowed"
+                                  : repeatWeeks === n
+                                    ? "bg-accent text-accent-foreground shadow-sm"
+                                    : "bg-secondary text-muted-foreground hover:text-foreground"
                               }`}
                             >
                               {n === 1 ? t("booking.repeatOnce") : t("booking.repeatTimes", { count: n })}
                             </button>
                           ))}
                         </div>
+                        {repeatCap < 4 && (
+                          <p className="text-[11px] text-muted-foreground mt-1.5">
+                            {t("booking.repeatLimitedByWindow")}
+                          </p>
+                        )}
                         {repeatWeeks > 1 && (
                           <p className="text-[11px] text-muted-foreground mt-1.5">
                             {t("booking.repeatWeeklyDesc", { count: repeatWeeks })}
                           </p>
                         )}
                       </div>
-                    )}
+                      );
+                    })()}
                     <Button
                       variant="accent"
                       size="lg"

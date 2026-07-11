@@ -57,7 +57,7 @@ const TrialBooking = () => {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string; cancelUrl?: string } | null>(null);
+  const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string } | null>(null);
   const [existingBookings, setExistingBookings] = useState<TrialSlotBooking[]>([]);
 
   useEffect(() => {
@@ -167,7 +167,7 @@ const TrialBooking = () => {
 
     // 予約作成と通知 (確認メール・トレーナー通知・カレンダー登録) はサーバー側の
     // trial-book で完結する。業務上の拒否は 200 + {ok:false, error} で返る。
-    let cancelUrl: string | undefined;
+    // 日程変更・キャンセルの導線は確認メール側にあるため、完了画面では持たない。
     try {
       const { data, error } = await supabase.functions.invoke("trial-book", {
         body: {
@@ -177,7 +177,7 @@ const TrialBooking = () => {
           booking_date: bookingDate,
         },
       });
-      const result = data as { ok?: boolean; error?: string; code?: string; cancel_url?: string } | null;
+      const result = data as { ok?: boolean; error?: string; code?: string } | null;
       if (error || !result?.ok) {
         console.error("Trial booking failed:", error ?? result);
         toast.error(result?.error || t("trialBooking.errBookingFailed"));
@@ -188,7 +188,6 @@ const TrialBooking = () => {
         setSubmitting(false);
         return;
       }
-      cancelUrl = result.cancel_url;
     } catch (error) {
       console.error("Trial booking failed:", error);
       toast.error(t("trialBooking.errBookingFailed"));
@@ -206,7 +205,6 @@ const TrialBooking = () => {
       rawDate: dateKey,
       rawStartTime: slot.time,
       rawEndTime: endTime,
-      cancelUrl,
     });
     setCompleted(true);
     setSubmitting(false);
@@ -305,17 +303,6 @@ const TrialBooking = () => {
             <div className="text-xs text-muted-foreground space-y-1">
               <p>{t("trialBooking.noteContact")}</p>
             </div>
-            {completedInfo.cancelUrl && (
-              <p className="text-xs text-muted-foreground">
-                {t("trialBooking.cancelLead")}{" "}
-                <a
-                  href={completedInfo.cancelUrl}
-                  className="text-accent underline font-medium"
-                >
-                  {t("trialBooking.cancelLink")}
-                </a>
-              </p>
-            )}
             <div className="flex justify-center items-center pt-2">
               {tenant?.logo_url ? (
                 <img

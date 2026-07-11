@@ -1446,9 +1446,7 @@
     "notifTrainerSubject": "{{name}} (Free First Trial)",
     "trialPlanName": "Free First Trial",
     "pushTitle": "Trial booking request",
-    "pushBody": "{{name}} has requested a free first trial",
-    "cancelLead": "If your plans change,",
-    "cancelLink": "you can change the date or cancel here"
+    "pushBody": "{{name}} has requested a free first trial"
   },
   "trialCancel": {
     "loading": "Checking your booking...",

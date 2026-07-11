@@ -1446,9 +1446,7 @@
     "notifTrainerSubject": "{{name}}（首次免費體驗）",
     "trialPlanName": "首次免費體驗",
     "pushTitle": "首次體驗申請",
-    "pushBody": "{{name}} 申請了首次免費體驗",
-    "cancelLead": "如果您的安排有變，",
-    "cancelLink": "可在此更改日期或取消"
+    "pushBody": "{{name}} 申請了首次免費體驗"
   },
   "trialCancel": {
     "loading": "正在確認您的預約...",

@@ -1446,9 +1446,7 @@
     "notifTrainerSubject": "{{name}}（初回無料体験）",
     "trialPlanName": "初回無料体験",
     "pushTitle": "初回体験の申し込み",
-    "pushBody": "{{name}}さんから初回無料体験のお申し込みがありました",
-    "cancelLead": "ご都合が悪くなった場合は",
-    "cancelLink": "こちらから日程変更・キャンセルができます"
+    "pushBody": "{{name}}さんから初回無料体験のお申し込みがありました"
   },
   "trialCancel": {
     "loading": "予約内容を確認しています...",

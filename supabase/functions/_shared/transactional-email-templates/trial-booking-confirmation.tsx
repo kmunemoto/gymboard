@@ -42,7 +42,6 @@ const TrialBookingConfirmationEmail = ({
       <meta charSet="UTF-8" />
       <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
     </Head>
-    <Preview>初回無料体験のご予約を承りました — {SITE_NAME}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>初回無料体験のご予約を承りました</Heading>

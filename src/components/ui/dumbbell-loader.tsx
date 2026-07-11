@@ -3,12 +3,15 @@ import worldCupTrophy from "@/assets/world-cup-trophy.png";
 
 type SizeKey = "xs" | "sm" | "md" | "lg" | "xl";
 
-const SIZE_MAP: Record<SizeKey, number> = {
-  xs: 12,
-  sm: 16,
-  md: 24,
-  lg: 32,
-  xl: 48,
+// Tailwind classes (not px numbers) so tailwind-merge can let a caller's own
+// w-N h-N in className win over the preset — every current call site sizes
+// via className, not the size prop.
+const SIZE_CLASS_MAP: Record<SizeKey, string> = {
+  xs: "w-3 h-3",
+  sm: "w-4 h-4",
+  md: "w-6 h-6",
+  lg: "w-8 h-8",
+  xl: "w-12 h-12",
 };
 
 interface DumbbellLoaderProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "size"> {
@@ -18,13 +21,14 @@ interface DumbbellLoaderProps extends Omit<React.ImgHTMLAttributes<HTMLImageElem
 }
 
 /**
- * Unified app loader: a rotating trophy image (transparent PNG, not a Lucide
- * icon — the trophy shape isn't square, so object-contain keeps it from
- * stretching inside callers' square w-N h-N boxes).
- * - Rotation: ~1.2s per turn (linear, infinite)
+ * Unified app loader: a trophy image that rises up from below, holds, and
+ * sinks back down on a loop — stays upright (no rotation). The outer span is
+ * a fixed-size, overflow-hidden "stage" so the rise/sink motion clips inside
+ * the caller's box instead of spilling into surrounding inline content.
+ * - Cycle: ~1.6s (ease-in-out, infinite)
  * - Accepts size preset (xs/sm/md/lg/xl) or numeric px.
- * - Forwards className so layout classes (mr-2, etc.) keep working when
- *   used as a drop-in replacement for Loader2.
+ * - className lands on the outer span, so layout classes (mr-2, etc.) keep
+ *   working when used as a drop-in replacement for Loader2.
  */
 export const DumbbellLoader = ({
   size = "md",
@@ -32,20 +36,21 @@ export const DumbbellLoader = ({
   className,
   ...props
 }: DumbbellLoaderProps) => {
-  const pixelSize = typeof size === "number" ? size : SIZE_MAP[size];
+  const sizeClass = typeof size === "number" ? undefined : SIZE_CLASS_MAP[size];
+  const sizeStyle = typeof size === "number" ? { width: size, height: size } : undefined;
 
   const icon = (
-    <img
-      src={worldCupTrophy}
-      alt=""
-      width={pixelSize}
-      height={pixelSize}
-      className={cn(
-        "object-contain animate-[spin_1.2s_linear_infinite]",
-        className
-      )}
-      {...props}
-    />
+    <span
+      className={cn("relative inline-block align-middle overflow-hidden", sizeClass, className)}
+      style={sizeStyle}
+    >
+      <img
+        src={worldCupTrophy}
+        alt=""
+        className="absolute inset-0 w-full h-full object-contain animate-loader-rise"
+        {...props}
+      />
+    </span>
   );
 
   if (!label) return icon;

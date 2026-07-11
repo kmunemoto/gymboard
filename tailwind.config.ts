@@ -92,10 +92,15 @@ export default {
             height: "0",
           },
         },
+        "loader-rise": {
+          "0%, 100%": { transform: "translateY(65%)", opacity: "0" },
+          "30%, 70%": { transform: "translateY(0%)", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "loader-rise": "loader-rise 1.6s ease-in-out infinite",
       },
     },
   },

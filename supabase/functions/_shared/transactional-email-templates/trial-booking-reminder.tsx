@@ -101,7 +101,7 @@ const TrialBookingReminderEmail = ({
         <Hr style={hr} />
         <Text style={text}>お会いできることを楽しみにしております！</Text>
         <Hr style={hr} />
-        <Text style={footer}>{SITE_NAME}</Text>
+        <Text style={footer} dangerouslySetInnerHTML={{ __html: SITE_NAME_HTML }} />
         <Text style={footer}>〒604-0981</Text>
         <AddressBlock style={footer} />
         <Link href={SITE_URL} style={footerLink}>{SITE_URL}</Link>

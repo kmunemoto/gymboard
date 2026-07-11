@@ -30,7 +30,7 @@ const queryClient = new QueryClient();
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center">
-    <DumbbellLoader className="w-8 h-8 text-muted-foreground" />
+    <DumbbellLoader className="w-16 h-16 text-muted-foreground" />
   </div>
 );
 

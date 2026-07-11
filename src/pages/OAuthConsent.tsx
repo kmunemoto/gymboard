@@ -104,7 +104,7 @@ export default function OAuthConsent() {
   if (!details) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <DumbbellLoader className="w-8 h-8 text-accent" />
+        <DumbbellLoader className="w-16 h-16 text-accent" />
       </div>
     );
   }

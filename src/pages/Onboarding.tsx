@@ -199,7 +199,7 @@ const Onboarding = () => {
   if (authLoading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <DumbbellLoader className="w-8 h-8 text-accent" />
+        <DumbbellLoader className="w-16 h-16 text-accent" />
       </div>
     );
   }

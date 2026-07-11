@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Html, Preview, Text, Hr, Section, Link, Button,
+  Body, Container, Head, Heading, Html, Text, Hr, Section, Link, Button,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -42,7 +42,6 @@ const TrialBookingConfirmationEmail = ({
       <meta charSet="UTF-8" />
       <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
     </Head>
-    <Preview>初回無料体験のご予約を承りました — {SITE_NAME}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>初回無料体験のご予約を承りました</Heading>

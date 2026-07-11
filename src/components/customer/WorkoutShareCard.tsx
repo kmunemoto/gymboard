@@ -4,6 +4,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";
 import { ACHIEVEMENTS } from "@/lib/avatarSystem";
 import { getAchievementIconComponent } from "./BadgeIcon";
+import { POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 
 export type ShareTheme = "dark" | "light" | "transparent";
 
@@ -221,6 +222,21 @@ const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
             </div>
           </div>
         </div>
+
+        {/* 集客導線: SNS投稿を見た人（他ジムのオーナー含む）への控えめな入口 */}
+        {POWERED_BY_GYMBOARD_ENABLED && (
+          <div
+            style={{
+              marginTop: 26,
+              fontSize: 17,
+              letterSpacing: "0.14em",
+              color: subtleColor,
+              fontWeight: 300,
+            }}
+          >
+            {POWERED_BY_GYMBOARD}
+          </div>
+        )}
       </div>
     );
   }

@@ -1448,7 +1448,7 @@
     "pushTitle": "Trial booking request",
     "pushBody": "{{name}} has requested a free first trial",
     "cancelLead": "If your plans change,",
-    "cancelLink": "you can cancel here"
+    "cancelLink": "you can change the date or cancel here"
   },
   "trialCancel": {
     "loading": "Checking your booking...",

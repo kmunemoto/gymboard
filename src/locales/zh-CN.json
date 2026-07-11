@@ -412,7 +412,18 @@
     "history": "训练历史",
     "exerciseCount": "{{count}}个项目",
     "createShareImage": "创建分享图片",
-    "repsSuffix": "次"
+    "repsSuffix": "次",
+    "editAria": "编辑记录",
+    "editTitle": "编辑记录",
+    "editSubtitle": "可以修改重量・次数",
+    "editWeight": "重量(kg)",
+    "editReps": "次数",
+    "setNum": "第{{n}}组",
+    "addSet": "添加组",
+    "editSave": "保存",
+    "editSaved": "记录已更新",
+    "editError": "更新失败，请稍后再试。",
+    "editNeedOneSet": "请至少输入一组的重量和次数"
   },
   "meals": {
     "title": "饮食管理",

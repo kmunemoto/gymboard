@@ -412,7 +412,18 @@
     "history": "訓練歷史",
     "exerciseCount": "{{count}}個項目",
     "createShareImage": "建立分享圖片",
-    "repsSuffix": "次"
+    "repsSuffix": "次",
+    "editAria": "編輯紀錄",
+    "editTitle": "編輯紀錄",
+    "editSubtitle": "可以修改重量・次數",
+    "editWeight": "重量(kg)",
+    "editReps": "次數",
+    "setNum": "第{{n}}組",
+    "addSet": "新增組",
+    "editSave": "儲存",
+    "editSaved": "紀錄已更新",
+    "editError": "更新失敗，請稍後再試。",
+    "editNeedOneSet": "請至少輸入一組的重量和次數"
   },
   "meals": {
     "title": "飲食管理",

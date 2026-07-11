@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Dumbbell, TrendingUp, Calendar, Share2, Camera } from "lucide-react";
+import { Dumbbell, TrendingUp, Calendar, Share2, Camera, Pencil } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStreak } from "@/hooks/useStreak";
 import WorkoutShareModal from "./WorkoutShareModal";
+import WorkoutEditModal, { type EditableSet } from "./WorkoutEditModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import MuscleGroupBadge from "./MuscleGroupBadge";
 import { summarizeMuscleGroups, subscribeMuscleGroup, loadMuscleGroupMap } from "@/lib/muscleGroup";
@@ -57,6 +58,7 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
   const [workouts, setWorkouts] = useState<WorkoutWithExercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [shareDate, setShareDate] = useState<string | null>(null);
+  const [editingWorkout, setEditingWorkout] = useState<WorkoutWithExercise | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const { currentStreak } = useStreak(user?.id);
   const [, forceMg] = useState(0);
@@ -164,6 +166,11 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
     if (!shareDate) return null;
     return buildSession(rawWorkoutsForShare, shareDate);
   }, [shareDate, rawWorkoutsForShare]);
+
+  // 記録編集の保存後、ローカルの workouts を更新する（グラフ・履歴・部位バランスが即反映される）。
+  const handleWorkoutSaved = (id: string, newSets: EditableSet[], weight: number | null, reps: number | null) => {
+    setWorkouts((prev) => prev.map((w) => (w.id === id ? { ...w, sets: newSets, weight, reps } : w)));
+  };
 
   if (loading) {
     return (
@@ -323,6 +330,13 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-medium truncate">{r.exercise_name}</span>
                                   <MuscleGroupBadge exerciseName={r.exercise_name} />
+                                  <button
+                                    onClick={() => setEditingWorkout(r)}
+                                    className="ml-auto shrink-0 w-7 h-7 rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 flex items-center justify-center transition"
+                                    aria-label={t('training.editAria')}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                                 <div className="mt-1 space-y-0.5 pl-1">
                                   {setsData.map((s, si) => (
@@ -366,6 +380,13 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
         session={shareSession}
         streakWeeks={currentStreak}
         totalSessions={totalSessions}
+      />
+
+      <WorkoutEditModal
+        workout={editingWorkout}
+        open={!!editingWorkout}
+        onClose={() => setEditingWorkout(null)}
+        onSaved={handleWorkoutSaved}
       />
     </div>
   );

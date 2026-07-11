@@ -412,7 +412,18 @@
     "history": "트레이닝 이력",
     "exerciseCount": "{{count}}종목",
     "createShareImage": "공유 이미지 만들기",
-    "repsSuffix": "회"
+    "repsSuffix": "회",
+    "editAria": "기록 편집",
+    "editTitle": "기록 편집",
+    "editSubtitle": "무게・횟수를 수정할 수 있습니다",
+    "editWeight": "무게(kg)",
+    "editReps": "횟수",
+    "setNum": "{{n}}세트째",
+    "addSet": "세트 추가",
+    "editSave": "저장하기",
+    "editSaved": "기록을 수정했습니다",
+    "editError": "수정에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "editNeedOneSet": "무게와 횟수를 한 세트 이상 입력해 주세요"
   },
   "meals": {
     "title": "식사 관리",

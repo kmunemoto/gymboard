@@ -1448,7 +1448,7 @@
     "pushTitle": "首次体验申请",
     "pushBody": "{{name}} 申请了首次免费体验",
     "cancelLead": "如果您的安排有变，",
-    "cancelLink": "可在此取消"
+    "cancelLink": "可在此更改日期或取消"
   },
   "trialCancel": {
     "loading": "正在确认您的预约...",

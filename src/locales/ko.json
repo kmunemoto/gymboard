@@ -1448,7 +1448,7 @@
     "pushTitle": "첫 체험 신청",
     "pushBody": "{{name}}님이 첫 무료 체험을 신청했습니다",
     "cancelLead": "일정이 바뀌셨다면",
-    "cancelLink": "여기에서 취소하실 수 있습니다"
+    "cancelLink": "여기에서 날짜 변경・취소가 가능합니다"
   },
   "trialCancel": {
     "loading": "예약 내용을 확인하고 있습니다...",

@@ -1448,7 +1448,7 @@
     "pushTitle": "初回体験の申し込み",
     "pushBody": "{{name}}さんから初回無料体験のお申し込みがありました",
     "cancelLead": "ご都合が悪くなった場合は",
-    "cancelLink": "こちらからキャンセルできます"
+    "cancelLink": "こちらから日程変更・キャンセルができます"
   },
   "trialCancel": {
     "loading": "予約内容を確認しています...",

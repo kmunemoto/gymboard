@@ -17,7 +17,9 @@
   旧 `get_booked_slots(check_date)` は全テナント横断のため公開ページでは使わない。
 - **予約作成**: エッジ関数 `trial-book` (verify_jwt=false)。
   POST `{ tenant_id, guest_name, guest_contact, booking_date }`。
-  - 検証: テナント実在(active/trial)、メール形式、23時間前〜32日先、10:00〜21:00開始・15分刻み
+  - 検証: テナント実在(active/trial)、メール形式、**前日まで**（予約日JST0:00を過ぎたら締切。
+    会員予約と統一。旧: 24時間前まで）〜**10日先まで**（旧: 1ヶ月先まで。当日キャンセル対策で短縮）、
+    10:00〜21:00開始・15分刻み
   - 連続予約ガード: 同一メール 24時間 3件まで
   - 重複: BEFORE INSERT `check_booking_overlap` トリガー (テナント内で判定)
   - status は DB デフォルト `'予約済み'` → `send-trial-reminders` の前日リマインド対象になる
@@ -31,6 +33,25 @@
 トレーナーが GymBoard で体験予約をキャンセル (`useBookings.ts` の soft-cancel で
 status='キャンセル済み') すると、空き枠計算は GymBoard 自身のデータなので即時解放される。
 同期は不要になった。
+
+### お客様側のキャンセル導線（2026-07: セルフキャンセル→メール連絡に戻した）
+
+- 2026-07 に一度、お客様が自分でキャンセルできるセルフキャンセル機能を追加した
+  (`trial_bookings.cancel_token` + エッジ関数 `supabase/functions/trial-cancel` +
+  ページ `src/pages/TrialCancel.tsx` @ `/trial-cancel/:token`)。確認メール・前日リマインド
+  メールにキャンセル用ボタン/リンクを載せ、完了画面にも導線を出していた。
+- 同月中に方針転換し、**メール連絡への一本化に戻した**（オーナーの意向）。
+  - 完了画面 (`TrialBooking.tsx`) からリンクを削除済み。
+  - 確認メール (`trial-booking-confirmation.tsx`) ・前日リマインド (`trial-booking-reminder.tsx`)
+    は `trial-book` / `send-trial-reminders` が **`cancelUrl` を渡さなくなった**ため、
+    テンプレート内の `cancelUrl ? <ボタン> : <メール連絡案内>` 分岐が常に後者
+    （`k.munemoto@kyoto-salute.com` 宛のメール連絡案内）を描画する。
+  - `cancel_token` の生成・`/trial-cancel/:token` ページ・エッジ関数自体は**削除していない**
+    （存置）。理由: (1) 既に送信済みの旧メールに残っているキャンセルリンクを壊さないため、
+    (2) この方針は同一セッション内で何度か再検討されており、再度セルフキャンセルに戻す
+    可能性があるため、テンプレート側の分岐も含めてすぐ有効化できる状態を保っている。
+  - 再度有効化する場合: `trial-book` / `send-trial-reminders` で `cancelUrl` を組み立てて
+    `templateData` に渡すよう戻すだけでよい（テンプレート・ページ・エッジ関数は変更不要）。
 
 ## 旧 Salute 連携 (参考: 廃止経緯)
 

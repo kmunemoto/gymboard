@@ -7,7 +7,8 @@ import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from '../_shared/email-encoding
 // この関数は _shared/transactional-email-templates のメールテンプレートを
 // デプロイ時にバンドルする。テンプレートを更新したら、必ず本関数を再デプロイして
 // 再バンドルすること（共有ファイルだけ変えても本関数の再デプロイが無いと反映されない）。
-// 2026-07: 体験予約メールにお客様セルフキャンセルのボタンを追加（cancelUrl）。
+// 2026-07: 体験予約メールにお客様セルフキャンセルのボタンを追加（cancelUrl）→ 同月中に廃止し、
+// メール連絡（k.munemoto@kyoto-salute.com）への一本化に戻した。テンプレート側の分岐は残置。
 
 // Configuration baked in at scaffold time — do NOT change these manually.
 // To update, re-run the email domain setup flow.

@@ -87,9 +87,8 @@ Deno.serve(async (req) => {
           guestName: booking.guest_name,
           bookingDate: dateStr,
           bookingTime: timeStr,
-          cancelUrl: booking.cancel_token
-            ? `https://app.kyoto-salute.com/trial-cancel/${booking.cancel_token}`
-            : undefined,
+          // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
+          // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
         },
       },
     })

@@ -203,9 +203,10 @@ Deno.serve(async (req) => {
       return fail("insert", msg);
     }
     const trialBookingId = inserted.id as string;
-    // お客様セルフキャンセル用リンク (確認メール・完了画面で使う)。
+    // お客様セルフキャンセル用リンク。現在メール・完了画面には出していない
+    // （セルフキャンセルは廃止しメール連絡に一本化）が、レスポンスには互換のため残す。
     // ジム自身のドメイン上の React ページを指すことで、迷惑メール判定を避け、
-    // ブランドと一致した見た目を提供する。
+    // ブランドと一致した見た目を提供する（/trial-cancel/:token ページ自体は存置）。
     const cancelToken = inserted.cancel_token as string;
     const cancelUrl = `https://app.kyoto-salute.com/trial-cancel/${cancelToken}`;
 
@@ -270,7 +271,8 @@ Deno.serve(async (req) => {
             customerName: guestName,
             bookingDate: dateStr,
             bookingTime: timeStr,
-            cancelUrl,
+            // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
+            // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
           },
         }).then((ok) => { notify.customer_email = ok; }),
       );

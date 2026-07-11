@@ -77,6 +77,8 @@ const TrialBookingReminderEmail = ({
 
         <Section style={detailSection}>
           <Text style={sectionTitle}>キャンセル・変更</Text>
+          {/* セルフキャンセルは廃止し、メール連絡に一本化した（send-trial-reminders は cancelUrl を渡さない）。
+              分岐自体は残し、再度セルフキャンセルに戻す際にすぐ有効化できるようにしている。 */}
           {cancelUrl ? (
             <>
               <Text style={text}>ご都合が悪くなった場合は、下記のボタンからキャンセルできます。</Text>
@@ -92,7 +94,7 @@ const TrialBookingReminderEmail = ({
             <>
               <Text style={text}>下記メールへご連絡ください。</Text>
               <Text style={text}>
-                <Link href="mailto:k.munemoto@gymboard.app" style={inlineLink}>k.munemoto@gymboard.app</Link>
+                <Link href="mailto:k.munemoto@kyoto-salute.com" style={inlineLink}>k.munemoto@kyoto-salute.com</Link>
               </Text>
             </>
           )}
@@ -118,7 +120,6 @@ export const template = {
     guestName: '山田 太郎',
     bookingDate: '5月18日（月）',
     bookingTime: '15:00',
-    cancelUrl: 'https://app.kyoto-salute.com/trial-cancel/00000000-0000-0000-0000-000000000000',
   },
 } satisfies TemplateEntry
 

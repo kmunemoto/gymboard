@@ -6,20 +6,28 @@ import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = "パーソナルジムSalute御所南"
 const SITE_URL = "https://app.kyoto-salute.com"
-// 住所は「1 行の生バイト長 < 20」に収まる短い塊に分割する。
-// email-encoding.ts の wrapEmailHtml は 20 バイトを超えると <!--\n--> を注入するため、
-// Gmail iOS ダークモード等で注入されたコメントが豆腐化して見えることがある。
-// 短く分けておけば注入自体が起きない。
-const ADDRESS_LINES = [
-  '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A',              // 京都市中京区 (18B)
-  '\u6BD8\u6C99\u9580\u753A533-1',                      // 毘沙門町533-1 (17B)
-  '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357 2\u968E',       // プラザ御所南 2階 (半角スペースで分割)
-]
+
+// 住所や店舗名は事前に ASCII 数値文字参照へエンコードして dangerouslySetInnerHTML で描画する。
+// 理由: react-email の renderAsync（Deno のストリーミング描画）が、UTF-8 チャンク境界で
+// マルチバイト文字を分断し U+FFFD に化けさせる既知の症状があるため（recovery.tsx 参照）。
+// ASCII 化しておけばレンダラを通しても分断されず、メールクライアント側で通常表示される。
+const toHtmlEntities = (s: string): string =>
+  Array.from(s).map((ch) => {
+    const cp = ch.codePointAt(0)!
+    return cp > 0x7f ? `&#${cp};` : ch
+  }).join('')
+
+const SITE_NAME_HTML = toHtmlEntities(SITE_NAME)
+const ADDRESS_LINES_HTML = [
+  '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A',        // 京都市中京区
+  '\u6BD8\u6C99\u9580\u753A533-1',                // 毘沙門町533-1
+  '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357 2\u968E', // プラザ御所南 2階
+].map(toHtmlEntities)
 
 const AddressBlock = ({ style }: { style: React.CSSProperties }) => (
   <>
-    {ADDRESS_LINES.map((line, i) => (
-      <Text key={i} style={style}>{line}</Text>
+    {ADDRESS_LINES_HTML.map((line, i) => (
+      <Text key={i} style={style} dangerouslySetInnerHTML={{ __html: line }} />
     ))}
   </>
 )

@@ -16,7 +16,8 @@
 //
 // ガード:
 //   - テナント実在 + status が active/trial であること
-//   - 24時間前まで (サーバー側は23時間で判定し、送信中の境界ズレを許容)
+//   - 前日まで (会員予約と統一。予約日JSTの0:00を過ぎたら不可＝当日予約は不可。
+//     送信中の境界ズレは小さな猶予で許容。旧: 24時間前まで)
 //   - 10日先まで (サーバー側は12日で判定。先すぎる日程は当日キャンセルが増えやすいため
 //     短縮した — 旧: 1ヶ月先まで)
 //   - 営業枠 10:00〜21:00 開始・15分刻み (公開ページの枠グリッドと同一)
@@ -46,7 +47,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 // 予約可能ウィンドウ (公開ページのルールにサーバー側の余裕を持たせた値)
-const MIN_LEAD_MS = 23 * 60 * 60 * 1000; // ページ上は24時間前まで
+// 締切は会員予約と同じ「前日まで」＝予約日(JST)の0:00を過ぎたら不可。
+// 送信中の日付境界ズレ(深夜の駆け込み)を許容する小さな猶予を持たせる。
+const DEADLINE_GRACE_MS = 10 * 60 * 1000;
 const MAX_AHEAD_MS = 12 * 24 * 60 * 60 * 1000; // ページ上は10日先まで、+2日のバッファ
 const SLOT_MIN_START = 600; // 10:00 (JST 分)
 const SLOT_MAX_START = 1260; // 21:00 (JST 分)
@@ -119,15 +122,18 @@ Deno.serve(async (req) => {
     if (Number.isNaN(bookingInstant.getTime())) {
       return reject("validation", "予約日時の形式が正しくありません。");
     }
-    const lead = bookingInstant.getTime() - Date.now();
-    if (lead < MIN_LEAD_MS) {
-      return reject("too_soon", "ご予約は24時間前までにお願いいたします。別の日時をお選びください。");
+    // JST の開始時刻・日付を取り出す（枠グリッド判定と「前日まで」締切の両方で使う）
+    const jst = new Date(bookingInstant.getTime() + 9 * 60 * 60 * 1000);
+    // 前日まで: 予約日(JST)の0:00 の実インスタントを求め、それを過ぎていたら締切。
+    const jstDayStartMs = Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()) - 9 * 60 * 60 * 1000;
+    if (Date.now() >= jstDayStartMs + DEADLINE_GRACE_MS) {
+      return reject("too_soon", "体験のご予約は前日までにお願いいたします。別の日をお選びください。");
     }
+    const lead = bookingInstant.getTime() - Date.now();
     if (lead > MAX_AHEAD_MS) {
       return reject("too_far", "ご予約は10日先まで承っています。別の日時をお選びください。");
     }
     // JST の開始時刻が営業枠グリッド (10:00〜21:00, 15分刻み) 上にあること
-    const jst = new Date(bookingInstant.getTime() + 9 * 60 * 60 * 1000);
     const startMin = jst.getUTCHours() * 60 + jst.getUTCMinutes();
     if (startMin < SLOT_MIN_START || startMin > SLOT_MAX_START || startMin % 15 !== 0 || jst.getUTCSeconds() !== 0) {
       return reject("validation", "選択できない時間帯です。表示された空き枠からお選びください。");

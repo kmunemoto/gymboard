@@ -1,4 +1,4 @@
-import { Dumbbell } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SizeKey = "xs" | "sm" | "md" | "lg" | "xl";
@@ -18,7 +18,7 @@ interface DumbbellLoaderProps extends Omit<React.SVGProps<SVGSVGElement>, "size"
 }
 
 /**
- * Unified app loader: a rotating dumbbell icon.
+ * Unified app loader: a rotating trophy icon.
  * - Rotation: ~1.2s per turn (linear, infinite)
  * - Color: theme primary
  * - Accepts size preset (xs/sm/md/lg/xl) or numeric px.
@@ -34,7 +34,7 @@ export const DumbbellLoader = ({
   const pixelSize = typeof size === "number" ? size : SIZE_MAP[size];
 
   const icon = (
-    <Dumbbell
+    <Trophy
       width={pixelSize}
       height={pixelSize}
       strokeWidth={2}

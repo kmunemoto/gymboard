@@ -1453,9 +1453,10 @@
   "trialCancel": {
     "loading": "예약 내용을 확인하고 있습니다...",
     "confirmTitle": "예약을 취소하시겠습니까?",
-    "confirmBody": "아래 첫 무료 체험 예약을 취소합니다.",
+    "confirmBody": "시간이 맞지 않으시면 날짜를 변경하실 수도 있습니다.",
+    "rescheduleButton": "날짜 변경하기",
     "confirmButton": "이 예약을 취소하기",
-    "keepNote": "취소하지 않으시려면 이 페이지를 닫아 주세요.",
+    "keepNote": "변경도 취소도 하지 않으시려면 이 페이지를 닫아 주세요.",
     "doneTitle": "취소되었습니다",
     "doneBody": "예약이 취소되었습니다. 다음 기회에 다시 뵙기를 바랍니다.",
     "doneRebook": "다시 예약하시려면 체험 예약 페이지에서 신청해 주세요.",

@@ -1453,9 +1453,10 @@
   "trialCancel": {
     "loading": "Checking your booking...",
     "confirmTitle": "Cancel your booking?",
-    "confirmBody": "This will cancel your free first trial booking below.",
+    "confirmBody": "If the time doesn't work, you can change the date instead.",
+    "rescheduleButton": "Change the date",
     "confirmButton": "Cancel this booking",
-    "keepNote": "If you don't want to cancel, simply close this page.",
+    "keepNote": "If you don't want to change or cancel, simply close this page.",
     "doneTitle": "Cancelled",
     "doneBody": "Your booking has been cancelled. We hope to see you another time.",
     "doneRebook": "To book again, please use the trial booking page.",

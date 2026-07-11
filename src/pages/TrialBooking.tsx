@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Clock, Check, User, CalendarPlus, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -37,13 +37,21 @@ interface PublicTenant {
 //  混ざり、空き状況のズレや予約が別テナントに作成される問題を招くため使わない)
 const DEFAULT_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
 
+// 予約可能な最大先日数。先すぎる日程は予約時点の意欲が薄れ、当日キャンセルが
+// 増えやすいため、心理的に近い期間に寄せる（旧: 1ヶ月先まで）。
+// サーバー側 trial-book の MAX_AHEAD_MS と対で管理する値（サーバー側は余裕を持たせた日数）。
+const TRIAL_BOOKING_MAX_DAYS_AHEAD = 10;
+
 const TrialBooking = () => {
   const { t } = useTranslation();
   const { tenantId } = useParams<{ tenantId?: string }>();
+  // 予約キャンセル画面の「日程を変更する」から遷移した場合、氏名・メールを
+  // ?name=&email= で引き継いで入力の手間を省く（未指定なら通常どおり空欄）。
+  const [searchParams] = useSearchParams();
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const gymName = tenant?.gym_name || t("trialBooking.defaultGymName");
-  const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
+  const [guestName, setGuestName] = useState(() => searchParams.get("name") ?? "");
+  const [guestEmail, setGuestEmail] = useState(() => searchParams.get("email") ?? "");
   const [emailError, setEmailError] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -433,7 +441,7 @@ const TrialBooking = () => {
                   const latestSlot = new Date(`${yyyyMMdd}T20:15:00+09:00`);
                   if (latestSlot.getTime() - Date.now() < 24 * 60 * 60 * 1000) return true;
                   const maxDate = new Date();
-                  maxDate.setMonth(maxDate.getMonth() + 1);
+                  maxDate.setDate(maxDate.getDate() + TRIAL_BOOKING_MAX_DAYS_AHEAD);
                   return date.getTime() > maxDate.getTime();
                 }}
                 className="pointer-events-auto"

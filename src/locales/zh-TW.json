@@ -1453,9 +1453,10 @@
   "trialCancel": {
     "loading": "正在確認您的預約...",
     "confirmTitle": "要取消預約嗎？",
-    "confirmBody": "將取消以下首次免費體驗的預約。",
+    "confirmBody": "如果時間不方便，也可以更改日期。",
+    "rescheduleButton": "更改日期",
     "confirmButton": "取消此預約",
-    "keepNote": "如果不取消，請直接關閉此頁面。",
+    "keepNote": "如果不更改也不取消，請直接關閉此頁面。",
     "doneTitle": "已取消",
     "doneBody": "已為您取消預約。期待下次與您相見。",
     "doneRebook": "如需重新預約，請透過體驗預約頁面申請。",

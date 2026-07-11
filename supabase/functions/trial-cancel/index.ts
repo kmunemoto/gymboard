@@ -174,7 +174,7 @@ type LookupResult = {
 async function lookupByToken(admin: any, token: string): Promise<LookupResult | null> {
   const { data: booking, error } = await admin
     .from("trial_bookings")
-    .select("id, tenant_id, guest_name, booking_date, status, google_event_id, tenants(gym_name, logo_url)")
+    .select("id, tenant_id, guest_name, guest_contact, booking_date, status, google_event_id, tenants(gym_name, logo_url)")
     .eq("cancel_token", token)
     .maybeSingle();
   if (error) {
@@ -319,8 +319,10 @@ Deno.serve(async (req) => {
         if (!info) return json({ ok: false, code: "invalid_token", error: "キャンセル用のリンクが正しくありません。" });
         const summary = {
           guestName: info.booking.guest_name,
+          guestContact: info.booking.guest_contact,
           gymName: info.gymName,
           logoUrl: info.logoUrl,
+          tenantId: info.booking.tenant_id,
           date: info.dateStr,
           time: info.timeStr,
           status: info.booking.status,

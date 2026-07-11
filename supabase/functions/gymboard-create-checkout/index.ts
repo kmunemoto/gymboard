@@ -130,6 +130,9 @@ Deno.serve(async (req) => {
       line_items: [{ price: price.id, quantity: 1 }],
       success_url,
       cancel_url,
+      // 創業メンバー割引など、Stripe ダッシュボードで作成したプロモーションコードを
+      // お客様（ジム側）が決済画面で入力できるようにする。
+      allow_promotion_codes: true,
       metadata: { tenant_id: tenant_id as string, lookup_key },
       subscription_data: {
         metadata: { tenant_id: tenant_id as string, lookup_key },

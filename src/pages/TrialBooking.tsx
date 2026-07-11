@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/dateFormat";
 import { toast } from "sonner";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 
 interface TrialSlotBooking {
   date: string;
@@ -323,6 +324,16 @@ const TrialBooking = () => {
               )}
               <span className="ml-2 text-sm font-bold text-muted-foreground">{gymName}</span>
             </div>
+            {POWERED_BY_GYMBOARD_ENABLED && (
+              <a
+                href={GYMBOARD_MARKETING_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors pt-1"
+              >
+                {POWERED_BY_GYMBOARD}
+              </a>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -510,6 +521,17 @@ const TrialBooking = () => {
             </div>
           )}
         </section>
+
+        {POWERED_BY_GYMBOARD_ENABLED && (
+          <a
+            href={GYMBOARD_MARKETING_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-center text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors pt-2"
+          >
+            {POWERED_BY_GYMBOARD}
+          </a>
+        )}
       </div>
     </div>
   );

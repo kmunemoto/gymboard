@@ -364,6 +364,7 @@
     "repeatTitle": "Repeat booking",
     "repeatOnce": "Once",
     "repeatTimes": "{{count}}x",
+    "repeatLimitedByWindow": "Some counts aren't available because bookings can only be made up to 1 month ahead",
     "repeatWeeklyDesc": "Books {{count}} sessions weekly at the same day and time (full weeks are skipped)",
     "confirmRepeatBooking": "Book weekly ×{{count}}",
     "repeatResult": "Created {{count}} booking(s)",

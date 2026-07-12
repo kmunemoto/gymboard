@@ -1178,7 +1178,7 @@
     "updateFailed": "Update failed",
     "shownToast": "Usage period is now shown",
     "hiddenToast": "Usage period is now hidden",
-    "graceTitle": "Grace (leniency)",
+    "graceTitle": "Grace (a few days' leeway)",
     "graceOn": "Applied",
     "graceOff": "Not applied",
     "graceHint": "Bookings up to {{days}} days past the deadline count toward the previous cycle. Turn OFF to treat this member strictly by the deadline.",

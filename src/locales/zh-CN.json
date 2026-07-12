@@ -1178,7 +1178,7 @@
     "updateFailed": "更新失败",
     "shownToast": "已将使用期间设为显示",
     "hiddenToast": "已将使用期间设为隐藏",
-    "graceTitle": "宽限（通融处理）",
+    "graceTitle": "宽限（超期几天仍可）",
     "graceOn": "适用",
     "graceOff": "不适用",
     "graceHint": "超过期限后{{days}}天内的预约仍计入上一周期。关闭后，该会员将严格按期限处理。",

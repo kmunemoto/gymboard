@@ -399,7 +399,7 @@
     "customerFallback": "Customer",
     "cancelDescWithTime": "Cancel your booking on {{date}} {{startTime}}–{{endTime}}.",
     "sameDayForfeitWarningTitle": "Are you sure you want to cancel?",
-    "sameDayForfeitWarningDesc": "A same-day cancellation can't be offered to anyone else, so it counts as one used session.",
+    "sameDayForfeitWarningDesc": "A same-day cancellation can't be offered to anyone else, so it counts as one used session. If you only need a different time today, please contact us via app chat or LINE instead of cancelling.",
     "sameDayForfeitConfirmBtn": "Cancel (counts as used)",
     "waitlistJoin": "Join waitlist",
     "waitlistJoined": "On waitlist",

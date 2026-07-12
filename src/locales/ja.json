@@ -399,7 +399,7 @@
     "customerFallback": "お客様",
     "cancelDescWithTime": "{{date}} {{startTime}}〜{{endTime}} の予約をキャンセルします。",
     "sameDayForfeitWarningTitle": "本当にキャンセルしますか？",
-    "sameDayForfeitWarningDesc": "当日キャンセルは枠を他の方にご案内できないため、1回分の消化になります。",
+    "sameDayForfeitWarningDesc": "当日キャンセルは枠を他の方にご案内できないため、1回分の消化になります。時間の変更のみご希望の場合は、キャンセルせずアプリのチャットかLINEにご連絡ください。",
     "sameDayForfeitConfirmBtn": "消化扱いでキャンセルする",
     "waitlistJoin": "キャンセル待ち",
     "waitlistJoined": "待機中",

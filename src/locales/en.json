@@ -399,7 +399,7 @@
     "customerFallback": "Customer",
     "cancelDescWithTime": "Cancel your booking on {{date}} {{startTime}}–{{endTime}}.",
     "sameDayForfeitWarningTitle": "Are you sure you want to cancel?",
-    "sameDayForfeitWarningDesc": "A same-day cancellation leaves your reserved one-on-one slot empty and it can't be offered to anyone else, so this booking will be counted as one used session.",
+    "sameDayForfeitWarningDesc": "A same-day cancellation can't be offered to anyone else, so it counts as one used session.",
     "sameDayForfeitConfirmBtn": "Cancel (counts as used)",
     "waitlistJoin": "Join waitlist",
     "waitlistJoined": "On waitlist",

@@ -399,7 +399,7 @@
     "customerFallback": "고객",
     "cancelDescWithTime": "{{date}} {{startTime}}〜{{endTime}} 의 예약을 취소합니다.",
     "sameDayForfeitWarningTitle": "정말 취소하시겠습니까?",
-    "sameDayForfeitWarningDesc": "당일 취소는 확보된 1:1 예약 시간을 다른 분께 안내할 수 없어 비게 되므로, 죄송하지만 이번 예약은 1회 소진으로 처리됩니다.",
+    "sameDayForfeitWarningDesc": "당일 취소는 다른 분께 안내할 수 없어 1회 소진으로 처리됩니다.",
     "sameDayForfeitConfirmBtn": "소진 처리하고 취소",
     "waitlistJoin": "예약 대기",
     "waitlistJoined": "대기 중",

@@ -399,7 +399,7 @@
     "customerFallback": "顾客",
     "cancelDescWithTime": "将取消 {{date}} {{startTime}}〜{{endTime}} 的预约。",
     "sameDayForfeitWarningTitle": "确定要取消吗？",
-    "sameDayForfeitWarningDesc": "当天取消会使已预留的一对一时段无法再安排给其他人而空置，因此本次预约将计为消耗1次，敬请谅解。",
+    "sameDayForfeitWarningDesc": "当天取消无法再安排给其他人，因此计为消耗1次。",
     "sameDayForfeitConfirmBtn": "计为已消耗并取消",
     "waitlistJoin": "候补登记",
     "waitlistJoined": "候补中",

@@ -64,16 +64,37 @@ export function useTenant() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data: mem } = await supabase
-        .from("tenant_members")
-        .select("role, plan_id, tenants:tenant_id(id, gym_name, gym_name_short, business_type, logo_url, primary_color, address, phone, email, website_url, operating_hours, slot_duration_minutes, booking_cutoff_type, booking_cutoff_hours, same_day_cancel_penalty_enabled, status, gymboard_plan, max_customers, subscription_status, trial_ends_at)")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .limit(1)
-        .maybeSingle();
+      // 基本カラムと、後から追加した same_day_cancel_penalty_enabled を分けて持つ。
+      // 新カラムを含む select は、対象環境でマイグレーション未適用だと
+      // 「column does not exist」でクエリ全体が失敗し、tenant が読めず
+      // アプリ全体（プラン管理のロード等）が壊れる。そのため新カラム込みで試し、
+      // 失敗したら新カラム抜きで再取得して flag は false 扱いにフォールバックする。
+      const TENANT_BASE_COLS =
+        "id, gym_name, gym_name_short, business_type, logo_url, primary_color, address, phone, email, website_url, operating_hours, slot_duration_minutes, booking_cutoff_type, booking_cutoff_hours, status, gymboard_plan, max_customers, subscription_status, trial_ends_at";
+      const memberQuery = (tenantCols: string) =>
+        supabase
+          .from("tenant_members")
+          .select(`role, plan_id, tenants:tenant_id(${tenantCols})`)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
+
+      let { data: mem, error: memErr } = await memberQuery(
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled`,
+      );
+      if (memErr) {
+        // 新カラム未適用等でエラー → 基本カラムのみで再取得（機能はOFF扱いで安全に動作）
+        console.warn("useTenant: same_day_cancel_penalty_enabled 付きのtenant取得に失敗。基本カラムで再取得します。", memErr.message);
+        ({ data: mem } = await memberQuery(TENANT_BASE_COLS));
+      }
       if (cancelled) return;
       if (mem && mem.tenants) {
-        const tenant = mem.tenants as unknown as Tenant;
+        const raw = mem.tenants as unknown as Record<string, unknown>;
+        const tenant = {
+          ...raw,
+          same_day_cancel_penalty_enabled: raw.same_day_cancel_penalty_enabled === true,
+        } as unknown as Tenant;
         setMembership({
           tenant,
           role: (mem as any).role,

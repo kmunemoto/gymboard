@@ -80,13 +80,13 @@ export function useTenant() {
           .limit(1)
           .maybeSingle();
 
-      let { data: mem, error: memErr } = await memberQuery(
+      let { data: mem, error: memErr } = (await memberQuery(
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled`,
-      );
+      )) as any;
       if (memErr) {
         // 新カラム未適用等でエラー → 基本カラムのみで再取得（機能はOFF扱いで安全に動作）
         console.warn("useTenant: same_day_cancel_penalty_enabled 付きのtenant取得に失敗。基本カラムで再取得します。", memErr.message);
-        ({ data: mem } = await memberQuery(TENANT_BASE_COLS));
+        ({ data: mem } = (await memberQuery(TENANT_BASE_COLS)) as any);
       }
       if (cancelled) return;
       if (mem && mem.tenants) {

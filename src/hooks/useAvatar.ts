@@ -12,6 +12,7 @@ import {
 import { getMuscleGroup } from "@/lib/muscleGroup";
 import { computeTitles } from "@/lib/titleSystem";
 import { formatJST } from "@/lib/timezone";
+import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { toast } from "sonner";
 import i18n from "@/lib/i18n";
 
@@ -117,12 +118,13 @@ export const useAvatar = (autoSync = true) => {
         setLevelUp({ newLevel: result.newLevel, earnedCoins: result.newCoins - result.oldCoins });
       }
 
-      // Achievements
+      // Achievements（同日キャンセル消化は実際には来店していないため達成数に含めない）
       const { count } = await supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .neq("status", "キャンセル済み")
+        .neq("status", SAME_DAY_FORFEIT_STATUS)
         .lt("booking_date", new Date().toISOString());
 
       // Mission stats
@@ -151,12 +153,13 @@ export const useAvatar = (autoSync = true) => {
       });
       const hasPerfectWeek = [...weekMap.values()].some((v) => v.total > 0 && v.total === v.perfect);
 
-      // Title computation
+      // Title computation（同日キャンセル消化は実際には来店していないため称号判定に含めない）
       const { data: bookingsForTitles } = await supabase
         .from("bookings")
         .select("booking_date")
         .eq("user_id", user.id)
         .neq("status", "キャンセル済み")
+        .neq("status", SAME_DAY_FORFEIT_STATUS)
         .lt("booking_date", new Date().toISOString());
       const bookingHours = (bookingsForTitles || []).map((b: any) => parseInt(formatJST(b.booking_date, "HH"), 10));
 

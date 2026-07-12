@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, isBefore, subWeeks, isAfter } from "date-fns";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
+import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 
 interface StreakResult {
   currentStreak: number;
@@ -23,12 +24,14 @@ export const useStreak = (userId: string | undefined): StreakResult => {
   const calculate = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
 
-    // Fetch all non-cancelled bookings
+    // Fetch all non-cancelled bookings（同日キャンセル消化は実際には来店していないため
+    // 「来店した週」に含めない＝ストリークには数えない）
     const { data: bookings } = await supabase
       .from("bookings")
       .select("booking_date")
       .eq("user_id", userId)
       .neq("status", "キャンセル済み")
+      .neq("status", SAME_DAY_FORFEIT_STATUS)
       .order("booking_date", { ascending: false });
 
     const { data: profileData } = await supabase

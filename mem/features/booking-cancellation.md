@@ -75,3 +75,27 @@ pushの3経路とも、消化扱いになった場合は本文に一言（「今
   `status === "キャンセル済み"` だけを見ているものが今後増えたら、この
   新ステータスも一緒に除外するかどうかを個別に検討すること（カウント系は
   自動的に正しく動くが、UI一覧系は「見せたいか」次第で判断が分かれる）。
+
+- **判断の目安（実際に洗い出して修正済み）**: `status === "キャンセル済み"` /
+  `.neq("status", "キャンセル済み")` を書いている箇所は、意味によって
+  `SAME_DAY_FORFEIT_STATUS` の扱いが逆になる。以下の基準で判断する。
+  - 「実際に来店/実施したか」を見ている（来店回数・ストリーク・達成バッジ・
+    称号・シェア画像の累計回数・予約カレンダーの丸印・「本日◯件予約済み」の
+    トースト・お客様自身の予約一覧・トレーナー側の次回予約/最終来店日）
+    → **除外する**（消化済みは来店していないので含めない）。
+    修正済み: `CustomerHome.tsx`（次回予約カード・来店回数・累計セッション数）、
+    `CustomerTraining.tsx`（累計セッション数）、`CustomerSettings.tsx`
+    （予約履歴一覧）、`CustomerMonthlyReport.tsx`（月間の来店予約）、
+    `CustomerBooking.tsx`（カレンダーの丸印・「本日は既に予約済み」トースト）、
+    `useStreak.ts`（週間ストリーク）、`useAvatar.ts`（達成数・称号判定）、
+    `useProfile.ts`（トレーナー側の次回予約/最終来店日）、
+    `missionRewards.ts`（時間帯ミッション判定）。
+  - 「プラン消化数（回数上限との比較）」を見ている（`courseProgress.ts` /
+    `planUsage.ts` 全般、`CustomerHome.tsx` の `cycleBookings`＝「今回n/m回目」）
+    → **除外しない**（消化済みなので数える。これが機能の本来の目的）。
+  - 「予約枠が空いているか」を見ている（`checkSlotBlocked` / 枠グリッド表示 /
+    `CustomerBooking.tsx` の `fetchBookedSlots` / DBの `check_booking_overlap`
+    トリガー） → **除外しない**（同日枠は再販できない前提なので埋まったまま）。
+  - 新しく `status === "キャンセル済み"` 系のチェックを書く/見つけたときは、
+    上記3分類のどれに当たるか確認してから `SAME_DAY_FORFEIT_STATUS` の
+    扱いを決めること。

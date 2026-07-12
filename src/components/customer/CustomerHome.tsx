@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { CustomerTab } from "./CustomerView";
 import { useProfile } from "@/hooks/useProfile";
-import { useMyBookings } from "@/hooks/useBookings";
+import { useMyBookings, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStreak } from "@/hooks/useStreak";
@@ -83,11 +83,15 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       });
 
     const nowIso = new Date().toISOString();
+    // 同日キャンセル消化(SAME_DAY_FORFEIT_STATUS)はプラン消化数には数えるが、
+    // 実際には来店していないため「累計トレーニング回数」（達成バッジ・シェア画像用）
+    // には含めない。
     supabase
       .from("bookings")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .neq("status", "キャンセル済み")
+      .neq("status", SAME_DAY_FORFEIT_STATUS)
       .lt("booking_date", nowIso)
       .then(({ count }) => setTotalSessions(count || 0));
   }, [user, t]);
@@ -104,7 +108,9 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const nowTimeStr = formatJST(new Date(), "HH:mm");
 
   const futureBookings = bookings.filter((b) => {
-    if (b.status === "キャンセル済み") return false;
+    // 同日キャンセル消化は「来ない予約」なので次回予約カードには出さない
+    // （プラン消化数には別途 courseProgress.ts 側で正しく数えられる）。
+    if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS) return false;
     if (b.date > todayStr) return true;
     if (b.date === todayStr && b.startTime > nowTimeStr) return true;
     return false;
@@ -127,6 +133,9 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
     if (!nextBookingCycle) return [];
     return bookings
       .filter((b) => {
+        // 「今回n/m回目」のnを出すための消化数カウント。同日キャンセル消化
+        // (SAME_DAY_FORFEIT_STATUS) はプラン消化数として数える対象なので、
+        // ここではあえて除外しない（courseProgress.ts と同じ扱い）。
         if (b.status === "キャンセル済み") return false;
         const d = parseISO(b.date);
         return d >= nextBookingCycle.start && d < nextBookingCycle.end;
@@ -515,7 +524,8 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                        const currentCycle = getCycleWindow(profile?.cycle_start_date, now, resolveCycleMonths(currentPlan, tenantPlans));
                       if (!currentCycle) return t("home.checkData");
                       const cycleVisited = bookings.filter(b => {
-                        if (b.status === "キャンセル済み") return false;
+                        // 同日キャンセル消化は実際には来店していないため「来店◯回」に含めない
+                        if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS) return false;
                         const d = parseISO(b.date);
                         const bTime = new Date(`${b.date}T${b.endTime || "00:00"}`);
                         return d >= currentCycle.start && d < currentCycle.end && bTime < now;

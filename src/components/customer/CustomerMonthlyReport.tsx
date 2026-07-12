@@ -17,6 +17,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { getCycleWindow as getSharedCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
 import { useTranslation } from "react-i18next";
+import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
 
@@ -95,12 +96,12 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       const monthStr = format(cycleStart, "yyyy-MM-dd");
 
       const [bRes, mRes, mlRes, dRes, pdRes, pbRes, wRes, pwRes, tcRes] = await Promise.all([
-        supabase.from("bookings").select("*").eq("user_id", user.id).gte("booking_date", csStr).lt("booking_date", ceStr).neq("status", "キャンセル済み"),
+        supabase.from("bookings").select("*").eq("user_id", user.id).gte("booking_date", csStr).lt("booking_date", ceStr).neq("status", "キャンセル済み").neq("status", SAME_DAY_FORFEIT_STATUS),
         supabase.from("user_measurements").select("*").eq("user_id", user.id).gte("measured_date", format(cycleStart, "yyyy-MM-dd")).lte("measured_date", format(cycleEnd, "yyyy-MM-dd")).order("measured_date", { ascending: true }),
         supabase.from("meals").select("*").eq("user_id", user.id).gte("created_at", csStr).lt("created_at", ceStr),
         supabase.from("skeletal_diagnoses").select("*").eq("user_id", user.id).gte("created_at", csStr).lt("created_at", ceStr).order("created_at", { ascending: true }),
         supabase.from("skeletal_diagnoses").select("*").eq("user_id", user.id).gte("created_at", pcsStr).lt("created_at", pceStr).order("created_at", { ascending: false }).limit(1),
-        supabase.from("bookings").select("*").eq("user_id", user.id).gte("booking_date", pcsStr).lt("booking_date", pceStr).neq("status", "キャンセル済み"),
+        supabase.from("bookings").select("*").eq("user_id", user.id).gte("booking_date", pcsStr).lt("booking_date", pceStr).neq("status", "キャンセル済み").neq("status", SAME_DAY_FORFEIT_STATUS),
         supabase.from("workouts").select("*, exercises(name)").eq("user_id", user.id).gte("workout_date", format(cycleStart, "yyyy-MM-dd")).lt("workout_date", format(cycleEnd, "yyyy-MM-dd")).order("workout_date", { ascending: true }),
         supabase.from("workouts").select("*, exercises(name)").eq("user_id", user.id).gte("workout_date", format(prevCycleStart, "yyyy-MM-dd")).lt("workout_date", format(prevCycleEnd, "yyyy-MM-dd")).order("workout_date", { ascending: true }),
         supabase.from("monthly_reports" as any).select("*").eq("user_id", user.id).eq("month", monthStr).maybeSingle(),

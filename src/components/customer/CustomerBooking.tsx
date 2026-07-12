@@ -105,7 +105,8 @@ const CustomerBooking = () => {
     const future = new Set<string>();
     const past = new Set<string>();
     myBookings.forEach((b) => {
-      if (b.status === "キャンセル済み") return;
+      // 同日キャンセル消化は「来ない予約」なのでカレンダーの丸印には出さない
+      if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS) return;
       if (b.date >= today) future.add(b.date);
       else past.add(b.date);
     });
@@ -119,6 +120,9 @@ const CustomerBooking = () => {
   const fetchBookedSlots = useCallback(async (dateStr: string) => {
     const { data } = await supabase.rpc("get_booked_slots", { check_date: dateStr });
     if (!data) { setBookedSlots([]); return; }
+    // ここは意図的に SAME_DAY_FORFEIT_STATUS を除外しない: 同日キャンセル消化の枠は
+    // 再販できない前提のため、カレンダー上は引き続き「埋まっている」枠として表示する
+    // （checkSlotBlocked 等と同じ扱い。mem/features/booking-cancellation.md 参照）。
     const slots = data
       .filter((r: { status: string }) => r.status !== "キャンセル済み")
       .map((r: { booking_date: string; end_booking_date: string; status: string }) => {
@@ -651,7 +655,7 @@ const CustomerBooking = () => {
                     if (d) {
                       const key = format(d, "yyyy-MM-dd");
                       const existing = myBookings.filter(
-                        (b) => b.date === key && b.status !== "キャンセル済み"
+                        (b) => b.date === key && b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS
                       );
                       if (existing.length > 0) {
                         const times = existing

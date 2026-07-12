@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStreak } from "@/hooks/useStreak";
+import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import WorkoutShareModal from "./WorkoutShareModal";
 import WorkoutEditModal, { type EditableSet } from "./WorkoutEditModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
@@ -95,7 +96,7 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
     fetch();
   }, [user]);
 
-  // Fetch total sessions count (past non-cancelled bookings)
+  // Fetch total sessions count (past non-cancelled bookings, excludes same-day forfeit no-shows)
   useEffect(() => {
     if (!user) return;
     const nowIso = new Date().toISOString();
@@ -104,6 +105,7 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .neq("status", "キャンセル済み")
+      .neq("status", SAME_DAY_FORFEIT_STATUS)
       .lt("booking_date", nowIso)
       .then(({ count }) => setTotalSessions(count || 0));
   }, [user]);

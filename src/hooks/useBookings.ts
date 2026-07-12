@@ -23,6 +23,14 @@ export interface BookingRow {
 // unaffected. Code is preserved (only the send is skipped) so it can be revived later.
 const NOTIFY_CUSTOMER_LINE_ON_BOOKING = false;
 
+// 同日キャンセルを「消化扱い」にしたときの status。物理削除の代わりにこの値へ
+// UPDATE することで、既存の「status === 'キャンセル済み' を除外する」判定
+// （courseProgress.ts / planUsage.ts の消化数カウント、リマインダー系Edge
+// Functionの `status === '予約済み'` 厳密一致、カレンダー系の `!== 'キャンセル済み'`
+// 表示）が無改修のまま意図通りに動く: 消化数には数えられ、来ないはずのリマインドは
+// 飛ばず、トレーナーの予定表には枠として残る。詳細は mem/features/booking-cancellation.md 参照。
+export const SAME_DAY_FORFEIT_STATUS = "同日キャンセル済み";
+
 const logEmailInvoke = (
   context: string,
   templateName: string,
@@ -530,7 +538,11 @@ async function sendNewBookingLineToTrainer(
 // Prevents duplicate LINE notifications from double-taps or StrictMode double-invocation.
 const inFlightCancels = new Set<string>();
 
-export const cancelBooking = async (bookingId: string, cancelledByTrainer = false, opts: { silent?: boolean } = {}) => {
+export const cancelBooking = async (
+  bookingId: string,
+  cancelledByTrainer = false,
+  opts: { silent?: boolean; forfeit?: boolean } = {},
+) => {
   // In-flight guard: prevent duplicate cancel calls for the same booking from
   // sending duplicate LINE/email notifications when the user double-taps or
   // when React StrictMode runs effects twice.
@@ -553,7 +565,9 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
   }
 
   // Delete linked Google Calendar event first when an event ID is saved.
-  // Failure must not block the booking cancellation.
+  // Failure must not block the booking cancellation. Done even when forfeiting:
+  // the customer isn't coming either way, so the trainer's external calendar
+  // should not keep showing the event.
   if (booking?.google_event_id) {
     try {
       await supabase.functions.invoke("google-calendar-sync", {
@@ -568,32 +582,37 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
     }
   }
 
-  const { error } = await supabase
-    .from("bookings")
-    .delete()
-    .eq("id", bookingId);
+  // 消化扱い（同日キャンセルのペナルティ）: 物理削除せず status だけ更新して残す。
+  // SAME_DAY_FORFEIT_STATUS の定義コメント参照（消化数カウント/リマインダー/
+  // カレンダー表示が既存の status 判定のまま意図通りに動く）。
+  const { error } = opts.forfeit
+    ? await supabase.from("bookings").update({ status: SAME_DAY_FORFEIT_STATUS }).eq("id", bookingId)
+    : await supabase.from("bookings").delete().eq("id", bookingId);
 
   if (!error && booking && opts.silent) {
     // 予約変更（reschedule）の内部呼び出し: 旧枠のGoogleカレンダー削除・行削除だけ行い、
     // キャンセル通知は送らない（呼び出し側が「変更」1通にまとめる）。空き枠通知も出さない。
   } else if (!error && booking) {
-    console.log("LINE通知送信開始", booking.id, { cancelledByTrainer });
+    console.log("LINE通知送信開始", booking.id, { cancelledByTrainer, forfeit: !!opts.forfeit });
     // Send LINE cancel notification (fire-and-forget)
-    sendCancelLineNotification(booking, cancelledByTrainer).catch((e) =>
+    sendCancelLineNotification(booking, cancelledByTrainer, !!opts.forfeit).catch((e) =>
       console.error("sendCancelLineNotification failed:", e)
     );
     // Send email cancel notifications (fire-and-forget)
-    sendCancelEmailNotification(booking, cancelledByTrainer).catch((e) =>
+    sendCancelEmailNotification(booking, cancelledByTrainer, !!opts.forfeit).catch((e) =>
       console.error("sendCancelEmailNotification failed:", e)
     );
     // Send web push notifications (fire-and-forget)
-    sendCancelPushNotification(booking, cancelledByTrainer).catch((e) =>
+    sendCancelPushNotification(booking, cancelledByTrainer, !!opts.forfeit).catch((e) =>
       console.error("sendCancelPushNotification failed:", e)
     );
-    // キャンセル待ちへの空き通知（fire-and-forget）。
+    // キャンセル待ちへの空き通知（fire-and-forget）。消化扱いの場合はスキップ:
+    // その枠はトレーナーの予定表上「同日キャンセル済み」として引き続き占有表示される
+    // ため（checkSlotBlocked 等が status !== 'キャンセル済み' で判定）、
+    // 「空きました」と案内すると実際には取れず矛盾する。
     // 受信者はサーバー側（send-push-notification の waitlist_slot_freed）で
     // booking_waitlist から解決する（RLSにより顧客からは他人の待機行を読めないため）。
-    if (WAITLIST_ENABLED && booking.tenant_id) {
+    if (WAITLIST_ENABLED && booking.tenant_id && !opts.forfeit) {
       supabase.functions.invoke("send-push-notification", {
         body: {
           purpose: "waitlist_slot_freed",
@@ -603,7 +622,7 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
       }).catch((e) => console.error("waitlist notify failed:", e));
     }
   } else if (error) {
-    console.error("cancelBooking: 削除エラー", error);
+    console.error("cancelBooking: 更新/削除エラー", error);
   }
 
   return { error };
@@ -615,11 +634,13 @@ export const cancelBooking = async (bookingId: string, cancelledByTrainer = fals
 async function sendCancelLineNotification(
   booking: { user_id: string; booking_date: string; booking_type: string },
   cancelledByTrainer: boolean,
+  forfeit: boolean,
 ) {
   const dateStr = formatJST(booking.booking_date, "M月d日（E） HH:mm", { locale: ja });
   const md = formatJST(booking.booking_date, "M/d", { locale: ja });
   const dow = formatJST(booking.booking_date, "E", { locale: ja });
   const hm = formatJST(booking.booking_date, "HH:mm", { locale: ja });
+  const forfeitNote = forfeit ? "\n\n※同日キャンセルのため、今回の予約は1回消化した扱いになります。" : "";
 
   // Always fetch customer name & trainer id (needed for both paths)
   const [{ data: profile }, { data: trainerIds }] = await Promise.all([
@@ -637,7 +658,7 @@ async function sendCancelLineNotification(
       const custRes = await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: booking.user_id,
-          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
+          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}${forfeitNote}\n\n${gymName}`,
         },
       });
       console.log("LINE送信結果(顧客):", custRes);
@@ -649,7 +670,7 @@ async function sendCancelLineNotification(
       const trRes = await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: trainerId,
-          message: `✅ キャンセル処理完了\n\n${dateStr}\n\n${customerName}様の予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
+          message: `✅ キャンセル処理完了\n\n${dateStr}\n\n${customerName}様の予約をキャンセルしました。\n\nプラン：${booking.booking_type}${forfeitNote}\n\n${gymName}`,
         },
       });
       console.log("LINE送信結果(トレーナー):", trRes);
@@ -661,7 +682,7 @@ async function sendCancelLineNotification(
       await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: trainerId,
-          message: `❌ 予約キャンセル通知\n\n${dateStr}\n\n${customerName}様がキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
+          message: `❌ 予約キャンセル通知\n\n${dateStr}\n\n${customerName}様がキャンセルしました。\n\nプラン：${booking.booking_type}${forfeitNote}\n\n${gymName}`,
         },
       });
     }
@@ -672,7 +693,7 @@ async function sendCancelLineNotification(
       await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: booking.user_id,
-          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}\n\n${gymName}`,
+          message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}${forfeitNote}\n\n${gymName}`,
         },
       });
     }
@@ -682,6 +703,7 @@ async function sendCancelLineNotification(
 async function sendCancelEmailNotification(
   booking: { id: string; user_id: string; booking_date: string; booking_type: string },
   cancelledByTrainer: boolean,
+  forfeit: boolean,
 ) {
   const dt = toJSTDate(booking.booking_date);
   const formattedDate = format(dt, "M月d日（E）", { locale: ja });
@@ -713,6 +735,7 @@ async function sendCancelEmailNotification(
           planName: booking.booking_type,
           recipientRole: "trainer",
           cancelledByTrainer,
+          forfeit,
           trainerUserId: trainerId,
         },
       },
@@ -733,6 +756,7 @@ async function sendCancelEmailNotification(
         planName: booking.booking_type,
         recipientRole: "customer",
         cancelledByTrainer,
+        forfeit,
         resolveUserId: booking.user_id,
       },
     },
@@ -743,10 +767,12 @@ async function sendCancelEmailNotification(
 async function sendCancelPushNotification(
   booking: { user_id: string; booking_date: string },
   cancelledByTrainer: boolean,
+  forfeit: boolean,
 ) {
   try {
     const md = formatJST(booking.booking_date, "M月d日", { locale: ja });
     const hm = formatJST(booking.booking_date, "HH:mm", { locale: ja });
+    const forfeitSuffix = forfeit ? "（1回消化扱い）" : "";
 
     const [{ data: profile }, { data: trainerIds }] = await Promise.all([
       supabase.from("profiles").select("display_name").eq("user_id", booking.user_id).maybeSingle(),
@@ -760,7 +786,7 @@ async function sendCancelPushNotification(
       body: {
         user_ids: [booking.user_id],
         title: "予約がキャンセルされました",
-        body: `${md} ${hm} の予約をキャンセルしました`,
+        body: `${md} ${hm} の予約をキャンセルしました${forfeitSuffix}`,
         url: "/",
         tag: `booking-cancel-${booking.user_id}-${booking.booking_date}`,
       },
@@ -772,7 +798,7 @@ async function sendCancelPushNotification(
         body: {
           user_ids: trainers,
           title: "予約キャンセル",
-          body: `${customerName}さんが ${md} ${hm} の予約をキャンセルしました`,
+          body: `${customerName}さんが ${md} ${hm} の予約をキャンセルしました${forfeitSuffix}`,
           url: "/",
           tag: `booking-cancel-trainer-${booking.user_id}-${booking.booking_date}`,
         },

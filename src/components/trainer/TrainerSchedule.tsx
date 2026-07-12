@@ -205,6 +205,7 @@ const TrainerSchedule = () => {
 
     // Trial guest bookings are in trial_bookings table
     const booking = bookings.find((b) => b.id === target.id);
+    const forfeit = deleteTargetForfeitable && forfeitChecked;
     let error: { code?: string; message?: string } | null | undefined;
     if (booking?.user_id === "trial-guest") {
       // Fetch google_event_id before cancelling (to delete the linked calendar event)
@@ -238,7 +239,7 @@ const TrainerSchedule = () => {
         .eq("id", target.id);
       error = res.error;
     } else {
-      const res = await cancelBooking(target.id, true, { forfeit: deleteTargetForfeitable && forfeitChecked });
+      const res = await cancelBooking(target.id, true, { forfeit });
       error = res.error;
     }
 
@@ -250,7 +251,15 @@ const TrainerSchedule = () => {
       return;
     }
 
-    removeBooking(target.id);
+    // 消化扱い（forfeit）の場合は物理削除ではなくstatus更新のため、枠は
+    // 「同日キャンセル済み」として引き続き表示する必要がある。removeBookingで
+    // 消してしまうと（realtimeで戻るまで）一時的に枠が消えて見えるため、
+    // 代わりに再取得して正しいグレー表示に更新する。
+    if (booking?.user_id !== "trial-guest" && forfeit) {
+      void refetch();
+    } else {
+      removeBooking(target.id);
+    }
     toast.success(t("schedule.deletedToast"));
     setDeleting(false);
     setDeleteTarget(null);

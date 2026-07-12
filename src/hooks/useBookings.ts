@@ -114,6 +114,23 @@ export const useMyBookings = () => {
     void fetchBookings();
   }, [fetchBookings]);
 
+  // Realtime: 他画面（トレーナー側の操作等）による自分の予約の変更を反映する。
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`my-bookings-realtime-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings", filter: `user_id=eq.${user.id}` },
+        () => fetchBookings(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchBookings]);
+
   return { bookings, loading, refetch: fetchBookings };
 };
 
@@ -210,6 +227,28 @@ export const useAllBookings = () => {
 
   useEffect(() => {
     void fetchBookings();
+  }, [fetchBookings]);
+
+  // Realtime: 顧客側の自己キャンセル・自己予約など、この画面を開いたまま行われた
+  // 他画面での変更を反映する（従来はマウント時の一度きりの取得のみで、
+  // 開いたままだと同日キャンセル消化等の変更が反映されないままになっていた）。
+  useEffect(() => {
+    const channel = supabase
+      .channel("trainer-all-bookings-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
+        fetchBookings();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "trial_bookings" }, () => {
+        fetchBookings();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocked_slots" }, () => {
+        fetchBookings();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchBookings]);
 
   return { bookings, loading, refetch: fetchBookings, removeBooking };

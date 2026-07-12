@@ -99,3 +99,21 @@ pushの3経路とも、消化扱いになった場合は本文に一言（「今
   - 新しく `status === "キャンセル済み"` 系のチェックを書く/見つけたときは、
     上記3分類のどれに当たるか確認してから `SAME_DAY_FORFEIT_STATUS` の
     扱いを決めること。
+
+### 追加で見つかった不具合と修正（トレーナー側予約表が更新されない）
+お客様が同日キャンセル（消化扱い）した予約が、トレーナー側の「予約」タブの
+カレンダーを開いたままだと反映されず、通常予約のまま残って見える不具合が
+あった。原因は2つ:
+1. `useAllBookings`（`useBookings.ts`）は`useAllCustomerProfiles`と違い、
+   マウント時に一度fetchするだけでrealtime購読が無かった。お客様側の操作
+   （別セッション/別タブ）で`bookings`が変わっても、トレーナー側の画面を
+   開きっぱなしだと再取得されない。→ `bookings` / `trial_bookings` /
+   `blocked_slots` テーブルへのrealtime購読を追加して自動再取得するように
+   修正（`useMyBookings`にも同様に`user_id`フィルタ付きで追加、トレーナー側
+   操作がお客様側の開きっぱなし画面に反映されない逆方向の抜けも解消）。
+2. `TrainerSchedule.tsx`の`handleDeleteBooking`は、消化扱い（forfeit）で
+   キャンセルした場合も無条件に`removeBooking(target.id)`でローカル一覧
+   から消していた。消化扱いは物理削除ではなくstatus更新なので、本来は
+   グレー表示＋「同日キャンセル済み」バッジで枠に残るべきところが、
+   トレーナー自身の操作直後は一時的に枠ごと消えて見えていた。
+   → forfeit時は`removeBooking`ではなく`refetch()`するよう修正。

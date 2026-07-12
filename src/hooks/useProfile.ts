@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 
 export interface Profile {
   id: string;
@@ -191,11 +192,15 @@ export const useAllCustomerProfiles = () => {
       .in("user_id", customerIds);
 
     // 4. Fetch ALL bookings for these customers (not just future)
+    // 同日キャンセル消化(SAME_DAY_FORFEIT_STATUS)は実際には来店していないため、
+    // 「次回予約」「最終来店日」の算出対象からは除外する（プラン消化数の算出は
+    // courseProgress.ts が別途行うため、そちらは意図的に触れない）。
     const { data: allBookings } = await supabase
       .from("bookings")
       .select("user_id, booking_date, booking_type, status")
       .in("user_id", customerIds)
       .neq("status", "キャンセル済み")
+      .neq("status", SAME_DAY_FORFEIT_STATUS)
       .order("booking_date", { ascending: true });
 
     // 4b. Fetch genders from user_avatars

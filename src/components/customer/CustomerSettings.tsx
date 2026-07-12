@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMyBookings, BookingWithTime } from "@/hooks/useBookings";
+import { useMyBookings, BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -447,7 +447,8 @@ const CustomerSettings = () => {
           const now = getJSTNow();
           const pastBookings = myBookings
             .filter((b) => {
-              if (b.status === "キャンセル済み") return false;
+              // 同日キャンセル消化は実際には来店していないため履歴に出さない
+              if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS) return false;
               const endDt = new Date(`${b.date}T${b.endTime}:00+09:00`);
               return endDt <= now;
             })

@@ -5,6 +5,7 @@ import { getMuscleGroup, loadMuscleGroupMap } from "./muscleGroup";
 import { formatJST } from "./timezone";
 import { getRankInfo } from "./avatarSystem";
 import { MISSION_EXP_MULT } from "./rankPerks";
+import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 
 async function getMissionMult(userId: string): Promise<number> {
   const { data } = await supabase.from("user_avatars").select("level").eq("user_id", userId).maybeSingle();
@@ -53,11 +54,14 @@ async function loadEvalData(userId: string, date: string) {
       .select("workout_date, weight, reps, sets, exercise_id, exercises(name)")
       .eq("user_id", userId)
       .lt("workout_date", date),
+    // 同日キャンセル消化は実際には来店していないため、トレーニング時間帯ミッション
+    // （例: 朝トレボーナス）の判定対象には含めない
     supabase
       .from("bookings")
       .select("booking_date")
       .eq("user_id", userId)
-      .neq("status", "キャンセル済み"),
+      .neq("status", "キャンセル済み")
+      .neq("status", SAME_DAY_FORFEIT_STATUS),
     supabase
       .from("user_measurements")
       .select("weight, measured_date")

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from "../../supabase/functions/_shared/email-encoding";
+import { readFileSync } from "node:fs";
 
 // パスワード再設定メール本文（recovery.tsx の本文と同一）。
 // 送信経路の固定幅折り返しで「パスワード」が「パスワ???ード」と化けていた回帰対象。
@@ -78,5 +79,20 @@ describe("makeEmailHtmlAsciiSafe（予約メール文字化け対策）", () => 
       .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
       .replace(/&amp;/g, "&");
     expect(decoded).toBe(html);
+  });
+
+  it("体験予約確認メールの主要本文はrenderAsync前にASCII数値文字参照化される", () => {
+    const source = readFileSync(
+      "supabase/functions/_shared/transactional-email-templates/trial-booking-confirmation.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain("const SafeText");
+    expect(source).toContain("const SafeHeading");
+    expect(source).toContain("const SafeInlineText");
+    expect(source).toContain("dangerouslySetInnerHTML={{ __html: toHtmlEntities(children) }}");
+    expect(source).toContain("<SafeText style={text}>ご都合が悪くなった場合は、下記のボタンからいつでもキャンセルできます。</SafeText>");
+    expect(source).toContain("<Button href={cancelUrl} style={cancelButton}><SafeInlineText>予約をキャンセルする</SafeInlineText></Button>");
+    expect(source).toContain("<SafeText style={text}>お会いできることを楽しみにしております！</SafeText>");
   });
 });

@@ -8,12 +8,29 @@ const SITE_NAME = "パーソナルジムSalute御所南"
 const SITE_URL = "https://app.kyoto-salute.com"
 
 // react-email の renderAsync が UTF-8 チャンク境界でマルチバイト文字を分断し
-// U+FFFD 化する既知の症状を回避するため、住所と店舗名は ASCII 数値文字参照で描画する。
+// U+FFFD 化する既知の症状を回避するため、本文テキストは ASCII 数値文字参照で描画する。
 const toHtmlEntities = (s: string): string =>
   Array.from(s).map((ch) => {
     const cp = ch.codePointAt(0)!
+    if (ch === '&') return '&amp;'
+    if (ch === '<') return '&lt;'
+    if (ch === '>') return '&gt;'
+    if (ch === '"') return '&quot;'
+    if (ch === "'") return '&#39;'
     return cp > 0x7f ? `&#${cp};` : ch
   }).join('')
+
+const SafeText = ({ style, children }: { style: React.CSSProperties; children: string }) => (
+  <Text style={style} dangerouslySetInnerHTML={{ __html: toHtmlEntities(children) }} />
+)
+
+const SafeHeading = ({ style, children }: { style: React.CSSProperties; children: string }) => (
+  <Heading style={style} dangerouslySetInnerHTML={{ __html: toHtmlEntities(children) }} />
+)
+
+const SafeInlineText = ({ children }: { children: string }) => (
+  <span dangerouslySetInnerHTML={{ __html: toHtmlEntities(children) }} />
+)
 
 const SITE_NAME_HTML = toHtmlEntities(SITE_NAME)
 const ADDRESS_LINES_HTML = [
@@ -52,47 +69,43 @@ const TrialBookingReminderEmail = ({
     
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>明日のご予約のお知らせ</Heading>
+        <SafeHeading style={h1}>明日のご予約のお知らせ</SafeHeading>
         <Hr style={hr} />
-        <Text style={greeting}>{guestName} 様</Text>
-        <Text style={text}>
-          明日の初回無料体験のご予約をお知らせいたします。
-        </Text>
+        <SafeText style={greeting}>{`${guestName} 様`}</SafeText>
+        <SafeText style={text}>明日の初回無料体験のご予約をお知らせいたします。</SafeText>
 
         <Section style={detailSection}>
-          <Text style={sectionTitle}>ご予約内容</Text>
-          <Text style={label}>日時</Text>
-          <Text style={value}>{bookingDate} {bookingTime}</Text>
-          <Text style={label}>内容</Text>
-          <Text style={value}>カウンセリング＋トレーニング体験（計60分）</Text>
-          <Text style={label}>場所</Text>
+          <SafeText style={sectionTitle}>ご予約内容</SafeText>
+          <SafeText style={label}>日時</SafeText>
+          <SafeText style={value}>{`${bookingDate} ${bookingTime}`.trim()}</SafeText>
+          <SafeText style={label}>内容</SafeText>
+          <SafeText style={value}>カウンセリング＋トレーニング体験（計60分）</SafeText>
+          <SafeText style={label}>場所</SafeText>
           <AddressBlock style={value} />
         </Section>
 
         <Section style={detailSection}>
-          <Text style={sectionTitle}>当日のご案内</Text>
-          <Text style={text}>・手ぶらでOK！ウェア・シューズは無料でレンタルできます</Text>
-          <Text style={text}>・お水はこちらでご用意しております</Text>
+          <SafeText style={sectionTitle}>当日のご案内</SafeText>
+          <SafeText style={text}>・手ぶらでOK！ウェア・シューズは無料でレンタルできます</SafeText>
+          <SafeText style={text}>・お水はこちらでご用意しております</SafeText>
         </Section>
 
         <Section style={detailSection}>
-          <Text style={sectionTitle}>キャンセル・変更</Text>
+          <SafeText style={sectionTitle}>キャンセル・変更</SafeText>
           {/* セルフキャンセルは廃止し、メール連絡に一本化した（send-trial-reminders は cancelUrl を渡さない）。
               分岐自体は残し、再度セルフキャンセルに戻す際にすぐ有効化できるようにしている。 */}
           {cancelUrl ? (
             <>
-              <Text style={text}>ご都合が悪くなった場合は、下記のボタンからキャンセルできます。</Text>
-              <Button href={cancelUrl} style={cancelButton}>予約をキャンセルする</Button>
-              <Text style={fallbackText}>
-                ボタンが押せない場合は、こちらのリンクをブラウザで開いてください。
-              </Text>
+              <SafeText style={text}>ご都合が悪くなった場合は、下記のボタンからキャンセルできます。</SafeText>
+              <Button href={cancelUrl} style={cancelButton}><SafeInlineText>予約をキャンセルする</SafeInlineText></Button>
+              <SafeText style={fallbackText}>ボタンが押せない場合は、こちらのリンクをブラウザで開いてください。</SafeText>
               <Text style={fallbackText}>
                 <Link href={cancelUrl} style={inlineLink}>{cancelUrl}</Link>
               </Text>
             </>
           ) : (
             <>
-              <Text style={text}>下記メールへご連絡ください。</Text>
+              <SafeText style={text}>下記メールへご連絡ください。</SafeText>
               <Text style={text}>
                 <Link href="mailto:k.munemoto@kyoto-salute.com" style={inlineLink}>k.munemoto@kyoto-salute.com</Link>
               </Text>
@@ -101,7 +114,7 @@ const TrialBookingReminderEmail = ({
         </Section>
 
         <Hr style={hr} />
-        <Text style={text}>お会いできることを楽しみにしております！</Text>
+        <SafeText style={text}>お会いできることを楽しみにしております！</SafeText>
         <Hr style={hr} />
         <Text style={footer} dangerouslySetInnerHTML={{ __html: SITE_NAME_HTML }} />
         <Text style={footer}>〒604-0981</Text>

@@ -66,7 +66,7 @@ export function useTenant() {
       setLoading(true);
       const { data: mem } = await supabase
         .from("tenant_members")
-        .select("role, plan_id, tenants:tenant_id(id, gym_name, gym_name_short, business_type, logo_url, primary_color, address, phone, email, website_url, operating_hours, slot_duration_minutes, booking_cutoff_type, booking_cutoff_hours, status, gymboard_plan, max_customers, subscription_status, trial_ends_at)")
+        .select("role, plan_id, tenants:tenant_id(id, gym_name, gym_name_short, business_type, logo_url, primary_color, address, phone, email, website_url, operating_hours, slot_duration_minutes, booking_cutoff_type, booking_cutoff_hours, same_day_cancel_penalty_enabled, status, gymboard_plan, max_customers, subscription_status, trial_ends_at)")
         .eq("user_id", user.id)
         .eq("status", "active")
         .limit(1)

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Upload, Trash2, Image, User, Save, LogOut, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +36,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [savingSameDayPenalty, setSavingSameDayPenalty] = useState(false);
 
 
 
@@ -54,6 +56,21 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (error) toast.error(t("settings.trainer.saveFailed"));
     else toast.success(t("settings.trainer.displayNameUpdated"));
     setSavingName(false);
+  };
+
+  const handleToggleSameDayPenalty = async (checked: boolean) => {
+    if (!tenant) return;
+    setSavingSameDayPenalty(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ same_day_cancel_penalty_enabled: checked })
+      .eq("id", tenant.id);
+    if (error) toast.error(t("settings.trainer.sameDayPenaltySaveFailed"));
+    else {
+      toast.success(t("settings.trainer.sameDayPenaltyUpdated"));
+      refetchTenant();
+    }
+    setSavingSameDayPenalty(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,6 +146,28 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.planManage")}</h3>
         <TrainerPlanManager />
+      </section>
+
+      <Separator />
+
+      {/* === 予約ポリシー === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.bookingPolicySection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-sm">{t("settings.trainer.sameDayPenaltyTitle")}</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.sameDayPenaltyDesc")}</p>
+              </div>
+              <Switch
+                checked={!!tenant?.same_day_cancel_penalty_enabled}
+                disabled={savingSameDayPenalty || !tenant}
+                onCheckedChange={handleToggleSameDayPenalty}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <Separator />

@@ -17,6 +17,7 @@ export interface Tenant {
   slot_duration_minutes: number;
   booking_cutoff_type: string;
   booking_cutoff_hours: number;
+  same_day_cancel_penalty_enabled: boolean;
   invite_code?: string;
   status: string;
   gymboard_plan: string;

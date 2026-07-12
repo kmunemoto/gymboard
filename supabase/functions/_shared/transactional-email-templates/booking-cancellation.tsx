@@ -17,6 +17,8 @@ interface BookingCancellationProps {
   recipientRole?: 'trainer' | 'customer'
   cancelledByTrainer?: boolean
   isTrial?: boolean
+  /** 同日キャンセルのペナルティ（ジム設定でON時）で1回消化扱いになった場合 true */
+  forfeit?: boolean
 }
 
 const BookingCancellationEmail = ({
@@ -27,6 +29,7 @@ const BookingCancellationEmail = ({
   recipientRole = 'trainer',
   cancelledByTrainer = false,
   isTrial = false,
+  forfeit = false,
 }: BookingCancellationProps) => {
   const heading = recipientRole === 'trainer'
     ? (isTrial ? '初回無料体験の予約がキャンセルされました' : '予約がキャンセルされました')
@@ -65,6 +68,13 @@ const BookingCancellationEmail = ({
               </>
             )}
           </Section>
+          {forfeit && (
+            <Section style={detailSection}>
+              <Text style={noticeText}>
+                ※同日キャンセルのため、今回の予約は1回消化した扱いとなります。
+              </Text>
+            </Section>
+          )}
           {recipientRole === 'customer' && (
             <Section style={detailSection}>
               <Text style={text}>{NEW_BOOKING_GUIDANCE}</Text>
@@ -116,6 +126,7 @@ const detailSection = { margin: '8px 0' }
 const sectionTitle = { fontSize: '14px', fontWeight: '700' as const, color: '#0ABAB5', margin: '0 0 12px' }
 const label = { fontSize: '11px', fontWeight: '600' as const, color: '#0ABAB5', textTransform: 'uppercase' as const, letterSpacing: '0.5px', margin: '12px 0 2px' }
 const value = { fontSize: '15px', color: '#000000', margin: '0 0 4px', fontWeight: '500' as const }
+const noticeText = { fontSize: '13px', color: '#997404', backgroundColor: '#fff8e6', borderRadius: '6px', padding: '10px 12px', margin: '0', lineHeight: '1.6' }
 const footer = { fontSize: '11px', color: '#999999', margin: '28px 0 0', lineHeight: '1.5' }
 const footerLink = { fontSize: '12px', color: '#0ABAB5', textAlign: 'center' as const, display: 'block' }
 const button = { backgroundColor: '#0ABAB5', color: '#ffffff', padding: '12px 20px', borderRadius: '6px', textDecoration: 'none', display: 'inline-block', fontSize: '14px', fontWeight: '600' as const, marginTop: '8px' }

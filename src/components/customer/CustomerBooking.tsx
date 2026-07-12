@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useMyBookings, createBooking, createRecurringBookings, cancelBooking, rescheduleBooking, BookingWithTime } from "@/hooks/useBookings";
+import { useMyBookings, createBooking, createRecurringBookings, cancelBooking, rescheduleBooking, BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, addMonths, startOfDay } from "date-fns";
@@ -59,6 +59,9 @@ const CustomerBooking = () => {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<BookingWithTime | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  // 同日キャンセルのペナルティが有効な対象を「キャンセルする」で即キャンセルせず、
+  // 一度警告表示に留めるための2段階確認フラグ（handleCancel参照）
+  const [forfeitPending, setForfeitPending] = useState(false);
   const [lastBooked, setLastBooked] = useState<BookingWithTime | null>(null);
   const [lastCancelled, setLastCancelled] = useState<BookingWithTime | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -392,6 +395,11 @@ const CustomerBooking = () => {
     }
   };
 
+  // このテナントで同日キャンセルのペナルティが有効、かつ対象予約が今日(JST)の分か
+  const cancelTargetForfeits = !!cancelTarget
+    && !!tenant?.same_day_cancel_penalty_enabled
+    && cancelTarget.date === getJSTToday();
+
   const handleCancel = async () => {
     if (!cancelTarget || cancelling) return;
     // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可
@@ -399,15 +407,22 @@ const CustomerBooking = () => {
       toast.info(JUNE_LOCK_MESSAGE);
       return;
     }
+    // 同日キャンセルのペナルティ対象は、最初の押下では警告表示に切り替えるだけに
+    // 留め、実際のキャンセルは警告を見た上でのもう一度の確定操作で行う。
+    if (cancelTargetForfeits && !forfeitPending) {
+      setForfeitPending(true);
+      return;
+    }
     setCancelling(true);
     try {
-      const { error } = await cancelBooking(cancelTarget.id);
+      const { error } = await cancelBooking(cancelTarget.id, false, { forfeit: cancelTargetForfeits });
       if (error) {
         toast.error(t("booking.errorCancelFailed"));
         return;
       }
       const cancelled = cancelTarget;
       setCancelTarget(null);
+      setForfeitPending(false);
       setLastCancelled(cancelled);
       refetch();
       if (dateKey) fetchBookedSlots(dateKey);
@@ -417,7 +432,7 @@ const CustomerBooking = () => {
   };
 
   const activeBookings = myBookings.filter((b) => {
-    if (b.status === "キャンセル済み") return false;
+    if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS) return false;
     const bookingDateTime = new Date(`${b.date}T${b.endTime}:00+09:00`);
     return bookingDateTime > new Date();
   });
@@ -878,11 +893,19 @@ const CustomerBooking = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl border border-border bg-background glass p-6 shadow-lg">
             <div className="space-y-2 text-center sm:text-left">
-              <h3 className="text-lg font-semibold">{t("booking.cancelConfirmTitle")}</h3>
-              <p className="text-sm text-muted-foreground">{cancelDescription}</p>
+              <h3 className="text-lg font-semibold">
+                {forfeitPending ? t("booking.sameDayForfeitWarningTitle") : t("booking.cancelConfirmTitle")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {forfeitPending ? t("booking.sameDayForfeitWarningDesc") : cancelDescription}
+              </p>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
-              <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelling}>
+              <Button
+                variant="outline"
+                onClick={() => { setCancelTarget(null); setForfeitPending(false); }}
+                disabled={cancelling}
+              >
                 {t("booking.back")}
               </Button>
               <Button
@@ -890,7 +913,11 @@ const CustomerBooking = () => {
                 disabled={cancelling}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {cancelling ? t("booking.cancelling") : t("booking.cancel")}
+                {cancelling
+                  ? t("booking.cancelling")
+                  : forfeitPending
+                    ? t("booking.sameDayForfeitConfirmBtn")
+                    : t("booking.cancel")}
               </Button>
             </div>
           </div>

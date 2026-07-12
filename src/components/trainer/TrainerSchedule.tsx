@@ -4,19 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Repeat } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking } from "@/hooks/useBookings";
+import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
-import { getJSTNow, formatJST } from "@/lib/timezone";
+import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
 import { sendBookingNotification } from "@/lib/bookingNotification";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import WeekTimelineView from "./WeekTimelineView";
 import CourseProgressBadge from "./CourseProgressBadge";
@@ -38,6 +40,9 @@ const TrainerSchedule = () => {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; clientName: string; date: string; startTime: string; isBlocked?: boolean } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // 同日キャンセルのペナルティが有効なジムで、対象が当日の会員予約のときだけ
+  // 「消化扱いにする」を選べるチェックボックスの値（既定ON）
+  const [forfeitChecked, setForfeitChecked] = useState(true);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [blockDate, setBlockDate] = useState<Date | undefined>();
   const [blockStartTime, setBlockStartTime] = useState<string>("");
@@ -45,7 +50,7 @@ const TrainerSchedule = () => {
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
-  const { plans } = useTenant();
+  const { tenant, plans } = useTenant();
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
   // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
   // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
@@ -168,6 +173,15 @@ const TrainerSchedule = () => {
     }
   };
 
+  // このテナントで同日キャンセルのペナルティが有効、かつ対象が今日(JST)の
+  // 会員予約（ブロック枠・体験予約ではない）のときだけ、消化扱いを選択できる。
+  const deleteTargetBookingRow = deleteTarget ? bookings.find((b) => b.id === deleteTarget.id) : undefined;
+  const deleteTargetForfeitable = !!deleteTarget
+    && !deleteTarget.isBlocked
+    && deleteTargetBookingRow?.user_id !== "trial-guest"
+    && !!tenant?.same_day_cancel_penalty_enabled
+    && deleteTarget.date === getJSTToday();
+
   const handleDeleteBooking = async () => {
     if (!deleteTarget || deleting) return;
 
@@ -224,7 +238,7 @@ const TrainerSchedule = () => {
         .eq("id", target.id);
       error = res.error;
     } else {
-      const res = await cancelBooking(target.id, true);
+      const res = await cancelBooking(target.id, true, { forfeit: deleteTargetForfeitable && forfeitChecked });
       error = res.error;
     }
 
@@ -426,20 +440,25 @@ const TrainerSchedule = () => {
                                 <div className={`rounded-lg p-2 pr-12 text-xs relative ${
                                   session.isBlocked
                                     ? "bg-muted border border-dashed border-destructive/30 text-muted-foreground"
-                                    : "accent-gradient text-accent-foreground"
+                                    : session.status === SAME_DAY_FORFEIT_STATUS
+                                      ? "bg-muted border border-border text-muted-foreground"
+                                      : "accent-gradient text-accent-foreground"
                                 }`}>
                                   <Button
                                     type="button"
                                     variant="destructive"
                                     size="icon"
                                     aria-label={session.isBlocked ? t("schedule.blockedRelease") : t("schedule.deleteBookingAria", { name: session.clientName })}
-                                    onClick={() => setDeleteTarget({ id: session.id, clientName: session.clientName, date: session.date, startTime: session.startTime, isBlocked: session.isBlocked })}
+                                    onClick={() => { setDeleteTarget({ id: session.id, clientName: session.clientName, date: session.date, startTime: session.startTime, isBlocked: session.isBlocked }); setForfeitChecked(true); }}
                                     className="absolute top-1 right-1 h-7 w-7 rounded-md"
                                   >
                                     <Trash2 className="w-3 h-3" />
                                   </Button>
                                   <p className="font-bold truncate">{session.isBlocked ? t("schedule.blockedLabel") : session.clientName}</p>
                                   <p className="opacity-75 truncate">{session.startTime}〜{session.endTime}</p>
+                                  {!session.isBlocked && session.status === SAME_DAY_FORFEIT_STATUS && (
+                                    <p className="truncate text-[9px] mt-0.5 font-semibold">{t("schedule.sameDayForfeitBadge")}</p>
+                                  )}
                                   {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{session.booking_type}</p>}
                                   {!session.isBlocked && (() => {
                                     const p = getProgress(session);
@@ -492,13 +511,18 @@ const TrainerSchedule = () => {
                         <CardContent className="p-3">
                           <div className="flex items-center gap-3">
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                              booking.isBlocked ? "bg-muted text-muted-foreground" : "accent-gradient text-accent-foreground"
+                              booking.isBlocked || booking.status === SAME_DAY_FORFEIT_STATUS
+                                ? "bg-muted text-muted-foreground"
+                                : "accent-gradient text-accent-foreground"
                             }`}>
                               {booking.isBlocked ? "—" : booking.clientName[0]}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate">{booking.isBlocked ? t("schedule.blockedLabel") : booking.clientName}</p>
                               <p className="text-xs text-muted-foreground">{booking.startTime}〜{booking.endTime}</p>
+                              {!booking.isBlocked && booking.status === SAME_DAY_FORFEIT_STATUS && (
+                                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{t("schedule.sameDayForfeitBadge")}</p>
+                              )}
                               {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{booking.booking_type}</p>}
                               {!booking.isBlocked && (() => {
                                 const p = getProgress(booking);
@@ -522,7 +546,7 @@ const TrainerSchedule = () => {
                               type="button"
                               variant="destructive"
                               size="sm"
-                              onClick={() => setDeleteTarget({ id: booking.id, clientName: booking.clientName, date: booking.date, startTime: booking.startTime, isBlocked: booking.isBlocked })}
+                              onClick={() => { setDeleteTarget({ id: booking.id, clientName: booking.clientName, date: booking.date, startTime: booking.startTime, isBlocked: booking.isBlocked }); setForfeitChecked(true); }}
                               className="min-w-[112px]"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -707,6 +731,22 @@ const TrainerSchedule = () => {
               }
             </p>
           </DialogHeader>
+          {deleteTargetForfeitable && (
+            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3">
+              <Checkbox
+                id="forfeit-checkbox"
+                checked={forfeitChecked}
+                onCheckedChange={(v) => setForfeitChecked(v === true)}
+                className="mt-0.5"
+              />
+              <Label htmlFor="forfeit-checkbox" className="text-sm font-normal leading-snug cursor-pointer">
+                {t("schedule.sameDayForfeitCheckbox")}
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  {t("schedule.sameDayForfeitCheckboxDesc")}
+                </span>
+              </Label>
+            </div>
+          )}
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full sm:w-auto">
               {t("common.cancel")}

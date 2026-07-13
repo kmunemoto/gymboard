@@ -109,7 +109,7 @@ function pageConfirm(token: string, gymName: string, dateStr: string, timeStr: s
   return htmlDoc("予約のキャンセル", `
     ${badge("#fdecec", ICON_CAL_X)}
     <h1>予約をキャンセルしますか？</h1>
-    <p>下記の初回無料体験のご予約をキャンセルします。</p>
+    <p>下記の体験のご予約をキャンセルします。</p>
     ${detailBlock(dateStr, timeStr)}
     <form method="POST" action="?token=${encodeURIComponent(token)}">
       <button class="btn" type="submit">この予約をキャンセルする</button>

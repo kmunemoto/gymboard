@@ -75,10 +75,10 @@ const TrialBookingConfirmationEmail = ({
       </Head>
       <Body style={main}>
         <Container style={container}>
-          <SafeHeading style={h1}>初回無料体験のご予約を承りました</SafeHeading>
+          <SafeHeading style={h1}>体験のご予約を承りました</SafeHeading>
           <Hr style={hr} />
           <SafeText style={greeting}>{`${customerName} 様`}</SafeText>
-          <SafeText style={text}>{`この度は${gymName}の初回無料体験にご予約いただき、誠にありがとうございます。`}</SafeText>
+          <SafeText style={text}>{`この度は${gymName}の体験にご予約いただき、誠にありがとうございます。`}</SafeText>
 
           <Section style={detailSection}>
             <SafeText style={sectionTitle}>ご予約内容</SafeText>
@@ -137,8 +137,8 @@ const TrialBookingConfirmationEmail = ({
 export const template = {
   component: TrialBookingConfirmationEmail,
   subject: (data: Record<string, any>) =>
-    `【${(data?.gymName as string) || 'ジム'}】初回無料体験のご予約を承りました`,
-  displayName: '初回無料体験 予約確認（顧客向け）',
+    `【${(data?.gymName as string) || 'ジム'}】体験のご予約を承りました`,
+  displayName: '体験予約 確認（顧客向け）',
   previewData: {
     customerName: '山田 太郎',
     bookingDate: '4月15日（火）',

@@ -189,7 +189,10 @@ export const useAllBookings = () => {
         endTime,
         clientName: `🆕 ${t.guest_name}`,
         status: t.status,
-        booking_type: t.booking_type,
+        // 予定表の表示ラベル。DBの booking_type 値（"初回無料体験"）は据え置きだが、
+        // 「無料」はジムによるため、表示上は "体験予約" に統一する（体験行は user_id
+        // === "trial-guest" で判定するため、この表示値変更はロジックに影響しない）。
+        booking_type: "体験予約",
       });
     });
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
 
-// 無料体験の予約リンク（公開ページ /trial/:tenantId）をトレーナーが取得・共有するためのカード。
+// 体験予約リンク（公開ページ /trial/:tenantId）をトレーナーが取得・共有するためのカード。
 // InviteCodeCard と同じ体裁。各ジムは自分のテナントIDが埋め込まれたリンクを配布でき、
 // リンク先はそのジムのロゴ・ジム名・空き枠・予約通知が反映される（TrialBooking.tsx）。
 const TrialLinkCard = () => {

@@ -143,7 +143,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       <Separator />
 
-      {/* === 無料体験リンク === */}
+      {/* === 体験予約リンク === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
         <TrialLinkCard />

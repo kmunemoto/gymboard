@@ -32,7 +32,7 @@ const BookingCancellationEmail = ({
   forfeit = false,
 }: BookingCancellationProps) => {
   const heading = recipientRole === 'trainer'
-    ? (isTrial ? '初回無料体験の予約がキャンセルされました' : '予約がキャンセルされました')
+    ? (isTrial ? '体験のご予約がキャンセルされました' : '予約がキャンセルされました')
     : 'キャンセルを受け付けました'
 
   const intro = recipientRole === 'trainer'
@@ -104,7 +104,7 @@ export const template = {
     data?.recipientRole === 'customer'
       ? '【ジムボード】キャンセルを受け付けました'
       : (data?.isTrial
-          ? '【ジムボード】初回無料体験の予約がキャンセルされました'
+          ? '【ジムボード】体験のご予約がキャンセルされました'
           : '【ジムボード】予約がキャンセルされました'),
   displayName: '予約キャンセル通知',
   previewData: {

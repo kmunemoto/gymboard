@@ -57,11 +57,6 @@ const RATE_LIMIT_PER_CONTACT_24H = 3;
 const RATE_LIMIT_PER_TENANT_1H = 20;
 const CANCELLED = "キャンセル済み";
 
-// trial-booking-confirmation テンプレートは現状 Salute御所南の住所を本文に含む
-// (テナント別の住所差し込み未対応)。他テナントのお客様へ誤った住所を送らないよう、
-// お客様宛確認メールは当面このテナントに限定する。
-const CONFIRMATION_EMAIL_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
-
 const GENERIC_ERROR = "サーバーで問題が発生しました。時間をおいて再度お試しください。";
 
 function json(body: unknown, status: number) {
@@ -144,9 +139,11 @@ Deno.serve(async (req) => {
     });
 
     // ===== テナント確認 =====
+    // 住所・連絡先・サイトURLは確認メールの本文に差し込むため一緒に取得する
+    // (ジムごとに正しい情報を載せる。旧実装は Salute 固定だったため他ジムには送っていなかった)。
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status")
+      .select("id, gym_name, status, address, email, website_url")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -154,6 +151,9 @@ Deno.serve(async (req) => {
       return reject("tenant_not_found", "ジムが見つかりません。予約リンクをご確認ください。");
     }
     const gymName = (tenant.gym_name as string) || "ジム";
+    const gymAddress = ((tenant.address as string | null) ?? "").trim();
+    const gymContactEmail = ((tenant.email as string | null) ?? "").trim();
+    const gymWebsiteUrl = ((tenant.website_url as string | null) ?? "").trim();
 
     // ===== 連続予約ガード =====
     // (1) 同一メール 24時間で3件まで (ジム側でキャンセルして取り直すケースは数えない)
@@ -260,25 +260,25 @@ Deno.serve(async (req) => {
     const notify: Record<string, boolean | string> = {};
     const tasks: Array<Promise<void>> = [];
 
-    // 1) お客様宛 確認メール (テンプレートの住所が Salute 固定のため当面 Salute 限定)
-    if (tenantId === CONFIRMATION_EMAIL_TENANT_ID) {
-      tasks.push(
-        invokeFn("send-transactional-email", {
-          templateName: "trial-booking-confirmation",
-          recipientEmail: guestContact,
-          idempotencyKey: `trial-confirm-${notifyKey}`,
-          templateData: {
-            customerName: guestName,
-            bookingDate: dateStr,
-            bookingTime: timeStr,
-            // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
-            // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
-          },
-        }).then((ok) => { notify.customer_email = ok; }),
-      );
-    } else {
-      notify.customer_email = "skipped_template_not_tenant_aware";
-    }
+    // 1) お客様宛 確認メール。ジムの名前・住所・連絡先・サイトURLを差し込むため全ジムで送信できる。
+    tasks.push(
+      invokeFn("send-transactional-email", {
+        templateName: "trial-booking-confirmation",
+        recipientEmail: guestContact,
+        idempotencyKey: `trial-confirm-${notifyKey}`,
+        templateData: {
+          customerName: guestName,
+          bookingDate: dateStr,
+          bookingTime: timeStr,
+          gymName,
+          gymAddress,
+          gymContactEmail,
+          gymWebsiteUrl,
+          // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
+          // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
+        },
+      }).then((ok) => { notify.customer_email = ok; }),
+    );
 
     if (trainerId) {
       // 2) トレーナー宛 メール

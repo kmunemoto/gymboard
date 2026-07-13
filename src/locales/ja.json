@@ -131,6 +131,7 @@
     "trainer": {
       "title": "ジム設定",
       "invite": "お客様の招待",
+      "trialLinkSection": "無料体験リンク",
       "planManage": "プラン管理",
       "bookingPolicySection": "予約ポリシー",
       "sameDayPenaltyTitle": "同日キャンセルを自動で消化扱いにする",
@@ -1991,6 +1992,14 @@
     "online": "オンライン",
     "emptyPrompt": "メッセージを送ってみましょう！",
     "inputPlaceholder": "メッセージを入力..."
+  },
+  "trialLink": {
+    "title": "無料体験の予約リンク",
+    "desc": "体験希望の方にこのリンクを共有してください",
+    "copyLink": "リンクをコピー",
+    "openLink": "開く",
+    "copiedToast": "体験予約リンクをコピーしました",
+    "copyFailed": "コピーに失敗しました"
   },
   "inviteCode": {
     "copiedToast": "{{label}}をコピーしました",

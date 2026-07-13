@@ -91,8 +91,11 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       .from("tenants")
       .update({ trial_info_title: title || null, trial_info_body: body || null })
       .eq("id", tenant.id);
-    if (error) toast.error(t("settings.trainer.trialInfoSaveFailed"));
-    else {
+    if (error) {
+      // 失敗理由（例: カラム未追加＝マイグレーション未適用）を画面でも確認できるようにする
+      console.error("体験予約ページ案内文の保存に失敗:", error);
+      toast.error(t("settings.trainer.trialInfoSaveFailed"), { description: error.message });
+    } else {
       toast.success(t("settings.trainer.trialInfoSaved"));
       refetchTenant();
     }

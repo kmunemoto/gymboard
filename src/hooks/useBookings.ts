@@ -492,31 +492,37 @@ async function sendRescheduleToTrainer(
     supabase.rpc("get_trainer_ids"),
   ]);
   const customerName = profile?.display_name || "顧客";
-  const trainerId = trainerIds?.[0]?.user_id;
-  if (!trainerId) return;
+  const trainers = (trainerIds ?? []).map((t: { user_id: string }) => t.user_id);
 
-  const oldStr = formatJST(oldBookingDate, "M月d日（E） HH:mm", { locale: ja });
-  const newStr = formatJST(`${newDate}T${newStartTime}:00+09:00`, "M月d日（E） HH:mm", { locale: ja });
-  const gymName = await getGymNameForUser(userId);
-
-  await supabase.functions.invoke("send-line-message", {
-    body: {
-      user_id: trainerId,
-      message: `🔄 予約変更通知\n\n${oldStr}\n　↓\n${newStr}\n\n${customerName}様が予約日時を変更しました。\n\nプラン：${bookingType}\n\n${gymName}`,
-    },
-  }).catch((e) => console.error("reschedule LINE failed:", e));
-
-  // トレーナー＋本人へプッシュ通知
+  // プッシュ通知を最優先で送る（トレーナー全員＋本人）。
+  // LINE を使わないジムでもプッシュが確実に飛ぶよう、LINE 送信より先に・独立して発火する。
+  // （以前は await の LINE 送信を待ってから、かつ先頭トレーナー1人だけに送っていたため、
+  //  LINE 側の遅延やトレーナー取得の失敗でプッシュまで届かない可能性があった）
   const shortNew = formatJST(`${newDate}T${newStartTime}:00+09:00`, "M月d日 HH:mm", { locale: ja });
+  const pushTargets = [...new Set([...trainers, userId])];
   supabase.functions.invoke("send-push-notification", {
     body: {
-      user_ids: [trainerId, userId],
+      user_ids: pushTargets,
       title: "予約日時の変更",
       body: `${customerName}様が予約を${shortNew}に変更しました`,
       url: "/",
-      tag: `reschedule-${trainerId}-${newDate}`,
+      tag: `reschedule-${userId}-${newDate}`,
     },
   }).catch((e) => console.error("reschedule push failed:", e));
+
+  // LINE（先頭トレーナー宛、fire-and-forget）。未連携なら送信側が無視する。
+  const firstTrainer = trainers[0];
+  if (firstTrainer) {
+    const oldStr = formatJST(oldBookingDate, "M月d日（E） HH:mm", { locale: ja });
+    const newStr = formatJST(`${newDate}T${newStartTime}:00+09:00`, "M月d日（E） HH:mm", { locale: ja });
+    const gymName = await getGymNameForUser(userId);
+    supabase.functions.invoke("send-line-message", {
+      body: {
+        user_id: firstTrainer,
+        message: `🔄 予約変更通知\n\n${oldStr}\n　↓\n${newStr}\n\n${customerName}様が予約日時を変更しました。\n\nプラン：${bookingType}\n\n${gymName}`,
+      },
+    }).catch((e) => console.error("reschedule LINE failed:", e));
+  }
 }
 
 async function sendBookingConfirmationToCustomer(

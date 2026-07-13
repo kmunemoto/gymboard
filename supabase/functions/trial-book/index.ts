@@ -288,10 +288,10 @@ Deno.serve(async (req) => {
           recipientEmail: "_resolve_trainer_",
           idempotencyKey: `trial-notify-${notifyKey}`,
           templateData: {
-            customerName: `${guestName}（初回無料体験）`,
+            customerName: `${guestName}（体験予約）`,
             bookingDate: dateStr,
             bookingTime: timeStr,
-            planName: "初回無料体験",
+            planName: "体験予約",
             dashboardUrl: "https://gymboard.lovable.app",
             trainerUserId: trainerId,
           },
@@ -324,7 +324,8 @@ Deno.serve(async (req) => {
         action: "create",
         booking_id: trialBookingId,
         booking_date: bookingDateRaw,
-        booking_type: "初回無料体験",
+        // カレンダー表示ラベル（DBの booking_type 値は据え置き、is_trial で識別）
+        booking_type: "体験予約",
         client_name: `🆕 ${guestName}`,
         is_trial: true,
       }).then((ok) => { notify.google_calendar = ok; }),

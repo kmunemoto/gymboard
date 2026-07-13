@@ -40,7 +40,8 @@ const CustomerBooking = () => {
 
   // Build plan name → label / max sessions maps from tenant_plans
   const planLabelMap = useMemo(() => {
-    const m: Record<string, string> = { "初回無料体験": "初回無料体験" };
+    // キー（予約種別の内部値）は "初回無料体験" のまま、表示ラベルだけ "体験予約" にする
+    const m: Record<string, string> = { "初回無料体験": "体験予約" };
     tenantPlans?.forEach((p) => { m[p.plan_name] = p.plan_name; });
     return m;
   }, [tenantPlans]);

@@ -72,7 +72,7 @@ const TrialBookingReminderEmail = ({
         <SafeHeading style={h1}>明日のご予約のお知らせ</SafeHeading>
         <Hr style={hr} />
         <SafeText style={greeting}>{`${guestName} 様`}</SafeText>
-        <SafeText style={text}>明日の初回無料体験のご予約をお知らせいたします。</SafeText>
+        <SafeText style={text}>明日の体験のご予約をお知らせいたします。</SafeText>
 
         <Section style={detailSection}>
           <SafeText style={sectionTitle}>ご予約内容</SafeText>
@@ -127,8 +127,8 @@ const TrialBookingReminderEmail = ({
 
 export const template = {
   component: TrialBookingReminderEmail,
-  subject: '【明日のご予約】無料体験のリマインド',
-  displayName: '初回無料体験 前日リマインド',
+  subject: '【明日のご予約】体験のリマインド',
+  displayName: '体験予約 前日リマインド',
   previewData: {
     guestName: '山田 太郎',
     bookingDate: '5月18日（月）',

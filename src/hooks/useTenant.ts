@@ -18,6 +18,10 @@ export interface Tenant {
   booking_cutoff_type: string;
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;
+  /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */
+  trial_info_title: string | null;
+  /** 体験予約ページの案内カード説明文。null/空なら既定文言を表示 */
+  trial_info_body: string | null;
   invite_code?: string;
   status: string;
   gymboard_plan: string;
@@ -64,11 +68,14 @@ export function useTenant() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      // 基本カラムと、後から追加した same_day_cancel_penalty_enabled を分けて持つ。
+      // 基本カラムと、後から追加したカラム（same_day_cancel_penalty_enabled /
+      // trial_info_title / trial_info_body）を分けて持つ。
       // 新カラムを含む select は、対象環境でマイグレーション未適用だと
       // 「column does not exist」でクエリ全体が失敗し、tenant が読めず
       // アプリ全体（プラン管理のロード等）が壊れる。そのため新カラム込みで試し、
-      // 失敗したら新カラム抜きで再取得して flag は false 扱いにフォールバックする。
+      // 失敗したら段階的に削って再取得する。段階的にするのは、trial_info_* だけ
+      // 未適用の環境で same_day_cancel_penalty_enabled（適用済み）まで巻き添えで
+      // OFF 扱いに落ちるのを防ぐため。
       const TENANT_BASE_COLS =
         "id, gym_name, gym_name_short, business_type, logo_url, primary_color, address, phone, email, website_url, operating_hours, slot_duration_minutes, booking_cutoff_type, booking_cutoff_hours, status, gymboard_plan, max_customers, subscription_status, trial_ends_at";
       const memberQuery = (tenantCols: string) =>
@@ -80,13 +87,18 @@ export function useTenant() {
           .limit(1)
           .maybeSingle();
 
-      let { data: mem, error: memErr } = (await memberQuery(
+      // 追加カラムの多い順にフォールバックする（全部→same_dayのみ→基本のみ）。
+      const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled`,
-      )) as any;
-      if (memErr) {
-        // 新カラム未適用等でエラー → 基本カラムのみで再取得（機能はOFF扱いで安全に動作）
-        console.warn("useTenant: same_day_cancel_penalty_enabled 付きのtenant取得に失敗。基本カラムで再取得します。", memErr.message);
-        ({ data: mem } = (await memberQuery(TENANT_BASE_COLS)) as any);
+        TENANT_BASE_COLS,
+      ];
+      let mem: any = null;
+      let memErr: any = null;
+      for (const cols of COL_VARIANTS) {
+        ({ data: mem, error: memErr } = (await memberQuery(cols)) as any);
+        if (!memErr) break;
+        console.warn("useTenant: 追加カラム付きのtenant取得に失敗。カラムを減らして再取得します。", memErr.message);
       }
       if (cancelled) return;
       if (mem && mem.tenants) {
@@ -94,6 +106,8 @@ export function useTenant() {
         const tenant = {
           ...raw,
           same_day_cancel_penalty_enabled: raw.same_day_cancel_penalty_enabled === true,
+          trial_info_title: (raw.trial_info_title as string | null) ?? null,
+          trial_info_body: (raw.trial_info_body as string | null) ?? null,
         } as unknown as Tenant;
         setMembership({
           tenant,

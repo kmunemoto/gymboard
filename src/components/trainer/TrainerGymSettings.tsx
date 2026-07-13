@@ -89,7 +89,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     const body = trialInfoBody.trim();
     const { error } = await supabase
       .from("tenants")
-      .update({ trial_info_title: title || null, trial_info_body: body || null })
+      .update({ trial_info_title: title || null, trial_info_body: body || null } as any)
       .eq("id", tenant.id);
     if (error) {
       // 失敗理由（例: カラム未追加＝マイグレーション未適用）を画面でも確認できるようにする

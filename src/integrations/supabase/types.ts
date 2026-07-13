@@ -2445,6 +2445,8 @@ export type Database = {
           stripe_subscription_id: string | null
           subscription_status: string | null
           trial_ends_at: string | null
+          trial_info_body: string | null
+          trial_info_title: string | null
           updated_at: string
           website_url: string | null
         }
@@ -2477,6 +2479,8 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_status?: string | null
           trial_ends_at?: string | null
+          trial_info_body?: string | null
+          trial_info_title?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -2509,6 +2513,8 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_status?: string | null
           trial_ends_at?: string | null
+          trial_info_body?: string | null
+          trial_info_title?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -3501,6 +3507,8 @@ export type Database = {
           id: string
           logo_url: string
           primary_color: string
+          trial_info_body: string
+          trial_info_title: string
         }[]
       }
       get_trainer_ids: {

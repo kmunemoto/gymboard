@@ -87,8 +87,11 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
   const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
+  // 本日のスケジュールには体験予約（user_id === "trial-guest"）も含める。
+  // トレーナーが当日その枠に対応するため予定として表示する必要がある。
+  // （月間セッション数・売上の集計では体験は無料/非会員のため引き続き除外する）
   const todayBookings = bookings.filter(
-    (b) => b.date === today && b.status !== "キャンセル済み" && b.user_id !== "blocked" && b.user_id !== "trial-guest",
+    (b) => b.date === today && b.status !== "キャンセル済み" && b.user_id !== "blocked",
   );
 
   const bookingsByUser = useMemo(() => {
@@ -278,14 +281,17 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
                     ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans), resolveGraceDays(profile.plan, tenantPlans, profile.grace_enabled))
                     : null;
 
+                  // 体験予約(trial-guest)は会員プロフィールが無いため詳細遷移不可。クリック不可にする。
+                  const isTrial = b.user_id === "trial-guest";
                   return (
-                  <Card key={b.id} className="card-hover cursor-pointer" onClick={() => {
+                  <Card key={b.id} className={`card-hover ${profile ? "cursor-pointer" : ""}`} onClick={() => {
                     // Find profile by user_id for navigation
                     if (profile) onSelectClient(profile.user_id);
                   }}>
                     <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl gym-gradient flex items-center justify-center text-primary-foreground font-bold text-xs sm:text-sm shrink-0">
-                        {b.clientName[0]}
+                      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 ${isTrial ? "bg-muted text-muted-foreground" : "gym-gradient text-primary-foreground"}`}>
+                        {/* clientName 先頭が絵文字(🆕)のサロゲートペアでも壊れないよう Array.from で1文字取り出す */}
+                        {Array.from(b.clientName)[0]}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm truncate">{b.clientName}</p>

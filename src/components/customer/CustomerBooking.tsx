@@ -70,6 +70,8 @@ const CustomerBooking = () => {
   const [repeatWeeks, setRepeatWeeks] = useState(1);
   // 予約の日時変更（リスケジュール）モード: 対象の既存予約（null=通常の新規予約モード）
   const [rescheduleTarget, setRescheduleTarget] = useState<BookingWithTime | null>(null);
+  // 当日予約の変更を「変更する」で即実行せず、一度警告表示に留めるための2段階確認フラグ
+  const [rescheduleForfeitPending, setRescheduleForfeitPending] = useState(false);
 
   // Booked slots fetched via SECURITY DEFINER RPC — sees ALL bookings regardless of RLS
   const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean }[]>([]);
@@ -359,11 +361,19 @@ const CustomerBooking = () => {
 
   const cancelReschedule = () => {
     setRescheduleTarget(null);
+    setRescheduleForfeitPending(false);
     setSelectedDate(undefined);
     setSelectedSlot(null);
   };
 
-  // 選択した新しい日時へ予約を変更する（旧枠削除→新枠作成、失敗時は旧枠復元）
+  // このテナントで同日キャンセル消化が有効、かつ「変更対象の予約」が今日(JST)の分か。
+  // 当日の枠を手放す変更なので、当日キャンセルと同じく消化扱いにする。
+  const rescheduleTargetForfeits = !!rescheduleTarget
+    && !!tenant?.same_day_cancel_penalty_enabled
+    && rescheduleTarget.date === getJSTToday();
+
+  // 選択した新しい日時へ予約を変更する（旧枠削除→新枠作成、失敗時は旧枠復元）。
+  // 当日の変更でジム設定ONのときは、旧枠を消化扱いにして残す（forfeitOld）。
   const handleReschedule = async () => {
     if (!rescheduleTarget || submitting) return;
     if (!selectedDate || !selectedSlot) return;
@@ -379,9 +389,14 @@ const CustomerBooking = () => {
       setSelectedSlot(null);
       return;
     }
+    // 当日の予約変更（消化対象）は、最初の押下では警告表示に切り替えるだけに留める。
+    if (rescheduleTargetForfeits && !rescheduleForfeitPending) {
+      setRescheduleForfeitPending(true);
+      return;
+    }
     setSubmitting(true);
     try {
-      const { error } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time);
+      const { error } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time, { forfeitOld: rescheduleTargetForfeits });
       if (error) {
         toast.error(t("booking.errorRescheduleFailed"));
         return;
@@ -389,6 +404,7 @@ const CustomerBooking = () => {
       toast.success(t("booking.rescheduleDone"));
       const oldKey = rescheduleTarget.date;
       setRescheduleTarget(null);
+      setRescheduleForfeitPending(false);
       setSelectedDate(undefined);
       setSelectedSlot(null);
       refetch();
@@ -923,6 +939,34 @@ const CustomerBooking = () => {
                   : forfeitPending
                     ? t("booking.sameDayForfeitConfirmBtn")
                     : t("booking.cancel")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rescheduleForfeitPending && (
+        /* 当日の予約変更（消化扱い）の確認ダイアログ。暗幕は cancelTarget と同様に固定の黒系。 */
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background glass p-6 shadow-lg">
+            <div className="space-y-2 text-center sm:text-left">
+              <h3 className="text-lg font-semibold">{t("booking.rescheduleForfeitWarningTitle")}</h3>
+              <p className="text-sm text-muted-foreground">{t("booking.rescheduleForfeitWarningDesc")}</p>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setRescheduleForfeitPending(false)}
+                disabled={submitting}
+              >
+                {t("booking.back")}
+              </Button>
+              <Button
+                variant="accent"
+                onClick={handleReschedule}
+                disabled={submitting}
+              >
+                {submitting ? t("booking.rescheduling") : t("booking.rescheduleForfeitConfirmBtn")}
               </Button>
             </div>
           </div>

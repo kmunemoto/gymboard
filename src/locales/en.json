@@ -411,7 +411,11 @@
     "waitlistJoin": "Join waitlist",
     "waitlistJoined": "On waitlist",
     "waitlistAdded": "Added to the waitlist",
-    "waitlistRemoved": "Removed from the waitlist"
+    "waitlistRemoved": "Removed from the waitlist",
+    "rescheduleForfeitWarningTitle": "Change this booking?",
+    "rescheduleForfeitWarningDesc": "Changing a same-day booking forfeits the original slot as one session, since it can't be offered to someone else.",
+    "rescheduleForfeitConfirmBtn": "Change (counts as used)",
+    "rescheduling": "Changing..."
   },
   "training": {
     "title": "Records",

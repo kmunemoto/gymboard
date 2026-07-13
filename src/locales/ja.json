@@ -411,7 +411,11 @@
     "waitlistJoin": "キャンセル待ち",
     "waitlistJoined": "待機中",
     "waitlistAdded": "キャンセル待ちに登録しました",
-    "waitlistRemoved": "キャンセル待ちを解除しました"
+    "waitlistRemoved": "キャンセル待ちを解除しました",
+    "rescheduleForfeitWarningTitle": "本当に日時を変更しますか？",
+    "rescheduleForfeitWarningDesc": "当日の予約を変更すると、元の枠は他の方にご案内できないため、1回分の消化扱いになります。",
+    "rescheduleForfeitConfirmBtn": "消化して変更する",
+    "rescheduling": "変更中..."
   },
   "training": {
     "title": "記録",

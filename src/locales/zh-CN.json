@@ -411,7 +411,11 @@
     "waitlistJoin": "候补登记",
     "waitlistJoined": "候补中",
     "waitlistAdded": "已加入候补名单",
-    "waitlistRemoved": "已取消候补"
+    "waitlistRemoved": "已取消候补",
+    "rescheduleForfeitWarningTitle": "确定要更改日期时间吗？",
+    "rescheduleForfeitWarningDesc": "更改当天的预约后，原时段无法再安排给其他人，将计为消耗1次。",
+    "rescheduleForfeitConfirmBtn": "计次并更改",
+    "rescheduling": "更改中..."
   },
   "training": {
     "title": "记录",

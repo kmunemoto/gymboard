@@ -30,6 +30,8 @@ interface PublicTenant {
   address: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  trial_info_title: string | null;
+  trial_info_body: string | null;
 }
 
 // この体験予約サイト(app.kyoto-salute.com)は Salute御所南 専用。
@@ -372,8 +374,10 @@ const TrialBooking = () => {
           <CardContent className="p-4 flex items-start gap-3">
             <Sparkles className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-sm">{t("trialBooking.infoTitle")}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("trialBooking.infoBody")}</p>
+              {/* ジムごとに設定された案内文があれば優先。未設定なら既定文言。
+                  説明文は改行を保持して表示する（whitespace-pre-line）。 */}
+              <p className="font-bold text-sm">{tenant?.trial_info_title?.trim() || t("trialBooking.infoTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{tenant?.trial_info_body?.trim() || t("trialBooking.infoBody")}</p>
             </div>
           </CardContent>
         </Card>

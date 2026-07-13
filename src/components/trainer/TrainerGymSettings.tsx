@@ -5,6 +5,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -38,13 +39,19 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [savingSameDayPenalty, setSavingSameDayPenalty] = useState(false);
-
-
-
+  // 体験予約ページの案内カード（見出し＋説明文）のジム別カスタム文言。空欄=既定文言。
+  const [trialInfoTitle, setTrialInfoTitle] = useState("");
+  const [trialInfoBody, setTrialInfoBody] = useState("");
+  const [savingTrialInfo, setSavingTrialInfo] = useState(false);
 
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
   }, [profile]);
+
+  useEffect(() => {
+    setTrialInfoTitle(tenant?.trial_info_title ?? "");
+    setTrialInfoBody(tenant?.trial_info_body ?? "");
+  }, [tenant?.trial_info_title, tenant?.trial_info_body]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -72,6 +79,24 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingSameDayPenalty(false);
+  };
+
+  const handleSaveTrialInfo = async () => {
+    if (!tenant) return;
+    setSavingTrialInfo(true);
+    // 空欄は NULL として保存（公開ページ側で既定文言にフォールバックする）
+    const title = trialInfoTitle.trim();
+    const body = trialInfoBody.trim();
+    const { error } = await supabase
+      .from("tenants")
+      .update({ trial_info_title: title || null, trial_info_body: body || null })
+      .eq("id", tenant.id);
+    if (error) toast.error(t("settings.trainer.trialInfoSaveFailed"));
+    else {
+      toast.success(t("settings.trainer.trialInfoSaved"));
+      refetchTenant();
+    }
+    setSavingTrialInfo(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,6 +172,43 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
         <TrialLinkCard />
+      </section>
+
+      <Separator />
+
+      {/* === 体験予約ページの案内文 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPageSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.trialInfoDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="trial-info-title" className="text-xs font-bold">{t("settings.trainer.trialInfoTitleLabel")}</Label>
+              <Input
+                id="trial-info-title"
+                value={trialInfoTitle}
+                onChange={(e) => setTrialInfoTitle(e.target.value)}
+                placeholder={t("trialBooking.infoTitle")}
+                maxLength={40}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="trial-info-body" className="text-xs font-bold">{t("settings.trainer.trialInfoBodyLabel")}</Label>
+              <Textarea
+                id="trial-info-body"
+                value={trialInfoBody}
+                onChange={(e) => setTrialInfoBody(e.target.value)}
+                placeholder={t("trialBooking.infoBody")}
+                rows={3}
+                maxLength={300}
+              />
+            </div>
+            <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingTrialInfo ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
       </section>
 
       <Separator />

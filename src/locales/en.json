@@ -131,6 +131,7 @@
     "trainer": {
       "title": "Gym Settings",
       "invite": "Invite Customers",
+      "trialLinkSection": "Free Trial Link",
       "planManage": "Plan Management",
       "bookingPolicySection": "Booking Policy",
       "sameDayPenaltyTitle": "Automatically count same-day cancellations as used",
@@ -1991,6 +1992,14 @@
     "online": "Online",
     "emptyPrompt": "Send a message to get started!",
     "inputPlaceholder": "Type a message..."
+  },
+  "trialLink": {
+    "title": "Free Trial Booking Link",
+    "desc": "Share this link with people who want a trial session",
+    "copyLink": "Copy link",
+    "openLink": "Open",
+    "copiedToast": "Trial booking link copied",
+    "copyFailed": "Failed to copy"
   },
   "inviteCode": {
     "copiedToast": "{{label}} copied",

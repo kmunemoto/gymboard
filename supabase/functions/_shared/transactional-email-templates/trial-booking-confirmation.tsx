@@ -4,13 +4,11 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "パーソナルジムSalute御所南"
-const SITE_URL = "https://app.kyoto-salute.com"
-
 // 本文の表示テキストは事前に ASCII 数値文字参照へエンコードして dangerouslySetInnerHTML で描画する。
 // 理由: react-email の renderAsync（Deno のストリーミング描画）が、UTF-8 チャンク境界で
 // マルチバイト文字を分断し U+FFFD に化けさせる既知の症状があるため（recovery.tsx 参照）。
 // ASCII 化しておけばレンダラを通しても分断されず、メールクライアント側で通常表示される。
+// ジム名・住所などの動的値も必ずこのエンコードを通す（trial-book から差し込まれる）。
 const toHtmlEntities = (s: string): string =>
   Array.from(s).map((ch) => {
     const cp = ch.codePointAt(0)!
@@ -34,17 +32,15 @@ const SafeInlineText = ({ children }: { children: string }) => (
   <span dangerouslySetInnerHTML={{ __html: toHtmlEntities(children) }} />
 )
 
-const SITE_NAME_HTML = toHtmlEntities(SITE_NAME)
-const ADDRESS_LINES_HTML = [
-  '\u4EAC\u90FD\u5E02\u4E2D\u4EAC\u533A',        // 京都市中京区
-  '\u6BD8\u6C99\u9580\u753A533-1',                // 毘沙門町533-1
-  '\u30D7\u30E9\u30B6\u5FA1\u6240\u5357 2\u968E', // プラザ御所南 2階
-].map(toHtmlEntities)
+// 住所テキスト（DB の tenants.address は自由文の1カラム）を行ごとに分割して表示する。
+// 空なら場所ブロック自体を省く。
+const splitAddressLines = (address: string): string[] =>
+  address.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0)
 
-const AddressBlock = ({ style }: { style: React.CSSProperties }) => (
+const AddressBlock = ({ style, lines }: { style: React.CSSProperties; lines: string[] }) => (
   <>
-    {ADDRESS_LINES_HTML.map((line, i) => (
-      <Text key={i} style={style} dangerouslySetInnerHTML={{ __html: line }} />
+    {lines.map((line, i) => (
+      <SafeText key={i} style={style}>{line}</SafeText>
     ))}
   </>
 )
@@ -54,6 +50,10 @@ interface TrialBookingConfirmationProps {
   bookingDate?: string
   bookingTime?: string
   cancelUrl?: string
+  gymName?: string
+  gymAddress?: string
+  gymContactEmail?: string
+  gymWebsiteUrl?: string
 }
 
 const TrialBookingConfirmationEmail = ({
@@ -61,73 +61,92 @@ const TrialBookingConfirmationEmail = ({
   bookingDate = '',
   bookingTime = '',
   cancelUrl = '',
-}: TrialBookingConfirmationProps) => (
-  <Html lang="ja" dir="ltr">
-    <Head>
-      <meta charSet="UTF-8" />
-      <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
-    </Head>
-    <Body style={main}>
-      <Container style={container}>
-        <SafeHeading style={h1}>初回無料体験のご予約を承りました</SafeHeading>
-        <Hr style={hr} />
-        <SafeText style={greeting}>{`${customerName} 様`}</SafeText>
-        <SafeText style={text}>{`この度は${SITE_NAME}の初回無料体験にご予約いただき、誠にありがとうございます。`}</SafeText>
+  gymName = 'ジム',
+  gymAddress = '',
+  gymContactEmail = '',
+  gymWebsiteUrl = '',
+}: TrialBookingConfirmationProps) => {
+  const addressLines = splitAddressLines(gymAddress)
+  return (
+    <Html lang="ja" dir="ltr">
+      <Head>
+        <meta charSet="UTF-8" />
+        <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
+      </Head>
+      <Body style={main}>
+        <Container style={container}>
+          <SafeHeading style={h1}>初回無料体験のご予約を承りました</SafeHeading>
+          <Hr style={hr} />
+          <SafeText style={greeting}>{`${customerName} 様`}</SafeText>
+          <SafeText style={text}>{`この度は${gymName}の初回無料体験にご予約いただき、誠にありがとうございます。`}</SafeText>
 
-        <Section style={detailSection}>
-          <SafeText style={sectionTitle}>ご予約内容</SafeText>
-          <SafeText style={label}>日時</SafeText>
-          <SafeText style={value}>{`${bookingDate} ${bookingTime}`.trim()}</SafeText>
-          <SafeText style={label}>内容</SafeText>
-          <SafeText style={value}>カウンセリング＋トレーニング体験（計60分）</SafeText>
-          <SafeText style={label}>場所</SafeText>
-          <AddressBlock style={value} />
-        </Section>
+          <Section style={detailSection}>
+            <SafeText style={sectionTitle}>ご予約内容</SafeText>
+            <SafeText style={label}>日時</SafeText>
+            <SafeText style={value}>{`${bookingDate} ${bookingTime}`.trim()}</SafeText>
+            <SafeText style={label}>内容</SafeText>
+            <SafeText style={value}>カウンセリング＋トレーニング体験（計60分）</SafeText>
+            {addressLines.length > 0 && (
+              <>
+                <SafeText style={label}>場所</SafeText>
+                <AddressBlock style={value} lines={addressLines} />
+              </>
+            )}
+          </Section>
 
 
-        <Section style={detailSection}>
-          <SafeText style={sectionTitle}>キャンセル・変更</SafeText>
-          {/* セルフキャンセルは廃止し、メール連絡に一本化した（trial-book は cancelUrl を渡さない）。
-              分岐自体は残し、再度セルフキャンセルに戻す際にすぐ有効化できるようにしている。 */}
-          {cancelUrl ? (
-            <>
-              <SafeText style={text}>ご都合が悪くなった場合は、下記のボタンからいつでもキャンセルできます。</SafeText>
-              <Button href={cancelUrl} style={cancelButton}><SafeInlineText>予約をキャンセルする</SafeInlineText></Button>
-              <SafeText style={fallbackText}>ボタンが押せない場合は、こちらのリンクをブラウザで開いてください。</SafeText>
-              <Text style={fallbackText}>
-                <Link href={cancelUrl} style={inlineLink}>{cancelUrl}</Link>
-              </Text>
-            </>
-          ) : (
-            <>
-              <SafeText style={text}>前日までに下記メールへご連絡ください。</SafeText>
-              <Text style={text}>
-                <Link href="mailto:k.munemoto@kyoto-salute.com" style={inlineLink}>k.munemoto@kyoto-salute.com</Link>
-              </Text>
-            </>
+          <Section style={detailSection}>
+            <SafeText style={sectionTitle}>キャンセル・変更</SafeText>
+            {/* セルフキャンセルは廃止し、メール連絡に一本化した（trial-book は cancelUrl を渡さない）。
+                分岐自体は残し、再度セルフキャンセルに戻す際にすぐ有効化できるようにしている。 */}
+            {cancelUrl ? (
+              <>
+                <SafeText style={text}>ご都合が悪くなった場合は、下記のボタンからいつでもキャンセルできます。</SafeText>
+                <Button href={cancelUrl} style={cancelButton}><SafeInlineText>予約をキャンセルする</SafeInlineText></Button>
+                <SafeText style={fallbackText}>ボタンが押せない場合は、こちらのリンクをブラウザで開いてください。</SafeText>
+                <Text style={fallbackText}>
+                  <Link href={cancelUrl} style={inlineLink}>{cancelUrl}</Link>
+                </Text>
+              </>
+            ) : gymContactEmail ? (
+              <>
+                <SafeText style={text}>前日までに下記メールへご連絡ください。</SafeText>
+                <Text style={text}>
+                  <Link href={`mailto:${gymContactEmail}`} style={inlineLink}>{gymContactEmail}</Link>
+                </Text>
+              </>
+            ) : (
+              <SafeText style={text}>ご都合が悪くなった場合は、前日までにジムへご連絡ください。</SafeText>
+            )}
+          </Section>
+
+          <Hr style={hr} />
+          <SafeText style={text}>お会いできることを楽しみにしております！</SafeText>
+          <Hr style={hr} />
+          <SafeText style={footer}>{gymName}</SafeText>
+          {addressLines.length > 0 && <AddressBlock style={footer} lines={addressLines} />}
+          {gymWebsiteUrl && (
+            <Link href={gymWebsiteUrl} style={footerLink}>{gymWebsiteUrl}</Link>
           )}
-        </Section>
-
-        <Hr style={hr} />
-        <SafeText style={text}>お会いできることを楽しみにしております！</SafeText>
-        <Hr style={hr} />
-        <Text style={footer} dangerouslySetInnerHTML={{ __html: SITE_NAME_HTML }} />
-        <Text style={footer}>〒604-0862</Text>
-        <AddressBlock style={footer} />
-        <Link href={SITE_URL} style={footerLink}>{SITE_URL}</Link>
-      </Container>
-    </Body>
-  </Html>
-)
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export const template = {
   component: TrialBookingConfirmationEmail,
-  subject: '【パーソナルジムSalute御所南】初回無料体験のご予約を承りました',
+  subject: (data: Record<string, any>) =>
+    `【${(data?.gymName as string) || 'ジム'}】初回無料体験のご予約を承りました`,
   displayName: '初回無料体験 予約確認（顧客向け）',
   previewData: {
     customerName: '山田 太郎',
     bookingDate: '4月15日（火）',
     bookingTime: '14:00〜15:00',
+    gymName: 'パーソナルジムSalute御所南',
+    gymAddress: '京都市中京区\n毘沙門町533-1\nプラザ御所南 2階',
+    gymContactEmail: 'k.munemoto@kyoto-salute.com',
+    gymWebsiteUrl: 'https://app.kyoto-salute.com',
   },
 } satisfies TemplateEntry
 

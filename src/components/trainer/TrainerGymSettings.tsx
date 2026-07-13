@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Upload, Trash2, Image, User, Save, LogOut, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
+import TrialLinkCard from "./TrialLinkCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
@@ -138,6 +139,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.invite")}</h3>
         <InviteCodeCard />
+      </section>
+
+      <Separator />
+
+      {/* === 無料体験リンク === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
+        <TrialLinkCard />
       </section>
 
       <Separator />

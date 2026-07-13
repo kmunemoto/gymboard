@@ -131,6 +131,7 @@
     "trainer": {
       "title": "健身房设置",
       "invite": "邀请客户",
+      "trialLinkSection": "免费体验链接",
       "planManage": "套餐管理",
       "bookingPolicySection": "预约政策",
       "sameDayPenaltyTitle": "将当天取消自动计为已消耗次数",
@@ -1991,6 +1992,14 @@
     "online": "在线",
     "emptyPrompt": "发送消息开始聊天吧！",
     "inputPlaceholder": "输入消息..."
+  },
+  "trialLink": {
+    "title": "免费体验预约链接",
+    "desc": "请将此链接分享给想体验的人",
+    "copyLink": "复制链接",
+    "openLink": "打开",
+    "copiedToast": "已复制体验预约链接",
+    "copyFailed": "复制失败"
   },
   "inviteCode": {
     "copiedToast": "已复制{{label}}",

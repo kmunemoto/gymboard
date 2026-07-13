@@ -437,6 +437,7 @@ export const rescheduleBooking = async (
   bookingId: string,
   newDate: string,
   newStartTime: string,
+  opts: { forfeitOld?: boolean } = {},
 ): Promise<{ data: { id: string } | null; error: unknown }> => {
   const { data: old, error: fetchError } = await supabase
     .from("bookings")
@@ -455,6 +456,29 @@ export const rescheduleBooking = async (
   // 旧枠の JST 日付・時刻（UTC表記の文字列をそのまま切らず、JSTへ整形して取り出す）
   const oldJstDate = formatJST(oldDateKey, "yyyy-MM-dd");
   const oldJstTime = formatJST(oldDateKey, "HH:mm");
+
+  // 当日予約の変更（ジムが同日キャンセル消化ONのとき）: 旧枠を「物理削除」せず
+  // 1回消化(同日キャンセル済み)にして残し、新枠を作成する。＝当日キャンセルと同じ扱い。
+  // 「変更」で当日消化を回避できないようにするための分岐。
+  if (opts.forfeitOld) {
+    // 1) 旧（当日）枠を消化（status更新で残す・通知は出さない・Googleカレンダー予定は削除）
+    const { error: fErr } = await cancelBooking(bookingId, false, { silent: true, forfeit: true });
+    if (fErr) return { data: null, error: fErr };
+    // 2) 新枠で作成（別日なら重複判定は日付違いで対象外。満枠等は作成側が拒否）
+    const { data: created, error: createError } = await createBooking(
+      old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true },
+    );
+    if (createError || !created) {
+      // 失敗 → 旧枠の消化を取り消して元の予約に戻す（予約消失を防ぐ）
+      await supabase.from("bookings").update({ status: "予約済み" }).eq("id", bookingId);
+      return { data: null, error: createError ?? new Error("reschedule create failed") };
+    }
+    // 3) トレーナーへ「変更」通知（#131で堅牢化済み）。旧枠は予定表に「同日キャンセル済み」で残る。
+    sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type).catch((e) =>
+      console.error("sendRescheduleToTrainer failed:", e),
+    );
+    return { data: { id: created.id }, error: null };
+  }
 
   // 1) 旧予約を静かに削除（旧枠のGoogleカレンダー予定も削除。キャンセル通知は出さない）
   const { error: delError } = await cancelBooking(bookingId, false, { silent: true });

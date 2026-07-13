@@ -411,7 +411,11 @@
     "waitlistJoin": "예약 대기",
     "waitlistJoined": "대기 중",
     "waitlistAdded": "예약 대기에 등록했습니다",
-    "waitlistRemoved": "예약 대기를 해제했습니다"
+    "waitlistRemoved": "예약 대기를 해제했습니다",
+    "rescheduleForfeitWarningTitle": "정말 일시를 변경하시겠습니까?",
+    "rescheduleForfeitWarningDesc": "당일 예약을 변경하면 원래 시간대는 다른 분께 안내할 수 없어 1회 소진 처리됩니다.",
+    "rescheduleForfeitConfirmBtn": "소진 처리하고 변경",
+    "rescheduling": "변경 중..."
   },
   "training": {
     "title": "기록",

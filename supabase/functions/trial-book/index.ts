@@ -203,12 +203,13 @@ Deno.serve(async (req) => {
       return fail("insert", msg);
     }
     const trialBookingId = inserted.id as string;
-    // お客様セルフキャンセル用リンク。現在メール・完了画面には出していない
-    // （セルフキャンセルは廃止しメール連絡に一本化）が、レスポンスには互換のため残す。
-    // ジム自身のドメイン上の React ページを指すことで、迷惑メール判定を避け、
-    // ブランドと一致した見た目を提供する（/trial-cancel/:token ページ自体は存置）。
+    // 確認メールにはセルフキャンセルのボタンは出さない（オーナーの意向でメール連絡に一本化）。
+    // テンプレートは cancelUrl 未指定なら「登録したジムのアカウントのメールアドレス
+    // (tenants.email) へご連絡ください」の案内へフォールバックする（下記 gymContactEmail）。
+    // cancel_token / エッジ関数 trial-cancel は既送信メールの旧リンク互換のため存置し、
+    // レスポンスにも残す（メール本文には載せない）。
     const cancelToken = inserted.cancel_token as string;
-    const cancelUrl = `https://app.kyoto-salute.com/trial-cancel/${cancelToken}`;
+    const cancelUrl = `${SUPABASE_URL}/functions/v1/trial-cancel?token=${cancelToken}`;
 
     // ===== 表示用の日時文字列 (JST) =====
     const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
@@ -274,8 +275,8 @@ Deno.serve(async (req) => {
           gymAddress,
           gymContactEmail,
           gymWebsiteUrl,
-          // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
-          // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
+          // cancelUrl は渡さない。テンプレートは gymContactEmail（＝登録したジムのアカウントの
+          // メールアドレス tenants.email）へのメール連絡案内をフォールバック表示する。
         },
       }).then((ok) => { notify.customer_email = ok; }),
     );

@@ -97,8 +97,9 @@ const TrialBookingConfirmationEmail = ({
 
           <Section style={detailSection}>
             <SafeText style={sectionTitle}>キャンセル・変更</SafeText>
-            {/* セルフキャンセルは廃止し、メール連絡に一本化した（trial-book は cancelUrl を渡さない）。
-                分岐自体は残し、再度セルフキャンセルに戻す際にすぐ有効化できるようにしている。 */}
+            {/* セルフキャンセルのボタンは出さず、メール連絡に一本化している（trial-book は
+                cancelUrl を渡さない）。案内先は gymContactEmail（＝登録したジムのアカウントの
+                メールアドレス tenants.email）。cancelUrl 分岐は将来ボタンに戻す場合に備え存置。 */}
             {cancelUrl ? (
               <>
                 <SafeText style={text}>ご都合が悪くなった場合は、下記のボタンからいつでもキャンセルできます。</SafeText>
@@ -110,7 +111,7 @@ const TrialBookingConfirmationEmail = ({
               </>
             ) : gymContactEmail ? (
               <>
-                <SafeText style={text}>前日までに下記メールへご連絡ください。</SafeText>
+                <SafeText style={text}>ご都合が悪くなった場合は、前日までに下記のジムのメールアドレスへご連絡ください。</SafeText>
                 <Text style={text}>
                   <Link href={`mailto:${gymContactEmail}`} style={inlineLink}>{gymContactEmail}</Link>
                 </Text>
@@ -147,6 +148,8 @@ export const template = {
     gymAddress: '京都市中京区\n毘沙門町533-1\nプラザ御所南 2階',
     gymContactEmail: 'k.munemoto@kyoto-salute.com',
     gymWebsiteUrl: 'https://app.kyoto-salute.com',
+    // cancelUrl は渡さない（セルフキャンセルのボタンは出さない）。プレビューは実配信と同じく
+    // gymContactEmail へのメール連絡案内が描画される。
   },
 } satisfies TemplateEntry
 

@@ -55,8 +55,13 @@ boolean列（例: `bookings.forfeited`）を追加する案も検討したが、
   チェックボックス（既定ON）が出る。トレーナー都合（体調不良等）で
   キャンセルする場合はチェックを外せば消化扱いにしない、という運用を
   想定（`forfeitChecked` state、`deleteTargetForfeitable` で対象判定）。
-- 日程変更（`rescheduleBooking`）は forfeit対象外。来店予定が変わるだけで
-  「来なかった」わけではないため。
+- 日程変更（`rescheduleBooking`）: **別日への変更は forfeit対象外**（来店予定が
+  変わるだけで「来なかった」わけではない）。ただし **当日予約を変更する場合は、
+  テナント設定ONなら当日キャンセルと同じく消化扱いにする**（`opts.forfeitOld`、#132）。
+  「変更」ボタンで当日消化を回避できないようにするため。当日変更の消化は、旧枠を
+  物理DELETEせず `SAME_DAY_FORFEIT_STATUS` へUPDATEして残し、新枠をINSERTする。
+  お客様側は `CustomerBooking.tsx` の `rescheduleTargetForfeits`＋2段階確認
+  （`rescheduleForfeitPending`）で警告を出す。
 
 ### 通知文言
 LINE・メール（`booking-cancellation.tsx` テンプレートの `forfeit` prop）・
@@ -144,3 +149,28 @@ pushの3経路とも、消化扱いになった場合は本文に一言（「今
 - 顧客経路で `bookings.status = 'キャンセル済み'` を書き込む処理を**足してはいけない**
   （トリガーで拒否される）。キャンセルは物理DELETEか消化(同日キャンセル済み)のみ。
 - 新しい消化ON/OFF条件やキャンセル経路を足すときは、上のDB強制と齟齬が出ないか確認する。
+
+## 追加補強（2026-07、当日変更まわりの穴 B/C/E）
+
+当日予約の変更（消化）フローに残っていた3つの穴を塞いだ。
+
+- **B: リスケ失敗時にGoogleカレンダー予定が復元されない**（クライアント） … 当日変更（消化）の
+  内部処理は「旧枠を消化(status更新)＋旧枠のGoogleカレンダー予定を削除 → 新枠を作成」。
+  新枠の作成に失敗すると旧枠の status を `'予約済み'` に戻すが、削除済みのカレンダー
+  予定は status を戻すだけでは復活しない（`google_event_id` も null 済み）。
+  → ロールバック時に `resyncCalendarCreate(bookingId)`（`useBookings.ts`）で
+  カレンダー予定を作り直す。best-effort（失敗しても予約復元自体は成立させる）。
+  ※別日変更（非消化）のロールバックは `createBooking` で新規行＋新規予定を作るため元々問題なし。
+
+- **C: 消化済み予約を顧客が翌日以降にDELETEして消化を巻き戻せる**（DB・適用済み） …
+  当日削除ガードは「当日(JST)の予約」だけが対象だったため、消化行（`status='同日キャンセル済み'`）は
+  翌日になると当日判定から外れ、顧客が API 直叩きで DELETE でき、`courseProgress` の消化数から
+  外れてしまう。→ `enforce_booking_same_day_delete` を拡張し、`status='同日キャンセル済み'` の行は
+  当日/翌日以降を問わず顧客の物理削除を禁止（トレーナー/サービスロールは対象外）。
+  migration は `20260713143813`（Lovable 適用済み）。消化を `'予約済み'` へ戻す正規経路
+  （Bのロールバック）は UPDATE なので影響なし。
+
+- **E: 当日変更の消化がトレーナー/オーナーへの変更通知に出ない**（クライアント） …
+  `sendRescheduleToTrainer` に `forfeit` 引数を追加し、当日変更で消化になった場合はプッシュ本文に
+  「（変更前の予約は当日のため1回消化）」、LINE本文に「※当日の変更のため、変更前のご予約は
+  1回消化扱いになりました。」を追記する。消化数が増えたことをジム側が把握できる。

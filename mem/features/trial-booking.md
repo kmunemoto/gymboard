@@ -34,24 +34,33 @@
 status='キャンセル済み') すると、空き枠計算は GymBoard 自身のデータなので即時解放される。
 同期は不要になった。
 
-### お客様側のキャンセル導線（2026-07: セルフキャンセル→メール連絡に戻した）
+### お客様側のキャンセル導線（現状: 全ジムともメール連絡に一本化）
 
 - 2026-07 に一度、お客様が自分でキャンセルできるセルフキャンセル機能を追加した
   (`trial_bookings.cancel_token` + エッジ関数 `supabase/functions/trial-cancel` +
   ページ `src/pages/TrialCancel.tsx` @ `/trial-cancel/:token`)。確認メール・前日リマインド
   メールにキャンセル用ボタン/リンクを載せ、完了画面にも導線を出していた。
-- 同月中に方針転換し、**メール連絡への一本化に戻した**（オーナーの意向）。
-  - 完了画面 (`TrialBooking.tsx`) からリンクを削除済み。
-  - 確認メール (`trial-booking-confirmation.tsx`) ・前日リマインド (`trial-booking-reminder.tsx`)
-    は `trial-book` / `send-trial-reminders` が **`cancelUrl` を渡さなくなった**ため、
-    テンプレート内の `cancelUrl ? <ボタン> : <メール連絡案内>` 分岐が常に後者
-    （`k.munemoto@kyoto-salute.com` 宛のメール連絡案内）を描画する。
-  - `cancel_token` の生成・`/trial-cancel/:token` ページ・エッジ関数自体は**削除していない**
-    （存置）。理由: (1) 既に送信済みの旧メールに残っているキャンセルリンクを壊さないため、
-    (2) この方針は同一セッション内で何度か再検討されており、再度セルフキャンセルに戻す
-    可能性があるため、テンプレート側の分岐も含めてすぐ有効化できる状態を保っている。
-  - 再度有効化する場合: `trial-book` / `send-trial-reminders` で `cancelUrl` を組み立てて
-    `templateData` に渡すよう戻すだけでよい（テンプレート・ページ・エッジ関数は変更不要）。
+- #111 で**メール連絡への一本化に戻した**（オーナーの意向）。当時は体験予約が実質 Salute 専用だった。
+- 多ジム対応後、他ジムだけボタンを出す案も一度入れたが、最終的に**全ジムともメール連絡へ一本化**する
+  方針に戻した（オーナーの意向）。**現状の確認メール (`trial-booking-confirmation.tsx`) は
+  セルフキャンセルのボタンを一切出さず**、「ご都合が悪くなった場合は、前日までに下記のジムの
+  メールアドレスへご連絡ください」＋ジムのメールアドレスを表示する。
+  - **案内先メールは `gymContactEmail`（＝`tenants.email`）**。これは**登録したジムのアカウントの
+    メールアドレス**で、オンボーディング (`Onboarding.tsx`) でテナント作成時に
+    `email: email.trim() || user.email` として必ず設定される（入力欄の初期値も `user.email`）。
+    つまり全ジムで確実に埋まっており、確認メールにそのジムのメールアドレスを出せる。
+    万一 `tenants.email` が空のとき（旧データ等）はメールを出さず「前日までにジムへご連絡ください」に
+    フォールバックする（テンプレート3分岐目）。
+  - `trial-book/index.ts` は**確認メールに `cancelUrl` を渡さない**。テンプレートの
+    `cancelUrl ? <ボタン> : gymContactEmail ? <メール連絡＋アドレス> : <汎用案内>` 分岐で、
+    常に2番目（メール連絡）が描画される。
+  - 前日リマインド (`send-trial-reminders`) は現状 Salute 限定送信（テンプレートに Salute 住所が固定）で、
+    こちらも `cancelUrl` を渡さずメール連絡案内のまま。変更なし。
+  - **再度セルフキャンセルのボタンに戻す場合**: `trial-book`（必要なら `send-trial-reminders`）で
+    `cancelUrl = ${SUPABASE_URL}/functions/v1/trial-cancel?token=...`（`verify_jwt=false` の公開GET・
+    トークンから予約とテナントを解決し着地ページにジム名/ロゴを表示・#94 の設計）を組み立て、
+    `templateData.cancelUrl` に渡すだけでよい。React ルート(`/trial-cancel/:token`)は特定ジムの
+    ドメイン固定になりがちなので使わない。`cancel_token`・ページ・エッジ関数は存置済み。
 
 ## 旧 Salute 連携 (参考: 廃止経緯)
 

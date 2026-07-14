@@ -426,6 +426,35 @@ export const createRecurringBookings = async (
 };
 
 /**
+ * 予約行に紐づく Googleカレンダー予定を作り直す（存在しなければ新規作成）。
+ * 消化(forfeit)キャンセルは Googleカレンダー予定を削除して google_event_id を null に
+ * するため、消化を「予約済み」に戻すだけではカレンダー予定が復活しない。リスケ失敗の
+ * ロールバック時にこれを呼び、トレーナーの外部カレンダーに予定を復元する。best-effort。
+ */
+async function resyncCalendarCreate(bookingId: string): Promise<void> {
+  const { data: b } = await supabase
+    .from("bookings")
+    .select("id, user_id, booking_date, booking_type")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (!b) return;
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("user_id", b.user_id)
+    .maybeSingle();
+  await supabase.functions.invoke("google-calendar-sync", {
+    body: {
+      action: "create",
+      booking_id: b.id,
+      booking_date: b.booking_date,
+      booking_type: b.booking_type,
+      client_name: prof?.display_name || "顧客",
+    },
+  });
+}
+
+/**
  * 予約の日時をワンタップで変更（リスケジュール）する。
  * RLS/DBトリガーの制約（顧客のUPDATEポリシー無し・重複防止トリガーがINSERT限定）を避けるため、
  * 「旧予約を静かに削除 → 新枠で作成」で実現する。旧枠を先に消すことで、同日近接時刻への移動
@@ -471,10 +500,16 @@ export const rescheduleBooking = async (
     if (createError || !created) {
       // 失敗 → 旧枠の消化を取り消して元の予約に戻す（予約消失を防ぐ）
       await supabase.from("bookings").update({ status: "予約済み" }).eq("id", bookingId);
+      // 消化キャンセル時に削除された Googleカレンダー予定も復元する（status を戻すだけでは
+      // 外部カレンダーに予定が戻らないため）。best-effort・失敗しても予約復元は成立させる。
+      await resyncCalendarCreate(bookingId).catch((e) =>
+        console.error("reschedule forfeit rollback calendar resync failed:", e),
+      );
       return { data: null, error: createError ?? new Error("reschedule create failed") };
     }
     // 3) トレーナーへ「変更」通知（#131で堅牢化済み）。旧枠は予定表に「同日キャンセル済み」で残る。
-    sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type).catch((e) =>
+    //    当日変更＝変更前の予約は1回消化のため、その旨を通知本文に明記する（forfeit=true）。
+    sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type, true).catch((e) =>
       console.error("sendRescheduleToTrainer failed:", e),
     );
     return { data: { id: created.id }, error: null };
@@ -510,6 +545,7 @@ async function sendRescheduleToTrainer(
   newDate: string,
   newStartTime: string,
   bookingType: string,
+  forfeit = false, // 当日変更で変更前の予約が1回消化扱いになったか
 ) {
   const [{ data: profile }, { data: trainerIds }] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("user_id", userId).maybeSingle(),
@@ -517,6 +553,10 @@ async function sendRescheduleToTrainer(
   ]);
   const customerName = profile?.display_name || "顧客";
   const trainers = (trainerIds ?? []).map((t: { user_id: string }) => t.user_id);
+  // 当日変更で消化扱いになった旨を通知本文に明記する（トレーナー/オーナーが消化数の
+  // 増加を把握できるように）。プッシュは短く、LINE は1行で補足する。
+  const pushForfeitSuffix = forfeit ? "（変更前の予約は当日のため1回消化）" : "";
+  const lineForfeitNote = forfeit ? "\n\n※当日の変更のため、変更前のご予約は1回消化扱いになりました。" : "";
 
   // プッシュ通知を最優先で送る（トレーナー全員＋本人）。
   // LINE を使わないジムでもプッシュが確実に飛ぶよう、LINE 送信より先に・独立して発火する。
@@ -528,7 +568,7 @@ async function sendRescheduleToTrainer(
     body: {
       user_ids: pushTargets,
       title: "予約日時の変更",
-      body: `${customerName}様が予約を${shortNew}に変更しました`,
+      body: `${customerName}様が予約を${shortNew}に変更しました${pushForfeitSuffix}`,
       url: "/",
       tag: `reschedule-${userId}-${newDate}`,
     },
@@ -543,7 +583,7 @@ async function sendRescheduleToTrainer(
     supabase.functions.invoke("send-line-message", {
       body: {
         user_id: firstTrainer,
-        message: `🔄 予約変更通知\n\n${oldStr}\n　↓\n${newStr}\n\n${customerName}様が予約日時を変更しました。\n\nプラン：${bookingType}\n\n${gymName}`,
+        message: `🔄 予約変更通知\n\n${oldStr}\n　↓\n${newStr}\n\n${customerName}様が予約日時を変更しました。\n\nプラン：${bookingType}${lineForfeitNote}\n\n${gymName}`,
       },
     }).catch((e) => console.error("reschedule LINE failed:", e));
   }

@@ -3,11 +3,23 @@
 2026-07 に旧 Salute プロジェクト経由の二段構え (Salute に INSERT → GymBoard へ同期) を廃止し、
 **GymBoard 直結**に一本化した。
 
-## 入口 (2つの公開ページ、どちらも同じ API を使う)
+## 入口 (公開ページ、どれも同じ `src/pages/TrialBooking.tsx` / API)
 
-- GymBoard 内蔵: `/trial/:tenantId` (`src/pages/TrialBooking.tsx`) — tenantId は URL パスの UUID
-- 外部サイト: `app.kyoto-salute.com/trial` (kyoto-salute リポジトリの `src/pages/TrialBooking.tsx`) —
-  GymBoard の anon キーで直接接続 (`src/integrations/gymboard/client.ts`)、tenant は Salute御所南固定
+- `/trial/:tenantId` — tenantId は URL パスの UUID。そのジムのロゴ・ジム名・空き枠を表示。
+- `/trial` (tenantId なし) — `DEFAULT_TENANT_ID`（Salute御所南）を既定にする。
+- **`app.kyoto-salute.com/trial` はこのリポジトリの配信**（Salute のカスタムドメイン）。
+  以前のメモは「別リポジトリ(kyoto-salute)」としていたが、本リポジトリで
+  `trialBooking.headerTitle` を「体験予約」に変更したところ同ドメインにも反映された
+  ことから、このリポジトリのデプロイがカスタムドメインで配信されていると確認済み
+  （2026-07）。よって `app.kyoto-salute.com/trial` の文言修正はこのリポジトリで行える。
+
+### ページ見出しの名称（Salute だけ「初回無料体験」）
+`trialBooking.headerTitle`（"体験予約"）は全ジム共通の i18n キー。多ジム方針で「無料」を
+外した経緯があるため、単純に変えると他ジムの `/trial/:tenantId` にも波及する。Salute は
+無料体験を提供しているため、**`effectiveTenantId === DEFAULT_TENANT_ID` のときだけ
+`trialBooking.headerTitleFreeTrial`（"初回無料体験"）を出す**分岐を `TrialBooking.tsx` に
+入れている（他ジムは "体験予約" のまま）。将来、見出しをジムごとに自由設定にしたい場合は
+`tenants` に列を足す（`trial_info_title/body` と同じ要領）。
 
 ## API
 

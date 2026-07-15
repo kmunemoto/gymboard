@@ -76,6 +76,14 @@ const TrialBooking = () => {
 
   const effectiveTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
 
+  // ページ見出し。Salute御所南（このサイトの既定テナント）は「初回無料体験」の名称で
+  // 運用するため専用ラベルを出す。他ジムは「無料」かどうかがジムによるため、共通の
+  // 「体験予約」を使う（多ジム方針: 特定ジム専用の文言を全ジムに適用しない）。
+  const headerTitle =
+    effectiveTenantId === DEFAULT_TENANT_ID
+      ? t("trialBooking.headerTitleFreeTrial")
+      : t("trialBooking.headerTitle");
+
   // テナント限定の埋まり枠を60日分まとめて1回で取得する (get_tenant_booked_slots)
   const fetchExistingSlots = useCallback(async () => {
     if (!effectiveTenantId) return;
@@ -364,7 +372,7 @@ const TrialBooking = () => {
               <GymLogo size="lg" />
             )}
           </div>
-          <h1 className="text-xl font-bold">{t("trialBooking.headerTitle")}</h1>
+          <h1 className="text-xl font-bold">{headerTitle}</h1>
           <p className="text-sm opacity-80">{t("trialBooking.headerSub")}</p>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getWebOrigin } from "@/lib/nativeBridge";
 
 const InviteCodeCard = () => {
   const { t } = useTranslation();
@@ -25,7 +26,9 @@ const InviteCodeCard = () => {
   }, []);
 
   if (!code) return null;
-  const link = `${window.location.origin}/join/${code}`;
+  // ネイティブアプリ内では window.location.origin が 'capacitor://localhost' になり、
+  // コピーしたリンクをお客様に送っても開けなくなるため getWebOrigin() でフォールバックする。
+  const link = `${getWebOrigin()}/join/${code}`;
 
   const copy = async (text: string, label: string) => {
     try {

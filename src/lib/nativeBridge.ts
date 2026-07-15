@@ -21,3 +21,16 @@ export function getAuthCallbackUrl() {
   }
   return `${window.location.origin}/auth/callback`;
 }
+
+// GymBoard 本体の本番 Web ドメイン。ネイティブアプリ内では window.location.origin が
+// 'capacitor://localhost' に解決されてしまい、招待リンク・体験予約リンクなど「コピーして
+// 他人に共有する」リンクがそのままでは開けなくなる（誰も capacitor:// を解決できないため）。
+// ネイティブ時はこの本番ドメインにフォールバックする。
+const PRODUCTION_WEB_ORIGIN = 'https://app.gymboard.app';
+
+export function getWebOrigin() {
+  if (isNative()) {
+    return PRODUCTION_WEB_ORIGIN;
+  }
+  return window.location.origin;
+}

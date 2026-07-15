@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { getWebOrigin } from "@/lib/nativeBridge";
 
 type BusinessType = "personal_gym" | "pilates" | "yoga" | "seitai" | "other";
 type CutoffType = "prev_day" | "hours_before";
@@ -436,7 +437,9 @@ const Onboarding = () => {
                   variant="outline"
                   className="w-full"
                   onClick={() => {
-                    const link = `${window.location.origin}/join/${createdTenant.invite_code}`;
+                    // ネイティブアプリ内では window.location.origin が 'capacitor://localhost'
+                    // になり、コピーしたリンクが開けなくなるため getWebOrigin() でフォールバックする。
+                    const link = `${getWebOrigin()}/join/${createdTenant.invite_code}`;
                     navigator.clipboard.writeText(link);
                     toast({ title: t("onboarding.toastLinkCopied") });
                   }}

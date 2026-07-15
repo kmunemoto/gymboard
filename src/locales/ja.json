@@ -926,7 +926,6 @@
     "yesDelete": "はい、削除する",
     "sameDayForfeitCheckbox": "消化扱いにする",
     "sameDayForfeitCheckboxDesc": "本日の予約のため、チェックすると1回消化扱いでキャンセルします。トレーナー都合等でチェックを外すと消化扱いにしません。",
-    "sameDayForfeitBadge": "同日キャンセル済み",
     "releaseFailed": "ブロック解除に失敗しました",
     "releasedToast": "ブロックを解除しました",
     "permissionDenied": "削除権限がありません",

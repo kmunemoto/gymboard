@@ -926,7 +926,6 @@
     "yesDelete": "Yes, delete",
     "sameDayForfeitCheckbox": "Count as a used session",
     "sameDayForfeitCheckboxDesc": "This booking is today. Checking this cancels it as one used session. Uncheck if it's the trainer's fault (e.g. trainer unavailable) so it isn't counted.",
-    "sameDayForfeitBadge": "Same-day cancelled",
     "releaseFailed": "Failed to unblock",
     "releasedToast": "Block released",
     "permissionDenied": "You don't have permission to delete",

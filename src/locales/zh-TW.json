@@ -926,7 +926,6 @@
     "yesDelete": "是，刪除",
     "sameDayForfeitCheckbox": "計為已消耗次數",
     "sameDayForfeitCheckboxDesc": "該預約是今天的。勾選後將以消耗1次的方式取消。如果是教練方原因，取消勾選則不計為消耗。",
-    "sameDayForfeitBadge": "當天已取消",
     "releaseFailed": "解除封鎖失敗",
     "releasedToast": "已解除封鎖",
     "permissionDenied": "沒有刪除權限",

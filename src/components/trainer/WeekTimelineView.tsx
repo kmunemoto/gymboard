@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
-import { BookingWithTime } from "@/hooks/useBookings";
+import { BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 
 export interface ProfileLite {
@@ -119,8 +119,10 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
           {weekDays.map((day) => {
             const isToday = isSameDay(day, now);
             const dateStr = format(day, "yyyy-MM-dd");
+            // 同日キャンセル消化(SAME_DAY_FORFEIT_STATUS)の予約は予定表からは非表示にする
+            // （枠は占有されたまま・消化数カウントには含まれる。bookingsByUser 側は非フィルタのまま）。
             const dayBookings = bookings.filter(
-              (b) => b.date === dateStr && b.status !== "キャンセル済み"
+              (b) => b.date === dateStr && b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS
             );
 
             return (

@@ -33,13 +33,25 @@ ON/OFFできるようにした。設定画面は `TrainerGymSettings.tsx` の「
 |---|---|---|
 | `courseProgress.ts` / `planUsage.ts`（`status !== "キャンセル済み"` を消化数に加算） | 不一致 → 加算対象 | 消化数に数えられる |
 | `push-booking-reminder` / `push-booking-reminder-hourly` / `line-booking-reminder`（`status === "予約済み"` 厳密一致） | 不一致 → 対象外 | 来ないはずのリマインドが飛ばない |
-| `TrainerSchedule.tsx` の枠検索・`calendar-feed`（`status !== "キャンセル済み"` で表示） | 不一致 → 表示継続 | トレーナーの予定表・外部カレンダーに枠として残る |
+| `checkSlotBlocked` / `CustomerBooking.tsx` の枠検索・DBの `check_booking_overlap`（`!== "キャンセル済み"` で占有判定） | 不一致 → 占有扱い | 同日キャンセルされた枠は他のお客様に再販できない（消化済みなので枠自体は空けない） |
 
-**意図的な簡略化**: 上記の通り枠は「占有されたまま」残る（`checkSlotBlocked` も
-同様に不一致なので占有扱い）。同日キャンセルされた枠を他のお客様に再販できる
-ようにはしていない（現実的にほぼ発生しないケースのため）。同じ理由で、
+**枠は占有されたまま残る**（意図的な簡略化）。同日キャンセルされた枠を他のお客様に
+再販できるようにはしていない（現実的にほぼ発生しないケースのため）。同じ理由で、
 消化扱いキャンセル時はキャンセル待ちへの「空きました」通知もスキップする
 （`cancelBooking` 内、`opts.forfeit` 時は `waitlist_slot_freed` を送らない）。
+
+**トレーナー側の予定表からは非表示**（2026-07〜）。上記の「枠は占有されたまま」は
+予約可否の判定（`checkSlotBlocked` 等）の話であり、**トレーナー自身が見る予定表の
+表示**は別の話。当初は `status !== "キャンセル済み"` の不一致を利用してグレー表示
+のまま予定表に残す設計だったが、「ジム側の予約に残っているので消してほしい」との
+要望を受け、トレーナー向けの表示系（`TrainerSchedule.tsx` の `getSession`/
+`getDayBookings`、`WeekTimelineView.tsx` の `dayBookings`、`TrainerDashboard.tsx` の
+`todayBookings`＝本日のスケジュール）は明示的に `SAME_DAY_FORFEIT_STATUS` も除外
+するよう変更した。**進捗バッジ用の消化数カウント（`bookingsByUser`）は非フィルタの
+ままなので影響なし**（表示用の配列だけを絞り込み、カウント用の配列は触っていない）。
+`sameDayForfeitBadge` のグレー表示バッジ・i18nキーは表示箇所が無くなったため削除済み。
+なお `calendar-feed`（お客様自身の個人カレンダー購読、`profiles.calendar_token` 経由）
+は対象外（トレーナー側の予定表ではないため今回は変更していない）。
 
 boolean列（例: `bookings.forfeited`）を追加する案も検討したが、その場合は
 リマインダー3関数を個別に「forfeited=trueを除外」するよう改修する必要が

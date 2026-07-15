@@ -56,6 +56,10 @@ const SLOT_MAX_START = 1260; // 21:00 (JST 分)
 const RATE_LIMIT_PER_CONTACT_24H = 3;
 const RATE_LIMIT_PER_TENANT_1H = 20;
 const CANCELLED = "キャンセル済み";
+// Salute御所南は「初回無料体験」の名称で運用するジム。確認メールの見出し・件名・本文を
+// このジムだけ「初回無料体験」表記にする（他ジムは「体験」のまま）。公開サイトの見出し
+// （TrialBooking.tsx の headerTitleFreeTrial）と揃える。
+const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
 
 const GENERIC_ERROR = "サーバーで問題が発生しました。時間をおいて再度お試しください。";
 
@@ -275,6 +279,8 @@ Deno.serve(async (req) => {
           gymAddress,
           gymContactEmail,
           gymWebsiteUrl,
+          // Salute だけ「初回無料体験」表記にする（見出し・件名・本文・内容）。
+          isFreeTrial: tenantId === SALUTE_TENANT_ID,
           // cancelUrl は渡さない。テンプレートは gymContactEmail（＝登録したジムのアカウントの
           // メールアドレス tenants.email）へのメール連絡案内をフォールバック表示する。
         },

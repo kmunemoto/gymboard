@@ -21,6 +21,18 @@
 入れている（他ジムは "体験予約" のまま）。将来、見出しをジムごとに自由設定にしたい場合は
 `tenants` に列を足す（`trial_info_title/body` と同じ要領）。
 
+### 確認メール・前日リマインドの「初回無料体験」表記（Salute のみ）
+公開サイトの見出しと揃え、Salute のお客様向けメールも「初回無料体験」表記にしている。
+- **確認メール** (`trial-booking-confirmation.tsx`) は多ジム共通テンプレートのため、
+  `isFreeTrial` プロップで出し分ける。`trial-book/index.ts` が
+  `isFreeTrial: tenantId === SALUTE_TENANT_ID` を templateData で渡し、true のとき
+  見出し・件名・本文・「内容」を「初回無料体験」表記にする（false＝他ジムは「体験」のまま）。
+  `send-transactional-email` は `React.createElement(component, templateData)` と
+  `subject(templateData)` で templateData をそのまま渡すため、プロップ追加だけで件名にも効く。
+- **前日リマインド** (`trial-booking-reminder.tsx`) は元々 Salute 専用送信
+  （`send-trial-reminders` が `.eq('tenant_id', SALUTE_TENANT_ID)`）＋テンプレートが
+  Salute 固定文面のため、出し分けせず直接「初回無料体験」表記に更新している。
+
 ## API
 
 - **空き枠**: RPC `get_tenant_booked_slots(p_tenant_id, from_date, to_date)`

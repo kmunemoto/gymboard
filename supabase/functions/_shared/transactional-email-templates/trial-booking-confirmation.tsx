@@ -54,6 +54,9 @@ interface TrialBookingConfirmationProps {
   gymAddress?: string
   gymContactEmail?: string
   gymWebsiteUrl?: string
+  // 「初回無料体験」の名称で運用するジム（Salute御所南）だけ true。呼び出し側(trial-book)が
+  // テナントを見て渡す。未指定/false は多ジム既定の「体験」表記のまま。
+  isFreeTrial?: boolean
 }
 
 const TrialBookingConfirmationEmail = ({
@@ -65,8 +68,14 @@ const TrialBookingConfirmationEmail = ({
   gymAddress = '',
   gymContactEmail = '',
   gymWebsiteUrl = '',
+  isFreeTrial = false,
 }: TrialBookingConfirmationProps) => {
   const addressLines = splitAddressLines(gymAddress)
+  // 見出し・本文で使う体験の呼称。Salute は「初回無料体験」、他ジムは「体験」。
+  const trialName = isFreeTrial ? '初回無料体験' : '体験'
+  const contentValue = isFreeTrial
+    ? '初回無料体験（カウンセリング＋トレーニング 計60分）'
+    : 'カウンセリング＋トレーニング体験（計60分）'
   return (
     <Html lang="ja" dir="ltr">
       <Head>
@@ -75,17 +84,17 @@ const TrialBookingConfirmationEmail = ({
       </Head>
       <Body style={main}>
         <Container style={container}>
-          <SafeHeading style={h1}>体験のご予約を承りました</SafeHeading>
+          <SafeHeading style={h1}>{`${trialName}のご予約を承りました`}</SafeHeading>
           <Hr style={hr} />
           <SafeText style={greeting}>{`${customerName} 様`}</SafeText>
-          <SafeText style={text}>{`この度は${gymName}の体験にご予約いただき、誠にありがとうございます。`}</SafeText>
+          <SafeText style={text}>{`この度は${gymName}の${trialName}にご予約いただき、誠にありがとうございます。`}</SafeText>
 
           <Section style={detailSection}>
             <SafeText style={sectionTitle}>ご予約内容</SafeText>
             <SafeText style={label}>日時</SafeText>
             <SafeText style={value}>{`${bookingDate} ${bookingTime}`.trim()}</SafeText>
             <SafeText style={label}>内容</SafeText>
-            <SafeText style={value}>カウンセリング＋トレーニング体験（計60分）</SafeText>
+            <SafeText style={value}>{contentValue}</SafeText>
             {addressLines.length > 0 && (
               <>
                 <SafeText style={label}>場所</SafeText>
@@ -138,7 +147,7 @@ const TrialBookingConfirmationEmail = ({
 export const template = {
   component: TrialBookingConfirmationEmail,
   subject: (data: Record<string, any>) =>
-    `【${(data?.gymName as string) || 'ジム'}】体験のご予約を承りました`,
+    `【${(data?.gymName as string) || 'ジム'}】${data?.isFreeTrial ? '初回無料体験' : '体験'}のご予約を承りました`,
   displayName: '体験予約 確認（顧客向け）',
   previewData: {
     customerName: '山田 太郎',
@@ -148,6 +157,8 @@ export const template = {
     gymAddress: '京都市中京区\n毘沙門町533-1\nプラザ御所南 2階',
     gymContactEmail: 'k.munemoto@kyoto-salute.com',
     gymWebsiteUrl: 'https://app.kyoto-salute.com',
+    // プレビューは Salute（初回無料体験を提供するジム）を想定し、無料体験表記で描画する。
+    isFreeTrial: true,
     // cancelUrl は渡さない（セルフキャンセルのボタンは出さない）。プレビューは実配信と同じく
     // gymContactEmail へのメール連絡案内が描画される。
   },

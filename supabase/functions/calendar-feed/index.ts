@@ -39,6 +39,8 @@ Deno.serve(async (req) => {
     .select("id, booking_date, booking_type, status")
     .eq("user_id", profile.user_id)
     .neq("status", "キャンセル済み")
+    // 同日キャンセル消化（来店しない予約）も購読カレンダーに出さない
+    .neq("status", "同日キャンセル済み")
     .gte("booking_date", now)
     .order("booking_date", { ascending: true });
 

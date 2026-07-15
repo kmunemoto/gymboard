@@ -31,6 +31,8 @@ const link = `${getWebOrigin()}/join/${code}`;
 - `TrialLinkCard.tsx`（体験予約リンクのコピー・開く）
 - `InviteCodeCard.tsx`（招待リンクのコピー、ジム設定画面）
 - `Onboarding.tsx`（招待リンクのコピー、初回オンボーディング完了画面）
+- `bookingNotification.ts`（代理予約のトレーナー宛メールの dashboardUrl。メール内リンクも
+  「他人・別環境で開くリンク」なので同じ扱い）
 
 ## 今後の注意
 新しく「コピーして他人（お客様・別ジム等）に共有するリンク」を生成する機能を追加する際は、

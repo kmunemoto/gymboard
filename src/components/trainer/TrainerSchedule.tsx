@@ -396,6 +396,9 @@ const TrainerSchedule = () => {
             user_id: p.user_id,
             plan: p.plan ?? null,
             cycle_start_date: p.cycle_start_date ?? null,
+            // 渡し忘れると猶予OFFのお客様にも猶予が適用された進捗バッジが出る
+            // （ProfileLite.grace_enabled はオプショナルのため型エラーにならない）
+            grace_enabled: p.grace_enabled ?? null,
           }))}
           onSelectBooking={(b) =>
             setDeleteTarget({

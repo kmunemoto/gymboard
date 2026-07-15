@@ -44,6 +44,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [trialInfoBody, setTrialInfoBody] = useState("");
   const [savingTrialInfo, setSavingTrialInfo] = useState(false);
 
+  // 連絡先メールアドレス（tenants.email）。体験予約の確認メールでお客様への連絡先として案内される。
+  const [contactEmail, setContactEmail] = useState("");
+  const [savingContactEmail, setSavingContactEmail] = useState(false);
+
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
   }, [profile]);
@@ -52,6 +56,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     setTrialInfoTitle(tenant?.trial_info_title ?? "");
     setTrialInfoBody(tenant?.trial_info_body ?? "");
   }, [tenant?.trial_info_title, tenant?.trial_info_body]);
+
+  useEffect(() => {
+    setContactEmail(tenant?.email ?? "");
+  }, [tenant?.email]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -100,6 +108,29 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingTrialInfo(false);
+  };
+
+  const handleSaveContactEmail = async () => {
+    if (!tenant) return;
+    const email = contactEmail.trim();
+    // 非空なら形式チェック。空欄は NULL で保存（確認メールは連絡先無しの案内にフォールバック）。
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error(t("settings.trainer.contactEmailInvalid"));
+      return;
+    }
+    setSavingContactEmail(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ email: email || null })
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("連絡先メールの保存に失敗:", error);
+      toast.error(t("settings.trainer.contactEmailSaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.contactEmailUpdated"));
+      refetchTenant();
+    }
+    setSavingContactEmail(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,6 +240,33 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
               <Save className="w-4 h-4 mr-1" />
               {savingTrialInfo ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === 連絡先メールアドレス === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.contactEmailSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.contactEmailDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-email" className="text-xs font-bold">{t("settings.trainer.contactEmailLabel")}</Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder={t("settings.trainer.contactEmailPlaceholder")}
+                maxLength={255}
+              />
+            </div>
+            <Button onClick={handleSaveContactEmail} disabled={savingContactEmail || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingContactEmail ? t("common.saving") : t("common.save")}
             </Button>
           </CardContent>
         </Card>

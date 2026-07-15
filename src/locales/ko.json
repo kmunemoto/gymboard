@@ -926,7 +926,6 @@
     "yesDelete": "예, 삭제합니다",
     "sameDayForfeitCheckbox": "소진 처리하기",
     "sameDayForfeitCheckboxDesc": "오늘 예약입니다. 체크하면 1회 소진 처리로 취소됩니다. 트레이너 사정 등으로 소진 처리하지 않으려면 체크를 해제하세요.",
-    "sameDayForfeitBadge": "당일 취소됨",
     "releaseFailed": "차단 해제에 실패했습니다",
     "releasedToast": "차단을 해제했습니다",
     "permissionDenied": "삭제 권한이 없습니다",

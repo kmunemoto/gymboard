@@ -106,7 +106,9 @@ const TrainerSchedule = () => {
 
   const getSession = (day: Date, time: string) => {
     const dateStr = format(day, "yyyy-MM-dd");
-    return bookings.find((b) => b.date === dateStr && b.startTime === time && b.status !== "キャンセル済み");
+    return bookings.find(
+      (b) => b.date === dateStr && b.startTime === time && b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS,
+    );
   };
 
   const proxyDateKey = proxyDate ? format(proxyDate, "yyyy-MM-dd") : "";
@@ -251,10 +253,10 @@ const TrainerSchedule = () => {
       return;
     }
 
-    // 消化扱い（forfeit）の場合は物理削除ではなくstatus更新のため、枠は
-    // 「同日キャンセル済み」として引き続き表示する必要がある。removeBookingで
-    // 消してしまうと（realtimeで戻るまで）一時的に枠が消えて見えるため、
-    // 代わりに再取得して正しいグレー表示に更新する。
+    // 消化扱い（forfeit）の場合は物理削除ではなくstatus更新のため、行自体は
+    // （予定表には表示されなくなるが）他の予約の消化数カウント（進捗バッジ）の
+    // 計算対象としてローカル状態に残す必要がある。removeBookingで完全に消して
+    // しまうとカウントが一時的にずれるため、代わりに再取得する。
     if (booking?.user_id !== "trial-guest" && forfeit) {
       void refetch();
     } else {
@@ -309,7 +311,7 @@ const TrainerSchedule = () => {
 
   const getDayBookings = (day: Date) => {
     const dateStr = format(day, "yyyy-MM-dd");
-    return bookings.filter((b) => b.date === dateStr && b.status !== "キャンセル済み");
+    return bookings.filter((b) => b.date === dateStr && b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS);
   };
 
   if (loading) {
@@ -449,9 +451,7 @@ const TrainerSchedule = () => {
                                 <div className={`rounded-lg p-2 pr-12 text-xs relative ${
                                   session.isBlocked
                                     ? "bg-muted border border-dashed border-destructive/30 text-muted-foreground"
-                                    : session.status === SAME_DAY_FORFEIT_STATUS
-                                      ? "bg-muted border border-border text-muted-foreground"
-                                      : "accent-gradient text-accent-foreground"
+                                    : "accent-gradient text-accent-foreground"
                                 }`}>
                                   <Button
                                     type="button"
@@ -465,9 +465,6 @@ const TrainerSchedule = () => {
                                   </Button>
                                   <p className="font-bold truncate">{session.isBlocked ? t("schedule.blockedLabel") : session.clientName}</p>
                                   <p className="opacity-75 truncate">{session.startTime}〜{session.endTime}</p>
-                                  {!session.isBlocked && session.status === SAME_DAY_FORFEIT_STATUS && (
-                                    <p className="truncate text-[9px] mt-0.5 font-semibold">{t("schedule.sameDayForfeitBadge")}</p>
-                                  )}
                                   {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{session.booking_type}</p>}
                                   {!session.isBlocked && (() => {
                                     const p = getProgress(session);
@@ -520,7 +517,7 @@ const TrainerSchedule = () => {
                         <CardContent className="p-3">
                           <div className="flex items-center gap-3">
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                              booking.isBlocked || booking.status === SAME_DAY_FORFEIT_STATUS
+                              booking.isBlocked
                                 ? "bg-muted text-muted-foreground"
                                 : "accent-gradient text-accent-foreground"
                             }`}>
@@ -529,9 +526,6 @@ const TrainerSchedule = () => {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate">{booking.isBlocked ? t("schedule.blockedLabel") : booking.clientName}</p>
                               <p className="text-xs text-muted-foreground">{booking.startTime}〜{booking.endTime}</p>
-                              {!booking.isBlocked && booking.status === SAME_DAY_FORFEIT_STATUS && (
-                                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{t("schedule.sameDayForfeitBadge")}</p>
-                              )}
                               {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{booking.booking_type}</p>}
                               {!booking.isBlocked && (() => {
                                 const p = getProgress(booking);

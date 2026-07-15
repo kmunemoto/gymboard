@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { useAllCustomerProfiles, useProfile } from "@/hooks/useProfile";
-import { useAllBookings } from "@/hooks/useBookings";
+import { useAllBookings, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { formatJST, getJSTNow } from "@/lib/timezone";
 import { addDays, startOfDay } from "date-fns";
 import CounselingResponseList from "./CounselingResponseList";
@@ -90,8 +90,10 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
   // 本日のスケジュールには体験予約（user_id === "trial-guest"）も含める。
   // トレーナーが当日その枠に対応するため予定として表示する必要がある。
   // （月間セッション数・売上の集計では体験は無料/非会員のため引き続き除外する）
+  // 同日キャンセル消化(SAME_DAY_FORFEIT_STATUS)は「来店しない」予約のため、
+  // 本日のスケジュール・件数からは除外する（消化数カウント自体は courseProgress 側で継続）。
   const todayBookings = bookings.filter(
-    (b) => b.date === today && b.status !== "キャンセル済み" && b.user_id !== "blocked",
+    (b) => b.date === today && b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS && b.user_id !== "blocked",
   );
 
   const bookingsByUser = useMemo(() => {

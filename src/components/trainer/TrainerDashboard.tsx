@@ -159,9 +159,11 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
   const atRiskCustomers = useMemo(() => {
     const now = new Date();
     // ユーザーごとの最終来店日（過去の非キャンセル予約の最大日）と、今後予約の有無
+    // 同日キャンセル消化(SAME_DAY_FORFEIT_STATUS)は「来店していない」ため除外する
+    // （含めると消化した顧客の最終来店日が更新され、離脱リストから漏れてしまう）
     const visit = new Map<string, { last: string | null; upcoming: boolean }>();
     bookings.forEach((b) => {
-      if (b.status === "キャンセル済み" || b.user_id === "blocked" || b.user_id === "trial-guest") return;
+      if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS || b.user_id === "blocked" || b.user_id === "trial-guest") return;
       const dt = new Date(`${b.date}T${b.startTime || "00:00"}:00+09:00`);
       const info = visit.get(b.user_id) || { last: null, upcoming: false };
       if (dt <= now) {

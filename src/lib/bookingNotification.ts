@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import { getWebOrigin } from "@/lib/nativeBridge";
 
 const logEmailInvoke = (
   context: string,
@@ -52,7 +53,9 @@ export const sendBookingNotification = async (
             bookingDate: formattedDate,
             bookingTime,
             planName,
-            dashboardUrl: window.location.origin,
+            // ネイティブアプリ内では window.location.origin が capacitor://localhost になり
+            // メールのボタンが開けないため、共有リンクと同様に本番Webドメインへフォールバック
+            dashboardUrl: getWebOrigin(),
             trainerUserId: trainerRole.user_id,
           },
         },

@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toJSTDate, formatJST } from "@/lib/timezone";
 import { getGymNameForUser } from "@/lib/tenantLookup";
+import { fetchMyTenantStaffIds, fetchMyTenantTrainerId } from "@/lib/tenantHelper";
 import { WAITLIST_ENABLED } from "@/lib/featureFlags";
 import { shouldRebaseCycleStart, getMonthlySessionCount } from "@/lib/courseProgress";
 
@@ -547,12 +548,13 @@ async function sendRescheduleToTrainer(
   bookingType: string,
   forfeit = false, // 当日変更で変更前の予約が1回消化扱いになったか
 ) {
-  const [{ data: profile }, { data: trainerIds }] = await Promise.all([
+  // 宛先は自テナントのスタッフ（trainer優先→owner）。get_trainer_ids は全テナント横断のため
+  // 使わない（別ジムのトレーナーに通知が飛ぶ/自ジムに届かない）。チャット #141 と同じ対応。
+  const [{ data: profile }, trainers] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("user_id", userId).maybeSingle(),
-    supabase.rpc("get_trainer_ids"),
+    fetchMyTenantStaffIds(),
   ]);
   const customerName = profile?.display_name || "顧客";
-  const trainers = (trainerIds ?? []).map((t: { user_id: string }) => t.user_id);
   // 当日変更で消化扱いになった旨を通知本文に明記する（トレーナー/オーナーが消化数の
   // 増加を把握できるように）。プッシュは短く、LINE は1行で補足する。
   const pushForfeitSuffix = forfeit ? "（変更前の予約は当日のため1回消化）" : "";
@@ -631,8 +633,8 @@ async function sendNewBookingLineToTrainer(
     .maybeSingle();
   const customerName = profile?.display_name || "顧客";
 
-  const { data: trainerIds } = await supabase.rpc("get_trainer_ids");
-  const trainerId = trainerIds?.[0]?.user_id;
+  // 宛先は自テナントの代表スタッフ（get_trainer_ids はテナント横断のため使わない）
+  const trainerId = await fetchMyTenantTrainerId();
   if (!trainerId) return;
 
   const dateStr = formatJST(`${date}T${startTime}:00+09:00`, "M月d日（E） HH:mm", { locale: ja });
@@ -755,12 +757,12 @@ async function sendCancelLineNotification(
   const forfeitNote = forfeit ? "\n\n※同日キャンセルのため、今回の予約は1回消化した扱いになります。" : "";
 
   // Always fetch customer name & trainer id (needed for both paths)
-  const [{ data: profile }, { data: trainerIds }] = await Promise.all([
+  // 宛先は自テナントの代表スタッフ（get_trainer_ids はテナント横断のため使わない）
+  const [{ data: profile }, trainerId] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("user_id", booking.user_id).maybeSingle(),
-    supabase.rpc("get_trainer_ids"),
+    fetchMyTenantTrainerId(),
   ]);
   const customerName = profile?.display_name || "顧客";
-  const trainerId = trainerIds?.[0]?.user_id;
   const gymName = await getGymNameForUser(booking.user_id);
 
   if (cancelledByTrainer) {
@@ -826,12 +828,12 @@ async function sendCancelEmailNotification(
   const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
   const bookingTime = `${startTime}〜${endTime}`;
 
-  const [{ data: profile }, { data: trainerIds }] = await Promise.all([
+  // 宛先は自テナントの代表スタッフ（get_trainer_ids はテナント横断のため使わない）
+  const [{ data: profile }, trainerId] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("user_id", booking.user_id).maybeSingle(),
-    supabase.rpc("get_trainer_ids"),
+    fetchMyTenantTrainerId(),
   ]);
   const customerName = profile?.display_name || "お客様";
-  const trainerId = trainerIds?.[0]?.user_id;
 
   // Email trainer
   if (trainerId) {
@@ -886,12 +888,12 @@ async function sendCancelPushNotification(
     const hm = formatJST(booking.booking_date, "HH:mm", { locale: ja });
     const forfeitSuffix = forfeit ? "（1回消化扱い）" : "";
 
-    const [{ data: profile }, { data: trainerIds }] = await Promise.all([
+    // 宛先は自テナントのスタッフ全員（get_trainer_ids はテナント横断のため使わない）
+    const [{ data: profile }, trainers] = await Promise.all([
       supabase.from("profiles").select("display_name").eq("user_id", booking.user_id).maybeSingle(),
-      supabase.rpc("get_trainer_ids"),
+      fetchMyTenantStaffIds(),
     ]);
     const customerName = profile?.display_name || "お客様";
-    const trainers = (trainerIds ?? []).map((t: { user_id: string }) => t.user_id);
 
     // Always notify customer about their own cancellation (confirmation)
     await supabase.functions.invoke("send-push-notification", {

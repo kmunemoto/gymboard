@@ -18,18 +18,18 @@ export async function fetchMyTenantId(): Promise<string | null> {
 }
 
 /**
- * 現在ログイン中のユーザーが所属するテナントの「ジム側スタッフ」の user_id を1件返す。
- * trainer を優先し、居なければ owner（Salute のような一人ジムはオーナーのみ）。
+ * 現在ログイン中のユーザーが所属するテナントの「ジム側スタッフ」全員の user_id を返す。
+ * 並び順は trainer（joined_at昇順）→ owner（同）。先頭1件を LINE/メールの代表宛先として
+ * 使う箇所があるため、この順序は fetchMyTenantTrainerId の解決結果と一致させている。
  *
- * get_trainer_ids() は user_roles を全テナント横断で返すため、その先頭は別ジムの
- * トレーナーになりうる（お客様のチャットが別ジムに飛び、自ジムに届かない不具合の原因）。
+ * get_trainer_ids() は user_roles を全テナント横断で返すため、通知が別ジムのトレーナーに
+ * 飛ぶ/自ジムに届かない不具合の原因になっていた（チャット #141・予約系通知）。
  * ここではテナント内で解決する。tenant_members の SELECT RLS
- * 「Members can view same tenant members」により、お客様は自テナントのスタッフ行を読める。
- * 見つからなければ null。
+ * 「Members can view same tenant members」により、お客様も自テナントのスタッフ行を読める。
  */
-export async function fetchMyTenantTrainerId(): Promise<string | null> {
+export async function fetchMyTenantStaffIds(): Promise<string[]> {
   const tenantId = await fetchMyTenantId();
-  if (!tenantId) return null;
+  if (!tenantId) return [];
   const { data } = await supabase
     .from("tenant_members")
     .select("user_id, role, joined_at")
@@ -38,8 +38,18 @@ export async function fetchMyTenantTrainerId(): Promise<string | null> {
     .eq("status", "active")
     .order("joined_at", { ascending: true });
   const rows = (data ?? []) as { user_id: string; role: string }[];
-  const staff = rows.find((m) => m.role === "trainer") ?? rows[0];
-  return staff?.user_id ?? null;
+  const trainers = rows.filter((m) => m.role === "trainer");
+  const owners = rows.filter((m) => m.role === "owner");
+  return [...new Set([...trainers, ...owners].map((m) => m.user_id))];
+}
+
+/**
+ * 自テナントの代表スタッフ1件（trainer 優先、居なければ owner。
+ * Salute のような一人ジムはオーナーのみ）。見つからなければ null。
+ */
+export async function fetchMyTenantTrainerId(): Promise<string | null> {
+  const ids = await fetchMyTenantStaffIds();
+  return ids[0] ?? null;
 }
 
 /**

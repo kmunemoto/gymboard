@@ -329,20 +329,21 @@ const CustomerBooking = () => {
     }
 
     // Fire-and-forget push notification to trainer
-    supabase.rpc("get_trainer_ids").then(({ data: trainers }) => {
-      if (trainers && trainers.length > 0) {
-        const trainerIds = trainers.map((t) => t.user_id);
-        supabase.functions.invoke("send-push-notification", {
-          body: {
-            user_ids: [...trainerIds, user.id],
-            title: "新しい予約",
-            body: `${profile?.display_name || "お客様"}が${format(selectedDate!, "M月d日", { locale: ja })} ${slot.time}〜${endTime}を予約しました${repeatWeeks > 1 ? `（毎週同時刻×${repeatWeeks}回の定期予約）` : ""}`,
-            url: "/",
-            tag: `booking-${firstBooking.id}`,
-          },
-        }).catch((e) => console.error("Push notification failed:", e));
-      }
-    });
+    // 宛先は自テナントのスタッフのみ（get_trainer_ids は全テナント横断のため、
+    // 別ジムのトレーナーに通知が飛ぶ/自ジムに届かない。チャット #141 と同じ対応）。
+    import("@/lib/tenantHelper").then(async ({ fetchMyTenantStaffIds }) => {
+      const staffIds = await fetchMyTenantStaffIds();
+      if (staffIds.length === 0) return;
+      supabase.functions.invoke("send-push-notification", {
+        body: {
+          user_ids: [...new Set([...staffIds, user.id])],
+          title: "新しい予約",
+          body: `${profile?.display_name || "お客様"}が${format(selectedDate!, "M月d日", { locale: ja })} ${slot.time}〜${endTime}を予約しました${repeatWeeks > 1 ? `（毎週同時刻×${repeatWeeks}回の定期予約）` : ""}`,
+          url: "/",
+          tag: `booking-${firstBooking.id}`,
+        },
+      }).catch((e) => console.error("Push notification failed:", e));
+    }).catch((e) => console.error("Push notification failed:", e));
 
   };
 

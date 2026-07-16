@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getWebOrigin } from "@/lib/nativeBridge";
+import { fetchMyTenantTrainerId } from "@/lib/tenantHelper";
 
 const logEmailInvoke = (
   context: string,
@@ -33,16 +34,15 @@ export const sendBookingNotification = async (
   customerEmail?: string,
 ) => {
   try {
-    // Find the trainer via secure RPC (avoids exposing user_roles table)
-    const { data: trainerRoles } = await supabase.rpc("get_trainer_ids");
-    const trainerRole = trainerRoles?.[0] ?? null;
+    // 宛先は自テナントの代表スタッフ（get_trainer_ids はテナント横断のため使わない）
+    const trainerId = await fetchMyTenantTrainerId();
 
     const dateObj = new Date(date + "T00:00:00+09:00");
     const formattedDate = format(dateObj, "M月d日（E）", { locale: ja });
     const bookingTime = `${startTime}〜${endTime}`;
 
     // Notify trainer
-    if (trainerRole) {
+    if (trainerId) {
       const result = await supabase.functions.invoke("send-transactional-email", {
         body: {
           templateName: "new-booking-notification",
@@ -56,7 +56,7 @@ export const sendBookingNotification = async (
             // ネイティブアプリ内では window.location.origin が capacitor://localhost になり
             // メールのボタンが開けないため、共有リンクと同様に本番Webドメインへフォールバック
             dashboardUrl: getWebOrigin(),
-            trainerUserId: trainerRole.user_id,
+            trainerUserId: trainerId,
           },
         },
       });

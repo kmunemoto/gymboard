@@ -45,12 +45,18 @@ const link = `${getWebOrigin()}/join/${code}`;
   `get_trainer_ids()[0]` だとお客様のメッセージが別ジムに飛び、自ジムのオーナーに
   届かなかった。`tenantHelper.fetchMyTenantTrainerId()`（自テナントの trainer優先→owner を
   tenant_members から解決。SELECT RLS「Members can view same tenant members」で読める）に置換。
-- **未修正（同種の残存・要検討）**: 予約/キャンセル/リスケの**トレーナー通知**が
-  `get_trainer_ids()` を使っている（`CustomerBooking.tsx` の予約push、`useBookings.ts` の
-  新規予約LINE・キャンセル/リスケのLINE/メール/push）。予約データ自体は tenant スコープで
-  正しく表示されるが、LINE/push/メール**通知**が別ジムのトレーナーに飛ぶ/自ジムに来ない
-  可能性がある。テナント内解決（DB側に `get_my_tenant_trainer_ids()` RPC を作る等）に
-  寄せるのが本筋。
+- **修正済み（2026-07・続き）**: 予約/キャンセル/リスケの**トレーナー通知**も同様に置換。
+  `tenantHelper.fetchMyTenantStaffIds()`（自テナントの trainer→owner 全員、joined_at順・
+  先頭が代表）を追加し、以下を移行した:
+  - `CustomerBooking.tsx` 予約push（スタッフ全員＋本人）
+  - `useBookings.ts` `sendRescheduleToTrainer`（push=スタッフ全員＋本人 / LINE=代表1名）、
+    `sendNewBookingLineToTrainer`・`sendCancelLineNotification`・
+    `sendCancelEmailNotification`（代表1名）、`sendCancelPushNotification`（スタッフ全員）
+  - `bookingNotification.ts` `sendBookingNotification`（メール宛先の trainerUserId）
+  これで src 内の `get_trainer_ids` 実呼び出しはゼロ（コメントと生成型のみ）。
+  **今後クライアントから「ジム側スタッフ宛」に何か送るときは必ず
+  `fetchMyTenantStaffIds()` / `fetchMyTenantTrainerId()` を使うこと。**
+  （サーバー側は `trial-book` の tenant_members 解決パターンを踏襲する）
 
 ## 今後の注意
 新しく「コピーして他人（お客様・別ジム等）に共有するリンク」を生成する機能を追加する際は、

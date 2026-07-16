@@ -1,35 +1,48 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Send } from "lucide-react";
+import { Send, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/hooks/useMessages";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
+import { toast } from "sonner";
 
 const CustomerChat = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [trainerName, setTrainerName] = useState(() => t("customerChat.defaultTrainer"));
+  const [resolvingTrainer, setResolvingTrainer] = useState(true);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 送信先は「自分が所属するジムのスタッフ」を解決する。
   // 旧実装は get_trainer_ids()[0]（全テナント横断で先頭）だったため、他ジムのトレーナーに
   // メッセージが飛び、自ジムのオーナーに届かない不具合があった（fetchMyTenantTrainerId 参照）。
+  //
+  // ここが解決できない（テナント未所属・所属が非activeなど）場合、以前は何のエラーも
+  // 出さずに既定の「コーチ」表示・空のチャットのまま固まり、送信ボタンも黙って
+  // 無反応になっていた（handleSend の !trainerId ガードで無言return）。
+  // resolvingTrainer で判別し、失敗時は明示的にエラーを表示する。
   useEffect(() => {
     const fetchTrainer = async () => {
-      const { fetchMyTenantTrainerId } = await import("@/lib/tenantHelper");
-      const tid = await fetchMyTenantTrainerId();
-      if (tid) {
-        setTrainerId(tid);
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("user_id", tid)
-          .maybeSingle();
-        if (profile?.display_name) setTrainerName(profile.display_name);
+      try {
+        const { fetchMyTenantTrainerId } = await import("@/lib/tenantHelper");
+        const tid = await fetchMyTenantTrainerId();
+        if (tid) {
+          setTrainerId(tid);
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("user_id", tid)
+            .maybeSingle();
+          if (profile?.display_name) setTrainerName(profile.display_name);
+        }
+      } catch (e) {
+        console.error("担当トレーナーの解決に失敗:", e);
+      } finally {
+        setResolvingTrainer(false);
       }
     };
     fetchTrainer();
@@ -49,8 +62,15 @@ const CustomerChat = () => {
 
   const handleSend = async () => {
     if (!input.trim() || !trainerId) return;
-    await sendMessage(input.trim(), trainerId);
-    setInput("");
+    const text = input.trim();
+    try {
+      await sendMessage(text, trainerId);
+      setInput("");
+    } catch (e) {
+      // 以前はここで例外が捕捉されず、送信が黙って失敗し入力欄もそのままだった。
+      console.error("メッセージの送信に失敗:", e);
+      toast.error(t("customerChat.sendFailed"));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -74,6 +94,18 @@ const CustomerChat = () => {
   const getDateLabel = (dateStr: string) => {
     return formatJST(dateStr, "M/d");
   };
+
+  // 送信先スタッフが解決できない場合（テナント未所属・所属が非active等）は、
+  // 何も起きていないように見える空チャットではなく、明示的にエラーを表示する。
+  if (!resolvingTrainer && !trainerId) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-8.5rem)] items-center justify-center px-6 text-center gap-2 slide-up">
+        <AlertTriangle className="w-8 h-8 text-destructive" />
+        <p className="text-sm font-bold">{t("customerChat.noTrainerFound")}</p>
+        <p className="text-xs text-muted-foreground">{t("customerChat.noTrainerFoundHelp")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8.5rem)] slide-up">

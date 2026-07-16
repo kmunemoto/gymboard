@@ -2008,7 +2008,10 @@
     "defaultTrainer": "Coach",
     "online": "Online",
     "emptyPrompt": "Send a message to get started!",
-    "inputPlaceholder": "Type a message..."
+    "inputPlaceholder": "Type a message...",
+    "sendFailed": "Failed to send message. Please try again.",
+    "noTrainerFound": "No trainer found",
+    "noTrainerFoundHelp": "Please try again later or contact the gym directly."
   },
   "trialLink": {
     "title": "Trial Booking Link",
@@ -2057,7 +2060,8 @@
     "noCustomers": "No customers registered yet",
     "noMessagePreview": "No messages",
     "noHistory": "No message history",
-    "selectConversation": "Select a conversation from the list on the left"
+    "selectConversation": "Select a conversation from the list on the left",
+    "sendFailed": "Failed to send. Please try again."
   },
   "retention": {
     "title": "Customers needing follow-up",

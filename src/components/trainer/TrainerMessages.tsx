@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMessages, useUnreadBySender } from "@/hooks/useMessages";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
+import { toast } from "sonner";
 
 interface CustomerInfo {
   user_id: string;
@@ -101,8 +102,15 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
   const handleSend = async () => {
     if (!newMsg.trim() || !selectedCustomerId) return;
-    await sendMessage(newMsg.trim(), selectedCustomerId);
-    setNewMsg("");
+    const text = newMsg.trim();
+    try {
+      await sendMessage(text, selectedCustomerId);
+      setNewMsg("");
+    } catch (e) {
+      // 以前は例外が未捕捉のまま送信が黙って失敗していた（useMessages.sendMessage 参照）。
+      console.error("メッセージの送信に失敗:", e);
+      toast.error(t("trainerMessages.sendFailed"));
+    }
   };
 
   const selected = customers.find((c) => c.user_id === selectedCustomerId);

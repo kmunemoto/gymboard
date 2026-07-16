@@ -2008,7 +2008,10 @@
     "defaultTrainer": "教練",
     "online": "在線",
     "emptyPrompt": "傳送訊息開始聊天吧！",
-    "inputPlaceholder": "輸入訊息..."
+    "inputPlaceholder": "輸入訊息...",
+    "sendFailed": "訊息傳送失敗，請重試。",
+    "noTrainerFound": "找不到負責的教練",
+    "noTrainerFoundHelp": "請稍後再試，或直接聯絡健身房。"
   },
   "trialLink": {
     "title": "體驗預約連結",
@@ -2057,7 +2060,8 @@
     "noCustomers": "尚無已註冊的客戶",
     "noMessagePreview": "無訊息",
     "noHistory": "無訊息記錄",
-    "selectConversation": "請從左側列表中選擇對話"
+    "selectConversation": "請從左側列表中選擇對話",
+    "sendFailed": "傳送失敗，請重試。"
   },
   "retention": {
     "title": "需要跟進的客戶",

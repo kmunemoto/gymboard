@@ -2008,7 +2008,10 @@
     "defaultTrainer": "コーチ",
     "online": "オンライン",
     "emptyPrompt": "メッセージを送ってみましょう！",
-    "inputPlaceholder": "メッセージを入力..."
+    "inputPlaceholder": "メッセージを入力...",
+    "sendFailed": "メッセージの送信に失敗しました。もう一度お試しください。",
+    "noTrainerFound": "担当トレーナーが見つかりません",
+    "noTrainerFoundHelp": "しばらくしてから再度お試しいただくか、ジムに直接ご連絡ください。"
   },
   "trialLink": {
     "title": "体験予約リンク",
@@ -2057,7 +2060,8 @@
     "noCustomers": "顧客がまだ登録されていません",
     "noMessagePreview": "メッセージなし",
     "noHistory": "メッセージ履歴がありません",
-    "selectConversation": "左のリストから会話を選択してください"
+    "selectConversation": "左のリストから会話を選択してください",
+    "sendFailed": "送信に失敗しました。もう一度お試しください。"
   },
   "retention": {
     "title": "フォローが必要な顧客",

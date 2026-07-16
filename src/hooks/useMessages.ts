@@ -48,7 +48,8 @@ export const useMessages = (otherUserId: string | null) => {
             (msg.sender_id === user.id && msg.receiver_id === otherUserId) ||
             (msg.sender_id === otherUserId && msg.receiver_id === user.id)
           ) {
-            setMessages((prev) => [...prev, msg]);
+            // sendMessage 側の即時ローカル反映と重複しないよう id で除外する
+            setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           }
         }
       )
@@ -62,11 +63,25 @@ export const useMessages = (otherUserId: string | null) => {
     if (!user) return;
     const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
     const tenantId = await fetchMyTenantId();
-    await supabase.from("messages").insert(withTenant({
-      sender_id: user.id,
-      receiver_id: receiverId,
-      content,
-    }, tenantId) as any);
+    // withTenant はテナント未所属なら例外を投げる。以前はここが未捕捉のまま呼び出し元
+    // （CustomerChat.handleSend）にもcatchが無く、送信が「何も起きず」に静かに失敗していた。
+    const { data, error } = await supabase
+      .from("messages")
+      .insert(withTenant({
+        sender_id: user.id,
+        receiver_id: receiverId,
+        content,
+      }, tenantId) as any)
+      .select()
+      .single();
+    if (error) throw error;
+
+    // Realtimeの往復を待たず、送信者自身の画面には送信直後にローカル反映する。
+    // Realtimeの購読が確立前/瞬断中だと、送った本人にすら表示されない問題があったため。
+    if (data) {
+      const sent = data as Message;
+      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+    }
 
     // Fire-and-forget: send LINE + push notification to receiver
     (async () => {

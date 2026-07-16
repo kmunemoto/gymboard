@@ -18,6 +18,31 @@ export async function fetchMyTenantId(): Promise<string | null> {
 }
 
 /**
+ * 現在ログイン中のユーザーが所属するテナントの「ジム側スタッフ」の user_id を1件返す。
+ * trainer を優先し、居なければ owner（Salute のような一人ジムはオーナーのみ）。
+ *
+ * get_trainer_ids() は user_roles を全テナント横断で返すため、その先頭は別ジムの
+ * トレーナーになりうる（お客様のチャットが別ジムに飛び、自ジムに届かない不具合の原因）。
+ * ここではテナント内で解決する。tenant_members の SELECT RLS
+ * 「Members can view same tenant members」により、お客様は自テナントのスタッフ行を読める。
+ * 見つからなければ null。
+ */
+export async function fetchMyTenantTrainerId(): Promise<string | null> {
+  const tenantId = await fetchMyTenantId();
+  if (!tenantId) return null;
+  const { data } = await supabase
+    .from("tenant_members")
+    .select("user_id, role, joined_at")
+    .eq("tenant_id", tenantId)
+    .in("role", ["trainer", "owner"])
+    .eq("status", "active")
+    .order("joined_at", { ascending: true });
+  const rows = (data ?? []) as { user_id: string; role: string }[];
+  const staff = rows.find((m) => m.role === "trainer") ?? rows[0];
+  return staff?.user_id ?? null;
+}
+
+/**
  * Attach tenant_id to a row payload. Throws if tenantId is missing so we never
  * insert rows that would be invisible to everyone after tenant-isolation RLS.
  */

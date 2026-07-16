@@ -34,6 +34,24 @@ const link = `${getWebOrigin()}/join/${code}`;
 - `bookingNotification.ts`（代理予約のトレーナー宛メールの dashboardUrl。メール内リンクも
   「他人・別環境で開くリンク」なので同じ扱い）
 
+---
+
+# （関連）テナント横断 `get_trainer_ids()` による誤ルーティング
+
+`get_trainer_ids()` は `SELECT user_id FROM user_roles WHERE role='trainer'` で**全テナント横断**。
+その先頭 `[0]` は別ジムのトレーナーになりうる。単一テナント時代の名残で各所に残っている。
+
+- **修正済み（2026-07）**: `CustomerChat.tsx` のお客様→ジムのメッセージ送信先。
+  `get_trainer_ids()[0]` だとお客様のメッセージが別ジムに飛び、自ジムのオーナーに
+  届かなかった。`tenantHelper.fetchMyTenantTrainerId()`（自テナントの trainer優先→owner を
+  tenant_members から解決。SELECT RLS「Members can view same tenant members」で読める）に置換。
+- **未修正（同種の残存・要検討）**: 予約/キャンセル/リスケの**トレーナー通知**が
+  `get_trainer_ids()` を使っている（`CustomerBooking.tsx` の予約push、`useBookings.ts` の
+  新規予約LINE・キャンセル/リスケのLINE/メール/push）。予約データ自体は tenant スコープで
+  正しく表示されるが、LINE/push/メール**通知**が別ジムのトレーナーに飛ぶ/自ジムに来ない
+  可能性がある。テナント内解決（DB側に `get_my_tenant_trainer_ids()` RPC を作る等）に
+  寄せるのが本筋。
+
 ## 今後の注意
 新しく「コピーして他人（お客様・別ジム等）に共有するリンク」を生成する機能を追加する際は、
 `window.location.origin` を直書きせず必ず `getWebOrigin()` を使うこと。逆に、Stripe

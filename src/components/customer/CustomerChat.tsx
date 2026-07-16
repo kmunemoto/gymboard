@@ -15,18 +15,20 @@ const CustomerChat = () => {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Fetch trainer user id using security definer function
+  // 送信先は「自分が所属するジムのスタッフ」を解決する。
+  // 旧実装は get_trainer_ids()[0]（全テナント横断で先頭）だったため、他ジムのトレーナーに
+  // メッセージが飛び、自ジムのオーナーに届かない不具合があった（fetchMyTenantTrainerId 参照）。
   useEffect(() => {
     const fetchTrainer = async () => {
-      const { data } = await supabase.rpc("get_trainer_ids");
-      if (data && data.length > 0) {
-        const tid = data[0].user_id;
+      const { fetchMyTenantTrainerId } = await import("@/lib/tenantHelper");
+      const tid = await fetchMyTenantTrainerId();
+      if (tid) {
         setTrainerId(tid);
         const { data: profile } = await supabase
           .from("profiles")
           .select("display_name")
           .eq("user_id", tid)
-          .single();
+          .maybeSingle();
         if (profile?.display_name) setTrainerName(profile.display_name);
       }
     };

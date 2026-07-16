@@ -287,8 +287,15 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
   const handleSendChat = async () => {
     if (!chatInput.trim() || !isRegistered) return;
-    await sendMessage(chatInput.trim(), clientId);
-    setChatInput("");
+    const text = chatInput.trim();
+    try {
+      await sendMessage(text, clientId);
+      setChatInput("");
+    } catch (e) {
+      // sendMessage は送信失敗時に throw する（useMessages 参照）。捕捉してトーストで知らせる。
+      console.error("メッセージの送信に失敗:", e);
+      toast.error(t("trainerMessages.sendFailed"));
+    }
   };
 
   const addExercise = () => setExercises([...exercises, { exerciseId: "", name: "", sets: [{ weight: "", reps: "" }] }]);

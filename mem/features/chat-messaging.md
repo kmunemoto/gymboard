@@ -2,7 +2,9 @@
 
 ## 概要
 `useMessages.ts`（`sendMessage` / `useMessages` / `useUnreadCount` / `useUnreadBySender`）
-が唯一の実装。お客様側は `CustomerChat.tsx`、トレーナー側は `TrainerMessages.tsx`。
+が唯一の実装。お客様側は `CustomerChat.tsx`、トレーナー側は `TrainerMessages.tsx` と
+`TrainerClientDetail.tsx`（顧客詳細のチャットタブ）の**3箇所**が呼び出し元。
+`sendMessage` の挙動を変えるときは3箇所すべてを確認すること。
 `messages` テーブルは Realtime publication に登録済み（`ALTER PUBLICATION supabase_realtime
 ADD TABLE public.messages`）。SELECT RLS は `sender_id`/`receiver_id` が自分、または
 `has_role(trainer)` なら閲覧可。

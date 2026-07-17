@@ -144,6 +144,32 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
     return points;
   }, [selectedExercise, workouts]);
 
+  // 推定1RM（Epley式: weight × (1 + reps/30)、1回挙上はそのまま）。
+  // 各セッションのトップセットから「直近の推定MAX」と「自己ベスト」を出す。
+  // 自重系など重量が入っていない種目（推定値0以下）は表示しない。
+  const oneRmStats = useMemo(() => {
+    if (!selectedExercise) return null;
+    const epley = (weight: number, reps: number) => (reps <= 1 ? weight : weight * (1 + reps / 30));
+    const sessionBests = [...workouts]
+      .filter((w) => w.exercise_name === selectedExercise)
+      .sort((a, b) => a.workout_date.localeCompare(b.workout_date))
+      .map((w) => {
+        const setsData = w.sets || (w.weight != null ? [{ set: 1, weight: w.weight!, reps: w.reps ?? 0 }] : []);
+        return setsData.reduce((m, s) => Math.max(m, epley(s.weight || 0, s.reps || 0)), 0);
+      });
+    if (sessionBests.length === 0) return null;
+    const latest = sessionBests[sessionBests.length - 1];
+    const allTime = sessionBests.reduce((m, v) => Math.max(m, v), 0);
+    const prevBest = sessionBests.slice(0, -1).reduce((m, v) => Math.max(m, v), 0);
+    if (allTime <= 0) return null;
+    const round1 = (v: number) => Math.round(v * 10) / 10;
+    return {
+      latest: round1(latest),
+      allTime: round1(allTime),
+      isNewRecord: sessionBests.length >= 2 && latest > prevBest,
+    };
+  }, [selectedExercise, workouts]);
+
   // Group by date for history
   const groupedByDate = useMemo(() => {
     const map: Record<string, WorkoutWithExercise[]> = {};
@@ -249,6 +275,27 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
                     ))}
                   </SelectContent>
                 </Select>
+
+                {/* 推定1RM（Epley式）: 直近と自己ベスト。ベスト更新時はバッジで祝う */}
+                {oneRmStats && (
+                  <div className="flex gap-2">
+                    <div className="flex-1 rounded-xl bg-muted/40 border border-border px-3 py-2">
+                      <p className="text-[10px] font-semibold text-muted-foreground">{t("training.estMaxLatest")}</p>
+                      <p className="text-sm font-bold">{oneRmStats.latest}kg</p>
+                    </div>
+                    <div className="flex-1 rounded-xl bg-muted/40 border border-border px-3 py-2">
+                      <p className="text-[10px] font-semibold text-muted-foreground">{t("training.personalBest")}</p>
+                      <p className="text-sm font-bold flex items-center gap-1.5 flex-wrap">
+                        {oneRmStats.allTime}kg
+                        {oneRmStats.isNewRecord && (
+                          <span className="text-[10px] font-bold text-accent bg-accent/10 rounded-full px-2 py-0.5">
+                            {t("training.newRecordBadge")}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {chartData.length > 1 ? (
                   <div className="h-52">

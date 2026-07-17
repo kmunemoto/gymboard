@@ -322,6 +322,19 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setExercises(exercises.filter((_, idx) => idx !== i));
   };
 
+  // このお客様の直近の同種目の記録（workoutRecords は workout_date 降順で取得済み）。
+  // 編集モード中は、編集対象の日の記録自身を「前回」として拾わないよう除外する。
+  const findPrevRecord = (exerciseId: string): WorkoutRecord | undefined =>
+    workoutRecords.find((r) => r.exercise_id === exerciseId && !editingRecordIds.includes(r.id));
+
+  // 記録行から表示・プレフィル用のセット配列を取り出す（旧形式=単一weight/reps行にも対応）
+  const recordSets = (r: WorkoutRecord): { weight: number; reps: number }[] =>
+    r.sets && r.sets.length > 0
+      ? r.sets
+      : r.weight != null
+        ? [{ weight: r.weight, reps: r.reps ?? 0 }]
+        : [];
+
   const handleSelectExercise = (i: number, exerciseId: string) => {
     if (exerciseId === "__new__") {
       setShowNewExercise(i);
@@ -336,14 +349,22 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       const dr = m.default_reps;
       const ds = m.default_sets;
       let sets = updated[i].sets;
-      // Autofill defaults only if user hasn't entered anything yet
+      // Autofill only if user hasn't entered anything yet.
+      // このお客様の「前回の同種目の記録」があればそれを優先して下敷きにする
+      // （前回値プレフィル）。無ければ従来どおり種目マスタの既定値を使う。
       const isEmpty = sets.length === 1 && !sets[0].weight && !sets[0].reps;
-      if (isEmpty && (dw != null || dr != null || ds != null)) {
-        const setCount = Math.max(1, Number(ds) || 1);
-        sets = Array.from({ length: setCount }, () => ({
-          weight: dw != null ? String(dw) : "",
-          reps: dr != null ? String(dr) : "",
-        }));
+      if (isEmpty) {
+        const prev = findPrevRecord(exerciseId);
+        const prevSets = prev ? recordSets(prev) : [];
+        if (prevSets.length > 0) {
+          sets = prevSets.map((s) => ({ weight: String(s.weight ?? ""), reps: String(s.reps ?? "") }));
+        } else if (dw != null || dr != null || ds != null) {
+          const setCount = Math.max(1, Number(ds) || 1);
+          sets = Array.from({ length: setCount }, () => ({
+            weight: dw != null ? String(dw) : "",
+            reps: dr != null ? String(dr) : "",
+          }));
+        }
       }
       updated[i] = { ...updated[i], exerciseId: master.id, name: master.name, sets };
       setExercises(updated);
@@ -612,6 +633,22 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setTrainingDate(getJSTToday());
     setExercises([{ exerciseId: "", name: "", sets: [{ weight: "", reps: "" }] }]);
     setMemo("");
+  };
+
+  // 前回（直近の記録日）のメニューを丸ごと新規入力フォームへ読み込む。
+  // 種目・セット数・重量・回数が下敷きになるので、当日変わった分だけ直せばよい。
+  const loadLastMenu = () => {
+    const lastDate = sortedDates[0];
+    const records = lastDate ? groupedRecords[lastDate] : undefined;
+    if (!records || records.length === 0) return;
+    setExercises(records.map((r) => ({
+      exerciseId: r.exercise_id,
+      name: r.exercise_name || "",
+      sets: recordSets(r).map((s) => ({ weight: String(s.weight ?? ""), reps: String(s.reps ?? "") })),
+    })));
+    toast.success(t("clientDetail.lastMenuLoaded", {
+      date: `${Number(lastDate.slice(5, 7))}/${Number(lastDate.slice(8, 10))}`,
+    }));
   };
 
   const handleDelete = async () => {
@@ -1201,6 +1238,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Input type="date" value={trainingDate} onChange={(e) => setTrainingDate(e.target.value)} className="w-full sm:w-48 h-11" />
               </div>
 
+              {/* 前回メニューの再利用（編集モード中は非表示・記録が1件もなければ非表示） */}
+              {!editingDate && sortedDates.length > 0 && (
+                <Button type="button" variant="outline" size="sm" onClick={loadLastMenu} className="gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  {t("clientDetail.loadLastMenu")}
+                </Button>
+              )}
+
               <div className="space-y-3">
                 {exercises.map((ex, i) => (
                   <div key={i} className="rounded-xl border border-border p-3 bg-muted/30 space-y-2">
@@ -1242,6 +1287,25 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                       })()}
                       <option value="__new__">{t("clientDetail.addNewExercise")}</option>
                     </select>
+                    {/* 前回の同種目のトップセットを参考表示（負荷調整の比較用） */}
+                    {ex.exerciseId && (() => {
+                      const prev = findPrevRecord(ex.exerciseId);
+                      if (!prev) return null;
+                      const ps = recordSets(prev);
+                      if (ps.length === 0) return null;
+                      const top = ps.reduce((a, b) => ((b.weight || 0) > (a.weight || 0) ? b : a), ps[0]);
+                      const d = prev.workout_date;
+                      return (
+                        <p className="text-[11px] text-muted-foreground">
+                          {t("clientDetail.prevHint", {
+                            date: `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`,
+                            weight: top.weight,
+                            reps: top.reps,
+                            sets: ps.length,
+                          })}
+                        </p>
+                      );
+                    })()}
                     {showNewExercise === i && (
                       <div className="flex gap-2">
                         <Input

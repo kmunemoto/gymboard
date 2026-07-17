@@ -449,7 +449,10 @@
     "editSave": "儲存",
     "editSaved": "紀錄已更新",
     "editError": "更新失敗，請稍後再試。",
-    "editNeedOneSet": "請至少輸入一組的重量和次數"
+    "editNeedOneSet": "請至少輸入一組的重量和次數",
+    "estMaxLatest": "預估MAX（最近）",
+    "personalBest": "個人最佳（預估MAX）",
+    "newRecordBadge": "刷新！"
   },
   "meals": {
     "title": "飲食管理",
@@ -1291,7 +1294,10 @@
     "categoryOther": "其他",
     "monthlyPrice": "月費：¥{{price}}",
     "eventRewardDesc": "+{{exp}} EXP / +{{coins}} 金幣{{badge}}",
-    "eventBadgeSuffix": " / 限定徽章「{{badge}}」"
+    "eventBadgeSuffix": " / 限定徽章「{{badge}}」",
+    "loadLastMenu": "載入上次的訓練菜單",
+    "lastMenuLoaded": "已載入上次（{{date}}）的菜單",
+    "prevHint": "上次 {{date}}：{{weight}}kg × {{reps}}次 · {{sets}}組"
   },
   "auth": {
     "appTitle": "GymBoard",

@@ -322,10 +322,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     setExercises(exercises.filter((_, idx) => idx !== i));
   };
 
-  // このお客様の直近の同種目の記録（workoutRecords は workout_date 降順で取得済み）。
-  // 編集モード中は、編集対象の日の記録自身を「前回」として拾わないよう除外する。
+  // このお客様の直近の同種目の記録を返す。workoutRecords は初期取得時は日付降順だが、
+  // 保存のたびに新規行が先頭へ prepend されるため配列順は当てにできない。よって
+  // find（先頭一致）ではなく workout_date が最大の行を選ぶ（過去日付を後から入力しても
+  // 常に本当の「前回」を拾う）。編集モード中は編集対象の行自身を除外する。
   const findPrevRecord = (exerciseId: string): WorkoutRecord | undefined =>
-    workoutRecords.find((r) => r.exercise_id === exerciseId && !editingRecordIds.includes(r.id));
+    workoutRecords
+      .filter((r) => r.exercise_id === exerciseId && !editingRecordIds.includes(r.id))
+      .reduce<WorkoutRecord | undefined>(
+        (best, r) => (!best || r.workout_date > best.workout_date ? r : best),
+        undefined,
+      );
 
   // 記録行から表示・プレフィル用のセット配列を取り出す（旧形式=単一weight/reps行にも対応）
   const recordSets = (r: WorkoutRecord): { weight: number; reps: number }[] =>

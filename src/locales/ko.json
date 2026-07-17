@@ -449,7 +449,10 @@
     "editSave": "저장하기",
     "editSaved": "기록을 수정했습니다",
     "editError": "수정에 실패했습니다. 잠시 후 다시 시도해 주세요.",
-    "editNeedOneSet": "무게와 횟수를 한 세트 이상 입력해 주세요"
+    "editNeedOneSet": "무게와 횟수를 한 세트 이상 입력해 주세요",
+    "estMaxLatest": "추정 MAX (최근)",
+    "personalBest": "자기 최고 기록 (추정 MAX)",
+    "newRecordBadge": "갱신!"
   },
   "meals": {
     "title": "식사 관리",
@@ -1291,7 +1294,10 @@
     "categoryOther": "기타",
     "monthlyPrice": "월정액: ¥{{price}}",
     "eventRewardDesc": "+{{exp}} EXP / +{{coins}} 코인{{badge}}",
-    "eventBadgeSuffix": " / 한정 배지 \"{{badge}}\""
+    "eventBadgeSuffix": " / 한정 배지 \"{{badge}}\"",
+    "loadLastMenu": "지난번과 같은 메뉴 불러오기",
+    "lastMenuLoaded": "지난번({{date}}) 메뉴를 불러왔습니다",
+    "prevHint": "지난번 {{date}}: {{weight}}kg × {{reps}}회 · {{sets}}세트"
   },
   "auth": {
     "appTitle": "GymBoard",

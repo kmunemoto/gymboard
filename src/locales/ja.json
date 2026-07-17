@@ -449,7 +449,10 @@
     "editSave": "保存する",
     "editSaved": "記録を更新しました",
     "editError": "更新に失敗しました。時間をおいて再度お試しください。",
-    "editNeedOneSet": "重量と回数を1セット以上入力してください"
+    "editNeedOneSet": "重量と回数を1セット以上入力してください",
+    "estMaxLatest": "推定MAX（直近）",
+    "personalBest": "自己ベスト（推定MAX）",
+    "newRecordBadge": "更新！"
   },
   "meals": {
     "title": "食事管理",
@@ -1291,7 +1294,10 @@
     "categoryOther": "その他",
     "monthlyPrice": "月額: ¥{{price}}",
     "eventRewardDesc": "+{{exp}} EXP / +{{coins}}コイン{{badge}}",
-    "eventBadgeSuffix": " / 限定バッジ「{{badge}}」"
+    "eventBadgeSuffix": " / 限定バッジ「{{badge}}」",
+    "loadLastMenu": "前回と同じメニューを読み込む",
+    "lastMenuLoaded": "前回（{{date}}）のメニューを読み込みました",
+    "prevHint": "前回 {{date}}: {{weight}}kg × {{reps}}回・{{sets}}セット"
   },
   "auth": {
     "appTitle": "ジムボード",

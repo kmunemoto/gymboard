@@ -449,7 +449,10 @@
     "editSave": "Save",
     "editSaved": "Record updated",
     "editError": "Failed to update. Please try again later.",
-    "editNeedOneSet": "Enter weight and reps for at least one set"
+    "editNeedOneSet": "Enter weight and reps for at least one set",
+    "estMaxLatest": "Est. max (latest)",
+    "personalBest": "Personal best (est. max)",
+    "newRecordBadge": "New PR!"
   },
   "meals": {
     "title": "Meal Tracking",
@@ -1291,7 +1294,10 @@
     "categoryOther": "Other",
     "monthlyPrice": "Monthly: ¥{{price}}",
     "eventRewardDesc": "+{{exp}} EXP / +{{coins}} coins{{badge}}",
-    "eventBadgeSuffix": " / limited badge \"{{badge}}\""
+    "eventBadgeSuffix": " / limited badge \"{{badge}}\"",
+    "loadLastMenu": "Load last session's menu",
+    "lastMenuLoaded": "Loaded the menu from {{date}}",
+    "prevHint": "Last {{date}}: {{weight}}kg × {{reps}} reps · {{sets}} sets"
   },
   "auth": {
     "appTitle": "GymBoard",

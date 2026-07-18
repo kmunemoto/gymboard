@@ -83,8 +83,10 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
   const { bookings, loading: bookingsLoading } = useAllBookings();
   const { unreadCount: counselingUnread } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
-  const { plans: tenantPlans } = useTenant();
+  const { plans: tenantPlans, tenant } = useTenant();
   const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
+  // ジム設定で「フォローが必要な顧客」の表示をオフにできる（既定は表示）。
+  const showRetentionAlerts = tenant?.show_retention_alerts !== false;
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
   // 本日のスケジュールには体験予約（user_id === "trial-guest"）も含める。
@@ -328,8 +330,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
           )}
         </section>
 
-        {/* フォローが必要な顧客（離脱検知） */}
-        {atRiskCustomers.length > 0 && (
+        {/* フォローが必要な顧客（離脱検知）。ジム設定でオフにできる（既定は表示）。 */}
+        {showRetentionAlerts && atRiskCustomers.length > 0 && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <UserRoundX className="w-3.5 h-3.5 text-warning" />

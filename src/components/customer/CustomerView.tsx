@@ -1,6 +1,6 @@
 import { lazy, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCircle, Bell } from "lucide-react";
+import { MessageCircle, Bell, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import BottomNav from "./BottomNav";
@@ -85,6 +85,19 @@ const CustomerView = () => {
                 </span>
               )}
             </Button>
+            {tenant?.phone && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                aria-label={t("common.call")}
+              >
+                <a href={`tel:${tenant.phone}`}>
+                  <Phone className="w-4 h-4" />
+                </a>
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setTab("chat")} className="text-muted-foreground relative" aria-label={t("common.chat")}>
               <MessageCircle className="w-4 h-4" />
               {unreadChat > 0 && (

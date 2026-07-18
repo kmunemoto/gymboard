@@ -48,6 +48,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [contactEmail, setContactEmail] = useState("");
   const [savingContactEmail, setSavingContactEmail] = useState(false);
 
+  // 電話番号（tenants.phone）。入力するとお客様側に「電話する」ボタン（tel: 発信）が表示される。
+  const [contactPhone, setContactPhone] = useState("");
+  const [savingContactPhone, setSavingContactPhone] = useState(false);
+
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
   }, [profile]);
@@ -60,6 +64,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   useEffect(() => {
     setContactEmail(tenant?.email ?? "");
   }, [tenant?.email]);
+
+  useEffect(() => {
+    setContactPhone(tenant?.phone ?? "");
+  }, [tenant?.phone]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -131,6 +139,30 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingContactEmail(false);
+  };
+
+  const handleSaveContactPhone = async () => {
+    if (!tenant) return;
+    const phone = contactPhone.trim();
+    // 電話番号は国・表記のゆれが大きいので厳密チェックはせず、数字が全く無い場合だけ弾く。
+    // 空欄は NULL で保存（「電話する」ボタンは非表示になる）。
+    if (phone && !/[0-9０-９]/.test(phone)) {
+      toast.error(t("settings.trainer.contactPhoneInvalid"));
+      return;
+    }
+    setSavingContactPhone(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ phone: phone || null })
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("電話番号の保存に失敗:", error);
+      toast.error(t("settings.trainer.contactPhoneSaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.contactPhoneUpdated"));
+      refetchTenant();
+    }
+    setSavingContactPhone(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,6 +299,33 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             <Button onClick={handleSaveContactEmail} disabled={savingContactEmail || !tenant} size="sm" className="h-10">
               <Save className="w-4 h-4 mr-1" />
               {savingContactEmail ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === 電話番号 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.contactPhoneSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.contactPhoneDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-phone" className="text-xs font-bold">{t("settings.trainer.contactPhoneLabel")}</Label>
+              <Input
+                id="contact-phone"
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder={t("settings.trainer.contactPhonePlaceholder")}
+                maxLength={30}
+              />
+            </div>
+            <Button onClick={handleSaveContactPhone} disabled={savingContactPhone || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingContactPhone ? t("common.saving") : t("common.save")}
             </Button>
           </CardContent>
         </Card>

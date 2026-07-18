@@ -378,6 +378,8 @@
     "alreadyBookedThisDay": "Already booked at {{times}} on this day",
     "availableSlots": "Available slots on {{date}}",
     "slotFull": "Full",
+    "slotOpen": "Open",
+    "sameDayViewOnlyNotice": "Today's availability. For same-day bookings, please contact the gym directly.",
     "slotMinutes": "({{count}} min)",
     "confirmBooking": "Confirm this booking",
     "repeatTitle": "Repeat booking",

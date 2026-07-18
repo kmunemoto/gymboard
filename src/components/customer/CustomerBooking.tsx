@@ -122,14 +122,23 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
   const fetchBookedSlots = useCallback(async (dateStr: string) => {
-    const { data } = await supabase.rpc("get_booked_slots", { check_date: dateStr });
+    // 自テナントの埋まり枠だけを取得する。旧 get_booked_slots(check_date) は
+    // 全テナント横断で他ジムの予約まで返すため、混雑日は全枠が「満枠」に見えてしまう
+    // （実際は自ジムに空きがある）。公開の体験予約ページと同じ、テナント絞り込みの
+    // get_tenant_booked_slots を使う。
+    if (!tenant?.id) { setBookedSlots([]); return; }
+    const { data } = await supabase.rpc("get_tenant_booked_slots" as any, {
+      p_tenant_id: tenant.id,
+      from_date: dateStr,
+      to_date: dateStr,
+    });
     if (!data) { setBookedSlots([]); return; }
     // ここは意図的に SAME_DAY_FORFEIT_STATUS を除外しない: 同日キャンセル消化の枠は
     // 再販できない前提のため、カレンダー上は引き続き「埋まっている」枠として表示する
     // （checkSlotBlocked 等と同じ扱い。mem/features/booking-cancellation.md 参照）。
-    const slots = data
-      .filter((r: { status: string }) => r.status !== "キャンセル済み")
-      .map((r: { booking_date: string; end_booking_date: string; status: string }) => {
+    const slots = (data as { booking_date: string; end_booking_date: string; status: string }[])
+      .filter((r) => r.status !== "キャンセル済み")
+      .map((r) => {
         const dt = toJSTDate(r.booking_date);
         const endDt = toJSTDate(r.end_booking_date);
         return {
@@ -140,7 +149,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         };
       });
     setBookedSlots(slots);
-  }, []);
+  }, [tenant?.id]);
 
   useEffect(() => {
     if (dateKey) fetchBookedSlots(dateKey);
@@ -163,9 +172,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       // これで同日の近い時刻（旧枠のバッファ内）にも移動できる（旧枠は削除して作り直すため）。
       if (rescheduleTarget && b.date === rescheduleTarget.date && b.startTime === rescheduleTarget.startTime) return false;
       const bMin = timeToMin(b.startTime);
-      // 既存予約側にも同じ15分バッファを足し、前後どちらの間隔も確保する
-      // （トレーナー側 checkSlotBlocked と挙動を一致させる）。
-      const bEnd = timeToMin(b.endTime) + BOOKING_BUFFER_MINUTES;
+      // get_tenant_booked_slots の end_booking_date は既に「開始+75分（60分＋バッファ15分）」。
+      // ここで更に +15 すると二重計上で1枠ぶん余計に満枠化するため足さない
+      // （公開の体験予約ページ TrialBooking.isSlotBlocked と同一ロジック）。
+      const bEnd = timeToMin(b.endTime);
       return newMin < bEnd && bMin < newEnd;
     });
   };

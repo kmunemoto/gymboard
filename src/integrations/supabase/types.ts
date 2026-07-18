@@ -2440,6 +2440,7 @@ export type Database = {
           phone: string | null
           primary_color: string | null
           same_day_cancel_penalty_enabled: boolean
+          show_retention_alerts: boolean
           slot_duration_minutes: number | null
           status: string | null
           stripe_customer_id: string | null
@@ -2475,6 +2476,7 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
+          show_retention_alerts?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
           stripe_customer_id?: string | null
@@ -2510,6 +2512,7 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
+          show_retention_alerts?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
           stripe_customer_id?: string | null

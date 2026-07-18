@@ -381,6 +381,8 @@
     "slotFull": "已满",
     "slotOpen": "有空",
     "sameDayViewOnlyNotice": "这是今日的空位情况。当日预约请直接联系健身房。",
+    "callGym": "拨打电话",
+    "chatWithGym": "在线咨询",
     "slotMinutes": "({{count}}分钟)",
     "confirmBooking": "确认此预约",
     "repeatTitle": "重复预约",

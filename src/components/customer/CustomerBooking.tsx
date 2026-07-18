@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle } from "lucide-react";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -31,7 +31,7 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 const BOOKING_SESSION_MINUTES = 60;
 const BOOKING_BUFFER_MINUTES = 15;
 
-const CustomerBooking = () => {
+const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
@@ -785,24 +785,33 @@ const CustomerBooking = () => {
                   {t("booking.availableSlots", { date: formatDate(selectedDate, "monthDayDow") })}
                 </h3>
                 {isViewOnlyDay(dateKey) && (
-                  <div className="mb-3 flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
-                    <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                    <div className="text-xs text-foreground leading-relaxed">
-                      <p>{t("booking.sameDayViewOnlyNotice")}</p>
-                      {(tenant?.phone || tenant?.email) && (
-                        <p className="mt-1 font-medium">
-                          {tenant?.phone && (
-                            <a href={`tel:${tenant.phone}`} className="text-accent underline">
-                              {tenant.phone}
-                            </a>
-                          )}
-                          {tenant?.phone && tenant?.email && <span className="mx-1">/</span>}
-                          {tenant?.email && (
-                            <a href={`mailto:${tenant.email}`} className="text-accent underline break-all">
-                              {tenant.email}
-                            </a>
-                          )}
-                        </p>
+                  <div className="mb-3 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                      <p className="text-xs text-foreground leading-relaxed">
+                        {t("booking.sameDayViewOnlyNotice")}
+                      </p>
+                    </div>
+                    <div className="mt-2.5 flex gap-2">
+                      {tenant?.phone && (
+                        <Button asChild variant="accent" size="sm" className="flex-1">
+                          {/* 番号は画面に出さず、tel: リンクで発信のみ行う */}
+                          <a href={`tel:${tenant.phone}`}>
+                            <Phone className="w-3.5 h-3.5 mr-1.5" />
+                            {t("booking.callGym")}
+                          </a>
+                        </Button>
+                      )}
+                      {onOpenChat && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={onOpenChat}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                          {t("booking.chatWithGym")}
+                        </Button>
                       )}
                     </div>
                   </div>

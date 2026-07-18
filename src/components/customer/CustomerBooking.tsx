@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle, MessageSquare } from "lucide-react";
+import { openExternalUrl } from "@/lib/nativeBridge";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -792,9 +793,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         {t("booking.sameDayViewOnlyNotice")}
                       </p>
                     </div>
-                    <div className="mt-2.5 flex gap-2">
+                    <div className="mt-2.5 flex flex-wrap gap-2">
                       {tenant?.phone && (
-                        <Button asChild variant="accent" size="sm" className="flex-1">
+                        <Button asChild variant="accent" size="sm" className="flex-1 min-w-[110px]">
                           {/* 番号は画面に出さず、tel: リンクで発信のみ行う */}
                           <a href={`tel:${tenant.phone}`}>
                             <Phone className="w-3.5 h-3.5 mr-1.5" />
@@ -802,11 +803,22 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                           </a>
                         </Button>
                       )}
+                      {tenant?.line_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 min-w-[110px]"
+                          onClick={() => tenant?.line_url && openExternalUrl(tenant.line_url)}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
+                          {t("common.lineContact")}
+                        </Button>
+                      )}
                       {onOpenChat && (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1"
+                          className="flex-1 min-w-[110px]"
                           onClick={onOpenChat}
                         >
                           <MessageCircle className="w-3.5 h-3.5 mr-1.5" />

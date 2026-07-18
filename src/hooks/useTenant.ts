@@ -18,6 +18,8 @@ export interface Tenant {
   booking_cutoff_type: string;
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;
+  /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
+  line_url: string | null;
   /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */
   trial_info_title: string | null;
   /** 体験予約ページの案内カード説明文。null/空なら既定文言を表示 */
@@ -87,8 +89,11 @@ export function useTenant() {
           .limit(1)
           .maybeSingle();
 
-      // 追加カラムの多い順にフォールバックする（全部→same_dayのみ→基本のみ）。
+      // 追加カラムの多い順にフォールバックする（全部→trial_info込み→same_dayのみ→基本のみ）。
+      // line_url は最後に足した新カラム。未適用環境では先頭が失敗し、次の変種に落ちて
+      // line_url 無し（=null、ボタン非表示）で正常動作する。
       const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled`,
         TENANT_BASE_COLS,
@@ -106,6 +111,7 @@ export function useTenant() {
         const tenant = {
           ...raw,
           same_day_cancel_penalty_enabled: raw.same_day_cancel_penalty_enabled === true,
+          line_url: (raw.line_url as string | null) ?? null,
           trial_info_title: (raw.trial_info_title as string | null) ?? null,
           trial_info_body: (raw.trial_info_body as string | null) ?? null,
         } as unknown as Tenant;

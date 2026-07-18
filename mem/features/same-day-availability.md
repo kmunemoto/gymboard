@@ -23,8 +23,18 @@
 - 連絡手段は**電話番号・メールを文字表示せず**、ボタンで案内する（オーナー要望）:
   - 「電話する」（`booking.callGym`）: `tenant.phone` がある時のみ表示。番号は画面に出さず
     `<a href="tel:...">` で発信のみ（`Button asChild`）。番号を見せずに発信できる。
+    ※ iOS の `tel:` は発信直前にOS標準の確認画面で番号を表示する（アプリ側では隠せない仕様）。
+    番号を一切見せたくないジムは電話番号を空にして、下記の LINE を使う。
+  - 「LINEで連絡」（`common.lineContact`）: `tenant.line_url` がある時のみ表示。
+    `nativeBridge.openExternalUrl`（Capacitor Browser）でジムのLINEを開く。LINEの無料通話・
+    チャットに誘導でき、電話番号は一切出ない。設定は「ジム設定 > LINE連絡先」（`tenants.line_url`）。
   - 「チャットで相談」（`booking.chatWithGym`）: `CustomerBooking` の `onOpenChat` prop
     （`CustomerView` が `setTab("chat")` を渡す）でチャットタブへ切り替える。
+- 同じ「電話」「LINE」ボタンはお客様ヘッダー（`CustomerView`）にも設置。いずれも設定が
+  ある時だけ表示（`tenant.phone` / `tenant.line_url`）。
+- `tenants.line_url` は新カラム（マイグレーション `20260718000000_add_tenant_line_url.sql`）。
+  `useTenant` は COL_VARIANTS の先頭に足しつつ、未適用環境では次の変種へフォールバックして
+  `line_url=null`（ボタン非表示）で正常動作する。
 - 枠は押せない閲覧専用。`viewOnlyOpen = slot.tooSoon && !slot.blocked` で
   「空き」（`booking.slotOpen`・淡いアクセント色）と「満枠」（`booking.slotFull`）を区別。
 - 当日は枠が全て `available:false` なので `selectedSlot` は立たず、予約確定ボタンは出ない。

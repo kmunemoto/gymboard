@@ -2,6 +2,7 @@ import { lazy, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageCircle, Bell, Phone } from "lucide-react";
 import { toast } from "sonner";
+import { openExternalUrl } from "@/lib/nativeBridge";
 
 import BottomNav from "./BottomNav";
 import CustomerHome from "./CustomerHome";
@@ -96,6 +97,17 @@ const CustomerView = () => {
                 <a href={`tel:${tenant.phone}`}>
                   <Phone className="w-4 h-4" />
                 </a>
+              </Button>
+            )}
+            {tenant?.line_url && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => tenant?.line_url && openExternalUrl(tenant.line_url)}
+                className="text-muted-foreground font-bold text-xs px-2"
+                aria-label={t("common.lineContact")}
+              >
+                LINE
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => setTab("chat")} className="text-muted-foreground relative" aria-label={t("common.chat")}>

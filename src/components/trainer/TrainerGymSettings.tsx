@@ -52,6 +52,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [contactPhone, setContactPhone] = useState("");
   const [savingContactPhone, setSavingContactPhone] = useState(false);
 
+  // LINE連絡先URL（tenants.line_url）。入力するとお客様側に「LINEで連絡」ボタンが表示される。
+  const [lineUrl, setLineUrl] = useState("");
+  const [savingLineUrl, setSavingLineUrl] = useState(false);
+
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
   }, [profile]);
@@ -68,6 +72,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   useEffect(() => {
     setContactPhone(tenant?.phone ?? "");
   }, [tenant?.phone]);
+
+  useEffect(() => {
+    setLineUrl(tenant?.line_url ?? "");
+  }, [tenant?.line_url]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -163,6 +171,29 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingContactPhone(false);
+  };
+
+  const handleSaveLineUrl = async () => {
+    if (!tenant) return;
+    const url = lineUrl.trim();
+    // 非空なら http(s) で始まる URL 形式だけ簡易チェック。空欄は NULL で保存（ボタン非表示）。
+    if (url && !/^https?:\/\/.+/i.test(url)) {
+      toast.error(t("settings.trainer.lineUrlInvalid"));
+      return;
+    }
+    setSavingLineUrl(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ line_url: url || null })
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("LINE連絡先の保存に失敗:", error);
+      toast.error(t("settings.trainer.lineUrlSaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.lineUrlUpdated"));
+      refetchTenant();
+    }
+    setSavingLineUrl(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -326,6 +357,34 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             <Button onClick={handleSaveContactPhone} disabled={savingContactPhone || !tenant} size="sm" className="h-10">
               <Save className="w-4 h-4 mr-1" />
               {savingContactPhone ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === LINE連絡先 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.lineUrlSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.lineUrlDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="line-url" className="text-xs font-bold">{t("settings.trainer.lineUrlLabel")}</Label>
+              <Input
+                id="line-url"
+                type="url"
+                inputMode="url"
+                value={lineUrl}
+                onChange={(e) => setLineUrl(e.target.value)}
+                placeholder={t("settings.trainer.lineUrlPlaceholder")}
+                maxLength={255}
+              />
+            </div>
+            <Button onClick={handleSaveLineUrl} disabled={savingLineUrl || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingLineUrl ? t("common.saving") : t("common.save")}
             </Button>
           </CardContent>
         </Card>

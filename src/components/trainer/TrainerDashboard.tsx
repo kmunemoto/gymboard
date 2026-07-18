@@ -81,7 +81,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
   const { t } = useTranslation();
   const { profiles, loading } = useAllCustomerProfiles();
   const { bookings, loading: bookingsLoading } = useAllBookings();
-  const { unreadCount: counselingUnread } = useCounselingResponses();
+  const { unreadCount: counselingUnread, responses: counselingResponses, isLoading: counselingLoading } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
   const { plans: tenantPlans, tenant } = useTenant();
   const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
@@ -424,19 +424,22 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
           </section>
         )}
 
-        {/* Counseling Responses */}
-        <section>
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-            <ClipboardList className="w-3.5 h-3.5" />
-            {t("dashboard.counselingSection")}
-            {counselingUnread > 0 && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 ml-1">
-                {t("dashboard.unreadCount", { count: counselingUnread })}
-              </Badge>
-            )}
-          </h2>
-          <CounselingResponseList />
-        </section>
+        {/* Counseling Responses（回答が1件でもある場合のみ表示。カウンセリングシートを
+            使わないジムに「まだありません」の空欄を出さない。回答が来れば自動で表示される） */}
+        {!counselingLoading && counselingResponses.length > 0 && (
+          <section>
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+              <ClipboardList className="w-3.5 h-3.5" />
+              {t("dashboard.counselingSection")}
+              {counselingUnread > 0 && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 ml-1">
+                  {t("dashboard.unreadCount", { count: counselingUnread })}
+                </Badge>
+              )}
+            </h2>
+            <CounselingResponseList />
+          </section>
+        )}
 
         {/* Revenue Chart */}
         <section>

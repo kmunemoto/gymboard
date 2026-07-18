@@ -39,6 +39,17 @@
   「空き」（`booking.slotOpen`・淡いアクセント色）と「満枠」（`booking.slotFull`）を区別。
 - 当日は枠が全て `available:false` なので `selectedSlot` は立たず、予約確定ボタンは出ない。
 
+## 埋まり枠の取得は必ずテナント限定（2026-07 修正）
+`CustomerBooking.fetchBookedSlots` は**必ず `get_tenant_booked_slots(p_tenant_id, from, to)`** を使う。
+旧 `get_booked_slots(check_date)` は **tenant_id フィルタが無く全テナント横断**で埋まり枠を返すため、
+他ジムの予約まで占有として数え、混雑日（特に当日）が実際は空きなのに全部「満枠」に見える不具合の
+原因になっていた（公開の体験予約ページ `TrialBooking.tsx` は元から `get_tenant_booked_slots` を使用）。
+- `tenant?.id` が無い初期は空配列で早期 return（`useCallback` 依存も `[tenant?.id]`）。
+- 衝突判定 `isSlotBlocked` は `bEnd = timeToMin(b.endTime)`（**+15しない**）。RPC の `end_booking_date` は
+  予約/体験＝`開始+75分`（60分＋バッファ15分込み）、ブロック枠＝実カラム `end_blocked_date`。
+  ここに更に+15すると二重計上で余分に満枠化する。`TrialBooking.isSlotBlocked` と同一ロジック。
+- トレーナー予約表は RPC ではなく素の SELECT＋RLS でテナント分離されるため元から正しい。
+
 ## 落とし穴
 - 当日は `tooSoon=true` のため**キャンセル待ち(waitlist)対象外**（`waitlistable` は `!tooSoon` 条件）。
   当日は予約できない以上キャンセル待ちも無意味なので意図どおり。

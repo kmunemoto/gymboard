@@ -378,6 +378,8 @@
     "alreadyBookedThisDay": "이날은 {{times}}에 예약되어 있습니다",
     "availableSlots": "{{date}} 의 빈 시간",
     "slotFull": "만석",
+    "slotOpen": "빈자리",
+    "sameDayViewOnlyNotice": "오늘의 예약 현황입니다. 당일 예약은 짐으로 직접 문의해 주세요.",
     "slotMinutes": "({{count}}분)",
     "confirmBooking": "이 내용으로 예약하기",
     "repeatTitle": "반복 예약",

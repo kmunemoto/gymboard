@@ -175,6 +175,12 @@ const CustomerBooking = () => {
     return Date.now() >= bookingDayStart;
   };
 
+  // 過去日（今日より前）か。カレンダーで選択不可にする対象。
+  const isPastDay = (date: string): boolean => !!date && date < getJSTToday();
+  // 今日(JST)か。予約は不可だが「空き状況の閲覧のみ」可能にする対象。
+  // 予約自体は generateSlots の tooSoon(=isBookingDayClosed) が引き続きブロックする。
+  const isViewOnlyDay = (date: string): boolean => !!date && date === getJSTToday();
+
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
     const startMin = openHour * 60;
@@ -701,9 +707,10 @@ const CustomerBooking = () => {
                     const yyyyMMdd = format(date, "yyyy-MM-dd");
                     // [6月/7月の棲み分け対応] Salute御所南×2026年6月は選択不可
                     if (isSaluteJuneLocked(yyyyMMdd)) return true;
-                    // 予約日の0:00 JST を過ぎたら（＝当日以降）締切。前日までは終日予約可。
-                    // スロット側の tooSoon 判定（isBookingDayClosed）と同一基準に揃える。
-                    return isBookingDayClosed(yyyyMMdd);
+                    // 当日は「空き状況の閲覧のみ」できるよう選択可能にする。予約可否は
+                    // スロット側の tooSoon 判定（isBookingDayClosed）が引き続き当日を
+                    // 予約不可にするため、ここで塞ぐのは過去日だけでよい。
+                    return isPastDay(yyyyMMdd);
                   }}
                   className="pointer-events-auto"
                   components={{
@@ -777,11 +784,36 @@ const CustomerBooking = () => {
                   <Clock className="w-3.5 h-3.5" />
                   {t("booking.availableSlots", { date: formatDate(selectedDate, "monthDayDow") })}
                 </h3>
+                {isViewOnlyDay(dateKey) && (
+                  <div className="mb-3 flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                    <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                    <div className="text-xs text-foreground leading-relaxed">
+                      <p>{t("booking.sameDayViewOnlyNotice")}</p>
+                      {(tenant?.phone || tenant?.email) && (
+                        <p className="mt-1 font-medium">
+                          {tenant?.phone && (
+                            <a href={`tel:${tenant.phone}`} className="text-accent underline">
+                              {tenant.phone}
+                            </a>
+                          )}
+                          {tenant?.phone && tenant?.email && <span className="mx-1">/</span>}
+                          {tenant?.email && (
+                            <a href={`mailto:${tenant.email}`} className="text-accent underline break-all">
+                              {tenant.email}
+                            </a>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-4 gap-1.5">
                   {slots.map((slot) => {
                     // 満枠（他予約で埋まっている＝blocked かつ 締切前）はキャンセル待ち登録可能（フラグON時のみ）。
                     const waitlistable = WAITLIST_ENABLED && !slot.available && slot.blocked && !slot.tooSoon;
                     const onWaitlist = waitlistable && isOnWaitlist(dateKey, slot.time);
+                    // 当日など締切済みの日の「空いている枠」。予約は不可だが空き状況として区別表示する。
+                    const viewOnlyOpen = slot.tooSoon && !slot.blocked;
                     return (
                     <button
                       key={slot.id}
@@ -802,19 +834,23 @@ const CustomerBooking = () => {
                           ? selectedSlot === slot.id
                             ? "accent-gradient text-accent-foreground shadow-md scale-105"
                             : "bg-card border border-border hover:border-accent hover:shadow-sm"
-                          : onWaitlist
-                            ? "bg-warning/15 text-warning border border-warning/40"
-                            : waitlistable
-                              ? "bg-card border border-border/60 text-muted-foreground hover:border-warning/50"
-                              : "bg-muted text-muted-foreground/40 cursor-not-allowed"
+                          : viewOnlyOpen
+                            ? "bg-accent/10 border border-accent/40 text-foreground cursor-default"
+                            : onWaitlist
+                              ? "bg-warning/15 text-warning border border-warning/40"
+                              : waitlistable
+                                ? "bg-card border border-border/60 text-muted-foreground hover:border-warning/50"
+                                : "bg-muted text-muted-foreground/40 cursor-not-allowed"
                       }`}
                     >
                       <span>{slot.time}</span>
                       {!slot.available && (
                         <span className="block text-[9px] font-medium">
-                          {waitlistable
-                            ? (onWaitlist ? t("booking.waitlistJoined") : t("booking.waitlistJoin"))
-                            : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
+                          {viewOnlyOpen
+                            ? <span className="text-accent">{t("booking.slotOpen")}</span>
+                            : waitlistable
+                              ? (onWaitlist ? t("booking.waitlistJoined") : t("booking.waitlistJoin"))
+                              : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
                         </span>
                       )}
                       {selectedSlot === slot.id && (

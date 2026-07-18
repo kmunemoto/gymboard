@@ -381,6 +381,8 @@
     "slotFull": "Full",
     "slotOpen": "Open",
     "sameDayViewOnlyNotice": "Today's availability. For same-day bookings, please contact the gym directly.",
+    "callGym": "Call",
+    "chatWithGym": "Chat",
     "slotMinutes": "({{count}} min)",
     "confirmBooking": "Confirm this booking",
     "repeatTitle": "Repeat booking",

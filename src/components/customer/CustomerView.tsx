@@ -114,7 +114,7 @@ const CustomerView = () => {
         <PlanLimitBanner />
         <LazyBoundary>
           {tab === "home" && <CustomerHome onNavigate={setTab} />}
-          {tab === "booking" && <CustomerBooking />}
+          {tab === "booking" && <CustomerBooking onOpenChat={() => setTab("chat")} />}
           {tab === "training" && <CustomerTraining initialSubTab="workout" />}
           {tab === "photos" && <CustomerTraining initialSubTab="photos" />}
           {tab === "meals" && <CustomerMeals />}

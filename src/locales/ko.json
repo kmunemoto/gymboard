@@ -381,6 +381,8 @@
     "slotFull": "만석",
     "slotOpen": "빈자리",
     "sameDayViewOnlyNotice": "오늘의 예약 현황입니다. 당일 예약은 짐으로 직접 문의해 주세요.",
+    "callGym": "전화하기",
+    "chatWithGym": "채팅 문의",
     "slotMinutes": "({{count}}분)",
     "confirmBooking": "이 내용으로 예약하기",
     "repeatTitle": "반복 예약",

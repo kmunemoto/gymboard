@@ -381,6 +381,8 @@
     "slotFull": "満枠",
     "slotOpen": "空き",
     "sameDayViewOnlyNotice": "本日分の空き状況です。当日のご予約はジムへ直接お問い合わせください。",
+    "callGym": "電話する",
+    "chatWithGym": "チャットで相談",
     "slotMinutes": "（{{count}}分）",
     "confirmBooking": "この内容で予約する",
     "repeatTitle": "くり返し予約",

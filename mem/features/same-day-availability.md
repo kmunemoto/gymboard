@@ -18,9 +18,13 @@
 のまま」の二本立て。**この2つを再び1つに戻すと当日が見えなくなる**ので注意。
 
 ## 表示
-- 当日は枠グリッドの上に案内バナー（`booking.sameDayViewOnlyNotice`）＋ジムの
-  `tenant.phone` / `tenant.email`（あれば `tel:` / `mailto:` リンク）を表示。
-  文言は「当日のご予約はジムへ直接お問い合わせください」。
+- 当日は枠グリッドの上に案内バナー（`booking.sameDayViewOnlyNotice`＝「本日分の空き状況です。
+  当日のご予約はジムへ直接お問い合わせください。」）を表示。
+- 連絡手段は**電話番号・メールを文字表示せず**、ボタンで案内する（オーナー要望）:
+  - 「電話する」（`booking.callGym`）: `tenant.phone` がある時のみ表示。番号は画面に出さず
+    `<a href="tel:...">` で発信のみ（`Button asChild`）。番号を見せずに発信できる。
+  - 「チャットで相談」（`booking.chatWithGym`）: `CustomerBooking` の `onOpenChat` prop
+    （`CustomerView` が `setTab("chat")` を渡す）でチャットタブへ切り替える。
 - 枠は押せない閲覧専用。`viewOnlyOpen = slot.tooSoon && !slot.blocked` で
   「空き」（`booking.slotOpen`・淡いアクセント色）と「満枠」（`booking.slotFull`）を区別。
 - 当日は枠が全て `available:false` なので `selectedSlot` は立たず、予約確定ボタンは出ない。

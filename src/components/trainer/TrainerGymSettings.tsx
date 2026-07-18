@@ -39,6 +39,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [savingSameDayPenalty, setSavingSameDayPenalty] = useState(false);
+  const [savingShowRetention, setSavingShowRetention] = useState(false);
   // 体験予約ページの案内カード（見出し＋説明文）のジム別カスタム文言。空欄=既定文言。
   const [trialInfoTitle, setTrialInfoTitle] = useState("");
   const [trialInfoBody, setTrialInfoBody] = useState("");
@@ -103,6 +104,21 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingSameDayPenalty(false);
+  };
+
+  const handleToggleShowRetention = async (checked: boolean) => {
+    if (!tenant) return;
+    setSavingShowRetention(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ show_retention_alerts: checked })
+      .eq("id", tenant.id);
+    if (error) toast.error(t("settings.trainer.showRetentionSaveFailed"));
+    else {
+      toast.success(t("settings.trainer.showRetentionUpdated"));
+      refetchTenant();
+    }
+    setSavingShowRetention(false);
   };
 
   const handleSaveTrialInfo = async () => {
@@ -414,6 +430,28 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 checked={!!tenant?.same_day_cancel_penalty_enabled}
                 disabled={savingSameDayPenalty || !tenant}
                 onCheckedChange={handleToggleSameDayPenalty}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === 表示設定 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.displaySection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-sm">{t("settings.trainer.showRetentionTitle")}</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.showRetentionDesc")}</p>
+              </div>
+              <Switch
+                checked={tenant?.show_retention_alerts !== false}
+                disabled={savingShowRetention || !tenant}
+                onCheckedChange={handleToggleShowRetention}
               />
             </div>
           </CardContent>

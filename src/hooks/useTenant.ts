@@ -18,6 +18,8 @@ export interface Tenant {
   booking_cutoff_type: string;
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;
+  /** トレーナーのホーム画面に「フォローが必要な顧客」を表示するか。既定true */
+  show_retention_alerts: boolean;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
   /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */
@@ -93,6 +95,7 @@ export function useTenant() {
       // line_url は最後に足した新カラム。未適用環境では先頭が失敗し、次の変種に落ちて
       // line_url 無し（=null、ボタン非表示）で正常動作する。
       const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled`,
@@ -111,6 +114,8 @@ export function useTenant() {
         const tenant = {
           ...raw,
           same_day_cancel_penalty_enabled: raw.same_day_cancel_penalty_enabled === true,
+          // 既定は表示（列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
+          show_retention_alerts: raw.show_retention_alerts !== false,
           line_url: (raw.line_url as string | null) ?? null,
           trial_info_title: (raw.trial_info_title as string | null) ?? null,
           trial_info_body: (raw.trial_info_body as string | null) ?? null,

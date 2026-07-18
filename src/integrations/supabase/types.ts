@@ -2431,6 +2431,7 @@ export type Database = {
           gymboard_plan_period: string | null
           id: string
           invite_code: string | null
+          line_url: string | null
           logo_url: string | null
           max_customers: number | null
           max_trainers: number | null
@@ -2465,6 +2466,7 @@ export type Database = {
           gymboard_plan_period?: string | null
           id?: string
           invite_code?: string | null
+          line_url?: string | null
           logo_url?: string | null
           max_customers?: number | null
           max_trainers?: number | null
@@ -2499,6 +2501,7 @@ export type Database = {
           gymboard_plan_period?: string | null
           id?: string
           invite_code?: string | null
+          line_url?: string | null
           logo_url?: string | null
           max_customers?: number | null
           max_trainers?: number | null

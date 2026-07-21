@@ -105,11 +105,11 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
     let cancelled = false;
     (async () => {
       const nowIso = new Date().toISOString();
-      const { data, error } = await supabase
-        .from("trial_bookings")
+      const { data, error } = await (supabase
+        .from("trial_bookings") as any)
         .select("id")
         .eq("tenant_id", tenant.id)
-        .eq("follow_up_status" as any, "未対応")
+        .eq("follow_up_status", "未対応")
         .lt("booking_date", nowIso);
       if (cancelled) return;
       if (error) {

@@ -91,11 +91,6 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
   // ジム設定で「フォローが必要な顧客」の表示をオフにできる（既定は表示）。
   const showRetentionAlerts = tenant?.show_retention_alerts !== false;
-  // ダッシュボード上部の統計カード。ジムごとに個別に表示/非表示できる（既定は全て表示）。
-  const showStatTodaySessions = tenant?.show_stat_today_sessions !== false;
-  const showStatActiveClients = tenant?.show_stat_active_clients !== false;
-  const showStatMonthSessions = tenant?.show_stat_month_sessions !== false;
-  const showStatMonthRevenue = tenant?.show_stat_month_revenue !== false;
 
   // 体験フォロー待ち件数（体験CRM）。follow_up_status 列がマイグレーション未適用の環境では
   // 取得エラーになるため、その場合は静かに0件扱いにする（バナー非表示）。
@@ -279,29 +274,23 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
         </div>
       </div>
 
-      {/* Stats Grid（各カードはジム設定でON/OFF可能。全てOFFならセクションごと非表示） */}
-      {(() => {
-        const statCards = [
-          showStatTodaySessions && { label: t("dashboard.statTodaySessions"), value: t("dashboard.countUnit", { count: todayBookings.length }), icon: CalendarDays, color: 'text-accent' },
-          showStatActiveClients && { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: profiles.length }), icon: Users, color: 'text-info' },
-          showStatMonthSessions && { label: t("dashboard.statMonthSessions"), value: t("dashboard.countUnit", { count: monthBookings.length }), icon: Clock, color: 'text-success' },
-          showStatMonthRevenue && { label: t("dashboard.statMonthRevenue"), value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
-        ].filter((s): s is { label: string; value: string; icon: typeof CalendarDays; color: string } => !!s);
-        if (statCards.length === 0) return null;
-        return (
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-            {statCards.map((stat) => (
-              <Card key={stat.label} className="card-hover">
-                <CardContent className="p-3 sm:p-4">
-                  <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color} mb-1.5 sm:mb-2`} />
-                  <p className="text-lg sm:text-2xl font-extrabold truncate">{stat.value}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        );
-      })()}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
+        {[
+          { label: t("dashboard.statTodaySessions"), value: t("dashboard.countUnit", { count: todayBookings.length }), icon: CalendarDays, color: 'text-accent' },
+          { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: profiles.length }), icon: Users, color: 'text-info' },
+          { label: t("dashboard.statMonthSessions"), value: t("dashboard.countUnit", { count: monthBookings.length }), icon: Clock, color: 'text-success' },
+          { label: t("dashboard.statMonthRevenue"), value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
+        ].map((stat) => (
+          <Card key={stat.label} className="card-hover">
+            <CardContent className="p-3 sm:p-4">
+              <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color} mb-1.5 sm:mb-2`} />
+              <p className="text-lg sm:text-2xl font-extrabold truncate">{stat.value}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{stat.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       <div className="space-y-4 sm:space-y-6">
         {/* Today's Schedule - REAL DATA（本日のセッションを最上部に） */}

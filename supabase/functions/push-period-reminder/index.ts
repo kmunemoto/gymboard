@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // 対象候補: プランと起算日を持つお客様（サブスク判定は tenant_plans で行う）
     const { data: profiles, error: profErr } = await supabase
       .from("profiles")
-      .select("user_id, display_name, plan, cycle_start_date, tenant_id, grace_enabled" as any)
+      .select("user_id, display_name, plan, cycle_start_date, tenant_id, grace_enabled, show_usage_period" as any)
       .not("plan", "is", null)
       .not("cycle_start_date", "is", null);
     if (profErr) throw profErr;
@@ -86,6 +86,9 @@ Deno.serve(async (req) => {
 
     for (const p of profiles as any[]) {
       if (optedOut.has(p.user_id)) continue;
+      // 「利用期間の表示」をこのお客様にオフにしているジムには、期限を明かす通知も送らない
+      // （UI(PlanUsageCard)で非表示にしても、この通知が漏れ穴になっていたため 2026-07 に追加）。
+      if (p.show_usage_period === false) continue;
       const tp = p.tenant_id ? planMap.get(`${p.tenant_id}|${p.plan}`) : null;
       // サブスク以外（回数券・期間）や、回数上限の無いプラン（通い放題）は対象外
       if (!tp || (tp.plan_type && tp.plan_type !== "subscription")) continue;

@@ -523,6 +523,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
           tenantPlans={tenantPlans}
           bookings={myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
           graceEnabled={profile?.grace_enabled}
+          showUsagePeriod={profile?.show_usage_period}
         />
 
 

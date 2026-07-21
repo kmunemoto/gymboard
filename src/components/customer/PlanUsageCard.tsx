@@ -19,13 +19,19 @@ interface PlanUsageCardProps {
   bookings: PlanUsageBooking[];
   /** 猶予（大目に見る）をこのお客様に適用するか（profiles.grace_enabled）。false で無効、null/未指定は適用 */
   graceEnabled?: boolean | null;
+  /**
+   * 利用期間（期限・残り日数）をこのお客様に表示するか（profiles.show_usage_period）。
+   * false のときだけ非表示。null/未指定（トレーナー自身の管理画面など）は表示する。
+   * 残り回数・進捗バーは「期間」ではなく「回数」の情報なので、この設定に関わらず表示する。
+   */
+  showUsagePeriod?: boolean | null;
   className?: string;
 }
 
 // 予約種別ではないもの（体験・未設定）はカードを出さない
 const EXCLUDED_PLAN_NAMES = new Set(["初回無料体験", "プラン未設定"]);
 
-const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceEnabled, className }: PlanUsageCardProps) => {
+const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceEnabled, showUsagePeriod, className }: PlanUsageCardProps) => {
   const { t } = useTranslation();
 
   if (!planName || EXCLUDED_PLAN_NAMES.has(planName)) return null;
@@ -38,10 +44,13 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceE
   const usage = computePlanUsage(input, bookings, getJSTNow());
   if (usage.isUnconfigured) return null;
 
+  // 期間非表示のお客様には、期限切れ・期限間近の警告色（枠線・アイコン）も出さない
+  // （文言だけ隠して赤枠だけ残ると、かえって不安を煽ってしまうため）。
+  const periodVisible = showUsagePeriod !== false;
   const daysLeft = usage.daysLeft;
   // 期限未確定（1回目の予約待ち）・回数消化済みの間は期限切れ・期限間近の警告を出さない
-  const isExpired = usage.isExpired && !usage.periodPending && !usage.consumed;
-  const isExpiringSoon = !usage.periodPending && !usage.consumed && daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+  const isExpired = periodVisible && usage.isExpired && !usage.periodPending && !usage.consumed;
+  const isExpiringSoon = periodVisible && !usage.periodPending && !usage.consumed && daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
 
   return (
     <Card className={`border-l-4 ${isExpired ? "border-l-destructive bg-destructive/5" : isExpiringSoon ? "border-l-warning bg-warning/5" : "border-l-accent bg-accent/5"} ${className ?? ""}`}>
@@ -54,7 +63,7 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceE
           <PlanUsageBadge usage={usage} />
         </div>
 
-        {usage.periodPending ? (
+        {periodVisible && (usage.periodPending ? (
           /* 期限未確定: 1回目の予約が入るまで期限は決まっていない（予約時に起算日へ自動設定） */
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 shrink-0 text-muted-foreground" />
@@ -86,7 +95,7 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceE
               ) : null}
             </span>
           </div>
-        )}
+        ))}
 
         {!isExpired && !usage.isUnlimited && usage.total != null && (
           <div className="space-y-1">

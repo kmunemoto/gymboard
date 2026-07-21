@@ -37,19 +37,35 @@
   （`profiles.tenant_id` はマルチテナント以前の名残で信頼できないため使わない）からそのジムの
   バッファを引き、DTENDを `60+buffer` 分で計算。
 
-## `slot_duration_minutes`（1セッションの長さ設定）は実は占有時間に反映されていない（既知の制約）
-`slot_duration_minutes` はジム設定で変更できるが、**実際の重複判定（上記すべて）は
-セッション長を常に固定60分として計算する**（`60 + booking_buffer_minutes`）。つまり
-「1セッションの長さ」設定は `CustomerBooking.tsx` の `generateSlots` が最終枠の締切位置
-（`lastStart = closeHour*60 - slotMinutes`）を計算するのにしか使われておらず、**予約同士が
-実際にどれだけ間隔を空けるかには影響しない**。60分以外の値を設定しても、占有時間は変わらない。
-今回はユーザーの依頼が「予約バッファの設定」のみだったため、この制約はスコープ外として据え置いた
-（セッション長を真に可変にするには、上記の全箇所を `slot_duration_minutes` 基準に変える必要が
-あり、影響範囲が広いため別途要検討）。
+## `slot_duration_minutes`（1セッションの長さ設定）も占有時間に反映済み（2026-07-21）
+以前は `slot_duration_minutes` をジム設定で変更しても、**実際の重複判定は常にセッション長を
+固定60分として計算していた**（「1セッションの長さ」は `CustomerBooking.tsx` の `generateSlots`
+が最終枠の締切位置を計算するのにしか使われず、予約同士の間隔には無関係だった）。
+`20260721010000_use_slot_duration_in_occupancy.sql` で、`booking_buffer_minutes` と同じ
+全箇所を `session_min := slot_duration_minutes`（既定60）にも対応させ、
+`footprint = session_min + buffer_min` で統一した:
+
+- **`check_booking_overlap` トリガー**: `NEW.tenant_id` の `slot_duration_minutes` /
+  `booking_buffer_minutes` 両方を引いて `footprint` を計算（最終防衛）。
+- **`get_tenant_booked_slots` RPC**: 同様に `footprint` で `end_booking_date` を計算。
+- **`get_tenant_public` RPC**: `slot_duration_minutes` も追加で返す（`booking_buffer_minutes`
+  に加えて）。`TrialBooking.tsx`（公開・無認証）が候補枠自身の占有時間を計算するのに必要。
+- **フロント**: `CustomerBooking.tsx`／`TrialBooking.tsx`／`TrainerSchedule.tsx`（4箇所の
+  `checkSlotBlocked` 呼び出し＋代理予約の終了時刻計算）／`TrainerClientDetail.tsx`（予約履歴の
+  終了時刻）／`useBookings.ts`（`parseBooking`・`checkSlotBlocked`・
+  `sendCancelEmailNotification`）の全てが `tenant?.slot_duration_minutes ?? 60` を参照。
+- **Edge Functions**: `calendar-feed`（iCal DTEND）／`trial-book`（確認メールの時刻表記）／
+  `trial-cancel`（キャンセルページ・メールの時刻表記）／`google-calendar-sync`
+  （Googleカレンダーイベントの終了時刻、`create` と `sync_all` 両方）が
+  `tenants.slot_duration_minutes` を都度取得して使用。
+- `bookings`/`trial_bookings` には終了時刻を保存する列が無く、常に表示・計算時点で
+  `開始 + slot_duration_minutes` として再計算される。そのため過去の予約も、設定変更後は
+  新しいセッション長で表示・計算される（バッファの挙動と同じで、履歴データの不整合は生じない）。
 
 ## 落とし穴
-- 新しく「予約の占有時間・重複」に関わる機能を書くときは、`booking_buffer_minutes` を
-  必ず参照すること（ハードコードで `75`/`+15` を書かないこと）。DBトリガーが最終防衛なので、
-  フロント側の事前チェックが多少ズレても実害（二重予約）にはならないが、UXとしては不正確になる。
-- `slot_duration_minutes`（セッション長設定）を将来「本当に占有時間へ反映させる」場合は、
-  上記の全箇所（トリガー・2 RPC・3フロントファイル・calendar-feed）を同時に直す必要がある。
+- 新しく「予約の占有時間・重複」に関わる機能を書くときは、`slot_duration_minutes` と
+  `booking_buffer_minutes` の両方を必ず参照すること（ハードコードで `60`/`75`/`+60` を
+  書かないこと）。DBトリガーが最終防衛なので、フロント側の事前チェックが多少ズレても実害
+  （二重予約）にはならないが、UXとしては不正確になる。
+- 既存テナントは全て `slot_duration_minutes = 60`（既定値）のため、このマイグレーション単体で
+  挙動が変わることはない。60以外に設定して初めて占有時間が変わる。

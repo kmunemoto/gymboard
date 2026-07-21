@@ -29,8 +29,8 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
-const BOOKING_SESSION_MINUTES = 60;
-// ジムごとに変更可能（tenants.booking_buffer_minutes）。未設定/未ロード時のみこの既定値を使う。
+// セッション長・バッファはどちらもジムごとに変更可能（tenants.slot_duration_minutes /
+// tenants.booking_buffer_minutes）。未設定/未ロード時のみこの既定値を使う。
 const DEFAULT_BOOKING_BUFFER_MINUTES = 15;
 
 const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
@@ -165,9 +165,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     const newMin = timeToMin(time);
-    const newEnd = newMin + BOOKING_SESSION_MINUTES + bookingBufferMinutes;
-    // Bookings occupy 60 minutes plus the gym's configured buffer (既定15分). Apply the same
-    // footprint to both existing bookings and the candidate so the buffer is enforced
+    const newEnd = newMin + slotMinutes + bookingBufferMinutes;
+    // Bookings occupy the gym's configured session length (既定60分) plus the gym's
+    // configured buffer (既定15分). Apply the same footprint to both existing bookings
+    // and the candidate so the buffer is enforced
     // before and after every booking.
     return bookedSlots.some((b) => {
       if (b.date !== date) return false;

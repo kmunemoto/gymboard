@@ -67,7 +67,8 @@ interface TrainerClientDetailProps {
 
 const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => {
   const { t } = useTranslation();
-  const { plans: tenantPlans } = useTenant();
+  const { plans: tenantPlans, tenant } = useTenant();
+  const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   const [profile, setProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
@@ -238,7 +239,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           const h = dt.getHours();
           const m = dt.getMinutes();
           const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-          const endMin = h * 60 + m + 60;
+          const endMin = h * 60 + m + sessionMinutes;
           const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
           return {
             id: row.id,
@@ -253,7 +254,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       setLoadingBookings(false);
     };
     fetchBookings();
-  }, [clientId]);
+  }, [clientId, sessionMinutes]);
 
   // Mark chat as read when viewing
   useEffect(() => {

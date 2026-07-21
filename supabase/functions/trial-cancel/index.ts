@@ -31,13 +31,13 @@ const CANCELLED = "キャンセル済み";
 const GENERIC_ERROR = "サーバーで問題が発生しました。時間をおいて再度お試しください。";
 
 const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
-function formatJst(bookingDate: string): { dateStr: string; timeStr: string } {
+function formatJst(bookingDate: string, sessionMinutes: number = 60): { dateStr: string; timeStr: string } {
   const bd = new Date(bookingDate);
   const jst = new Date(bd.getTime() + 9 * 60 * 60 * 1000);
   const dateStr = `${jst.getUTCMonth() + 1}月${jst.getUTCDate()}日（${dowChars[jst.getUTCDay()]}）`;
   const fmt = (n: number) => String(n).padStart(2, "0");
   const startMin = jst.getUTCHours() * 60 + jst.getUTCMinutes();
-  const endMin = startMin + 60;
+  const endMin = startMin + sessionMinutes;
   const timeStr = `${fmt(Math.floor(startMin / 60))}:${fmt(startMin % 60)}〜${fmt(Math.floor(endMin / 60))}:${fmt(endMin % 60)}`;
   return { dateStr, timeStr };
 }
@@ -174,7 +174,7 @@ type LookupResult = {
 async function lookupByToken(admin: any, token: string): Promise<LookupResult | null> {
   const { data: booking, error } = await admin
     .from("trial_bookings")
-    .select("id, tenant_id, guest_name, guest_contact, booking_date, status, google_event_id, tenants(gym_name, logo_url)")
+    .select("id, tenant_id, guest_name, guest_contact, booking_date, status, google_event_id, tenants(gym_name, logo_url, slot_duration_minutes)")
     .eq("cancel_token", token)
     .maybeSingle();
   if (error) {
@@ -186,7 +186,8 @@ async function lookupByToken(admin: any, token: string): Promise<LookupResult | 
   const tenantRow = Array.isArray(tenantRel) ? tenantRel[0] : tenantRel;
   const gymName = tenantRow?.gym_name || "ジム";
   const logoUrl = tenantRow?.logo_url ?? null;
-  const { dateStr, timeStr } = formatJst(booking.booking_date as string);
+  const sessionMinutes = tenantRow?.slot_duration_minutes ?? 60;
+  const { dateStr, timeStr } = formatJst(booking.booking_date as string, sessionMinutes);
   return {
     booking,
     gymName,

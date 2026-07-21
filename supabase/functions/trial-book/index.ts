@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
     // (ジムごとに正しい情報を載せる。旧実装は Salute 固定だったため他ジムには送っていなかった)。
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status, address, email, website_url")
+      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -219,7 +219,8 @@ Deno.serve(async (req) => {
     const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
     const dateStr = `${jst.getUTCMonth() + 1}月${jst.getUTCDate()}日（${dowChars[jst.getUTCDay()]}）`;
     const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-    const timeStr = `${fmt(startMin)}〜${fmt(startMin + 60)}`;
+    const sessionMinutes = (tenant.slot_duration_minutes as number | null) ?? 60;
+    const timeStr = `${fmt(startMin)}〜${fmt(startMin + sessionMinutes)}`;
 
     // ===== 通知 (失敗しても予約自体は成立。結果を notify に記録) =====
     const serviceHeaders = {

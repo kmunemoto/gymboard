@@ -71,6 +71,11 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [lineUrl, setLineUrl] = useState("");
   const [savingLineUrl, setSavingLineUrl] = useState(false);
 
+  // Google口コミ投稿URL（tenants.google_review_url）。入力すると、来店が節目に達したお客様へ
+  // 口コミ依頼バナーが表示されるようになる。
+  const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+  const [savingGoogleReviewUrl, setSavingGoogleReviewUrl] = useState(false);
+
   // 営業時間（tenants.operating_hours）・予約枠の間隔（tenants.slot_duration_minutes）・
   // 予約バッファ（tenants.booking_buffer_minutes）。
   // お客様の予約画面（CustomerBooking.tsx）・体験予約ページ・予約の重複判定に使われる。
@@ -100,6 +105,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   useEffect(() => {
     setLineUrl(tenant?.line_url ?? "");
   }, [tenant?.line_url]);
+
+  useEffect(() => {
+    setGoogleReviewUrl(tenant?.google_review_url ?? "");
+  }, [tenant?.google_review_url]);
 
   useEffect(() => {
     if (tenant?.operating_hours?.start) setBusinessStart(tenant.operating_hours.start);
@@ -255,6 +264,29 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingLineUrl(false);
+  };
+
+  const handleSaveGoogleReviewUrl = async () => {
+    if (!tenant) return;
+    const url = googleReviewUrl.trim();
+    // 非空なら http(s) で始まる URL 形式だけ簡易チェック。空欄は NULL で保存（バナー非表示）。
+    if (url && !/^https?:\/\/.+/i.test(url)) {
+      toast.error(t("settings.trainer.googleReviewUrlInvalid"));
+      return;
+    }
+    setSavingGoogleReviewUrl(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ google_review_url: url || null } as any)
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("Google口コミURLの保存に失敗:", error);
+      toast.error(t("settings.trainer.googleReviewUrlSaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.googleReviewUrlUpdated"));
+      refetchTenant();
+    }
+    setSavingGoogleReviewUrl(false);
   };
 
   const handleSaveBusinessHours = async () => {
@@ -471,6 +503,34 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             <Button onClick={handleSaveLineUrl} disabled={savingLineUrl || !tenant} size="sm" className="h-10">
               <Save className="w-4 h-4 mr-1" />
               {savingLineUrl ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === Google口コミ依頼 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.googleReviewSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.googleReviewDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="google-review-url" className="text-xs font-bold">{t("settings.trainer.googleReviewUrlLabel")}</Label>
+              <Input
+                id="google-review-url"
+                type="url"
+                inputMode="url"
+                value={googleReviewUrl}
+                onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                placeholder={t("settings.trainer.googleReviewUrlPlaceholder")}
+                maxLength={500}
+              />
+            </div>
+            <Button onClick={handleSaveGoogleReviewUrl} disabled={savingGoogleReviewUrl || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingGoogleReviewUrl ? t("common.saving") : t("common.save")}
             </Button>
           </CardContent>
         </Card>

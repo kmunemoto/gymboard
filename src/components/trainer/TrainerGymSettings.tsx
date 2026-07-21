@@ -30,10 +30,17 @@ interface TrainerGymSettingsProps {
   onSignOut: () => void;
 }
 
-// 営業時間・予約枠の間隔の選択肢。Onboarding.tsx の初期設定と同じ範囲・刻みに揃える。
-const BUSINESS_START_HOURS = Array.from({ length: 6 }, (_, i) => `${String(7 + i).padStart(2, "0")}:00`);
-const BUSINESS_END_HOURS = Array.from({ length: 7 }, (_, i) => `${String(17 + i).padStart(2, "0")}:00`);
+// 営業時間・予約枠の間隔・予約バッファの選択肢。
+// 開始/終了は30分刻み（開始7:00〜12:00、終了17:00〜23:00）。
+const hourOption = (baseHour: number, i: number) => {
+  const totalMin = baseHour * 60 + i * 30;
+  return `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
+};
+const BUSINESS_START_HOURS = Array.from({ length: 11 }, (_, i) => hourOption(7, i)); // 07:00〜12:00
+const BUSINESS_END_HOURS = Array.from({ length: 13 }, (_, i) => hourOption(17, i)); // 17:00〜23:00
 const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
+// 予約と予約の間に必ず空ける時間（分）。15分刻み。
+const BUSINESS_BUFFER_OPTIONS = [0, 15, 30, 45, 60];
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const { t } = useTranslation();
@@ -63,11 +70,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [lineUrl, setLineUrl] = useState("");
   const [savingLineUrl, setSavingLineUrl] = useState(false);
 
-  // 営業時間（tenants.operating_hours）・予約枠の間隔（tenants.slot_duration_minutes）。
-  // お客様の予約画面（CustomerBooking.tsx）の枠生成に使われる。選択肢は Onboarding.tsx と揃える。
+  // 営業時間（tenants.operating_hours）・予約枠の間隔（tenants.slot_duration_minutes）・
+  // 予約バッファ（tenants.booking_buffer_minutes）。
+  // お客様の予約画面（CustomerBooking.tsx）・体験予約ページ・予約の重複判定に使われる。
   const [businessStart, setBusinessStart] = useState("10:00");
   const [businessEnd, setBusinessEnd] = useState("21:00");
   const [businessSlotMinutes, setBusinessSlotMinutes] = useState(60);
+  const [businessBufferMinutes, setBusinessBufferMinutes] = useState(15);
   const [savingBusinessHours, setSavingBusinessHours] = useState(false);
 
   useEffect(() => {
@@ -95,7 +104,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (tenant?.operating_hours?.start) setBusinessStart(tenant.operating_hours.start);
     if (tenant?.operating_hours?.end) setBusinessEnd(tenant.operating_hours.end);
     if (tenant?.slot_duration_minutes) setBusinessSlotMinutes(tenant.slot_duration_minutes);
-  }, [tenant?.operating_hours?.start, tenant?.operating_hours?.end, tenant?.slot_duration_minutes]);
+    if (tenant?.booking_buffer_minutes != null) setBusinessBufferMinutes(tenant.booking_buffer_minutes);
+  }, [tenant?.operating_hours?.start, tenant?.operating_hours?.end, tenant?.slot_duration_minutes, tenant?.booking_buffer_minutes]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -243,6 +253,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       .update({
         operating_hours: { start: businessStart, end: businessEnd },
         slot_duration_minutes: businessSlotMinutes,
+        booking_buffer_minutes: businessBufferMinutes,
       })
       .eq("id", tenant.id);
     if (error) {
@@ -501,6 +512,20 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   {BUSINESS_SLOT_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.businessHoursBuffer")}</Label>
+              <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursBufferDesc")}</p>
+              <Select value={String(businessBufferMinutes)} onValueChange={(v) => setBusinessBufferMinutes(parseInt(v, 10))}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_BUFFER_OPTIONS.map((m) => (
                     <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
                   ))}
                 </SelectContent>

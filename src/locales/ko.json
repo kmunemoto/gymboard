@@ -169,6 +169,8 @@
       "businessHoursUpdated": "영업시간을 업데이트했습니다",
       "businessHoursSaveFailed": "영업시간 저장에 실패했습니다",
       "businessHoursInvalidRange": "종료 시간은 시작 시간보다 뒤여야 합니다",
+      "businessHoursBuffer": "예약 간 간격",
+      "businessHoursBufferDesc": "예약과 예약 사이에 반드시 비워두는 시간입니다. 다른 고객 예약과의 중복 판정에 사용됩니다.",
       "planManage": "플랜 관리",
       "bookingPolicySection": "예약 정책",
       "sameDayPenaltyTitle": "당일 취소를 자동으로 소진 처리",

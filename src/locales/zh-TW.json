@@ -169,6 +169,8 @@
       "businessHoursUpdated": "已更新營業時間",
       "businessHoursSaveFailed": "營業時間儲存失敗",
       "businessHoursInvalidRange": "結束時間必須晚於開始時間",
+      "businessHoursBuffer": "預約間隔時間",
+      "businessHoursBufferDesc": "兩個預約之間必須空出的時間。用於判斷與其他顧客預約是否重疊。",
       "planManage": "方案管理",
       "bookingPolicySection": "預約政策",
       "sameDayPenaltyTitle": "將當天取消自動計為已消耗次數",

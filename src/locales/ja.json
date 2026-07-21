@@ -169,6 +169,8 @@
       "businessHoursUpdated": "営業時間を更新しました",
       "businessHoursSaveFailed": "営業時間の保存に失敗しました",
       "businessHoursInvalidRange": "終了時間は開始時間より後にしてください",
+      "businessHoursBuffer": "予約と予約の間隔",
+      "businessHoursBufferDesc": "予約と予約の間に必ず空ける時間です。他のお客様の予約枠との重複判定に使われます。",
       "planManage": "プラン管理",
       "bookingPolicySection": "予約ポリシー",
       "sameDayPenaltyTitle": "同日キャンセルを自動で消化扱いにする",

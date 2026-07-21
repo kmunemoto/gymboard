@@ -30,7 +30,8 @@ import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const BOOKING_SESSION_MINUTES = 60;
-const BOOKING_BUFFER_MINUTES = 15;
+// ジムごとに変更可能（tenants.booking_buffer_minutes）。未設定/未ロード時のみこの既定値を使う。
+const DEFAULT_BOOKING_BUFFER_MINUTES = 15;
 
 const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { t } = useTranslation();
@@ -159,21 +160,24 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const customerPlan = profile?.plan || null;
   const selectedPlan = customerPlan;
 
+  const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? DEFAULT_BOOKING_BUFFER_MINUTES;
+
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     const newMin = timeToMin(time);
-    const newEnd = newMin + BOOKING_SESSION_MINUTES + BOOKING_BUFFER_MINUTES;
-    // Bookings occupy 60 minutes plus a 15-minute interval. Apply the same
-    // 75-minute footprint to both existing bookings and the candidate so the
-    // buffer is enforced before and after every booking.
+    const newEnd = newMin + BOOKING_SESSION_MINUTES + bookingBufferMinutes;
+    // Bookings occupy 60 minutes plus the gym's configured buffer (既定15分). Apply the same
+    // footprint to both existing bookings and the candidate so the buffer is enforced
+    // before and after every booking.
     return bookedSlots.some((b) => {
       if (b.date !== date) return false;
       // 予約変更中は、変更対象（旧枠）を占有としてカウントしない。
       // これで同日の近い時刻（旧枠のバッファ内）にも移動できる（旧枠は削除して作り直すため）。
       if (rescheduleTarget && b.date === rescheduleTarget.date && b.startTime === rescheduleTarget.startTime) return false;
       const bMin = timeToMin(b.startTime);
-      // get_tenant_booked_slots の end_booking_date は既に「開始+75分（60分＋バッファ15分）」。
-      // ここで更に +15 すると二重計上で1枠ぶん余計に満枠化するため足さない
+      // get_tenant_booked_slots の end_booking_date は既に「開始+60分+ジムのバッファ分」
+      // （tenants.booking_buffer_minutes、既定15分）で計算済み。ここで更に足すと
+      // 二重計上で1枠ぶん余計に満枠化するため足さない
       // （公開の体験予約ページ TrialBooking.isSlotBlocked と同一ロジック）。
       const bEnd = timeToMin(b.endTime);
       return newMin < bEnd && bMin < newEnd;

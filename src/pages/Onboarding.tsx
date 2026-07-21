@@ -24,8 +24,13 @@ interface PlanInput {
 }
 
 const PRESET_COLORS = ["#3FB6AC", "#6366F1", "#F59E0B", "#EC4899", "#10B981"];
-const START_HOURS = Array.from({ length: 6 }, (_, i) => `${String(7 + i).padStart(2, "0")}:00`);
-const END_HOURS = Array.from({ length: 7 }, (_, i) => `${String(17 + i).padStart(2, "0")}:00`);
+// 30分刻み（開始7:00〜12:00、終了17:00〜23:00）。ジム設定「営業時間」セクションと揃える。
+const hourOption = (baseHour: number, i: number) => {
+  const totalMin = baseHour * 60 + i * 30;
+  return `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
+};
+const START_HOURS = Array.from({ length: 11 }, (_, i) => hourOption(7, i));
+const END_HOURS = Array.from({ length: 13 }, (_, i) => hourOption(17, i));
 const SLOT_OPTIONS = [30, 45, 60, 90, 120];
 
 const Onboarding = () => {

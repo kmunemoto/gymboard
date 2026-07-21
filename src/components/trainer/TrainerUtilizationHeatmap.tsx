@@ -4,7 +4,7 @@ import { Flame } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAllBookings, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { useTenant } from "@/hooks/useTenant";
-import { getJSTNow } from "@/lib/timezone";
+import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { format, subDays } from "date-fns";
 import { formatWeekdayShort } from "@/lib/dateFormat";
 
@@ -65,7 +65,10 @@ const TrainerUtilizationHeatmap = () => {
       if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS || b.user_id === "blocked") return;
       const [h] = b.startTime.split(":").map(Number);
       if (!Number.isFinite(h) || h < startHour || h >= endHour) return;
-      const dow = new Date(`${b.date}T00:00:00+09:00`).getDay();
+      // b.date は "yyyy-MM-dd"（JST暦日）の文字列。素の new Date(...).getDay() は
+      // 閲覧デバイスのタイムゾーンに依存して曜日がズレる（timezone.ts の注意書き参照）ため、
+      // 必ず toJSTDate 経由で「JST基準の曜日」を取る。
+      const dow = toJSTDate(b.date).getDay();
       if (!occupied[dow]) occupied[dow] = {};
       if (!occupied[dow][h]) occupied[dow][h] = new Set();
       occupied[dow][h].add(b.date);

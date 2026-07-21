@@ -721,9 +721,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
       {/* 前回のセッションメモ。次回対応時にすぐ見えるよう、直近の過去予約のメモをここに出す。 */}
       {(() => {
-        const now = new Date();
+        // b.date は "yyyy-MM-dd"（JST暦日）の文字列。new Date(b.date) <= new Date() は
+        // 閲覧デバイスのタイムゾーンによって「今日」の判定がズレる（timezone.ts 参照）ため、
+        // 同じJST暦日どうしの文字列比較にする（isPastDay等、他箇所と同じ方式）。
+        const todayJST = getJSTToday();
         const pastWithNote = bookings
-          .filter((b: any) => new Date(b.date) <= now && b.trainer_note)
+          .filter((b: any) => b.date <= todayJST && b.trainer_note)
           .sort((a: any, b: any) => a.date.localeCompare(b.date));
         const lastNote = pastWithNote[pastWithNote.length - 1];
         if (!lastNote) return null;

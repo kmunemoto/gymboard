@@ -5,7 +5,10 @@ import {
 import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = "ジムボード"
-const APP_URL = "https://app.gymboard.app"
+// 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
+// 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。SITE_URL(gymboard.app)は
+// 別ドメインで生存確認済みのため変更不要。
+const APP_URL = "https://app.kyoto-salute.com"
 const SITE_URL = "https://gymboard.app"
 const NEW_BOOKING_GUIDANCE = "新しいご予約\u306Fアプリから承っております。"
 

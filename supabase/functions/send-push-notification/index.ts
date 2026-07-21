@@ -3,8 +3,10 @@ import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
 import { verifyCaller, hasRole } from "../_shared/auth.ts";
 
+// 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
+// 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
 const ALLOWED_URL_HOSTS = new Set([
-  "app.gymboard.app",
+  "app.kyoto-salute.com",
   "gymboard.lovable.app",
 ]);
 

@@ -4,7 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 // Edge Function から HTML を返すと、この環境ではブラウザが text/plain 扱いで
 // 生ソース表示＋文字化けになってしまう（line-login-callback が HTML ではなく
 // リダイレクトを使っているのと同じ理由）。そのためアプリへ 302 リダイレクトする。
-const appUrl = "https://app.gymboard.app";
+// 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
+// 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
+const appUrl = "https://app.kyoto-salute.com";
 
 function redirect(path: string): Response {
   return new Response(null, { status: 302, headers: { Location: `${appUrl}${path}` } });

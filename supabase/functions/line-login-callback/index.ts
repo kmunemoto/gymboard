@@ -28,7 +28,9 @@ async function consumeOauthState(
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
-  const appUrl = "https://app.gymboard.app";
+  // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
+  // 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
+  const appUrl = "https://app.kyoto-salute.com";
 
   if (req.method === "GET") {
     const code = url.searchParams.get("code");

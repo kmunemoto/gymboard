@@ -251,7 +251,12 @@ async function handleWebhook(req: Request): Promise<Response> {
   }
 
   const redirectTo = (payload.data as any).redirect_to || (payload.data as any).redirectTo || ''
-  const APP_URL = 'https://gymboard.lovable.app'
+  // パスワード再設定/確認メールのリンク先。本番Webドメインに統一（2026-07）。
+  // 従来はプレビュー用の gymboard.lovable.app を指しており本番ドメインと不整合だった。
+  // ※デプロイ前提: app.kyoto-salute.com が /reset-password と /auth/callback を配信し、
+  //   Supabase Auth の Redirect URLs に https://app.kyoto-salute.com/auth/callback が
+  //   登録済みであること（token_hash フローは client 側 verifyOtp で処理）。
+  const APP_URL = 'https://app.kyoto-salute.com'
   let confirmationUrl = ''
   if (tokenHash) {
     const params = new URLSearchParams({ token_hash: tokenHash, type: emailType })

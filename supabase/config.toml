@@ -11,6 +11,11 @@ project_id = "rrbfwitprzuevzytykrq"
     verify_jwt = false
   [functions.send-push-notification]
     verify_jwt = false
+  # LINEログイン連携のOAuthコールバック。ブラウザのリダイレクトから JWT なしで叩かれる
+  # ため verify_jwt=false 必須（config.toml に無いまま CLI で deploy すると既定の true に
+  # 戻り、LINEログインが壊れる）。稼働中の設定に合わせて明記した（2026-07）。
+  [functions.line-login-callback]
+    verify_jwt = false
   [functions.auth-email-hook]
     verify_jwt = false
   [functions.gymboard-stripe-webhook]

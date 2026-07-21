@@ -299,7 +299,9 @@ Deno.serve(async (req) => {
             bookingDate: dateStr,
             bookingTime: timeStr,
             planName: "体験予約",
-            dashboardUrl: "https://gymboard.lovable.app",
+            // 本番Webドメインに統一（2026-07）。通常予約(bookingNotification=getWebOrigin)と
+            // 経路で遷移先が食い違わないよう揃える。
+            dashboardUrl: "https://app.kyoto-salute.com",
             trainerUserId: trainerId,
           },
         }).then((ok) => { notify.trainer_email = ok; }),

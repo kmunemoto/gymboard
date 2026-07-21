@@ -1,5 +1,6 @@
 import { lazy, useEffect, useRef, useState } from "react";
-import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera } from "lucide-react";
+import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera, Star, X } from "lucide-react";
+import { openExternalUrl } from "@/lib/nativeBridge";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -44,7 +45,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { t } = useTranslation();
   const { user } = useAuth();
   const { profile, loading } = useProfile();
-  const { plans: tenantPlans } = useTenant();
+  const { plans: tenantPlans, tenant } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
   const { chartData, latest, loading: metricsLoading, saveMeasurement } = useMeasurements(user?.id);
   const { currentStreak, bestStreak, hasFutureBookingThisWeek, loading: streakLoading } = useStreak(user?.id);
@@ -95,6 +96,31 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       .lt("booking_date", nowIso)
       .then(({ count }) => setTotalSessions(count || 0));
   }, [user, t]);
+
+  // 口コミ依頼バナー（累計来店 REVIEW_PROMPT_MILESTONE 回目の節目で、ジムに
+  // google_review_url が設定されている場合のみ、一度だけ表示する）。
+  const REVIEW_PROMPT_MILESTONE = 10;
+  const [reviewPrompted, setReviewPrompted] = useState(true); // profile読込前は誤表示しないようtrue始まり
+  const [reviewActionLoading, setReviewActionLoading] = useState(false);
+  useEffect(() => {
+    setReviewPrompted(!!(profile as any)?.review_prompted_at);
+  }, [profile]);
+
+  const markReviewPrompted = async () => {
+    if (!user) return;
+    setReviewActionLoading(true);
+    await supabase.from("profiles").update({ review_prompted_at: new Date().toISOString() } as any).eq("user_id", user.id);
+    setReviewActionLoading(false);
+    setReviewPrompted(true);
+  };
+
+  const showReviewBanner =
+    !loading && totalSessions >= REVIEW_PROMPT_MILESTONE && !!tenant?.google_review_url && !reviewPrompted;
+
+  const handleOpenReview = () => {
+    if (tenant?.google_review_url) openExternalUrl(tenant.google_review_url);
+    markReviewPrompted();
+  };
 
   const latestSession = latestDate ? buildSession(latestWorkouts, latestDate) : null;
 
@@ -301,6 +327,39 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           bestStreak={bestStreak}
           hasFutureBookingThisWeek={hasFutureBookingThisWeek}
         />
+      )}
+
+      {/* 3.5 口コミ依頼バナー */}
+      {showReviewBanner && (
+        <Card className="bg-accent/5 border-accent/30 relative">
+          <CardContent className="p-4 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+              <Star className="w-4 h-4 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold">{t("home.reviewPromptTitle", { count: totalSessions })}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("home.reviewPromptDesc")}</p>
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" onClick={handleOpenReview} disabled={reviewActionLoading} className="h-8 text-xs">
+                  <Star className="w-3.5 h-3.5 mr-1" />
+                  {t("home.reviewPromptCta")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={markReviewPrompted} disabled={reviewActionLoading} className="h-8 text-xs">
+                  {t("home.reviewPromptLater")}
+                </Button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={markReviewPrompted}
+              disabled={reviewActionLoading}
+              className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={t("common.close")}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </CardContent>
+        </Card>
       )}
 
       {/* 4. Weight / Body Fat Cards */}

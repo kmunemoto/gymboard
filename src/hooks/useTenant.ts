@@ -26,6 +26,8 @@ export interface Tenant {
   daily_summary_enabled: boolean;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
+  /** Googleの口コミ投稿ページURL。null/空なら口コミ依頼バナーを表示しない */
+  google_review_url: string | null;
   /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */
   trial_info_title: string | null;
   /** 体験予約ページの案内カード説明文。null/空なら既定文言を表示 */
@@ -96,10 +98,11 @@ export function useTenant() {
           .maybeSingle();
 
       // 追加カラムの多い順にフォールバックする（全部→trial_info込み→same_dayのみ→基本のみ）。
-      // daily_summary_enabled は最後に足した新カラム。未適用環境では先頭が失敗し、
-      // 次の変種に落ちて daily_summary_enabled 無し（=既定ONにマッピング側でフォールバック）
-      // で正常動作する。
+      // google_review_url は最後に足した新カラム。未適用環境では先頭が失敗し、
+      // 次の変種に落ちて google_review_url 無し（=nullにマッピング側でフォールバック、
+      // 口コミ依頼バナーは表示されない）で正常動作する。
       const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts`,
@@ -128,6 +131,7 @@ export function useTenant() {
           // 列が無い/未適用環境では既定15分（従来どおりの60分+15分=75分フットプリント）。
           booking_buffer_minutes: (raw.booking_buffer_minutes as number | null) ?? 15,
           line_url: (raw.line_url as string | null) ?? null,
+          google_review_url: (raw.google_review_url as string | null) ?? null,
           trial_info_title: (raw.trial_info_title as string | null) ?? null,
           trial_info_body: (raw.trial_info_body as string | null) ?? null,
         } as unknown as Tenant;

@@ -32,6 +32,8 @@ interface PublicTenant {
   primary_color: string | null;
   trial_info_title: string | null;
   trial_info_body: string | null;
+  /** 予約と予約の間に必ず空ける時間（分）。null/未設定は既定15分。 */
+  booking_buffer_minutes: number | null;
 }
 
 // この体験予約サイト(app.kyoto-salute.com)は Salute御所南 専用。
@@ -115,17 +117,23 @@ const TrialBooking = () => {
 
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
+  // ジムごとに変更可能（tenants.booking_buffer_minutes）。未ロード時のみ既定15分。
+  const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
+
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (s: string) => {
       const [h, m] = s.split(":").map(Number);
       return h * 60 + m;
     };
     const newMin = timeToMin(time);
+    const newEnd = newMin + 60 + bookingBufferMinutes;
     return existingBookings.some((b) => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
+      // get_tenant_booked_slots の end_booking_date は既にテナントのバッファ込みで計算済み
+      // なので、ここで更に足さない（CustomerBooking.isSlotBlocked と同一ロジック）。
       const bEnd = timeToMin(b.endTime);
-      return newMin < bEnd && bMin < newMin + 75;
+      return newMin < bEnd && bMin < newEnd;
     });
   };
 

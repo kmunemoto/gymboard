@@ -169,6 +169,8 @@
       "businessHoursUpdated": "Business hours updated",
       "businessHoursSaveFailed": "Failed to save business hours",
       "businessHoursInvalidRange": "Closing time must be after opening time",
+      "businessHoursBuffer": "Gap between bookings",
+      "businessHoursBufferDesc": "The time always kept clear between one booking and the next. Used when checking for overlaps with other customers' bookings.",
       "planManage": "Plan Management",
       "bookingPolicySection": "Booking Policy",
       "sameDayPenaltyTitle": "Automatically count same-day cancellations as used",

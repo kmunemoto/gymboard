@@ -258,16 +258,23 @@ export const useAllBookings = () => {
   return { bookings, loading, refetch: fetchBookings, removeBooking };
 };
 
-export const checkSlotBlocked = (bookings: BookingWithTime[], date: string, startTime: string, endTimeOverride?: string): boolean => {
-  const BUFFER_MINUTES = 15;
+export const checkSlotBlocked = (
+  bookings: BookingWithTime[],
+  date: string,
+  startTime: string,
+  endTimeOverride?: string,
+  // ジムごとに変更可能（tenants.booking_buffer_minutes）。呼び出し元が渡さない場合のみ既定15分。
+  bufferMinutes: number = 15,
+): boolean => {
+  const BUFFER_MINUTES = bufferMinutes;
   const timeToMin = (t: string) => {
     const [h, m] = t.split(":").map(Number);
     return h * 60 + m;
   };
 
   const newMin = timeToMin(startTime);
-  // Default booking footprint is 60 minutes plus the required 15-minute interval.
-  // This symmetric 75-minute window prevents bookings from being placed too close
+  // Default booking footprint is 60 minutes plus the gym's configured buffer.
+  // This symmetric window prevents bookings from being placed too close
   // before or after an existing booking.
   const newEnd = endTimeOverride ? timeToMin(endTimeOverride) : newMin + 60 + BUFFER_MINUTES;
 

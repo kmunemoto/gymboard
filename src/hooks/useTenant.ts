@@ -15,6 +15,8 @@ export interface Tenant {
   website_url: string | null;
   operating_hours: { start: string; end: string };
   slot_duration_minutes: number;
+  /** 予約と予約の間に必ず空ける時間（分）。既定15分。予約の重複判定に使う（60分セッション+この値）*/
+  booking_buffer_minutes: number;
   booking_cutoff_type: string;
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;
@@ -92,9 +94,11 @@ export function useTenant() {
           .maybeSingle();
 
       // 追加カラムの多い順にフォールバックする（全部→trial_info込み→same_dayのみ→基本のみ）。
-      // line_url は最後に足した新カラム。未適用環境では先頭が失敗し、次の変種に落ちて
-      // line_url 無し（=null、ボタン非表示）で正常動作する。
+      // booking_buffer_minutes は最後に足した新カラム。未適用環境では先頭が失敗し、
+      // 次の変種に落ちて booking_buffer_minutes 無し（=既定15分にマッピング側でフォールバック）
+      // で正常動作する。
       const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body`,
@@ -116,6 +120,8 @@ export function useTenant() {
           same_day_cancel_penalty_enabled: raw.same_day_cancel_penalty_enabled === true,
           // 既定は表示（列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
           show_retention_alerts: raw.show_retention_alerts !== false,
+          // 列が無い/未適用環境では既定15分（従来どおりの60分+15分=75分フットプリント）。
+          booking_buffer_minutes: (raw.booking_buffer_minutes as number | null) ?? 15,
           line_url: (raw.line_url as string | null) ?? null,
           trial_info_title: (raw.trial_info_title as string | null) ?? null,
           trial_info_body: (raw.trial_info_body as string | null) ?? null,

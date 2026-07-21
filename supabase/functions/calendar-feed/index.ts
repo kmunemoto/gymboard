@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   const now = new Date().toISOString();
   const { data: bookings, error: bookingsError } = await supabase
     .from("bookings")
-    .select("id, booking_date, booking_type, status")
+    .select("id, booking_date, booking_type, status, tenant_id")
     .eq("user_id", profile.user_id)
     .neq("status", "キャンセル済み")
     // 同日キャンセル消化（来店しない予約）も購読カレンダーに出さない
@@ -48,12 +48,25 @@ Deno.serve(async (req) => {
     return new Response("Error fetching bookings", { status: 500 });
   }
 
+  // 予約1件の表示時間（DTEND）は「60分＋そのジムの予約バッファ」。profiles.tenant_id は
+  // マルチテナント以前の名残で信頼できないため、各予約行自身の tenant_id から引く。
+  const tenantIds = [...new Set((bookings || []).map((b) => b.tenant_id).filter(Boolean))] as string[];
+  const bufferByTenant = new Map<string, number>();
+  if (tenantIds.length > 0) {
+    const { data: tenantRows } = await supabase
+      .from("tenants")
+      .select("id, booking_buffer_minutes")
+      .in("id", tenantIds);
+    (tenantRows || []).forEach((t: any) => bufferByTenant.set(t.id, t.booking_buffer_minutes ?? 15));
+  }
+
   const calName = "ジムボード 予約";
   const eventTitle = "ジムボード";
 
   const events = (bookings || []).map((b) => {
+    const bufferMinutes = (b.tenant_id && bufferByTenant.get(b.tenant_id)) ?? 15;
     const start = new Date(b.booking_date);
-    const end = new Date(start.getTime() + 75 * 60 * 1000); // 75 minutes
+    const end = new Date(start.getTime() + (60 + bufferMinutes) * 60 * 1000);
     return [
       "BEGIN:VEVENT",
       `UID:${b.id}@salute-goshonan`,

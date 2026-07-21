@@ -51,6 +51,7 @@ const TrainerSchedule = () => {
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
   const { tenant, plans } = useTenant();
+  const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
   // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
   // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
@@ -118,7 +119,7 @@ const TrainerSchedule = () => {
       toast.error(t("schedule.errorSelectAll"));
       return;
     }
-    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime)) {
+    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes)) {
       toast.error(t("schedule.errorSlotTaken"));
       return;
     }
@@ -277,7 +278,7 @@ const TrainerSchedule = () => {
     }
 
     // Check if the range overlaps with any existing booking/block
-    if (checkSlotBlocked(bookings, dateStr, blockStartTime, blockEndTime)) {
+    if (checkSlotBlocked(bookings, dateStr, blockStartTime, blockEndTime, bookingBufferMinutes)) {
       toast.error(t("schedule.blockOverlap"));
       return;
     }
@@ -659,7 +660,7 @@ const TrainerSchedule = () => {
                       const h = Math.floor(totalMin / 60);
                       const m = totalMin % 60;
                       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined);
+                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes);
                       slots.push({ time, blocked });
                     }
                     return slots.map((slot) => (
@@ -802,7 +803,7 @@ const TrainerSchedule = () => {
                         const h = Math.floor(totalMin / 60);
                         const m = totalMin % 60;
                         const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-                      const blocked = checkSlotBlocked(bookings, blockDateKey, time, undefined);
+                      const blocked = checkSlotBlocked(bookings, blockDateKey, time, undefined, bookingBufferMinutes);
                         slots.push({ time, blocked });
                       }
                       return slots.map((slot) => (

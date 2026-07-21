@@ -348,6 +348,7 @@ export type Database = {
           source: string | null
           status: string
           tenant_id: string | null
+          trainer_note: string | null
           user_id: string
         }
         Insert: {
@@ -359,6 +360,7 @@ export type Database = {
           source?: string | null
           status?: string
           tenant_id?: string | null
+          trainer_note?: string | null
           user_id: string
         }
         Update: {
@@ -370,6 +372,7 @@ export type Database = {
           source?: string | null
           status?: string
           tenant_id?: string | null
+          trainer_note?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1498,6 +1501,7 @@ export type Database = {
           line_user_id: string | null
           paid_this_month: boolean
           plan: string | null
+          review_prompted_at: string | null
           show_usage_period: boolean
           tenant_id: string | null
           training_goal: string | null
@@ -1519,6 +1523,7 @@ export type Database = {
           line_user_id?: string | null
           paid_this_month?: boolean
           plan?: string | null
+          review_prompted_at?: string | null
           show_usage_period?: boolean
           tenant_id?: string | null
           training_goal?: string | null
@@ -1540,6 +1545,7 @@ export type Database = {
           line_user_id?: string | null
           paid_this_month?: boolean
           plan?: string | null
+          review_prompted_at?: string | null
           show_usage_period?: boolean
           tenant_id?: string | null
           training_goal?: string | null
@@ -2418,13 +2424,16 @@ export type Database = {
       tenants: {
         Row: {
           address: string | null
+          booking_buffer_minutes: number
           booking_cutoff_hours: number | null
           booking_cutoff_type: string | null
           business_type: string
           created_at: string
           current_period_end: string | null
+          daily_summary_enabled: boolean
           email: string | null
           gamification_enabled: boolean | null
+          google_review_url: string | null
           gym_name: string
           gym_name_short: string | null
           gymboard_plan: string | null
@@ -2441,6 +2450,10 @@ export type Database = {
           primary_color: string | null
           same_day_cancel_penalty_enabled: boolean
           show_retention_alerts: boolean
+          show_stat_active_clients: boolean
+          show_stat_month_revenue: boolean
+          show_stat_month_sessions: boolean
+          show_stat_today_sessions: boolean
           slot_duration_minutes: number | null
           status: string | null
           stripe_customer_id: string | null
@@ -2454,13 +2467,16 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          booking_buffer_minutes?: number
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           business_type?: string
           created_at?: string
           current_period_end?: string | null
+          daily_summary_enabled?: boolean
           email?: string | null
           gamification_enabled?: boolean | null
+          google_review_url?: string | null
           gym_name: string
           gym_name_short?: string | null
           gymboard_plan?: string | null
@@ -2477,6 +2493,10 @@ export type Database = {
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_retention_alerts?: boolean
+          show_stat_active_clients?: boolean
+          show_stat_month_revenue?: boolean
+          show_stat_month_sessions?: boolean
+          show_stat_today_sessions?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
           stripe_customer_id?: string | null
@@ -2490,13 +2510,16 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          booking_buffer_minutes?: number
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           business_type?: string
           created_at?: string
           current_period_end?: string | null
+          daily_summary_enabled?: boolean
           email?: string | null
           gamification_enabled?: boolean | null
+          google_review_url?: string | null
           gym_name?: string
           gym_name_short?: string | null
           gymboard_plan?: string | null
@@ -2513,6 +2536,10 @@ export type Database = {
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_retention_alerts?: boolean
+          show_stat_active_clients?: boolean
+          show_stat_month_revenue?: boolean
+          show_stat_month_sessions?: boolean
+          show_stat_today_sessions?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
           stripe_customer_id?: string | null
@@ -2568,6 +2595,8 @@ export type Database = {
           booking_type: string
           cancel_token: string
           created_at: string
+          follow_up_note: string | null
+          follow_up_status: string
           google_event_id: string | null
           guest_contact: string
           guest_name: string
@@ -2580,6 +2609,8 @@ export type Database = {
           booking_type?: string
           cancel_token?: string
           created_at?: string
+          follow_up_note?: string | null
+          follow_up_status?: string
           google_event_id?: string | null
           guest_contact: string
           guest_name: string
@@ -2592,6 +2623,8 @@ export type Database = {
           booking_type?: string
           cancel_token?: string
           created_at?: string
+          follow_up_note?: string | null
+          follow_up_status?: string
           google_event_id?: string | null
           guest_contact?: string
           guest_name?: string
@@ -3508,11 +3541,13 @@ export type Database = {
         Args: { p_id: string }
         Returns: {
           address: string
+          booking_buffer_minutes: number
           gym_name: string
           gym_name_short: string
           id: string
           logo_url: string
           primary_color: string
+          slot_duration_minutes: number
           trial_info_body: string
           trial_info_title: string
         }[]

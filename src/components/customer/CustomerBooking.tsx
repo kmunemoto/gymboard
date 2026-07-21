@@ -74,6 +74,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const [rescheduleTarget, setRescheduleTarget] = useState<BookingWithTime | null>(null);
   // 当日予約の変更を「変更する」で即実行せず、一度警告表示に留めるための2段階確認フラグ
   const [rescheduleForfeitPending, setRescheduleForfeitPending] = useState(false);
+  // キャンセル待ちの登録/解除も、タップで即実行せず一度確認を挟む
+  // （満枠グリッドの見た目は通常の「満枠」のままにして見づらさを避けつつ、誤操作も防ぐ）
+  const [waitlistTarget, setWaitlistTarget] = useState<{ time: string; alreadyOn: boolean } | null>(null);
+  const [waitlistSaving, setWaitlistSaving] = useState(false);
 
   // Booked slots fetched via SECURITY DEFINER RPC — sees ALL bookings regardless of RLS
   const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean }[]>([]);
@@ -216,12 +220,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const slots = dateKey ? generateSlots() : [];
   const { isOnWaitlist, toggle: toggleWaitlist, refresh: refreshWaitlist } = useWaitlist(dateKey || null);
 
-  const handleWaitlistToggle = async (time: string) => {
-    if (!dateKey) return;
-    const result = await toggleWaitlist(dateKey, time);
+  const handleWaitlistConfirm = async () => {
+    if (!waitlistTarget || !dateKey) return;
+    setWaitlistSaving(true);
+    const result = await toggleWaitlist(dateKey, waitlistTarget.time);
+    setWaitlistSaving(false);
     if (result === true) toast.success(t("booking.waitlistAdded"));
     else if (result === false) toast.success(t("booking.waitlistRemoved"));
     else toast.error(t("common.errorGeneric"));
+    setWaitlistTarget(null);
   };
 
   // ============================================================
@@ -863,7 +870,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                             document.getElementById("booking-confirm-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
                           }, 100);
                         } else if (waitlistable) {
-                          handleWaitlistToggle(slot.time);
+                          setWaitlistTarget({ time: slot.time, alreadyOn: onWaitlist });
                         }
                       }}
                       className={`relative rounded-lg p-2 text-center text-xs font-semibold transition-all duration-200 min-h-[44px] ${
@@ -873,11 +880,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                             : "bg-card border border-border hover:border-accent hover:shadow-sm"
                           : viewOnlyOpen
                             ? "bg-accent/10 border border-accent/40 text-foreground cursor-default"
-                            : onWaitlist
-                              ? "bg-warning/15 text-warning border border-warning/40"
-                              : waitlistable
-                                ? "bg-card border border-border/60 text-muted-foreground hover:border-warning/50"
-                                : "bg-muted text-muted-foreground/40 cursor-not-allowed"
+                            : waitlistable
+                              ? "bg-muted text-muted-foreground/60 hover:bg-muted/80"
+                              : "bg-muted text-muted-foreground/40 cursor-not-allowed"
                       }`}
                     >
                       <span>{slot.time}</span>
@@ -885,10 +890,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         <span className="block text-[9px] font-medium">
                           {viewOnlyOpen
                             ? <span className="text-accent">{t("booking.slotOpen")}</span>
-                            : waitlistable
-                              ? (onWaitlist ? t("booking.waitlistJoined") : t("booking.waitlistJoin"))
-                              : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
+                            : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
                         </span>
+                      )}
+                      {/* キャンセル待ち登録済みは満枠の見た目のまま、隅の小さいドットだけで示す
+                          （文字ラベルを変えると満枠だらけのグリッドが「キャンセル待ち」で埋まって見づらくなるため） */}
+                      {onWaitlist && (
+                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
                       )}
                       {selectedSlot === slot.id && (
                         <Check className="w-2.5 h-2.5 absolute top-0.5 right-0.5" />
@@ -1041,6 +1049,45 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 disabled={submitting}
               >
                 {submitting ? t("booking.rescheduling") : t("booking.rescheduleForfeitConfirmBtn")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {waitlistTarget && (
+        /* キャンセル待ちの登録/解除の確認。暗幕は cancelTarget 等と同じ固定の黒系。 */
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background glass p-6 shadow-lg">
+            <div className="space-y-2 text-center sm:text-left">
+              <h3 className="text-lg font-semibold">
+                {waitlistTarget.alreadyOn ? t("booking.waitlistLeaveTitle") : t("booking.waitlistJoinTitle")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {waitlistTarget.alreadyOn
+                  ? t("booking.waitlistLeaveDesc", { time: waitlistTarget.time })
+                  : t("booking.waitlistJoinDesc", { time: waitlistTarget.time })}
+              </p>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setWaitlistTarget(null)}
+                disabled={waitlistSaving}
+              >
+                {t("booking.back")}
+              </Button>
+              <Button
+                onClick={handleWaitlistConfirm}
+                disabled={waitlistSaving}
+                variant={waitlistTarget.alreadyOn ? "outline" : "accent"}
+                className={waitlistTarget.alreadyOn ? "text-destructive border-destructive/30 hover:bg-destructive/10" : undefined}
+              >
+                {waitlistSaving
+                  ? t("common.saving")
+                  : waitlistTarget.alreadyOn
+                    ? t("booking.waitlistLeaveConfirmBtn")
+                    : t("booking.waitlistJoinConfirmBtn")}
               </Button>
             </div>
           </div>

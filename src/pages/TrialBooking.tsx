@@ -34,6 +34,8 @@ interface PublicTenant {
   trial_info_body: string | null;
   /** 予約と予約の間に必ず空ける時間（分）。null/未設定は既定15分。 */
   booking_buffer_minutes: number | null;
+  /** 1セッションの長さ（分）。null/未設定は既定60分。 */
+  slot_duration_minutes: number | null;
 }
 
 // この体験予約サイト(app.kyoto-salute.com)は Salute御所南 専用。
@@ -119,6 +121,8 @@ const TrialBooking = () => {
 
   // ジムごとに変更可能（tenants.booking_buffer_minutes）。未ロード時のみ既定15分。
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
+  // ジムごとに変更可能（tenants.slot_duration_minutes）。未ロード時のみ既定60分。
+  const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
 
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (s: string) => {
@@ -126,7 +130,7 @@ const TrialBooking = () => {
       return h * 60 + m;
     };
     const newMin = timeToMin(time);
-    const newEnd = newMin + 60 + bookingBufferMinutes;
+    const newEnd = newMin + sessionMinutes + bookingBufferMinutes;
     return existingBookings.some((b) => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
@@ -219,7 +223,7 @@ const TrialBooking = () => {
     }
 
     const [h, m] = slot.time.split(":").map(Number);
-    const endMin = h * 60 + m + 60;
+    const endMin = h * 60 + m + sessionMinutes;
     const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
     setCompletedInfo({
@@ -520,11 +524,11 @@ const TrialBooking = () => {
                         const time = slots.find((s) => s.id === selectedSlot)?.time;
                         if (!time) return "";
                         const [hh, mm] = time.split(":").map(Number);
-                        const end = hh * 60 + mm + 60;
+                        const end = hh * 60 + mm + sessionMinutes;
                         return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
                       })()}
                     </span>
-                    {t("trialBooking.minutesParen")}
+                    {t("booking.slotMinutes", { count: sessionMinutes })}
                   </p>
                   <Button
                     variant="accent"

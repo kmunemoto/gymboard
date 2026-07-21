@@ -134,6 +134,14 @@ Deno.serve(async (req) => {
       return json({ skipped: true, reason: "no google calendar linked" });
     }
 
+    // カレンダーイベントの長さ（分）。ジムごとに変更可能（tenants.slot_duration_minutes）。
+    const { data: tenantRow } = await supabase
+      .from("tenants")
+      .select("slot_duration_minutes")
+      .eq("id", tenantId)
+      .maybeSingle();
+    const sessionMinutes = (tenantRow as any)?.slot_duration_minutes ?? 60;
+
     // ---- アクセストークン（期限切れならリフレッシュ）----
     let accessToken = tokenRow.access_token;
     if (new Date(tokenRow.expires_at) <= new Date()) {
@@ -161,7 +169,7 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       const startDt = new Date(booking_date);
-      const endDt = new Date(startDt.getTime() + 60 * 60 * 1000);
+      const endDt = new Date(startDt.getTime() + sessionMinutes * 60 * 1000);
 
       const event = {
         summary: `🏋️ ${client_name || "顧客"} - ${booking_type || "トレーニング"}`,
@@ -260,7 +268,7 @@ Deno.serve(async (req) => {
         }
 
         const startDt = new Date(item.booking_date);
-        const endDt = new Date(startDt.getTime() + 60 * 60 * 1000);
+        const endDt = new Date(startDt.getTime() + sessionMinutes * 60 * 1000);
         const cName = item.source === "trial_bookings"
           ? (item as any).guest_name || "体験ゲスト"
           : nameMap[item.user_id!] || "顧客";

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toJSTDate, formatJST } from "@/lib/timezone";
@@ -59,13 +60,14 @@ export interface BookingWithTime {
   isBlocked?: boolean;
 }
 
-function parseBooking(row: BookingRow): BookingWithTime {
+// sessionMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
+function parseBooking(row: BookingRow, sessionMinutes: number = 60): BookingWithTime {
   // booking_date is a UTC ISO; render it in JST wall-clock.
   const dt = toJSTDate(row.booking_date);
   const h = dt.getHours();
   const m = dt.getMinutes();
   const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  const endMin = h * 60 + m + 60;
+  const endMin = h * 60 + m + sessionMinutes;
   const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
   const date = format(dt, "yyyy-MM-dd");
 
@@ -83,6 +85,8 @@ function parseBooking(row: BookingRow): BookingWithTime {
 
 export const useMyBookings = () => {
   const { user } = useAuth();
+  const { tenant } = useTenant();
+  const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   const [bookings, setBookings] = useState<BookingWithTime[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,10 +110,10 @@ export const useMyBookings = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      setBookings(data.map((r) => parseBooking({ ...r, display_name: profile?.display_name || "自分" })));
+      setBookings(data.map((r) => parseBooking({ ...r, display_name: profile?.display_name || "自分" }, sessionMinutes)));
     }
     setLoading(false);
-  }, [user]);
+  }, [user, sessionMinutes]);
 
   useEffect(() => {
     void fetchBookings();
@@ -136,6 +140,8 @@ export const useMyBookings = () => {
 };
 
 export const useAllBookings = () => {
+  const { tenant } = useTenant();
+  const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   const [bookings, setBookings] = useState<BookingWithTime[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -170,7 +176,7 @@ export const useAllBookings = () => {
     }
 
     const parsed: BookingWithTime[] = allRows.map((r) =>
-      parseBooking({ ...r, display_name: nameMap[r.user_id] || "不明" })
+      parseBooking({ ...r, display_name: nameMap[r.user_id] || "不明" }, sessionMinutes)
     );
 
     // Merge trial bookings as BookingWithTime entries
@@ -180,7 +186,7 @@ export const useAllBookings = () => {
       const h = dt.getHours();
       const m = dt.getMinutes();
       const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      const endMin = h * 60 + m + 60;
+      const endMin = h * 60 + m + sessionMinutes;
       const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
       parsed.push({
         id: t.id,
@@ -223,7 +229,7 @@ export const useAllBookings = () => {
     parsed.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     setBookings(parsed);
     setLoading(false);
-  }, []);
+  }, [sessionMinutes]);
 
   const removeBooking = useCallback((bookingId: string) => {
     setBookings((current) => current.filter((booking) => booking.id !== bookingId));
@@ -263,8 +269,10 @@ export const checkSlotBlocked = (
   date: string,
   startTime: string,
   endTimeOverride?: string,
-  // ジムごとに変更可能（tenants.booking_buffer_minutes）。呼び出し元が渡さない場合のみ既定15分。
+  // ジムごとに変更可能（tenants.booking_buffer_minutes / tenants.slot_duration_minutes）。
+  // 呼び出し元が渡さない場合のみ既定値（15分バッファ・60分セッション）を使う。
   bufferMinutes: number = 15,
+  sessionMinutes: number = 60,
 ): boolean => {
   const BUFFER_MINUTES = bufferMinutes;
   const timeToMin = (t: string) => {
@@ -273,10 +281,10 @@ export const checkSlotBlocked = (
   };
 
   const newMin = timeToMin(startTime);
-  // Default booking footprint is 60 minutes plus the gym's configured buffer.
+  // Default booking footprint is the gym's configured session length plus buffer.
   // This symmetric window prevents bookings from being placed too close
   // before or after an existing booking.
-  const newEnd = endTimeOverride ? timeToMin(endTimeOverride) : newMin + 60 + BUFFER_MINUTES;
+  const newEnd = endTimeOverride ? timeToMin(endTimeOverride) : newMin + sessionMinutes + BUFFER_MINUTES;
 
   return bookings.some((b) => {
     if (b.date !== date || b.status === "キャンセル済み") return false;
@@ -822,7 +830,7 @@ async function sendCancelLineNotification(
 }
 
 async function sendCancelEmailNotification(
-  booking: { id: string; user_id: string; booking_date: string; booking_type: string },
+  booking: { id: string; user_id: string; booking_date: string; booking_type: string; tenant_id?: string | null },
   cancelledByTrainer: boolean,
   forfeit: boolean,
 ) {
@@ -831,7 +839,17 @@ async function sendCancelEmailNotification(
   const h = dt.getHours();
   const m = dt.getMinutes();
   const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  const endMin = h * 60 + m + 60;
+  // ジムごとに変更可能（tenants.slot_duration_minutes）。取得できない場合のみ既定60分。
+  let sessionMinutes = 60;
+  if (booking.tenant_id) {
+    const { data: tenantRow } = await supabase
+      .from("tenants")
+      .select("slot_duration_minutes")
+      .eq("id", booking.tenant_id)
+      .maybeSingle();
+    if (tenantRow?.slot_duration_minutes) sessionMinutes = tenantRow.slot_duration_minutes;
+  }
+  const endMin = h * 60 + m + sessionMinutes;
   const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
   const bookingTime = `${startTime}〜${endTime}`;
 

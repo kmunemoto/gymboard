@@ -1,16 +1,18 @@
 name: Deploy Edge Functions
 
-# GitHub main への push で、Googleカレンダー連携の Edge Function を Supabase に自動デプロイする。
-# （Lovable の手動デプロイを待たなくてよくなる）
+# GitHub main への push で、ブラウザ/リダイレクトから叩かれる（JWT不要な）Edge Function を
+# Supabase に自動デプロイする。（Lovable の手動デプロイを待たなくてよくなる）
 #
 # 前提: GitHub リポジトリの Settings → Secrets and variables → Actions に
 #       SUPABASE_ACCESS_TOKEN を追加しておくこと（Supabase の Account → Access Tokens で発行）。
 #
-# 対象は Google カレンダー関連の3関数に限定している。
+# 対象は「config.toml に verify_jwt=false を明記済みで、リダイレクト/通知の着地に関わる関数」。
 # 他の関数を増やす場合は、その関数の verify_jwt を supabase/config.toml に明記してから
 # 下の paths と deploy コマンドに追加すること。
 # （config.toml に無い関数を deploy すると verify_jwt がデフォルトの true に戻り、
-#   line-login-callback のような「JWT不要で叩かれる関数」が壊れるため。）
+#   line-login-callback のような「JWT不要で叩かれる関数」が壊れるため。
+#   このため send-transactional-email 等 config.toml 未記載の関数はここに足さず、
+#   Lovable の Publish に任せる。）
 
 on:
   push:
@@ -19,6 +21,8 @@ on:
       - "supabase/functions/google-calendar-auth-url/**"
       - "supabase/functions/google-calendar-callback/**"
       - "supabase/functions/google-calendar-sync/**"
+      - "supabase/functions/line-login-callback/**"
+      - "supabase/functions/send-push-notification/**"
       - "supabase/config.toml"
   workflow_dispatch:
 
@@ -48,9 +52,11 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy Google Calendar functions
+      - name: Deploy redirect/notification functions
         if: steps.guard.outputs.has_token == 'true'
         run: |
           supabase functions deploy google-calendar-auth-url --project-ref "$PROJECT_REF"
           supabase functions deploy google-calendar-callback --project-ref "$PROJECT_REF"
           supabase functions deploy google-calendar-sync --project-ref "$PROJECT_REF"
+          supabase functions deploy line-login-callback --project-ref "$PROJECT_REF"
+          supabase functions deploy send-push-notification --project-ref "$PROJECT_REF"

@@ -27,8 +27,10 @@ describe("gymboardPlans", () => {
     expect(pro.maxTrainers).toBeNull();
   });
 
-  it("uses live environment only for production host", () => {
+  it("uses live environment only for production hosts", () => {
     expect(detectStripeEnvironment("gymboard.lovable.app")).toBe("live");
+    // 本番カスタムドメインも live（以前は sandbox に落ちて実課金が通らなかった）
+    expect(detectStripeEnvironment("app.kyoto-salute.com")).toBe("live");
     expect(detectStripeEnvironment("id-preview--69ac2641-45d8-44e0-b60d-4e002a4f9c1c.lovable.app")).toBe("sandbox");
     expect(detectStripeEnvironment("localhost")).toBe("sandbox");
   });

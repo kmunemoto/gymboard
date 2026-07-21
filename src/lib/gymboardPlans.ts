@@ -80,13 +80,19 @@ const STRIPE_ENV_STORAGE_KEY = "gymboard_stripe_env_override";
  * Priority:
  *   1. ?stripe_env=sandbox|live URL query (also persisted to localStorage)
  *   2. localStorage override (set via the query param above)
- *   3. Hostname: gymboard.lovable.app -> live, everything else -> sandbox
+ *   3. Hostname: 本番ドメイン(gymboard.lovable.app / app.kyoto-salute.com) -> live、
+ *      それ以外(プレビュー/localhost) -> sandbox
+ *
+ * app.kyoto-salute.com はこのアプリの本番カスタムドメイン。ここから課金導線に入ると
+ * 以前は sandbox 扱いになり実課金が通らなかったため、live ホストに追加した(2026-07)。
  *
  * To force sandbox on the production domain for testing, visit:
- *   https://gymboard.lovable.app/?stripe_env=sandbox
+ *   https://app.kyoto-salute.com/?stripe_env=sandbox
  * To clear the override:
- *   https://gymboard.lovable.app/?stripe_env=auto
+ *   https://app.kyoto-salute.com/?stripe_env=auto
  */
+// 本番として live 課金を使うホスト。プレビュー(id-preview--*.lovable.app)や localhost は含めない。
+const STRIPE_LIVE_HOSTS = new Set(["gymboard.lovable.app", "app.kyoto-salute.com"]);
 export function detectStripeEnvironment(hostname: string): "sandbox" | "live" {
   if (typeof window !== "undefined") {
     try {
@@ -103,7 +109,7 @@ export function detectStripeEnvironment(hostname: string): "sandbox" | "live" {
       if (stored === "sandbox" || stored === "live") return stored;
     } catch { /* ignore storage errors */ }
   }
-  if (hostname === "gymboard.lovable.app") return "live";
+  if (STRIPE_LIVE_HOSTS.has(hostname)) return "live";
   return "sandbox";
 }
 

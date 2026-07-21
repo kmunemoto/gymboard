@@ -38,6 +38,30 @@ capacitor://localhost の不具合を直したつもりが、別の壊れたド�
 （DNS解決できるか）を確認すること。特にOAuthリダイレクト先のように失敗が分かりにくい
 （サーバー側の連携自体は成立するが、ブラウザの着地画面だけ壊れる）箇所は要注意。
 
+**続き（2026-07、本番ドメイン整合の追い込み）**: 上記調査で、本番Webオリジンが
+`app.kyoto-salute.com`（#155で寄せた）と `gymboard.lovable.app`（プレビュー用サブドメイン）の
+2本に割れていたため、後者の実運用箇所も本番ドメインへ寄せた:
+- `auth-email-hook` の `APP_URL`（パスワード再設定/確認メールのリンク先）→ `app.kyoto-salute.com`。
+  **前提**: このドメインが `/reset-password`・`/auth/callback` を配信し、Supabase Auth の
+  Redirect URLs に `https://app.kyoto-salute.com/auth/callback` が登録済みであること。
+- `trial-book` の トレーナー通知 `dashboardUrl` → `app.kyoto-salute.com`（通常予約の
+  `bookingNotification=getWebOrigin()` と経路差で食い違わないよう統一）。
+- Stripe本番判定 `gymboardPlans.detectStripeEnvironment`: `gymboard.lovable.app` のみ live
+  だったのを `STRIPE_LIVE_HOSTS`（+`app.kyoto-salute.com`）に拡張。カスタムドメインから
+  課金しても sandbox に落ちない。
+
+## Edge Function の自動デプロイ（デプロイ漏れの根治）
+`.github/workflows/deploy-functions.yml` は main への push で Edge Function を `supabase
+functions deploy` する。**GitHubマージだけでは Lovable は Edge Function を再デプロイしない**
+ため、リダイレクト/通知の着地に関わる JWT不要関数はここで自動デプロイする:
+`google-calendar-*` に加え `line-login-callback` / `send-push-notification` を追加（2026-07）。
+- 前提: GitHub Secrets に `SUPABASE_ACCESS_TOKEN`（未設定なら無言スキップ＝緑）。
+- **必須ルール**: ここに関数を足す前に、その関数の `verify_jwt` を `supabase/config.toml` に
+  明記すること。未記載の関数を `deploy` すると `verify_jwt` が既定 `true` に戻り、
+  `line-login-callback` のような JWT不要関数が壊れる。そのため `line-login-callback` を
+  config.toml に追記した。**メールテンプレを束ねる `send-transactional-email` は config.toml
+  未記載のためここには足さず、Lovable の Publish に任せる**（verify_jwt を確定できないため）。
+
 ```ts
 import { getWebOrigin } from "@/lib/nativeBridge";
 const link = `${getWebOrigin()}/join/${code}`;

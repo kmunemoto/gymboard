@@ -899,6 +899,9 @@
     "unreadCount": "{{count}}条",
     "revenueSection": "月度营收",
     "revenueLabel": "营收",
+    "utilizationSection": "使用率（星期×时段）",
+    "utilizationEmpty": "过去28天内暂无预约数据",
+    "utilizationHint": "过去28天中，该时段有预约的天数占比（%）。颜色越深表示越经常被预约。",
     "monthLabel": "{{month}}月",
     "monthMan": "万"
   },

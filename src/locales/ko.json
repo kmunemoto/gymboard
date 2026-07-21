@@ -899,6 +899,9 @@
     "unreadCount": "{{count}}건",
     "revenueSection": "월별 매출",
     "revenueLabel": "매출",
+    "utilizationSection": "가동률（요일×시간대）",
+    "utilizationEmpty": "지난 28일간의 예약 데이터가 아직 없습니다",
+    "utilizationHint": "지난 28일 중 그 시간대에 예약이 있었던 날의 비율（%）입니다. 색이 진할수록 자주 채워집니다.",
     "monthLabel": "{{month}}월",
     "monthMan": "만"
   },

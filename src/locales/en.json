@@ -899,6 +899,9 @@
     "unreadCount": "{{count}} new",
     "revenueSection": "Monthly Revenue",
     "revenueLabel": "Revenue",
+    "utilizationSection": "Utilization (day × hour)",
+    "utilizationEmpty": "No booking data in the past 28 days yet",
+    "utilizationHint": "Share (%) of days in the past 28 days that slot had a booking. Darker = more consistently booked.",
     "monthLabel": "{{month}}",
     "monthMan": "k"
   },

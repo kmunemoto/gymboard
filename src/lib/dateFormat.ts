@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { ja, enUS, ko, zhCN, zhTW } from "date-fns/locale";
 import type { Locale } from "date-fns";
 import i18n from "@/lib/i18n";
@@ -48,4 +48,13 @@ const resolveLang = (): Lang => {
 export const formatDate = (date: Date, variant: Variant): string => {
   const lang = resolveLang();
   return format(date, PATTERNS[variant][lang], { locale: LOCALES[lang] });
+};
+
+// 2024-01-07 は日曜日（固定の参照日）。曜日名だけが欲しい場合に実在の日付を作らず使う。
+const REFERENCE_SUNDAY = new Date(2024, 0, 7);
+
+/** 曜日インデックス（0=日〜6=土、Date.getDay()と同じ）から、現在の表示言語の短い曜日名を返す。 */
+export const formatWeekdayShort = (dayIndex: number): string => {
+  const lang = resolveLang();
+  return format(addDays(REFERENCE_SUNDAY, dayIndex), "EEE", { locale: LOCALES[lang] });
 };

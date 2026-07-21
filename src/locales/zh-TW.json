@@ -1972,6 +1972,7 @@
     "counseling": "諮詢",
     "announcements": "公告管理",
     "notifications": "通知設定",
+    "trialFollowUps": "體驗跟進",
     "gymSettings": "健身房設定",
     "mDashboard": "首頁",
     "mClients": "客戶",
@@ -2117,5 +2118,27 @@
     "soonToday": "今天續約",
     "remaining": "・本期剩餘 {{count}} 次",
     "unlimited": "・無限次"
+  },
+  "trialFollowUp": {
+    "title": "體驗跟進管理",
+    "pendingCount": "待跟進",
+    "conversionRate": "體驗→入會轉換率",
+    "pendingSection": "待跟進",
+    "allSection": "全部體驗預約",
+    "empty": "尚無體驗預約",
+    "addNote": "新增備註",
+    "notePlaceholder": "接待情況或下次跟進計畫等",
+    "updated": "已更新跟進狀態",
+    "updateFailed": "更新跟進狀態失敗",
+    "noteSaved": "已儲存備註",
+    "noteSaveFailed": "儲存備註失敗",
+    "dashboardBanner": "有{{count}}筆體驗預約待跟進",
+    "dashboardBannerHint": "點擊記錄跟進狀態",
+    "status": {
+      "pending": "未處理",
+      "visited": "已到店",
+      "joined": "已入會",
+      "declined": "未成交"
+    }
   }
 }

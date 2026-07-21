@@ -1972,6 +1972,7 @@
     "counseling": "咨询",
     "announcements": "公告管理",
     "notifications": "通知设置",
+    "trialFollowUps": "体验跟进",
     "gymSettings": "健身房设置",
     "mDashboard": "首页",
     "mClients": "客户",
@@ -2117,5 +2118,27 @@
     "soonToday": "今天续费",
     "remaining": "・本期剩余 {{count}} 次",
     "unlimited": "・无限次"
+  },
+  "trialFollowUp": {
+    "title": "体验跟进管理",
+    "pendingCount": "待跟进",
+    "conversionRate": "体验→入会转化率",
+    "pendingSection": "待跟进",
+    "allSection": "全部体验预约",
+    "empty": "暂无体验预约",
+    "addNote": "添加备注",
+    "notePlaceholder": "接待情况或下次跟进计划等",
+    "updated": "已更新跟进状态",
+    "updateFailed": "更新跟进状态失败",
+    "noteSaved": "已保存备注",
+    "noteSaveFailed": "保存备注失败",
+    "dashboardBanner": "有{{count}}条体验预约待跟进",
+    "dashboardBannerHint": "点击记录跟进状态",
+    "status": {
+      "pending": "未处理",
+      "visited": "已到店",
+      "joined": "已入会",
+      "declined": "未成交"
+    }
   }
 }

@@ -16,6 +16,7 @@ import TrainerGymSettings from "./TrainerGymSettings";
 import TrainerAnnouncementManager from "./TrainerAnnouncementManager";
 import TrainerNotificationSettings from "./TrainerNotificationSettings";
 import CounselingResponseList from "./CounselingResponseList";
+import TrainerTrialFollowUps from "./TrainerTrialFollowUps";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import GymLogo from "@/components/GymLogo";
@@ -26,7 +27,7 @@ import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 
-export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "gym-settings";
+export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "trial-followups" | "gym-settings";
 
 const TrainerView = () => {
   const { t } = useTranslation();
@@ -56,6 +57,12 @@ const TrainerView = () => {
     setMessageClientId(clientId);
     setSelectedClientId(null);
     setTab("messages");
+  };
+
+  // ダッシュボードの「体験フォロー待ち」バナーから体験フォロー管理タブへ移動
+  const handleNavigateFollowUps = () => {
+    setSelectedClientId(null);
+    setTab("trial-followups");
   };
 
   const handleBackToList = () => {
@@ -152,7 +159,7 @@ const TrainerView = () => {
               intrinsic 幅に引っ張られて main が画面幅を超え、右端要素が見切れる（Android で顕著）。 */}
           <main className="flex-1 min-w-0 ml-0 md:ml-60 p-3 sm:p-4 md:p-8 max-w-6xl" key={`${tab}-${selectedClientId}`}>
             <LazyBoundary>
-              {tab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} onMessageClient={handleMessageClient} />}
+              {tab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} onMessageClient={handleMessageClient} onNavigateFollowUps={handleNavigateFollowUps} />}
               {tab === "clients" && !selectedClientId && <TrainerClientList onSelectClient={handleSelectClient} />}
               {tab === "clients" && selectedClientId && <TrainerClientDetail clientId={selectedClientId} onBack={handleBackToList} />}
               {tab === "schedule" && <TrainerSchedule />}
@@ -161,6 +168,7 @@ const TrainerView = () => {
               {tab === "counseling" && <CounselingResponseList />}
               {tab === "announcements" && <TrainerAnnouncementManager />}
               {tab === "notifications" && <TrainerNotificationSettings />}
+              {tab === "trial-followups" && <TrainerTrialFollowUps />}
               {tab === "gym-settings" && <TrainerGymSettings onSignOut={signOut} />}
             </LazyBoundary>
           </main>

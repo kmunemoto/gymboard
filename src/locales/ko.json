@@ -1972,6 +1972,7 @@
     "counseling": "상담",
     "announcements": "공지 관리",
     "notifications": "알림 설정",
+    "trialFollowUps": "체험 팔로우업",
     "gymSettings": "짐 설정",
     "mDashboard": "홈",
     "mClients": "고객",
@@ -2117,5 +2118,27 @@
     "soonToday": "오늘 갱신",
     "remaining": "・이번 주기 잔여 {{count}}회",
     "unlimited": "・무제한"
+  },
+  "trialFollowUp": {
+    "title": "체험 팔로우업 관리",
+    "pendingCount": "팔로우업 대기",
+    "conversionRate": "체험→등록 전환율",
+    "pendingSection": "팔로우업 대기",
+    "allSection": "전체 체험 예약",
+    "empty": "아직 체험 예약이 없습니다",
+    "addNote": "메모 추가",
+    "notePlaceholder": "응대 내용이나 다음 팔로우업 계획 등",
+    "updated": "팔로우업 상태를 업데이트했습니다",
+    "updateFailed": "팔로우업 상태 업데이트에 실패했습니다",
+    "noteSaved": "메모를 저장했습니다",
+    "noteSaveFailed": "메모 저장에 실패했습니다",
+    "dashboardBanner": "팔로우업 대기 중인 체험이 {{count}}건 있습니다",
+    "dashboardBannerHint": "탭하여 팔로우업 상태를 기록하세요",
+    "status": {
+      "pending": "미대응",
+      "visited": "방문함",
+      "joined": "등록함",
+      "declined": "보류"
+    }
   }
 }

@@ -1972,6 +1972,7 @@
     "counseling": "Counseling",
     "announcements": "Announcements",
     "notifications": "Notifications",
+    "trialFollowUps": "Trial Follow-ups",
     "gymSettings": "Gym Settings",
     "mDashboard": "Home",
     "mClients": "Clients",
@@ -2117,5 +2118,27 @@
     "soonToday": "Renews today",
     "remaining": " · {{count}} left this cycle",
     "unlimited": " · Unlimited"
+  },
+  "trialFollowUp": {
+    "title": "Trial Follow-up Management",
+    "pendingCount": "Awaiting follow-up",
+    "conversionRate": "Trial → sign-up rate",
+    "pendingSection": "Awaiting follow-up",
+    "allSection": "All trial bookings",
+    "empty": "No trial bookings yet",
+    "addNote": "Add note",
+    "notePlaceholder": "Notes on the visit or next follow-up plan",
+    "updated": "Follow-up status updated",
+    "updateFailed": "Failed to update follow-up status",
+    "noteSaved": "Note saved",
+    "noteSaveFailed": "Failed to save note",
+    "dashboardBanner": "{{count}} trial(s) awaiting follow-up",
+    "dashboardBannerHint": "Tap to record follow-up status",
+    "status": {
+      "pending": "Not yet followed up",
+      "visited": "Visited",
+      "joined": "Signed up",
+      "declined": "Did not sign up"
+    }
   }
 }

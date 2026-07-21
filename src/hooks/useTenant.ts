@@ -22,6 +22,8 @@ export interface Tenant {
   same_day_cancel_penalty_enabled: boolean;
   /** トレーナーのホーム画面に「フォローが必要な顧客」を表示するか。既定true */
   show_retention_alerts: boolean;
+  /** 毎朝、その日の予約一覧をオーナー/トレーナーへプッシュ通知するか。既定true */
+  daily_summary_enabled: boolean;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
   /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */
@@ -94,10 +96,11 @@ export function useTenant() {
           .maybeSingle();
 
       // 追加カラムの多い順にフォールバックする（全部→trial_info込み→same_dayのみ→基本のみ）。
-      // booking_buffer_minutes は最後に足した新カラム。未適用環境では先頭が失敗し、
-      // 次の変種に落ちて booking_buffer_minutes 無し（=既定15分にマッピング側でフォールバック）
+      // daily_summary_enabled は最後に足した新カラム。未適用環境では先頭が失敗し、
+      // 次の変種に落ちて daily_summary_enabled 無し（=既定ONにマッピング側でフォールバック）
       // で正常動作する。
       const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url`,
@@ -120,6 +123,8 @@ export function useTenant() {
           same_day_cancel_penalty_enabled: raw.same_day_cancel_penalty_enabled === true,
           // 既定は表示（列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
           show_retention_alerts: raw.show_retention_alerts !== false,
+          // 既定はON（列が無い/未適用環境でも true）。明示的に false のときだけ送らない。
+          daily_summary_enabled: raw.daily_summary_enabled !== false,
           // 列が無い/未適用環境では既定15分（従来どおりの60分+15分=75分フットプリント）。
           booking_buffer_minutes: (raw.booking_buffer_minutes as number | null) ?? 15,
           line_url: (raw.line_url as string | null) ?? null,

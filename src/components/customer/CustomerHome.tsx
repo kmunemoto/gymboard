@@ -288,6 +288,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         tenantPlans={tenantPlans}
         bookings={bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
         graceEnabled={profile?.grace_enabled}
+        showUsagePeriod={profile?.show_usage_period}
       />
 
       {/* 2.6 3ヶ月目標（棚卸し目標）: 設定しているお客様にのみ表示 */}

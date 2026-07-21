@@ -42,6 +42,15 @@ const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
 // 予約と予約の間に必ず空ける時間（分）。15分刻み。
 const BUSINESS_BUFFER_OPTIONS = [0, 15, 30, 45, 60];
 
+// ダッシュボード上部の統計カード表示設定。labelKey はトグルの見出し文言のキー。
+const DASHBOARD_STAT_TOGGLES: { column: "show_stat_today_sessions" | "show_stat_active_clients" | "show_stat_month_sessions" | "show_stat_month_revenue"; labelKey: string }[] = [
+  { column: "show_stat_today_sessions", labelKey: "dashboard.statTodaySessions" },
+  { column: "show_stat_active_clients", labelKey: "dashboard.statActiveClients" },
+  { column: "show_stat_month_sessions", labelKey: "dashboard.statMonthSessions" },
+  { column: "show_stat_month_revenue", labelKey: "dashboard.statMonthRevenue" },
+];
+type DashboardStatColumn = (typeof DASHBOARD_STAT_TOGGLES)[number]["column"];
+
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const { t } = useTranslation();
   const { tenant, refetch: refetchTenant } = useTenant();
@@ -54,6 +63,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [savingSameDayPenalty, setSavingSameDayPenalty] = useState(false);
   const [savingShowRetention, setSavingShowRetention] = useState(false);
   const [savingDailySummary, setSavingDailySummary] = useState(false);
+  // ダッシュボード上部の統計カード表示設定。4項目とも同じ形の更新なので、
+  // 保存中フラグはどのカラムを保存中かで共有する。
+  const [savingStatKey, setSavingStatKey] = useState<string | null>(null);
   // 体験予約ページの案内カード（見出し＋説明文）のジム別カスタム文言。空欄=既定文言。
   const [trialInfoTitle, setTrialInfoTitle] = useState("");
   const [trialInfoBody, setTrialInfoBody] = useState("");
@@ -158,6 +170,21 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingShowRetention(false);
+  };
+
+  const handleToggleStatVisibility = async (column: DashboardStatColumn, checked: boolean) => {
+    if (!tenant) return;
+    setSavingStatKey(column);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ [column]: checked } as any)
+      .eq("id", tenant.id);
+    if (error) toast.error(t("settings.trainer.statVisibilitySaveFailed"));
+    else {
+      toast.success(t("settings.trainer.statVisibilityUpdated"));
+      refetchTenant();
+    }
+    setSavingStatKey(null);
   };
 
   const handleToggleDailySummary = async (checked: boolean) => {
@@ -655,6 +682,22 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 onCheckedChange={handleToggleShowRetention}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.statVisibilityDesc")}</p>
+            {DASHBOARD_STAT_TOGGLES.map(({ column, labelKey }) => (
+              <div key={column} className="flex items-center justify-between gap-3">
+                <h4 className="font-bold text-sm">{t(labelKey)}</h4>
+                <Switch
+                  checked={tenant?.[column] !== false}
+                  disabled={savingStatKey === column || !tenant}
+                  onCheckedChange={(checked) => handleToggleStatVisibility(column, checked)}
+                />
+              </div>
+            ))}
           </CardContent>
         </Card>
       </section>

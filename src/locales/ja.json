@@ -899,6 +899,9 @@
     "unreadCount": "{{count}}件",
     "revenueSection": "月別売上",
     "revenueLabel": "売上",
+    "utilizationSection": "稼働率（曜日×時間帯）",
+    "utilizationEmpty": "過去28日間の予約データがまだありません",
+    "utilizationHint": "過去28日間で、その時間帯に予約が入っていた日の割合（%）。色が濃いほどよく埋まっています。",
     "monthLabel": "{{month}}月",
     "monthMan": "万"
   },

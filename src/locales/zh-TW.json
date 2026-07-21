@@ -899,6 +899,9 @@
     "unreadCount": "{{count}}則",
     "revenueSection": "月度營收",
     "revenueLabel": "營收",
+    "utilizationSection": "使用率（星期×時段）",
+    "utilizationEmpty": "過去28天內尚無預約資料",
+    "utilizationHint": "過去28天中，該時段有預約的天數佔比（%）。顏色越深表示越經常被預約。",
     "monthLabel": "{{month}}月",
     "monthMan": "萬"
   },

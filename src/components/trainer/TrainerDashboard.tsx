@@ -9,6 +9,7 @@ import { useAllBookings, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { formatJST, getJSTNow } from "@/lib/timezone";
 import { addDays, startOfDay } from "date-fns";
 import CounselingResponseList from "./CounselingResponseList";
+import TrainerUtilizationHeatmap from "./TrainerUtilizationHeatmap";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
@@ -519,6 +520,9 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
             </CardContent>
           </Card>
         </section>
+
+        {/* 稼働率ヒートマップ（曜日×時間帯） */}
+        <TrainerUtilizationHeatmap />
 
       </div>
     </div>

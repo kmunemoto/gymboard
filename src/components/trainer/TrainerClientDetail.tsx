@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { MONTHLY_REPORT_ENABLED } from "@/lib/featureFlags";
-import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target, Timer } from "lucide-react";
+import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target, Timer, StickyNote } from "lucide-react";
 import { exerciseCategories } from "@/lib/dummyData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [loadingMeals, setLoadingMeals] = useState(true);
   const [clientBookings2, setClientBookings2] = useState<any[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
+  // セッションメモ（カルテ）。予約1件ごとの自由記入メモ（bookings.trainer_note）。
+  const [editingNoteBookingId, setEditingNoteBookingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [editingRecordIds, setEditingRecordIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRecord | null>(null);
@@ -248,6 +252,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             endTime,
             status: row.status,
             booking_type: row.booking_type,
+            trainer_note: (row as any).trainer_note ?? null,
           };
         }));
       }
@@ -255,6 +260,24 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     };
     fetchBookings();
   }, [clientId, sessionMinutes]);
+
+  const handleSaveNote = async (bookingId: string) => {
+    setSavingNote(true);
+    const note = noteDraft.trim();
+    const { error } = await supabase
+      .from("bookings")
+      .update({ trainer_note: note || null } as any)
+      .eq("id", bookingId);
+    setSavingNote(false);
+    if (error) {
+      console.error("セッションメモの保存に失敗:", error);
+      toast.error(t("clientDetail.noteSaveFailed"));
+      return;
+    }
+    setClientBookings2((prev) => prev.map((b) => (b.id === bookingId ? { ...b, trainer_note: note || null } : b)));
+    setEditingNoteBookingId(null);
+    toast.success(t("clientDetail.noteSaved"));
+  };
 
   // Mark chat as read when viewing
   useEffect(() => {
@@ -695,6 +718,33 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <p className="text-xs sm:text-sm text-muted-foreground truncate">{clientPlan}</p>
         </div>
       </div>
+
+      {/* 前回のセッションメモ。次回対応時にすぐ見えるよう、直近の過去予約のメモをここに出す。 */}
+      {(() => {
+        const now = new Date();
+        const pastWithNote = bookings
+          .filter((b: any) => new Date(b.date) <= now && b.trainer_note)
+          .sort((a: any, b: any) => a.date.localeCompare(b.date));
+        const lastNote = pastWithNote[pastWithNote.length - 1];
+        if (!lastNote) return null;
+        return (
+          <section className="mb-4 sm:mb-6">
+            <Card className="bg-accent/5 border-accent/30">
+              <CardContent className="p-3 sm:p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+                  <StickyNote className="w-4 h-4 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    {t("clientDetail.lastSessionNote", { date: formatJST(lastNote.date, "M月d日", { locale: ja }) })}
+                  </p>
+                  <p className="text-sm mt-1 whitespace-pre-wrap break-all leading-relaxed">{lastNote.trainer_note}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        );
+      })()}
 
       {/* Training Goal */}
       <section className="mb-4 sm:mb-6">
@@ -1517,19 +1567,66 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <div className="space-y-2">
               {bookings.map((b: any) => (
                 <Card key={b.id}>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl accent-gradient flex items-center justify-center shrink-0">
-                      <CalendarDays className="w-4 h-4 text-accent-foreground" />
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl accent-gradient flex items-center justify-center shrink-0">
+                        <CalendarDays className="w-4 h-4 text-accent-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm">
+                          {formatJST(b.date, "M月d日（E）", { locale: ja })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{b.startTime}〜{b.endTime}</p>
+                        {b.booking_type && (
+                          <span className="text-[10px] text-muted-foreground">{b.booking_type}</span>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-sm">
-                        {formatJST(b.date, "M月d日（E）", { locale: ja })}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{b.startTime}〜{b.endTime}</p>
-                      {b.booking_type && (
-                        <span className="text-[10px] text-muted-foreground">{b.booking_type}</span>
-                      )}
-                    </div>
+
+                    {editingNoteBookingId === b.id ? (
+                      <div className="space-y-2 pl-12">
+                        <Textarea
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          placeholder={t("clientDetail.notePlaceholder")}
+                          rows={3}
+                          className="text-xs resize-none"
+                          maxLength={500}
+                          autoFocus
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingNoteBookingId(null)} disabled={savingNote}>
+                            {t("common.cancelShort")}
+                          </Button>
+                          <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleSaveNote(b.id)} disabled={savingNote}>
+                            <Save className="w-3 h-3" />
+                            {savingNote ? t("common.saving") : t("common.save")}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : b.trainer_note ? (
+                      <button
+                        type="button"
+                        className="w-full text-left text-xs bg-muted/50 rounded-lg p-2 ml-12 flex items-start gap-1.5 hover:bg-muted transition-colors"
+                        style={{ width: "calc(100% - 3rem)" }}
+                        onClick={() => { setEditingNoteBookingId(b.id); setNoteDraft(b.trainer_note || ""); }}
+                      >
+                        <StickyNote className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+                        <span className="whitespace-pre-wrap break-all">{b.trainer_note}</span>
+                      </button>
+                    ) : (
+                      <div className="pl-12">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => { setEditingNoteBookingId(b.id); setNoteDraft(""); }}
+                        >
+                          <StickyNote className="w-3 h-3" />
+                          {t("clientDetail.addNote")}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}

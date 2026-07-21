@@ -34,3 +34,7 @@ project_id = "rrbfwitprzuevzytykrq"
   # 呼ばれる前提 (予約1件ごとの推測困難な cancel_token で本人確認する)。
   [functions.trial-cancel]
     verify_jwt = false
+  # トレーナー向け朝のサマリー通知。pg_cron から JWT なしで叩かれる前提
+  # (関数内で service_role / CRON_SECRET(x-cron-secret) のいずれかを必須にする)。
+  [functions.daily-trainer-summary]
+    verify_jwt = false

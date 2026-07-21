@@ -15,15 +15,16 @@ export const GOOGLE_CALENDAR_CUSTOMER_ENABLED = true; // お客様設定の連�
 export const APPLE_CONNECTION_ENABLED = false; // Apple連携セクション（App Store審査中）
 
 // キャンセル待ち（満枠スロットへの登録）。
-// ON: 満枠スロットにキャンセル待ち登録でき、キャンセルで枠が空くと
-// その枠の待機者へプッシュ通知が届く（send-push-notification の
+// ON: 満枠スロットをタップするとキャンセル待ち登録/解除の確認ダイアログが開き、
+// キャンセルで枠が空くとその枠の待機者へプッシュ通知が届く（send-push-notification の
 // waitlist_slot_freed。受信者解決・文言生成はサーバー側）。
 // 予約成立時は自分の該当待機を自動解除する。
 // 前提: DBマイグレーション booking_waitlist（20260624120000）と
 // send-push-notification の再デプロイが適用済みであること。
-// 満枠の表示が「キャンセル待ち」だらけで見づらいという要望により、満枠は従来の「満枠」表示へ戻す（OFF）。
-// true に戻せばキャンセル待ち機能（登録・空き通知）が再度有効になる。
-export const WAITLIST_ENABLED = false;
+// 以前は満枠グリッドのラベルが常に「キャンセル待ち」に変わり、満枠だらけで見づらいという
+// 理由でOFFにしていた。2026-07、グリッドの見た目は通常の「満枠」表示のまま（登録済みは
+// 隅の小さいドットのみ）にし、タップ時だけ確認ダイアログを出す方式に直したため再度ON。
+export const WAITLIST_ENABLED = true;
 
 // ソーシャルログイン（Appleでサインイン / Googleでログイン）のボタン表示。
 // 既定 OFF。Supabase の Authentication → Providers で Apple / Google を

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Upload, Trash2, Image, User, Save, LogOut, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -28,6 +29,11 @@ import { BILLING_ENABLED } from "@/lib/featureFlags";
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
 }
+
+// 営業時間・予約枠の間隔の選択肢。Onboarding.tsx の初期設定と同じ範囲・刻みに揃える。
+const BUSINESS_START_HOURS = Array.from({ length: 6 }, (_, i) => `${String(7 + i).padStart(2, "0")}:00`);
+const BUSINESS_END_HOURS = Array.from({ length: 7 }, (_, i) => `${String(17 + i).padStart(2, "0")}:00`);
+const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const { t } = useTranslation();
@@ -57,6 +63,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [lineUrl, setLineUrl] = useState("");
   const [savingLineUrl, setSavingLineUrl] = useState(false);
 
+  // 営業時間（tenants.operating_hours）・予約枠の間隔（tenants.slot_duration_minutes）。
+  // お客様の予約画面（CustomerBooking.tsx）の枠生成に使われる。選択肢は Onboarding.tsx と揃える。
+  const [businessStart, setBusinessStart] = useState("10:00");
+  const [businessEnd, setBusinessEnd] = useState("21:00");
+  const [businessSlotMinutes, setBusinessSlotMinutes] = useState(60);
+  const [savingBusinessHours, setSavingBusinessHours] = useState(false);
+
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
   }, [profile]);
@@ -77,6 +90,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   useEffect(() => {
     setLineUrl(tenant?.line_url ?? "");
   }, [tenant?.line_url]);
+
+  useEffect(() => {
+    if (tenant?.operating_hours?.start) setBusinessStart(tenant.operating_hours.start);
+    if (tenant?.operating_hours?.end) setBusinessEnd(tenant.operating_hours.end);
+    if (tenant?.slot_duration_minutes) setBusinessSlotMinutes(tenant.slot_duration_minutes);
+  }, [tenant?.operating_hours?.start, tenant?.operating_hours?.end, tenant?.slot_duration_minutes]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -210,6 +229,30 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingLineUrl(false);
+  };
+
+  const handleSaveBusinessHours = async () => {
+    if (!tenant) return;
+    if (businessStart >= businessEnd) {
+      toast.error(t("settings.trainer.businessHoursInvalidRange"));
+      return;
+    }
+    setSavingBusinessHours(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({
+        operating_hours: { start: businessStart, end: businessEnd },
+        slot_duration_minutes: businessSlotMinutes,
+      })
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("営業時間の保存に失敗:", error);
+      toast.error(t("settings.trainer.businessHoursSaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.businessHoursUpdated"));
+      refetchTenant();
+    }
+    setSavingBusinessHours(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -412,6 +455,63 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.planManage")}</h3>
         <TrainerPlanManager />
+      </section>
+
+      <Separator />
+
+      {/* === 営業時間 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.businessHoursSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursDesc")}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">{t("settings.trainer.businessHoursStart")}</Label>
+                <Select value={businessStart} onValueChange={setBusinessStart}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_START_HOURS.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">{t("settings.trainer.businessHoursEnd")}</Label>
+                <Select value={businessEnd} onValueChange={setBusinessEnd}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_END_HOURS.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.businessHoursSlotDuration")}</Label>
+              <Select value={String(businessSlotMinutes)} onValueChange={(v) => setBusinessSlotMinutes(parseInt(v, 10))}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_SLOT_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSaveBusinessHours} disabled={savingBusinessHours || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingBusinessHours ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
       </section>
 
       <Separator />

@@ -28,6 +28,11 @@ export interface Tenant {
   line_url: string | null;
   /** Googleの口コミ投稿ページURL。null/空なら口コミ依頼バナーを表示しない */
   google_review_url: string | null;
+  /** ダッシュボード上部の統計カード表示可否（各既定true） */
+  show_stat_today_sessions: boolean;
+  show_stat_active_clients: boolean;
+  show_stat_month_sessions: boolean;
+  show_stat_month_revenue: boolean;
   /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */
   trial_info_title: string | null;
   /** 体験予約ページの案内カード説明文。null/空なら既定文言を表示 */
@@ -98,10 +103,13 @@ export function useTenant() {
           .maybeSingle();
 
       // 追加カラムの多い順にフォールバックする（全部→trial_info込み→same_dayのみ→基本のみ）。
-      // google_review_url は最後に足した新カラム。未適用環境では先頭が失敗し、
-      // 次の変種に落ちて google_review_url 無し（=nullにマッピング側でフォールバック、
-      // 口コミ依頼バナーは表示されない）で正常動作する。
+      // show_stat_* は最後に足した新カラム。未適用環境では先頭が失敗し、
+      // 次の変種に落ちて show_stat_* 無し（=既定trueにマッピング側でフォールバック、
+      // 全カード表示のまま）で正常動作する。
+      const DASHBOARD_STAT_COLS =
+        "show_stat_today_sessions, show_stat_active_clients, show_stat_month_sessions, show_stat_month_revenue";
       const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url, ${DASHBOARD_STAT_COLS}`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes`,
@@ -132,6 +140,11 @@ export function useTenant() {
           booking_buffer_minutes: (raw.booking_buffer_minutes as number | null) ?? 15,
           line_url: (raw.line_url as string | null) ?? null,
           google_review_url: (raw.google_review_url as string | null) ?? null,
+          // 既定は表示（列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
+          show_stat_today_sessions: raw.show_stat_today_sessions !== false,
+          show_stat_active_clients: raw.show_stat_active_clients !== false,
+          show_stat_month_sessions: raw.show_stat_month_sessions !== false,
+          show_stat_month_revenue: raw.show_stat_month_revenue !== false,
           trial_info_title: (raw.trial_info_title as string | null) ?? null,
           trial_info_body: (raw.trial_info_body as string | null) ?? null,
         } as unknown as Tenant;

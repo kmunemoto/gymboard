@@ -1972,6 +1972,7 @@
     "counseling": "カウンセリング",
     "announcements": "お知らせ管理",
     "notifications": "通知設定",
+    "trialFollowUps": "体験フォロー",
     "gymSettings": "ジム設定",
     "mDashboard": "ホーム",
     "mClients": "顧客",
@@ -2117,5 +2118,27 @@
     "soonToday": "本日更新",
     "remaining": "・今期残り{{count}}回",
     "unlimited": "・通い放題"
+  },
+  "trialFollowUp": {
+    "title": "体験フォロー管理",
+    "pendingCount": "フォロー待ち",
+    "conversionRate": "体験→入会率",
+    "pendingSection": "フォロー待ち",
+    "allSection": "すべての体験予約",
+    "empty": "体験予約はまだありません",
+    "addNote": "メモを追加",
+    "notePlaceholder": "接客内容や次のフォロー予定など",
+    "updated": "フォロー状況を更新しました",
+    "updateFailed": "フォロー状況の更新に失敗しました",
+    "noteSaved": "メモを保存しました",
+    "noteSaveFailed": "メモの保存に失敗しました",
+    "dashboardBanner": "体験フォロー待ちが{{count}}件あります",
+    "dashboardBannerHint": "タップしてフォロー状況を記録",
+    "status": {
+      "pending": "未対応",
+      "visited": "来店した",
+      "joined": "入会した",
+      "declined": "見送り"
+    }
   }
 }

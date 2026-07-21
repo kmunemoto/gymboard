@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Megaphone, Bell } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Megaphone, Bell, UserCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TrainerTab } from "./TrainerView";
 
@@ -18,6 +18,7 @@ const desktopTabs: { id: TrainerTab; labelKey: string; icon: typeof LayoutDashbo
   { id: "counseling", labelKey: "trainerNav.counseling", icon: ClipboardList },
   { id: "announcements", labelKey: "trainerNav.announcements", icon: Megaphone },
   { id: "notifications", labelKey: "trainerNav.notifications", icon: Bell },
+  { id: "trial-followups", labelKey: "trainerNav.trialFollowUps", icon: UserCheck },
   { id: "gym-settings", labelKey: "trainerNav.gymSettings", icon: Settings2 },
 ];
 

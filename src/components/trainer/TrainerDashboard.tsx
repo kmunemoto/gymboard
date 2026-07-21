@@ -1,4 +1,4 @@
-import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, MessageCircle } from "lucide-react";
+import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, MessageCircle, UserCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,17 @@ import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { RefreshCw } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;
   /** 離脱アラートの「声かけ」: 指定顧客との会話を開いた状態でメッセージ画面へ */
   onMessageClient?: (clientId: string) => void;
+  /** 体験フォロー待ちバナー: 体験フォロー管理タブへ */
+  onNavigateFollowUps?: () => void;
 }
 
 type RevenueProfile = {
@@ -77,7 +80,7 @@ const getRevenueCycleStartDates = (
   return starts;
 };
 
-const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardProps) => {
+const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps }: TrainerDashboardProps) => {
   const { t } = useTranslation();
   const { profiles, loading } = useAllCustomerProfiles();
   const { bookings, loading: bookingsLoading } = useAllBookings();
@@ -87,6 +90,30 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
   const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
   // ジム設定で「フォローが必要な顧客」の表示をオフにできる（既定は表示）。
   const showRetentionAlerts = tenant?.show_retention_alerts !== false;
+
+  // 体験フォロー待ち件数（体験CRM）。follow_up_status 列がマイグレーション未適用の環境では
+  // 取得エラーになるため、その場合は静かに0件扱いにする（バナー非表示）。
+  const [pendingFollowUps, setPendingFollowUps] = useState(0);
+  useEffect(() => {
+    if (!tenant?.id) return;
+    let cancelled = false;
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("trial_bookings")
+        .select("id")
+        .eq("tenant_id", tenant.id)
+        .eq("follow_up_status" as any, "未対応")
+        .lt("booking_date", nowIso);
+      if (cancelled) return;
+      if (error) {
+        setPendingFollowUps(0);
+        return;
+      }
+      setPendingFollowUps((data || []).length);
+    })();
+    return () => { cancelled = true; };
+  }, [tenant?.id]);
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
   // 本日のスケジュールには体験予約（user_id === "trial-guest"）も含める。
@@ -329,6 +356,26 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient }: TrainerDashboardP
             </div>
           )}
         </section>
+
+        {/* 体験フォロー待ち（体験CRM）。過去の体験予約で follow_up_status が未対応のまま残っている件数。 */}
+        {pendingFollowUps > 0 && onNavigateFollowUps && (
+          <section>
+            <button type="button" onClick={onNavigateFollowUps} className="w-full text-left">
+              <Card className="card-hover border-warning/30">
+                <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-warning/15 flex items-center justify-center text-warning shrink-0">
+                    <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm">{t("trialFollowUp.dashboardBanner", { count: pendingFollowUps })}</p>
+                    <p className="text-xs text-muted-foreground">{t("trialFollowUp.dashboardBannerHint")}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </CardContent>
+              </Card>
+            </button>
+          </section>
+        )}
 
         {/* フォローが必要な顧客（離脱検知）。ジム設定でオフにできる（既定は表示）。 */}
         {showRetentionAlerts && atRiskCustomers.length > 0 && (

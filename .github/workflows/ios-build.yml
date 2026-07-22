@@ -124,22 +124,6 @@ jobs:
           cd ios/App
           sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.3.9;/g' App.xcodeproj/project.pbxproj
 
-      - name: Fix Podfile for CI signing
-        run: |
-          sed -i '' "s/platform :ios, '.*'/platform :ios, '16.0'/" ios/App/Podfile
-          python3 -c "
-          content = open('ios/App/Podfile').read()
-          fix = '''
-              installer.pods_project.targets.each do |target|
-                target.build_configurations.each do |config|
-                  config.build_settings[\"CODE_SIGNING_ALLOWED\"] = \"NO\"
-                end
-              end
-          '''
-          content = content.replace('assertDeploymentTarget(installer)', 'assertDeploymentTarget(installer)' + fix)
-          open('ios/App/Podfile', 'w').write(content)
-          "
-
       - name: Sync Capacitor
         run: npx cap sync ios
 
@@ -163,9 +147,6 @@ jobs:
 
           echo "--- AppDelegate.swift ---"
           cat "$DELEGATE"
-
-      - name: Install CocoaPods
-        run: cd ios/App && pod install
 
       - name: Configure App signing
         run: |
@@ -214,7 +195,11 @@ jobs:
 
       - name: Add GoogleService-Info.plist to Xcode target (Copy Bundle Resources)
         run: |
-          gem list -i xcodeproj >/dev/null 2>&1 || sudo gem install xcodeproj
+          # Capacitor 8 iOS uses Swift Package Manager: project.pbxproj now contains a LOCAL
+          # Swift package reference (CapApp-SPM). Re-saving the project with an old xcodeproj gem
+          # can silently drop that reference and break the build, so ensure a recent gem and
+          # assert the SPM reference survives the save.
+          sudo gem install xcodeproj >/dev/null
           ruby -e '
             require "xcodeproj"
             project_path = "ios/App/App.xcodeproj"
@@ -230,11 +215,22 @@ jobs:
           '
           echo "--- pbxproj references to the plist (expect >= 1) ---"
           grep -c "GoogleService-Info.plist" ios/App/App.xcodeproj/project.pbxproj
+          echo "--- assert the Capacitor SPM package reference survived the save ---"
+          if ! grep -q "CapApp-SPM" ios/App/App.xcodeproj/project.pbxproj; then
+            echo "ERROR: CapApp-SPM Swift package reference was stripped from project.pbxproj (xcodeproj gem too old?)"
+            exit 1
+          fi
+          echo "OK: CapApp-SPM SPM reference present"
+
+      - name: Resolve Swift Package dependencies
+        run: |
+          cd ios/App
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
 
       - name: Build archive
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath $RUNNER_TEMP/App.xcarchive \

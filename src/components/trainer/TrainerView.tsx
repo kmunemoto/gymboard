@@ -25,6 +25,7 @@ import SubscriptionBlockedBanner from "@/components/SubscriptionBlockedBanner";
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
+import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { useTenant } from "@/hooks/useTenant";
 
 export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "trial-followups" | "gym-settings";
@@ -73,7 +74,7 @@ const TrainerView = () => {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("trainer-msg-toast")
+      .channel(uniqueChannelName("trainer-msg-toast"))
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },

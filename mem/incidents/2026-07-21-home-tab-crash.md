@@ -37,10 +37,20 @@ LazyBoundary が捕捉して画面全体がエラー表示になった。
 これで各フックインスタンスが独立したチャンネルを持ち、共有インスタンス化が構造的に起きない。
 `useMyBookings`（顧客側の同型フック、`user.id` のみでは同一ユーザー2画面同時マウントで衝突）にも同じ対策を適用。
 
-## 残存する同一クラスの潜在パターン（現状は1画面1インスタンスで無害）
-- `src/hooks/useProfile.ts` の `customer-list-realtime`（useAllCustomerProfiles）
-- `src/hooks/useMessages.ts` の `unread-global` / `unread-by-sender`
-- `src/components/trainer/TrainerView.tsx` の `trainer-msg-toast`
+## 同一クラスの潜在パターンも全て予防修正済み（フォローアップ）
+`useAllBookings` の直接原因を直した後、同じ「固定名チャンネル」を作る箇所を全て洗い出し、
+`src/lib/realtimeChannel.ts` の `uniqueChannelName()` ヘルパーで一律に一意化した:
+- `src/hooks/useProfile.ts` の `customer-list-realtime`（useAllCustomerProfiles。4つのトレーナー
+  タブで使われ、タブ切替時に旧購読の unsubscribe〈非同期〉完了前に同名再購読でthrowする恐れがあった）
+- `src/hooks/useMessages.ts` の `unread-global` / `unread-by-sender` / `messages-${otherUserId}`
+- `src/hooks/useBookings.ts` の `my-bookings-realtime`（顧客側）
+- `src/components/trainer/TrainerView.tsx` の `trainer-msg-toast`（ログアウト→ログインの再マウント競合予防）
 
-**ルール: フック内で作る Realtime チャンネル名は必ず購読ごとに一意にする。**
-固定名のフックを複数コンポーネントから使うと、2つ目のマウントで即クラッシュする。
+**ルール: Realtime チャンネル名は必ず `uniqueChannelName()` で一意化する。固定名を直接
+`supabase.channel()` に渡さない。** 固定名のフック/コンポーネントを複数マウントすると2つ目で即クラッシュする。
+
+補足（supabase-js の挙動、v2.108.2 で確認）:
+- `supabase.channel(name)` は同名があると既存インスタンスを返す（新規作成しない）。
+- `removeChannel()` は `async`。`await channel.unsubscribe()`（ネットワーク往復）が解決するまで
+  クライアントの `channels` 配列から外れない。よって固定名だと「アンマウント直後の再マウント」で
+  旧チャンネルがまだ配列に残り、`joined` 状態のまま `.on()` を呼んで throw する競合が起きうる。

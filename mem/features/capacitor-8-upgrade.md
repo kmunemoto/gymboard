@@ -74,6 +74,26 @@ Android 16 (API 36) をターゲットにすると、Android自体のedge-to-edg
 System Bars core plugin か CSS env variables（safe-area系）での対応を別途検討する。
 今回はコンプライアンス対応を優先し、この見た目の調整は別タスクとする。
 
+## ⚠️ iOS CI (ios-build.yml) の未対応事項（要フォローアップ）
+Capacitor 8 は **iOS のビルド方式を CocoaPods → Swift Package Manager (SPM) に変更**した。
+`npx cap add ios` は `Podfile` を生成せず `Package.swift` を書き出す。
+そのため現行の `.github/workflows/ios-build.yml` は run #102 で失敗した:
+```
+[info] Writing Package.swift                       ← SPM化の証拠
+...
+sed: ios/App/Podfile: No such file or directory    ← 「Fix Podfile for CI signing」で落ちる
+```
+CIワークフローの以下の手順が CocoaPods 前提で、SPM対応に書き換えが必要:
+- 「Fix Podfile for CI signing」（`ios/App/Podfile` を sed で編集）→ Podfile が無いので削除。
+  iOS deployment target は project.pbxproj 側（`IPHONEOS_DEPLOYMENT_TARGET`）で設定する。
+  Pod の `CODE_SIGNING_ALLOWED=NO` 相当も Pods が無いので不要。
+- 「Install CocoaPods」（`pod install`）→ 不要（削除）。
+- 「Build archive」→ `-workspace App.xcworkspace` ではなく `-project App.xcodeproj` でビルドする
+  （SPMではCocoaPodsの.xcworkspaceが生成されない。Xcodeが Package.swift の依存を解決する）。
+- SPMの依存解決に時間がかかる/ネットワークが要る点、および `-scheme App` の指定は要確認。
+成功するとApp Store Connectへ実アップロードされる（副作用あり）ため、修正の検証時は
+バージョン/ビルド番号の扱いに注意し、むやみに連続実行しない。
+
 ## ピラボード（別アプリ）について
 このリポジトリの対象外。同じ手順（Capacitor 7→8、Gradle/AGP更新、Play Console再申請）を
 別途そちらのプロジェクトで行う必要がある。

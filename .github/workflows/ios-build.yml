@@ -148,11 +148,32 @@ jobs:
           echo "--- AppDelegate.swift ---"
           cat "$DELEGATE"
 
-      - name: Configure App signing
+      - name: Configure App signing (App target only, not SPM packages)
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          cd ios/App
-          sed -i '' 's/ProvisioningStyle = Automatic/ProvisioningStyle = Manual/g' App.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' App.xcodeproj/project.pbxproj
+          # Capacitor 8 iOS uses Swift Package Manager. If CODE_SIGN_IDENTITY /
+          # PROVISIONING_PROFILE_SPECIFIER are passed as GLOBAL xcodebuild settings, Xcode applies
+          # them to EVERY target — including the SPM package targets (Firebase, GoogleUtilities,
+          # nanopb, promises...) which are static/resource targets that "do not support
+          # provisioning profiles", so the archive fails. (Under CocoaPods this was handled by the
+          # Podfile CODE_SIGNING_ALLOWED=NO hook.) Fix: set manual signing ONLY on the App target
+          # here, and do NOT pass any signing settings on the archive command line.
+          sudo gem install xcodeproj >/dev/null
+          ruby -e '
+            require "xcodeproj"
+            project = Xcodeproj::Project.open("ios/App/App.xcodeproj")
+            target = project.targets.find { |t| t.name == "App" } or abort("App target not found")
+            target.build_configurations.each do |c|
+              c.build_settings["CODE_SIGN_STYLE"] = "Manual"
+              c.build_settings["DEVELOPMENT_TEAM"] = ENV["APPLE_TEAM_ID"]
+              c.build_settings["CODE_SIGN_IDENTITY"] = "Apple Distribution"
+              c.build_settings["CODE_SIGN_IDENTITY[sdk=iphoneos*]"] = "Apple Distribution"
+              c.build_settings["PROVISIONING_PROFILE_SPECIFIER"] = "GymBoard App Store"
+            end
+            project.save
+            puts "Configured manual signing on App target only"
+          '
 
       - name: Import certificate and profile
         env:
@@ -230,15 +251,14 @@ jobs:
       - name: Build archive
         run: |
           cd ios/App
+          # Signing is configured on the App target in project.pbxproj (see "Configure App
+          # signing" step). Do NOT pass CODE_SIGN_IDENTITY / PROVISIONING_PROFILE_SPECIFIER here —
+          # global settings would be applied to the SPM package targets and fail the archive.
           xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             archive \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            PROVISIONING_PROFILE_SPECIFIER="GymBoard App Store" \
             IPHONEOS_DEPLOYMENT_TARGET=16.0 \
             -destination "generic/platform=iOS"
 

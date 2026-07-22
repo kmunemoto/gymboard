@@ -120,10 +120,12 @@ export const useMyBookings = () => {
   }, [fetchBookings]);
 
   // Realtime: 他画面（トレーナー側の操作等）による自分の予約の変更を反映する。
+  // チャンネル名は購読ごとに一意にする（useAllBookings 側のコメント参照。
+  // user.id だけだと同一ユーザーで2箇所同時マウント時に共有インスタンス化して throw する）。
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`my-bookings-realtime-${user.id}`)
+      .channel(`my-bookings-realtime-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings", filter: `user_id=eq.${user.id}` },
@@ -242,9 +244,16 @@ export const useAllBookings = () => {
   // Realtime: 顧客側の自己キャンセル・自己予約など、この画面を開いたまま行われた
   // 他画面での変更を反映する（従来はマウント時の一度きりの取得のみで、
   // 開いたままだと同日キャンセル消化等の変更が反映されないままになっていた）。
+  //
+  // チャンネル名は購読ごとに必ず一意にする。supabase.channel() は同名チャンネルが
+  // あると既存インスタンスを返すため、固定名だとこのフックが同一画面に2つ
+  // マウントされたとき（例: ホームタブの TrainerDashboard + 稼働率ヒートマップ）、
+  // 2つ目の .on() が「購読済みチャンネルへの callbacks 追加」となり
+  // "cannot add `postgres_changes` callbacks ... after `subscribe()`" を throw して
+  // 画面全体が LazyBoundary のエラー表示に落ちる（2026-07 本番障害の原因）。
   useEffect(() => {
     const channel = supabase
-      .channel("trainer-all-bookings-realtime")
+      .channel(`trainer-all-bookings-realtime-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
         fetchBookings();
       })

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
+import { uniqueChannelName } from "@/lib/realtimeChannel";
 
 export interface Profile {
   id: string;
@@ -271,10 +272,13 @@ export const useAllCustomerProfiles = () => {
     fetchProfiles();
   }, [fetchProfiles]);
 
-  // Realtime: refetch when bookings or profiles change
+  // Realtime: refetch when bookings or profiles change.
+  // チャンネル名は購読ごとに一意にする（uniqueChannelName の説明参照）。このフックは
+  // 複数のトレーナー画面（ダッシュボード/顧客一覧/予定表/お知らせ）で使われ、固定名だと
+  // タブ切替時に旧購読の unsubscribe 完了前に同名で再購読して throw する恐れがある。
   useEffect(() => {
     const channel = supabase
-      .channel("customer-list-realtime")
+      .channel(uniqueChannelName("customer-list-realtime"))
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
         fetchProfiles();
       })

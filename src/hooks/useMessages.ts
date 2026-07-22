@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { uniqueChannelName } from "@/lib/realtimeChannel";
 
 export interface Message {
   id: string;
@@ -37,7 +38,7 @@ export const useMessages = (otherUserId: string | null) => {
   useEffect(() => {
     if (!user || !otherUserId) return;
     const channel = supabase
-      .channel(`messages-${otherUserId}`)
+      .channel(uniqueChannelName(`messages-${otherUserId}`))
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
@@ -166,7 +167,7 @@ export const useUnreadCount = () => {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("unread-global")
+      .channel(uniqueChannelName("unread-global"))
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
@@ -224,7 +225,7 @@ export const useUnreadBySender = () => {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("unread-by-sender")
+      .channel(uniqueChannelName("unread-by-sender"))
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },

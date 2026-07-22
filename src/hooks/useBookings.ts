@@ -9,6 +9,7 @@ import { getGymNameForUser } from "@/lib/tenantLookup";
 import { fetchMyTenantStaffIds, fetchMyTenantTrainerId } from "@/lib/tenantHelper";
 import { WAITLIST_ENABLED } from "@/lib/featureFlags";
 import { shouldRebaseCycleStart, getMonthlySessionCount } from "@/lib/courseProgress";
+import { uniqueChannelName } from "@/lib/realtimeChannel";
 
 export interface BookingRow {
   id: string;
@@ -120,12 +121,12 @@ export const useMyBookings = () => {
   }, [fetchBookings]);
 
   // Realtime: 他画面（トレーナー側の操作等）による自分の予約の変更を反映する。
-  // チャンネル名は購読ごとに一意にする（useAllBookings 側のコメント参照。
+  // チャンネル名は購読ごとに一意にする（uniqueChannelName の説明参照。
   // user.id だけだと同一ユーザーで2箇所同時マウント時に共有インスタンス化して throw する）。
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`my-bookings-realtime-${user.id}-${Math.random().toString(36).slice(2)}`)
+      .channel(uniqueChannelName(`my-bookings-realtime-${user.id}`))
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings", filter: `user_id=eq.${user.id}` },
@@ -245,15 +246,13 @@ export const useAllBookings = () => {
   // 他画面での変更を反映する（従来はマウント時の一度きりの取得のみで、
   // 開いたままだと同日キャンセル消化等の変更が反映されないままになっていた）。
   //
-  // チャンネル名は購読ごとに必ず一意にする。supabase.channel() は同名チャンネルが
-  // あると既存インスタンスを返すため、固定名だとこのフックが同一画面に2つ
-  // マウントされたとき（例: ホームタブの TrainerDashboard + 稼働率ヒートマップ）、
-  // 2つ目の .on() が「購読済みチャンネルへの callbacks 追加」となり
-  // "cannot add `postgres_changes` callbacks ... after `subscribe()`" を throw して
+  // チャンネル名は購読ごとに必ず一意にする（uniqueChannelName の説明参照）。
+  // 固定名だとこのフックが同一画面に2つマウントされたとき（例: ホームタブの
+  // TrainerDashboard + 稼働率ヒートマップ）、2つ目の .on() が throw して
   // 画面全体が LazyBoundary のエラー表示に落ちる（2026-07 本番障害の原因）。
   useEffect(() => {
     const channel = supabase
-      .channel(`trainer-all-bookings-realtime-${Math.random().toString(36).slice(2)}`)
+      .channel(uniqueChannelName("trainer-all-bookings-realtime"))
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
         fetchBookings();
       })

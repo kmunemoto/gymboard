@@ -74,25 +74,37 @@ Android 16 (API 36) をターゲットにすると、Android自体のedge-to-edg
 System Bars core plugin か CSS env variables（safe-area系）での対応を別途検討する。
 今回はコンプライアンス対応を優先し、この見た目の調整は別タスクとする。
 
-## ⚠️ iOS CI (ios-build.yml) の未対応事項（要フォローアップ）
+## iOS CI (ios-build.yml) の SPM 対応（✅ 解決済み・run #104 で成功）
 Capacitor 8 は **iOS のビルド方式を CocoaPods → Swift Package Manager (SPM) に変更**した。
-`npx cap add ios` は `Podfile` を生成せず `Package.swift` を書き出す。
-そのため現行の `.github/workflows/ios-build.yml` は run #102 で失敗した:
-```
-[info] Writing Package.swift                       ← SPM化の証拠
-...
-sed: ios/App/Podfile: No such file or directory    ← 「Fix Podfile for CI signing」で落ちる
-```
-CIワークフローの以下の手順が CocoaPods 前提で、SPM対応に書き換えが必要:
-- 「Fix Podfile for CI signing」（`ios/App/Podfile` を sed で編集）→ Podfile が無いので削除。
-  iOS deployment target は project.pbxproj 側（`IPHONEOS_DEPLOYMENT_TARGET`）で設定する。
-  Pod の `CODE_SIGNING_ALLOWED=NO` 相当も Pods が無いので不要。
-- 「Install CocoaPods」（`pod install`）→ 不要（削除）。
-- 「Build archive」→ `-workspace App.xcworkspace` ではなく `-project App.xcodeproj` でビルドする
-  （SPMではCocoaPodsの.xcworkspaceが生成されない。Xcodeが Package.swift の依存を解決する）。
-- SPMの依存解決に時間がかかる/ネットワークが要る点、および `-scheme App` の指定は要確認。
-成功するとApp Store Connectへ実アップロードされる（副作用あり）ため、修正の検証時は
-バージョン/ビルド番号の扱いに注意し、むやみに連続実行しない。
+`npx cap add ios` は `Podfile` / `.xcworkspace` を生成せず、`App.xcodeproj` +
+`CapApp-SPM/Package.swift`（ローカルSPMパッケージ）を生成する。旧CI（CocoaPods前提）は
+run #102・#103 で失敗し、以下の2段階で修正して run #104 で成功（build 104 / v1.3.9 を
+App Store Connectへアップロード確認）。
+
+**修正1: CocoaPods前提ステップの除去（run #102 の `sed: Podfile: No such file` 対応）**
+- 「Fix Podfile for CI signing」ステップを削除（Podfileが無い。deployment target は
+  project.pbxproj の `IPHONEOS_DEPLOYMENT_TARGET` で設定。Pods の CODE_SIGNING_ALLOWED=NO も不要）
+- 「Install CocoaPods」(`pod install`)ステップを削除
+- Build archive を `-workspace App.xcworkspace` → `-project App.xcodeproj` に変更
+- 事前に `xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App` を実行
+- GoogleService-Info.plist配線でpbxprojを再保存する際、Capacitorの**ローカルSPM参照
+  (CapApp-SPM)** が古い xcodeproj gem で消えると壊れるため、最新gemを使い保存後に
+  `grep CapApp-SPM` でアサート
+
+**修正2: SPMパッケージへの署名適用を防ぐ（run #103 の archive 失敗対応）**
+run #103 は archive で `Firebase_FirebaseMessaging / GoogleUtilities_... does not support
+provisioning profiles` で失敗。原因は `CODE_SIGN_IDENTITY` / `PROVISIONING_PROFILE_SPECIFIER`
+を **xcodebuild のグローバル設定**で渡すと、SPMのパッケージターゲット（Firebase等の静的/
+リソースターゲット＝プロファイル非対応）にも適用されるため（CocoaPods時代はPodfileの
+`CODE_SIGNING_ALLOWED=NO` フックで回避していた部分）。
+- 「Configure App signing」で xcodeproj gem を使い、署名設定（Manual / DEVELOPMENT_TEAM /
+  CODE_SIGN_IDENTITY / PROVISIONING_PROFILE_SPECIFIER）を **App ターゲットのビルド構成にのみ**設定
+- Build archive コマンドラインから署名系設定を全て除去（グローバル適用を回避）
+
+**注意（今後の再実行時）**: このワークフローは **成功時のみ** App Store Connect へ
+アップロードする（失敗時はアップロードされないので、失敗の反復は副作用なし）。
+`MARKETING_VERSION` は 1.3.9 ハードコード、ビルド番号は `github.run_number`。
+新バージョンを出すときは ios-build.yml の `Set marketing version` の値を更新すること。
 
 ## ピラボード（別アプリ）について
 このリポジトリの対象外。同じ手順（Capacitor 7→8、Gradle/AGP更新、Play Console再申請）を

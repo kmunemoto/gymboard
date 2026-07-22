@@ -494,7 +494,7 @@ export const rescheduleBooking = async (
 ): Promise<{ data: { id: string } | null; error: unknown }> => {
   const { data: old, error: fetchError } = await supabase
     .from("bookings")
-    .select("id, user_id, booking_date, booking_type, tenant_id, source")
+    .select("id, user_id, booking_date, booking_type, tenant_id, source, trainer_note")
     .eq("id", bookingId)
     .maybeSingle();
   if (fetchError || !old) return { data: null, error: fetchError ?? new Error("booking not found") };
@@ -553,6 +553,18 @@ export const rescheduleBooking = async (
     await createBooking(old.user_id, oldJstDate, oldJstTime, old.booking_type, false, { silent: true })
       .catch((e) => console.error("reschedule rollback failed:", e));
     return { data: null, error: createError ?? new Error("reschedule create failed") };
+  }
+
+  // 旧予約に付いていたセッションメモ（trainer_note）は「同じセッションの時間移動」なので
+  // 新予約へ引き継ぐ（非消化リスケは物理削除→新規作成のため、引き継がないとメモが消える）。
+  // best-effort: 失敗しても予約変更自体は成立させる。
+  const oldNote = (old as any).trainer_note as string | null | undefined;
+  if (oldNote) {
+    const { error: noteErr } = await supabase
+      .from("bookings")
+      .update({ trainer_note: oldNote } as any)
+      .eq("id", created.id);
+    if (noteErr) console.error("reschedule trainer_note carry-over failed:", noteErr.message);
   }
 
   // 3) トレーナーへ「変更」通知を1通だけ（LINE＋プッシュ、fire-and-forget）

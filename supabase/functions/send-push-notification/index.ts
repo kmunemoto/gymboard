@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
       }
       const { data: trial } = await adminClient
         .from("trial_bookings")
-        .select("id, tenant_id, guest_name, booking_date")
+        .select("id, tenant_id, guest_name, booking_date, booking_kind")
         .eq("id", trial_booking_id)
         .maybeSingle();
       if (!trial) {
@@ -321,8 +321,11 @@ Deno.serve(async (req) => {
       });
       const when = fmt.format(dt);
       const safeName = String(trial.guest_name ?? "ゲスト").slice(0, 40);
-      title = "新しい体験予約";
-      body = `${safeName}様 ${when} に体験予約が入りました`;
+      const isDropIn = trial.booking_kind === "drop_in";
+      title = isDropIn ? "新しいドロップイン予約（¥8,000）" : "新しい体験予約";
+      body = isDropIn
+        ? `${safeName}様 ${when} にドロップイン予約(¥8,000)が入りました`
+        : `${safeName}様 ${when} に体験予約が入りました`;
       tag = idempotencyKey;
 
       const { data: members } = await adminClient

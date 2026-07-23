@@ -50,6 +50,9 @@ Deno.serve(async (req) => {
     .select('*')
     .eq('tenant_id', SALUTE_TENANT_ID)
     .eq('status', '予約済み')
+    // ドロップイン予約(booking_kind='drop_in')はこの日本語・無料体験向けリマインドの対象外。
+    // 英語圏の観光客に無関係な文面が届くのを防ぐ(drop-in-book はリマインドを別途送らない)。
+    .eq('booking_kind', 'trial')
     .gte('booking_date', `${tomorrowStr}T00:00:00+09:00`)
     .lt('booking_date', `${tomorrowStr}T23:59:59+09:00`)
 

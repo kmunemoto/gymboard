@@ -2592,6 +2592,7 @@ export type Database = {
       trial_bookings: {
         Row: {
           booking_date: string
+          booking_kind: string
           booking_type: string
           cancel_token: string
           created_at: string
@@ -2606,6 +2607,7 @@ export type Database = {
         }
         Insert: {
           booking_date: string
+          booking_kind?: string
           booking_type?: string
           cancel_token?: string
           created_at?: string
@@ -2620,6 +2622,7 @@ export type Database = {
         }
         Update: {
           booking_date?: string
+          booking_kind?: string
           booking_type?: string
           cancel_token?: string
           created_at?: string

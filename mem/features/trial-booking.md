@@ -86,6 +86,36 @@ status='キャンセル済み') すると、空き枠計算は GymBoard 自身�
     `templateData.cancelUrl` に渡すだけでよい。React ルート(`/trial-cancel/:token`)は特定ジムの
     ドメイン固定になりがちなので使わない。`cancel_token`・ページ・エッジ関数は存置済み。
 
+## ドロップイン予約 (英語圏観光客向け・¥8,000単発・2026-07)
+
+Salute御所南のマーケティングサイトの「Book Now」ボタン用に、無料体験(/trial)とは別の
+ドロップイン専用ページを追加した。`/trial` `/trial/:tenantId` は無改変。
+
+- **入口**: `/drop-in` `/drop-in/:tenantId`（`src/pages/DropInBooking.tsx`、TrialBooking.tsx の
+  複製）。tenantId なしは `/trial` と同じく DEFAULT_TENANT_ID（Salute御所南）。
+  **常に英語固定**（i18next を使わない。訪問者のブラウザ言語に関わらず対象読者＝英語圏観光客
+  向けに固定する意図的な選択）。実際の正しいURL:
+  `https://app.kyoto-salute.com/drop-in/ceda19b0-d5e0-4928-ab2e-996a0b823af4`
+- **API**: `supabase/functions/drop-in-book`（trial-book の複製、verify_jwt=false）。
+  バリデーション・レート制限・営業時間ルール（前日まで〜10日先、10:00〜21:00・15分刻み）は
+  trial-book と同一値（同じトレーナーのカレンダーを共有するため）。
+- **データ**: 同じ `trial_bookings` テーブルに書く（既存の `get_tenant_booked_slots` /
+  `check_booking_overlap` が既にこのテーブルを見ているため、無料体験・会員予約と同じ
+  カレンダー枠を自然に共有し、二重予約を防げる）。`booking_kind` 列（migration
+  `20260723060000`、既定 `'trial'`）で区別: ドロップインは `'drop_in'`、
+  `booking_type` は `'ドロップイン（¥8,000）'`。
+- **通知**: お客様宛確認メールは新規テンプレート `drop-in-booking-confirmation`（英語・
+  ¥8,000/現地決済/会員登録不要を明記）。トレーナー宛メール・LINE・push・Googleカレンダー登録は
+  既存の仕組みを再利用しつつ、文言に「ドロップイン（¥8,000）」を明記して無料体験と区別できる
+  ようにした（`send-push-notification` は `trial_bookings.booking_kind` を見てタイトル/本文を
+  出し分け）。
+- **送らないもの**: `send-trial-reminders`（Salute専用・日本語の前日リマインド）は
+  `booking_kind='trial'` のみ対象にした（ドロップインを除外）。英語圏の観光客に無関係な
+  日本語文面が届かないようにするため。ドロップイン向けの前日リマインドは現状なし。
+- **価格・文言は Salute専用のハードコード**。他テナントが `/drop-in/:tenantId` を使う想定は
+  現状なく、多ジム対応（テナントごとの価格設定等）が必要になったら `trial_info_title/body` と
+  同様に `tenants` へ列を足す方針で検討する。
+
 ## 旧 Salute 連携 (参考: 廃止経緯)
 
 - 旧構成: /trial → Salute DB に INSERT → (Salute 側のデプロイ専用トリガー) →

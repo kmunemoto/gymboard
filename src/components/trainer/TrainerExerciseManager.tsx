@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Pencil, Trash2, Dumbbell, Search, X, Save } from "lucide-react";
+import { Plus, Pencil, Trash2, Dumbbell, Search, X, Save, SlidersHorizontal } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadMuscleGroupMap } from "@/lib/muscleGroup";
+import {
+  getTenantMuscleGroups,
+  loadTenantMuscleGroups,
+  subscribeTenantMuscleGroups,
+} from "@/lib/tenantMuscleGroups";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import TrainerMuscleGroupManager from "./TrainerMuscleGroupManager";
 
 interface Exercise {
   id: string;
@@ -23,41 +29,49 @@ interface Exercise {
   sort_order: number;
 }
 
-const MUSCLE_GROUPS = ["胸", "背中", "肩", "脚", "二頭筋", "三頭筋", "腹筋", "その他"] as const;
-type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
+// 「その他」は種目管理専用の常設カテゴリ（未分類・削除された部位の受け皿）。
+// ジムが編集する部位一覧（tenant_muscle_groups）には含めない
+// （レーダーチャート側は元々「その他」を軸に出さない設計のため、そちらにも影響しない）。
+const OTHER_GROUP = "その他";
 
 interface FormState {
   name: string;
-  muscle_group: MuscleGroup;
+  muscle_group: string;
   default_weight: string;
   default_reps: string;
   default_sets: string;
   notes: string;
 }
 
-const emptyForm: FormState = {
-  name: "",
-  muscle_group: "胸",
-  default_weight: "",
-  default_reps: "",
-  default_sets: "",
-  notes: "",
-};
-
 const TrainerExerciseManager = () => {
   const { t } = useTranslation();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | MuscleGroup>("all");
+  const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Exercise | null>(null);
+  const [groupManagerOpen, setGroupManagerOpen] = useState(false);
+  const [muscleGroupNames, setMuscleGroupNames] = useState<string[]>(
+    () => getTenantMuscleGroups().map((g) => g.name),
+  );
+
+  // 部位一覧（ジム編集可）+「その他」を、種目のフィルタ・選択肢として使う。
+  const MUSCLE_GROUPS = useMemo(() => [...muscleGroupNames, OTHER_GROUP], [muscleGroupNames]);
 
   useEffect(() => {
     fetchExercises();
+  }, []);
+
+  useEffect(() => {
+    loadTenantMuscleGroups().catch(() => {});
+    const unsub = subscribeTenantMuscleGroups(() => {
+      setMuscleGroupNames(getTenantMuscleGroups().map((g) => g.name));
+    });
+    return () => { unsub(); };
   }, []);
 
   const fetchExercises = async () => {
@@ -78,7 +92,14 @@ const TrainerExerciseManager = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({
+      name: "",
+      muscle_group: MUSCLE_GROUPS[0] ?? OTHER_GROUP,
+      default_weight: "",
+      default_reps: "",
+      default_sets: "",
+      notes: "",
+    });
     setSheetOpen(true);
   };
 
@@ -86,9 +107,7 @@ const TrainerExerciseManager = () => {
     setEditingId(ex.id);
     setForm({
       name: ex.name,
-      muscle_group: (MUSCLE_GROUPS as readonly string[]).includes(ex.muscle_group)
-        ? (ex.muscle_group as MuscleGroup)
-        : "その他",
+      muscle_group: MUSCLE_GROUPS.includes(ex.muscle_group) ? ex.muscle_group : OTHER_GROUP,
       default_weight: ex.default_weight != null ? String(ex.default_weight) : "",
       default_reps: ex.default_reps != null ? String(ex.default_reps) : "",
       default_sets: ex.default_sets != null ? String(ex.default_sets) : "",
@@ -103,6 +122,7 @@ const TrainerExerciseManager = () => {
   };
 
   const handleSave = async () => {
+    if (!form) return;
     const name = form.name.trim();
     if (!name) {
       toast.error(t("exercise.errEnterName"));
@@ -226,24 +246,33 @@ const TrainerExerciseManager = () => {
         />
       </div>
 
-      {/* Filter pills (horizontal scroll) */}
-      <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-thin">
-        {(["all", ...MUSCLE_GROUPS] as const).map((g) => {
-          const active = filter === g;
-          return (
-            <button
-              key={g}
-              onClick={() => setFilter(g as any)}
-              className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${
-                active
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {g === "all" ? t("common.all") : g}
-            </button>
-          );
-        })}
+      {/* Filter pills (horizontal scroll) + 部位を編集 */}
+      <div className="flex items-center gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-thin flex-1 min-w-0">
+          {["all", ...MUSCLE_GROUPS].map((g) => {
+            const active = filter === g;
+            return (
+              <button
+                key={g}
+                onClick={() => setFilter(g)}
+                className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${
+                  active
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {g === "all" ? t("common.all") : g}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => setGroupManagerOpen(true)}
+          className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold bg-muted text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          {t("muscleGroupManage.editBtn")}
+        </button>
       </div>
 
       {/* Grouped list */}
@@ -311,7 +340,7 @@ const TrainerExerciseManager = () => {
       </button>
 
       {/* Add/Edit slide-up sheet (native) */}
-      {sheetOpen && (
+      {sheetOpen && form && (
         <div className="fixed inset-0 z-50 flex flex-col">
           <div
             className="flex-1 bg-black/40"
@@ -350,7 +379,7 @@ const TrainerExerciseManager = () => {
                 <select
                   value={form.muscle_group}
                   onChange={(e) =>
-                    setForm({ ...form, muscle_group: e.target.value as MuscleGroup })
+                    setForm({ ...form, muscle_group: e.target.value })
                   }
                   className="mt-1 w-full h-11 rounded-md border border-input bg-background px-3 text-sm"
                 >
@@ -464,6 +493,13 @@ const TrainerExerciseManager = () => {
           </div>
         </div>
       )}
+
+      {/* 部位（胸・背中など）の追加・改名・削除 */}
+      <TrainerMuscleGroupManager
+        open={groupManagerOpen}
+        onClose={() => setGroupManagerOpen(false)}
+        onChanged={fetchExercises}
+      />
     </div>
   );
 };

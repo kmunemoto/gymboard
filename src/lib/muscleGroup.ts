@@ -10,6 +10,7 @@ const MUSCLE_GROUP_I18N_KEY: Record<string, string> = {
   "背中": "back",
   "肩": "shoulders",
   "脚": "legs",
+  "お尻": "glutes",
   "二頭筋": "biceps",
   "三頭筋": "triceps",
   "腹筋": "abs",

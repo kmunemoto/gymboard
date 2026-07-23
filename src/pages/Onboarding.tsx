@@ -174,6 +174,19 @@ const Onboarding = () => {
         if (pErr) throw pErr;
       }
 
+      // トレーニング部位バランス(レーダーチャート)・種目管理の「部位」既定値をシードする
+      // (tenant_muscle_groups は既存テナントのみマイグレーションでバックフィル済みのため、
+      // 新規テナントはここで作らないと部位が0件になってしまう)。
+      const { DEFAULT_TENANT_MUSCLE_GROUPS } = await import("@/lib/tenantMuscleGroups");
+      const { error: gErr } = await supabase.from("tenant_muscle_groups" as any).insert(
+        DEFAULT_TENANT_MUSCLE_GROUPS.map((name, idx) => ({
+          tenant_id: tenant.id,
+          name,
+          sort_order: idx,
+        })) as any,
+      );
+      if (gErr) console.error("[Onboarding] muscle group seed failed:", gErr.message);
+
       const { error: mErr } = await supabase.from("tenant_members").insert({
         tenant_id: tenant.id,
         user_id: user.id,

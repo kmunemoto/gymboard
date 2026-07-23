@@ -9,10 +9,13 @@ import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow } from "@/lib/timezone";
 import { getMuscleGroup, loadMuscleGroupMap, subscribeMuscleGroup } from "@/lib/muscleGroup";
+import {
+  getTenantMuscleGroups,
+  loadTenantMuscleGroups,
+  subscribeTenantMuscleGroups,
+} from "@/lib/tenantMuscleGroups";
 import { getCycleWindow as sharedGetCycleWindow } from "@/lib/courseProgress";
 import { formatDate } from "@/lib/dateFormat";
-
-const MUSCLE_GROUPS = ["胸", "背中", "肩", "脚", "二頭筋", "三頭筋", "腹筋"] as const;
 
 /**
  * 共通の courseProgress.getCycleWindow に統一。
@@ -45,13 +48,25 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
   const cycleStartDate = cycleProp !== undefined ? cycleProp : profile?.cycle_start_date;
   const [cycleOffset, setCycleOffset] = useState(0);
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
-  const [, force] = useState(0);
+  // 種目→部位マップ・部位一覧のいずれかが更新されたら +1 し、下の useMemo を再計算させる
+  // (どちらも参照が変わらないモジュール単位キャッシュなので、単なる再レンダーだけでは
+  // useMemo の依存配列に変化が無く再計算されないため、明示的なバージョン番号で駆動する)。
+  const [groupVersion, setGroupVersion] = useState(0);
 
   useEffect(() => {
     loadMuscleGroupMap().catch(() => {});
-    const unsub = subscribeMuscleGroup(() => force((n) => n + 1));
+    const unsub = subscribeMuscleGroup(() => setGroupVersion((n) => n + 1));
     return () => { unsub(); };
   }, []);
+
+  useEffect(() => {
+    loadTenantMuscleGroups().catch(() => {});
+    const unsub = subscribeTenantMuscleGroups(() => setGroupVersion((n) => n + 1));
+    return () => { unsub(); };
+  }, []);
+
+  // ジムごとに編集可能な部位一覧（tenant_muscle_groups）。並び順はジムの設定どおり。
+  const muscleGroups = useMemo(() => getTenantMuscleGroups().map((g) => g.name), [groupVersion]);
 
   // Monthly aggregation: always use calendar month windows (1st → 1st of next month).
   const { start, end } = useMemo(() => {
@@ -92,7 +107,7 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
 
   const chartData = useMemo(() => {
     const counts: Record<string, number> = {};
-    MUSCLE_GROUPS.forEach((g) => (counts[g] = 0));
+    muscleGroups.forEach((g) => (counts[g] = 0));
     let total = 0;
     workouts.forEach((w) => {
       // Prefer DB-joined muscle_group; fall back to hardcoded map for legacy data.
@@ -107,13 +122,13 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
     });
     console.log("[MuscleBalanceRadar] counts:", counts, "total sets:", total);
     return {
-      data: MUSCLE_GROUPS.map((g) => ({
+      data: muscleGroups.map((g) => ({
         group: g,
         value: counts[g],
       })),
       total,
     };
-  }, [workouts]);
+  }, [workouts, muscleGroups]);
 
   const periodLabel = formatDate(start, "yearMonth");
   const isCurrent = cycleOffset === 0;

@@ -389,6 +389,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         {t("settings.trainer.title")}
       </h2>
 
+      {/* === 招待コード（お客様の招待に日常的に使うため、カテゴリーにしまわず最上部に常時表示） === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.invite")}</h3>
+        <InviteCodeCard />
+      </section>
+
       {/* 設定項目が増えたため、カテゴリー別のアコーディオンに整理している。
           既定は全て閉じた状態で、探している分類だけ開いて使う。 */}
       <Accordion type="multiple" className="w-full">
@@ -616,12 +622,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             {t("settings.trainer.catGrowth")}
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pt-1">
-            {/* === 招待コード === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.invite")}</h3>
-              <InviteCodeCard />
-            </section>
-
             {/* === 体験予約リンク === */}
             <section className="space-y-3">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>

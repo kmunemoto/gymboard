@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle, MessageSquare } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
+import { sendLineMessage } from "@/lib/lineNotify";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -328,12 +329,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     // (only the trainer reminder/notification flows remain). Set to true to revive.
     const NOTIFY_CUSTOMER_LINE_ON_BOOKING = false;
     if (NOTIFY_CUSTOMER_LINE_ON_BOOKING) {
-      supabase.functions.invoke("send-line-message", {
-        body: {
-          user_id: user.id,
-          message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\n${tenant?.gym_name || "ジムボード"}`,
-        },
-      }).catch((e) => console.error("LINE message failed:", e));
+      void sendLineMessage({
+        user_id: user.id,
+        message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\n${tenant?.gym_name || "ジムボード"}`,
+      }, "顧客へ予約確定通知");
     }
 
     // Fire-and-forget push notification to trainer

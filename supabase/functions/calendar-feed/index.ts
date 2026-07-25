@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     const end = new Date(start.getTime() + (sessionMinutes + bufferMinutes) * 60 * 1000);
     return [
       "BEGIN:VEVENT",
-      `UID:${b.id}@salute-goshonan`,
+      `UID:${b.id}@gymboard`,
       `DTSTART:${toIcalDate(start)}`,
       `DTEND:${toIcalDate(end)}`,
       `SUMMARY:${escapeIcal(eventTitle)}`,
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="salute.ics"',
+      "Content-Disposition": 'attachment; filename="gymboard.ics"',
       "Cache-Control": "no-cache, no-store, must-revalidate",
     },
   });

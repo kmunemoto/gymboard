@@ -5,7 +5,31 @@ export const MONTHLY_REPORT_ENABLED = true;  // 月次レポート画面: トレ
 // App Store / Google OAuth 審査の都合で一時的に非表示にしているセクションを
 // ここで一元管理する。外部設定が整い次第、対象フラグを true に戻すだけで再有効化できる。
 // 連携済みユーザーのデータ・通知ロジックには影響しない。
-export const LINE_INTEGRATION_ENABLED = true;  // LINE連携セクション
+
+// LINE（Messaging API）連携。false でLINEへのプッシュ送信を全面的に停止する。
+//   - お客様/トレーナー設定の「LINE連携」セクションを非表示
+//   - 予約確定・キャンセル・予約変更・メッセージ・連続来店の各通知を送らない
+//     （送信は src/lib/lineNotify.ts の sendLineMessage() 一箇所に集約済み）
+//
+// なぜ止めるか（2026-07）:
+//   LINE Messaging API のトークン LINE_CHANNEL_ACCESS_TOKEN は**全テナント共有の1本**しか
+//   無く、ジムごとに公式アカウントを持たせる仕組みが無い。そのため
+//     - 他ジムのお客様に、こちらのLINEアカウントから通知が飛ぶ形になる
+//     - line-booking-reminder は事故防止のため特定テナントに限定されており、
+//       他ジムには前日リマインドが一切届かない（あるのに動かない機能）
+//   マルチテナントSaaSとして配る以上、中途半端に残すより一旦外す判断。
+//
+// ※ ジム設定の「LINEで連絡」ボタン（tenants.line_url）は**別物なので残している**。
+//    各ジムが自分のLINE URLを入れて、お客様に開いてもらうだけのリンクで、
+//    Messaging API もトークンも使わない。マルチテナントでも問題なく動く。
+//
+// ※ サーバー側の前日リマインド（line-booking-reminder / pg_cron）は、このフラグでは
+//    止まらない。cron ジョブ自体を無効化すること（mem/features/line-integration-disabled.md）。
+//
+// 復活方法: この値を true に戻すだけ。コードも profiles.line_user_id 等のデータも
+// 一切削除していない。ただし本来は、ジムごとにチャネルアクセストークンを持てるように
+// してから戻すこと。
+export const LINE_INTEGRATION_ENABLED = false;
 // Googleカレンダー連携の表示フラグ。Salute プロジェクトの OAuth クライアントを流用。
 //  - ジム（トレーナー）設定: 自分の Google アカウントを連携する用途。
 //  - お客様向け: 全テナントで表示。OAuth 同意画面は審査通過済みのため、一般のお客様も

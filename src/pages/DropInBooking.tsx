@@ -15,6 +15,7 @@ import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
+import { isDropInAvailable } from "@/lib/dropInTenant";
 
 // TrialBooking.tsx の複製（英語圏の観光客向け「単発ドロップインセッション ¥8,000・
 // 会員登録不要・現地決済」専用ページ）。無料体験(/trial)とは見出し・文言・言語が別物のため
@@ -344,6 +345,23 @@ const DropInBooking = () => {
                 {POWERED_BY_GYMBOARD}
               </a>
             )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ドロップインは提供しているジムでのみ受け付ける。
+  // 他ジムのIDでこのURLを開いても予約が入らないようにする（サーバー側でも弾いている）。
+  if (!isDropInAvailable(effectiveTenantId)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center space-y-3">
+            <h1 className="text-lg font-bold">Drop-in booking is not available</h1>
+            <p className="text-sm text-muted-foreground">
+              This gym does not offer drop-in sessions. Please contact the gym directly.
+            </p>
           </CardContent>
         </Card>
       </div>

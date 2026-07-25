@@ -25,6 +25,12 @@ import BackgroundImagePicker from "@/components/BackgroundImagePicker";
 import { resizeImageToJpeg } from "@/lib/imageResize";
 import { useTranslation } from "react-i18next";
 import { BILLING_ENABLED } from "@/lib/featureFlags";
+import {
+  DASHBOARD_STAT_TOGGLES,
+  DASHBOARD_SECTION_TOGGLES,
+  NAV_TAB_TOGGLES,
+  type GymDisplayColumn,
+} from "@/lib/gymDisplaySettings";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -42,14 +48,9 @@ const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
 // 予約と予約の間に必ず空ける時間（分）。15分刻み。
 const BUSINESS_BUFFER_OPTIONS = [0, 15, 30, 45, 60];
 
-// ダッシュボード上部の統計カード表示設定。labelKey はトグルの見出し文言のキー。
-const DASHBOARD_STAT_TOGGLES: { column: "show_stat_today_sessions" | "show_stat_active_clients" | "show_stat_month_sessions" | "show_stat_month_revenue"; labelKey: string }[] = [
-  { column: "show_stat_today_sessions", labelKey: "dashboard.statTodaySessions" },
-  { column: "show_stat_active_clients", labelKey: "dashboard.statActiveClients" },
-  { column: "show_stat_month_sessions", labelKey: "dashboard.statMonthSessions" },
-  { column: "show_stat_month_revenue", labelKey: "dashboard.statMonthRevenue" },
-];
-type DashboardStatColumn = (typeof DASHBOARD_STAT_TOGGLES)[number]["column"];
+// 表示ON/OFFの項目定義は src/lib/gymDisplaySettings.ts に集約している
+// （実際に表示を出し分ける TrainerSidebar / TrainerDashboard と同じ定義を参照し、
+//  「設定にはあるが効かない」といったズレを防ぐ）。
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const { t } = useTranslation();
@@ -61,10 +62,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [savingSameDayPenalty, setSavingSameDayPenalty] = useState(false);
-  const [savingShowRetention, setSavingShowRetention] = useState(false);
   const [savingDailySummary, setSavingDailySummary] = useState(false);
-  // ダッシュボード上部の統計カード表示設定。4項目とも同じ形の更新なので、
-  // 保存中フラグはどのカラムを保存中かで共有する。
+  // 表示ON/OFFの各トグル。どれも同じ形の更新なので、保存中フラグは
+  // 「どのカラムを保存中か」で共有する（トグルごとにstateを持たない）。
   const [savingStatKey, setSavingStatKey] = useState<string | null>(null);
   // 体験予約ページの案内カード（見出し＋説明文）のジム別カスタム文言。空欄=既定文言。
   const [trialInfoTitle, setTrialInfoTitle] = useState("");
@@ -157,22 +157,9 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     setSavingSameDayPenalty(false);
   };
 
-  const handleToggleShowRetention = async (checked: boolean) => {
-    if (!tenant) return;
-    setSavingShowRetention(true);
-    const { error } = await supabase
-      .from("tenants")
-      .update({ show_retention_alerts: checked })
-      .eq("id", tenant.id);
-    if (error) toast.error(t("settings.trainer.showRetentionSaveFailed"));
-    else {
-      toast.success(t("settings.trainer.showRetentionUpdated"));
-      refetchTenant();
-    }
-    setSavingShowRetention(false);
-  };
-
-  const handleToggleStatVisibility = async (column: DashboardStatColumn, checked: boolean) => {
+  // 表示ON/OFFはどの項目も「tenants の boolean 列を1つ更新して再取得」で同じ形なので、
+  // 統計カード・ホームの各セクション・メニューの各タブを1つのハンドラで扱う。
+  const handleToggleDisplay = async (column: GymDisplayColumn, checked: boolean) => {
     if (!tenant) return;
     setSavingStatKey(column);
     const { error } = await supabase
@@ -666,35 +653,64 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       <Separator />
 
-      {/* === 表示設定 === */}
+      {/* === 表示設定（ホーム画面の各パーツ・メニューの各タブをジムごとにON/OFF） === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.displaySection")}</h3>
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h4 className="font-bold text-sm">{t("settings.trainer.showRetentionTitle")}</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.showRetentionDesc")}</p>
-              </div>
-              <Switch
-                checked={tenant?.show_retention_alerts !== false}
-                disabled={savingShowRetention || !tenant}
-                onCheckedChange={handleToggleShowRetention}
-              />
-            </div>
-          </CardContent>
-        </Card>
 
+        {/* ホーム画面：上部の統計カード */}
         <Card>
           <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">{t("settings.trainer.statVisibilityDesc")}</p>
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.displayStatsGroup")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.statVisibilityDesc")}</p>
+            </div>
             {DASHBOARD_STAT_TOGGLES.map(({ column, labelKey }) => (
               <div key={column} className="flex items-center justify-between gap-3">
-                <h4 className="font-bold text-sm">{t(labelKey)}</h4>
+                <span className="text-sm">{t(labelKey)}</span>
                 <Switch
                   checked={tenant?.[column] !== false}
                   disabled={savingStatKey === column || !tenant}
-                  onCheckedChange={(checked) => handleToggleStatVisibility(column, checked)}
+                  onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* ホーム画面：各セクション */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.displaySectionsGroup")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displaySectionsDesc")}</p>
+            </div>
+            {DASHBOARD_SECTION_TOGGLES.map(({ column, labelKey }) => (
+              <div key={column} className="flex items-center justify-between gap-3">
+                <span className="text-sm">{t(labelKey)}</span>
+                <Switch
+                  checked={tenant?.[column] !== false}
+                  disabled={savingStatKey === column || !tenant}
+                  onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* メニュー（サイドバー / 下部ナビ）の各タブ */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.displayNavGroup")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displayNavDesc")}</p>
+            </div>
+            {NAV_TAB_TOGGLES.map(({ column, labelKey }) => (
+              <div key={column} className="flex items-center justify-between gap-3">
+                <span className="text-sm">{t(labelKey)}</span>
+                <Switch
+                  checked={tenant?.[column] !== false}
+                  disabled={savingStatKey === column || !tenant}
+                  onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
                 />
               </div>
             ))}

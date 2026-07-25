@@ -2481,11 +2481,23 @@ export type Database = {
           phone: string | null
           primary_color: string | null
           same_day_cancel_penalty_enabled: boolean
+          show_counseling_responses: boolean
+          show_nav_announcements: boolean
+          show_nav_counseling: boolean
+          show_nav_exercises: boolean
+          show_nav_messages: boolean
+          show_nav_notifications: boolean
+          show_nav_trial_followups: boolean
+          show_renewal_alerts: boolean
           show_retention_alerts: boolean
+          show_revenue_chart: boolean
           show_stat_active_clients: boolean
           show_stat_month_revenue: boolean
           show_stat_month_sessions: boolean
           show_stat_today_sessions: boolean
+          show_today_schedule: boolean
+          show_trial_followup_alert: boolean
+          show_utilization_heatmap: boolean
           slot_duration_minutes: number | null
           status: string | null
           stripe_customer_id: string | null
@@ -2524,11 +2536,23 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
+          show_counseling_responses?: boolean
+          show_nav_announcements?: boolean
+          show_nav_counseling?: boolean
+          show_nav_exercises?: boolean
+          show_nav_messages?: boolean
+          show_nav_notifications?: boolean
+          show_nav_trial_followups?: boolean
+          show_renewal_alerts?: boolean
           show_retention_alerts?: boolean
+          show_revenue_chart?: boolean
           show_stat_active_clients?: boolean
           show_stat_month_revenue?: boolean
           show_stat_month_sessions?: boolean
           show_stat_today_sessions?: boolean
+          show_today_schedule?: boolean
+          show_trial_followup_alert?: boolean
+          show_utilization_heatmap?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
           stripe_customer_id?: string | null
@@ -2567,11 +2591,23 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
+          show_counseling_responses?: boolean
+          show_nav_announcements?: boolean
+          show_nav_counseling?: boolean
+          show_nav_exercises?: boolean
+          show_nav_messages?: boolean
+          show_nav_notifications?: boolean
+          show_nav_trial_followups?: boolean
+          show_renewal_alerts?: boolean
           show_retention_alerts?: boolean
+          show_revenue_chart?: boolean
           show_stat_active_clients?: boolean
           show_stat_month_revenue?: boolean
           show_stat_month_sessions?: boolean
           show_stat_today_sessions?: boolean
+          show_today_schedule?: boolean
+          show_trial_followup_alert?: boolean
+          show_utilization_heatmap?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
           stripe_customer_id?: string | null

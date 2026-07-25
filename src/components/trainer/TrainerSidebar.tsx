@@ -1,6 +1,8 @@
 import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Megaphone, Bell, UserCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TrainerTab } from "./TrainerView";
+import { useTenant } from "@/hooks/useTenant";
+import { isNavTabVisible } from "@/lib/gymDisplaySettings";
 
 interface TrainerSidebarProps {
   activeTab: TrainerTab;
@@ -34,18 +36,25 @@ const mobileTabs: { id: TrainerTab; labelKey: string; icon: typeof LayoutDashboa
 
 const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCounseling = 0 }: TrainerSidebarProps) => {
   const { t } = useTranslation();
+  const { tenant } = useTenant();
   const getBadgeCount = (tabId: TrainerTab) => {
     if (tabId === "messages") return unreadMessages;
     if (tabId === "counseling") return unreadCounseling;
     return 0;
   };
 
+  // ジム設定でオフにしたタブはメニューから外す。ただし今開いているタブは、
+  // 消えて操作の文脈を見失わないよう例外的に残す（他画面から遷移してきた場合など）。
+  const isVisible = (tabId: TrainerTab) => tabId === activeTab || isNavTabVisible(tenant, tabId);
+  const visibleDesktopTabs = desktopTabs.filter((tab) => isVisible(tab.id));
+  const visibleMobileTabs = mobileTabs.filter((tab) => isVisible(tab.id));
+
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-60 flex-col gap-1 p-4 border-r border-border bg-card/60 backdrop-blur-xl z-30">
         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-3">{t("trainerNav.menu")}</p>
-        {desktopTabs.map((tab) => {
+        {visibleDesktopTabs.map((tab) => {
           const active = activeTab === tab.id;
           const badgeCount = getBadgeCount(tab.id);
           return (
@@ -76,7 +85,7 @@ const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCoun
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="flex">
-          {mobileTabs.map((tab) => {
+          {visibleMobileTabs.map((tab) => {
             const active = activeTab === tab.id;
             const badgeCount = getBadgeCount(tab.id);
             return (

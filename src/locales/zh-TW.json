@@ -132,6 +132,12 @@
     },
     "trainer": {
       "title": "健身房設定",
+      "catGymInfo": "健身房資訊",
+      "catBooking": "預約與營業",
+      "catGrowth": "獲客與體驗",
+      "catAppearance": "顯示與設計",
+      "catNotifications": "通知",
+      "catAccount": "帳戶",
       "invite": "邀請客戶",
       "trialLinkSection": "體驗預約連結",
       "trialPageSection": "體驗預約頁面說明",

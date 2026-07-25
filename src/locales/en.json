@@ -132,6 +132,12 @@
     },
     "trainer": {
       "title": "Gym Settings",
+      "catGymInfo": "Gym info",
+      "catBooking": "Booking & hours",
+      "catGrowth": "Growth & trials",
+      "catAppearance": "Display & design",
+      "catNotifications": "Notifications",
+      "catAccount": "Account",
       "invite": "Invite Customers",
       "trialLinkSection": "Trial Booking Link",
       "trialPageSection": "Trial Page Message",

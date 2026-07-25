@@ -132,6 +132,12 @@
     },
     "trainer": {
       "title": "健身房设置",
+      "catGymInfo": "健身房信息",
+      "catBooking": "预约与营业",
+      "catGrowth": "获客与体验",
+      "catAppearance": "显示与设计",
+      "catNotifications": "通知",
+      "catAccount": "账户",
       "invite": "邀请客户",
       "trialLinkSection": "体验预约链接",
       "trialPageSection": "体验预约页面说明",

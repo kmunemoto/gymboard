@@ -165,7 +165,6 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
         .eq("id", d.id)
         .select();
 
-      console.log("[skeletal_diagnoses] delete result:", { data, error });
 
       if (error) throw error;
 
@@ -205,7 +204,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
     const fetchData = async () => {
       setLoading(true);
       const { data } = await supabase
-        .from("skeletal_diagnoses" as any)
+        .from("skeletal_diagnoses")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })

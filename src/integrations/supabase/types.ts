@@ -338,6 +338,33 @@ export type Database = {
           },
         ]
       }
+      booking_waitlist: {
+        Row: {
+          booking_date: string
+          created_at: string
+          id: string
+          start_time: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          booking_date: string
+          created_at?: string
+          id?: string
+          start_time: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          booking_date?: string
+          created_at?: string
+          id?: string
+          start_time?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           booking_date: string
@@ -1499,6 +1526,8 @@ export type Database = {
           id: string
           last_streak_notified: number
           line_user_id: string | null
+          milestone_goal: string | null
+          milestone_goal_set_at: string | null
           paid_this_month: boolean
           plan: string | null
           review_prompted_at: string | null
@@ -1521,6 +1550,8 @@ export type Database = {
           id?: string
           last_streak_notified?: number
           line_user_id?: string | null
+          milestone_goal?: string | null
+          milestone_goal_set_at?: string | null
           paid_this_month?: boolean
           plan?: string | null
           review_prompted_at?: string | null
@@ -1543,6 +1574,8 @@ export type Database = {
           id?: string
           last_streak_notified?: number
           line_user_id?: string | null
+          milestone_goal?: string | null
+          milestone_goal_set_at?: string | null
           paid_this_month?: boolean
           plan?: string | null
           review_prompted_at?: string | null

@@ -74,6 +74,84 @@ export const NAV_TAB_TOGGLES: { column: GymDisplayColumn; tab: TrainerTab; label
   { column: "show_nav_trial_followups", tab: "trial-followups", labelKey: "trainerNav.trialFollowUps" },
 ];
 
+/** 表示ON/OFFの対象となる全カラム（統計カード + ホームのセクション + メニューのタブ） */
+export const ALL_DISPLAY_TOGGLES: GymDisplayToggle[] = [
+  ...DASHBOARD_STAT_TOGGLES,
+  ...DASHBOARD_SECTION_TOGGLES,
+  ...NAV_TAB_TOGGLES,
+];
+
+/**
+ * 表示量のプリセット。
+ *
+ * ジムボードは機能を足し続けた結果、新しいジムがいきなり17項目すべて表示された状態で
+ * 始まるようになっていた。パーソナルジム1人運営で「稼働率ヒートマップ」「カウンセリング」
+ * 「体験フォロー」まで最初から出ているのは、率直に言って多すぎる。
+ *
+ * ここでは「最初に出す量」を3段階で選べるようにする。あくまで初期値と一括切替の
+ * 手段であって、個別のトグルはこれまでどおり自由に触れる。
+ *
+ * **既存ジムの表示は変えない。** DBの既定値は今までどおり全て true のままで、
+ * このプリセットが効くのは (1) 新規ジムのオンボーディング (2) 設定画面で明示的に
+ * プリセットを押したとき、の2つだけ。
+ */
+export type GymDisplayPreset = "simple" | "standard" | "full";
+
+/** simple で表示するもの（ここに無い項目は非表示になる） */
+const SIMPLE_COLUMNS: GymDisplayColumn[] = [
+  // 毎日必ず見るものだけ: 今日の予定と、今いる顧客の数
+  "show_stat_today_sessions",
+  "show_stat_active_clients",
+  "show_today_schedule",
+  // 種目管理はトレーニング記録の前提なので残す
+  "show_nav_exercises",
+];
+
+/** standard で表示するもの（simple に売上・顧客フォロー・連絡手段を足したもの） */
+const STANDARD_COLUMNS: GymDisplayColumn[] = [
+  ...SIMPLE_COLUMNS,
+  "show_stat_month_sessions",
+  "show_stat_month_revenue",
+  "show_retention_alerts",
+  "show_renewal_alerts",
+  "show_revenue_chart",
+  "show_nav_messages",
+  "show_nav_announcements",
+];
+
+const PRESET_COLUMNS: Record<GymDisplayPreset, GymDisplayColumn[] | "all"> = {
+  simple: SIMPLE_COLUMNS,
+  standard: STANDARD_COLUMNS,
+  full: "all",
+};
+
+export const GYM_DISPLAY_PRESETS: GymDisplayPreset[] = ["simple", "standard", "full"];
+
+/** プリセットを、17項目すべてを明示した値の組に展開する（DBへはこの形で書く） */
+export const presetToValues = (preset: GymDisplayPreset): Record<GymDisplayColumn, boolean> => {
+  const on = PRESET_COLUMNS[preset];
+  const values = {} as Record<GymDisplayColumn, boolean>;
+  for (const { column } of ALL_DISPLAY_TOGGLES) {
+    values[column] = on === "all" || on.includes(column);
+  }
+  return values;
+};
+
+/**
+ * 今の設定がどのプリセットと一致するか（どれとも一致しなければ null＝カスタム）。
+ * 設定画面で「今どれが選ばれているか」を示すために使う。
+ */
+export const detectPreset = (tenant: Tenant | null | undefined): GymDisplayPreset | null => {
+  if (!tenant) return null;
+  for (const preset of GYM_DISPLAY_PRESETS) {
+    const values = presetToValues(preset);
+    if (ALL_DISPLAY_TOGGLES.every(({ column }) => isDisplayOn(tenant, column) === values[column])) {
+      return preset;
+    }
+  }
+  return null;
+};
+
 /** 表示ONか（列が無い/未取得なら既定で表示） */
 export const isDisplayOn = (tenant: Tenant | null | undefined, column: GymDisplayColumn): boolean =>
   tenant?.[column] !== false;

@@ -33,11 +33,25 @@ bun run dev   # http://localhost:8080
 | コマンド | 説明 |
 | --- | --- |
 | `bun run dev` | 開発サーバー起動 |
+| `bun run dev:fixtures` | 開発サーバー起動（**ログイン不要・ダミーデータ**。Supabase に繋がない） |
 | `bun run build` | 本番ビルド |
 | `bun run build:dev` | development モードでビルド |
 | `bun run lint` | ESLint 実行 |
 | `bun run test` | Vitest 実行 |
 | `bun run translate` | ロケールファイルの翻訳生成 |
+
+### ログインせずに画面を確認する
+
+トレーナー側の画面はログイン必須で、`.env` は本番プロジェクトを指しているため、
+そのままでは開発中に画面を目視確認できない。次のコマンドで、架空のジムのダミーデータを
+使い、ログインなしにトレーナーとしてアプリを開ける（Supabase には接続しない）。
+
+```bash
+bun run dev:fixtures   # もしくは: npm run dev:fixtures
+```
+
+データは `src/dev/fixtures.ts`。本番ビルドには含まれない（`vite.config.ts` の alias で
+差し替え）。詳細は `mem/ops/dev-fixtures.md`。
 
 ## 環境変数
 
@@ -50,6 +64,7 @@ bun run dev   # http://localhost:8080
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon（公開）キー |
 | `VITE_SUPABASE_PROJECT_ID` | Supabase プロジェクト ID |
 | `VITE_PAYMENTS_CLIENT_TOKEN` | Stripe publishable キー（`pk_...`） |
+| `VITE_DEV_FIXTURES` | `true` で開発用ダミーデータに差し替え（`.env.fixtures` / `dev:fixtures` 専用。本番では無視される） |
 
 > Supabase の service_role キーや Stripe secret キーなどの秘密情報は
 > Edge Functions の環境変数（`Deno.env.get`）でのみ扱い、クライアントには含めない。

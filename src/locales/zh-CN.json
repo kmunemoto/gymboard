@@ -228,7 +228,20 @@
       "fileTooLarge": "文件大小请控制在 2MB 以内",
       "tenantUnavailable": "无法获取租户信息",
       "uploadFailed": "上传失败",
-      "deleteFailed": "删除失败"
+      "deleteFailed": "删除失败",
+      "displayPresetGroup": "显示范围",
+      "displayPresetDesc": "一次性切换。下方仍可逐项调整。",
+      "displayPreset": {
+        "simple": "简洁",
+        "standard": "标准",
+        "full": "完整"
+      },
+      "displayPresetHint": {
+        "simple": "仅今日安排",
+        "standard": "加上营收与客户跟进",
+        "full": "全部功能"
+      },
+      "displayPresetCustom": "已单独调整（与任何预设都不一致）"
     },
     "notification": {
       "title": "通知设置",
@@ -1555,7 +1568,9 @@
     "copyLink": "复制邀请链接",
     "toastCodeCopied": "已复制邀请码",
     "toastLinkCopied": "已复制邀请链接",
-    "goDashboard": "前往管理后台 →"
+    "goDashboard": "前往管理后台 →",
+    "fieldDisplayPreset": "初始显示的功能范围",
+    "displayPresetNote": "拿不定主意就选「标准」。之后可随时在健身房设置中更改。"
   },
   "trialBooking": {
     "defaultGymName": "GymBoard",

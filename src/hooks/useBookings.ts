@@ -10,6 +10,7 @@ import { fetchMyTenantStaffIds, fetchMyTenantTrainerId } from "@/lib/tenantHelpe
 import { WAITLIST_ENABLED } from "@/lib/featureFlags";
 import { shouldRebaseCycleStart, getMonthlySessionCount } from "@/lib/courseProgress";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
+import { devLog } from "@/lib/devLog";
 
 export interface BookingRow {
   id: string;
@@ -40,7 +41,7 @@ const logEmailInvoke = (
   recipientEmail: string,
   result: Awaited<ReturnType<typeof supabase.functions.invoke>>,
 ) => {
-  console.log("予約メール送信レスポンス", {
+  devLog("予約メール送信レスポンス", {
     context,
     templateName,
     recipientEmail,
@@ -358,7 +359,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
     if (!ok) return;
 
     await supabase.from("profiles").update({ cycle_start_date: dateKey }).eq("user_id", userId);
-    console.log(`[cycle] 起算日を1回目の予約日に自動設定: ${userId} -> ${dateKey}`);
+    devLog(`[cycle] 起算日を1回目の予約日に自動設定: ${userId} -> ${dateKey}`);
   } catch (e) {
     console.warn("rebaseCycleStartIfNeeded failed:", e);
   }
@@ -742,7 +743,7 @@ export const cancelBooking = async (
     // 予約変更（reschedule）の内部呼び出し: 旧枠のGoogleカレンダー削除・行削除だけ行い、
     // キャンセル通知は送らない（呼び出し側が「変更」1通にまとめる）。空き枠通知も出さない。
   } else if (!error && booking) {
-    console.log("LINE通知送信開始", booking.id, { cancelledByTrainer, forfeit: !!opts.forfeit });
+    devLog("LINE通知送信開始", booking.id, { cancelledByTrainer, forfeit: !!opts.forfeit });
     // Send LINE cancel notification (fire-and-forget)
     sendCancelLineNotification(booking, cancelledByTrainer, !!opts.forfeit).catch((e) =>
       console.error("sendCancelLineNotification failed:", e)
@@ -803,31 +804,31 @@ async function sendCancelLineNotification(
   if (cancelledByTrainer) {
     // Notify customer (gated by feature flag)
     if (NOTIFY_CUSTOMER_LINE_ON_BOOKING) {
-      console.log("LINE送信: 顧客へキャンセル通知", booking.user_id);
+      devLog("LINE送信: 顧客へキャンセル通知", booking.user_id);
       const custRes = await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: booking.user_id,
           message: `❌ キャンセル完了\n\n${md}（${dow}）${hm}\n\n${customerName}様、上記ご予約をキャンセルしました。\n\nプラン：${booking.booking_type}${forfeitNote}\n\n${gymName}`,
         },
       });
-      console.log("LINE送信結果(顧客):", custRes);
+      devLog("LINE送信結果(顧客):", custRes);
     }
 
     // Notify trainer (self-confirmation)
     if (trainerId) {
-      console.log("LINE送信: トレーナーへキャンセル確認通知", trainerId);
+      devLog("LINE送信: トレーナーへキャンセル確認通知", trainerId);
       const trRes = await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: trainerId,
           message: `✅ キャンセル処理完了\n\n${dateStr}\n\n${customerName}様の予約をキャンセルしました。\n\nプラン：${booking.booking_type}${forfeitNote}\n\n${gymName}`,
         },
       });
-      console.log("LINE送信結果(トレーナー):", trRes);
+      devLog("LINE送信結果(トレーナー):", trRes);
     }
   } else {
     // Customer cancelled → notify both
     if (trainerId) {
-      console.log("LINE送信: トレーナーへキャンセル通知", trainerId);
+      devLog("LINE送信: トレーナーへキャンセル通知", trainerId);
       await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: trainerId,
@@ -838,7 +839,7 @@ async function sendCancelLineNotification(
 
     // Notify customer (cancellation confirmation, gated by feature flag)
     if (NOTIFY_CUSTOMER_LINE_ON_BOOKING) {
-      console.log("LINE送信: 顧客へキャンセル確認通知", booking.user_id);
+      devLog("LINE送信: 顧客へキャンセル確認通知", booking.user_id);
       await supabase.functions.invoke("send-line-message", {
         body: {
           user_id: booking.user_id,

@@ -1,0 +1,51 @@
+name: CI
+
+# PR と main への push で、型チェック・テスト・本番ビルドを自動実行する。
+#
+# これまで検証は手元で `npm run build` を叩くだけで、CIが無かったため
+# 「テストは書いてあるが誰も走らせていない」状態になっていた。
+# 特に src/test/schemaDrift.test.ts（マイグレーションの未適用検出）は
+# 自動で回らないと意味がないので、ここで必ず実行する。
+#
+# lint は既存コードに大量の指摘（no-explicit-any 等）が残っているため、
+# 落とすと全PRが赤になる。ゲートには入れず、状況が見えるよう参考表示のみ行う。
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同じブランチで新しいpushがあったら前の実行を止める（CI待ちの詰まり防止）
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 型チェック（tsconfig.app.json = src 配下。Edge Function は Deno なので対象外）
+      - name: Type check
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # 参考表示のみ。既存の指摘が解消されるまでゲートにはしない。
+      - name: Lint (informational)
+        continue-on-error: true
+        run: npx eslint .

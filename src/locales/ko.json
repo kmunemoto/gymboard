@@ -228,7 +228,20 @@
       "fileTooLarge": "파일 크기는 2MB 이하로 해주세요",
       "tenantUnavailable": "테넌트 정보를 가져올 수 없습니다",
       "uploadFailed": "업로드에 실패했습니다",
-      "deleteFailed": "삭제에 실패했습니다"
+      "deleteFailed": "삭제에 실패했습니다",
+      "displayPresetGroup": "표시할 범위",
+      "displayPresetDesc": "한 번에 전환합니다. 개별 항목은 아래에서 언제든 조정할 수 있습니다.",
+      "displayPreset": {
+        "simple": "심플",
+        "standard": "표준",
+        "full": "전체"
+      },
+      "displayPresetHint": {
+        "simple": "오늘 일정만",
+        "standard": "매출·고객 관리까지",
+        "full": "모든 기능"
+      },
+      "displayPresetCustom": "개별 조정됨 (프리셋과 일치하지 않음)"
     },
     "notification": {
       "title": "알림 설정",
@@ -1555,7 +1568,9 @@
     "copyLink": "초대 링크 복사",
     "toastCodeCopied": "초대 코드를 복사했습니다",
     "toastLinkCopied": "초대 링크를 복사했습니다",
-    "goDashboard": "관리 화면으로 →"
+    "goDashboard": "관리 화면으로 →",
+    "fieldDisplayPreset": "처음에 표시할 기능의 범위",
+    "displayPresetNote": "고민된다면 「표준」. 나중에 짐 설정에서 언제든 변경할 수 있습니다."
   },
   "trialBooking": {
     "defaultGymName": "GymBoard",

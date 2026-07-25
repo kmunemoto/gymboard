@@ -27,6 +27,12 @@ const STATUS_I18N_KEY: Record<FollowUpStatus, string> = {
   "見送り": "declined",
 };
 
+// DBの follow_up_status は自由文字列（CHECK制約なし）。想定外の値が入っていると
+// 翻訳キーが解決できず、画面に "trialFollowUp.status.undefined" という生の文字列が
+// そのまま出てしまうため、未知の値は「未対応」として扱う。
+const statusI18nKey = (status: string | null | undefined): string =>
+  STATUS_I18N_KEY[(status ?? "未対応") as FollowUpStatus] ?? STATUS_I18N_KEY["未対応"];
+
 interface TrialRow {
   id: string;
   guest_name: string;
@@ -163,7 +169,7 @@ const TrainerTrialFollowUps = () => {
             )}
           </div>
           <Badge variant={statusBadgeVariant(r.follow_up_status ?? "未対応")} className="shrink-0 text-[10px]">
-            {t(`trialFollowUp.status.${STATUS_I18N_KEY[r.follow_up_status ?? "未対応"]}`)}
+            {t(`trialFollowUp.status.${statusI18nKey(r.follow_up_status)}`)}
           </Badge>
         </div>
 
@@ -177,7 +183,7 @@ const TrainerTrialFollowUps = () => {
           </SelectTrigger>
           <SelectContent>
             {FOLLOW_UP_STATUSES.map((s) => (
-              <SelectItem key={s} value={s} className="text-xs">{t(`trialFollowUp.status.${STATUS_I18N_KEY[s]}`)}</SelectItem>
+              <SelectItem key={s} value={s} className="text-xs">{t(`trialFollowUp.status.${statusI18nKey(s)}`)}</SelectItem>
             ))}
           </SelectContent>
         </Select>

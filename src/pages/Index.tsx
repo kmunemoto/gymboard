@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import CustomerView from "@/components/customer/CustomerView";
-import TrainerView from "@/components/trainer/TrainerView";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+
+// お客様用とジム用は、どちらか一方しか使わない。静的に import していると
+// お客様がジムの管理画面一式（予定表・顧客管理・設定など）まで、
+// ジム側がお客様の画面一式まで丸ごとダウンロードすることになるため、
+// ログイン後の役割が決まってから必要な方だけ読み込む。
+const CustomerView = lazy(() => import("@/components/customer/CustomerView"));
+const TrainerView = lazy(() => import("@/components/trainer/TrainerView"));
 
 type Status = "checking" | "has" | "missing-trainer" | "missing-customer";
 
@@ -40,12 +45,14 @@ const Index = () => {
     })();
   }, [user, loading]);
 
+  const fullScreenLoader = (
+    <div className="min-h-screen flex items-center justify-center">
+      <DumbbellLoader className="w-16 h-16 text-accent" />
+    </div>
+  );
+
   if (loading || (user && status === "checking")) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <DumbbellLoader className="w-16 h-16 text-accent" />
-      </div>
-    );
+    return fullScreenLoader;
   }
 
   if (!user) {
@@ -59,11 +66,12 @@ const Index = () => {
     return <Navigate to="/join" replace />;
   }
 
-  if (role === "trainer") {
-    return <TrainerView />;
-  }
-
-  return <CustomerView />;
+  // 読み込み中の見た目は、上の判定中と同じローダーに揃える（画面がちらつかない）
+  return (
+    <Suspense fallback={fullScreenLoader}>
+      {role === "trainer" ? <TrainerView /> : <CustomerView />}
+    </Suspense>
+  );
 };
 
 export default Index;

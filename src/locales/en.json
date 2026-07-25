@@ -228,7 +228,20 @@
       "fileTooLarge": "File size must be 2MB or less",
       "tenantUnavailable": "Unable to retrieve tenant information",
       "uploadFailed": "Upload failed",
-      "deleteFailed": "Delete failed"
+      "deleteFailed": "Delete failed",
+      "displayPresetGroup": "How much to show",
+      "displayPresetDesc": "Switch everything at once. You can still adjust each item below.",
+      "displayPreset": {
+        "simple": "Simple",
+        "standard": "Standard",
+        "full": "Full"
+      },
+      "displayPresetHint": {
+        "simple": "Today's schedule only",
+        "standard": "Plus revenue & follow-ups",
+        "full": "Every feature"
+      },
+      "displayPresetCustom": "Customized (doesn't match any preset)"
     },
     "notification": {
       "title": "Notification Settings",
@@ -1555,7 +1568,9 @@
     "copyLink": "Copy invite link",
     "toastCodeCopied": "Invite code copied",
     "toastLinkCopied": "Invite link copied",
-    "goDashboard": "Go to dashboard →"
+    "goDashboard": "Go to dashboard →",
+    "fieldDisplayPreset": "How much to show at first",
+    "displayPresetNote": "Not sure? Pick Standard. You can change this anytime in gym settings."
   },
   "trialBooking": {
     "defaultGymName": "GymBoard",

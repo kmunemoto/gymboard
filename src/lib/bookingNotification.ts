@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getWebOrigin } from "@/lib/nativeBridge";
 import { fetchMyTenantTrainerId, fetchMyTenantGymName } from "@/lib/tenantHelper";
+import { devLog } from "@/lib/devLog";
 
 const logEmailInvoke = (
   context: string,
@@ -10,7 +11,7 @@ const logEmailInvoke = (
   recipientEmail: string,
   result: Awaited<ReturnType<typeof supabase.functions.invoke>>,
 ) => {
-  console.log("予約メール送信レスポンス", {
+  devLog("予約メール送信レスポンス", {
     context,
     templateName,
     recipientEmail,

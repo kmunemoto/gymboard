@@ -96,7 +96,6 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
           exercise_name: w.exercises?.name || "不明",
           muscle_group: w.exercises?.muscle_group ?? null,
         }));
-        console.log("[MuscleBalanceRadar] period", startStr, "→", endStr, "rows:", rows);
         setWorkouts(rows);
       } else {
         setWorkouts([]);
@@ -120,7 +119,6 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
         total += setCount;
       }
     });
-    console.log("[MuscleBalanceRadar] counts:", counts, "total sets:", total);
     return {
       data: muscleGroups.map((g) => ({
         group: g,

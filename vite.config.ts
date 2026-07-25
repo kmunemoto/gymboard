@@ -23,6 +23,13 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), mode === "development" && componentTagger(), mcpPlugin()].filter(Boolean),
   resolve: {
     alias: {
+      // 開発用ダミーデータ（VITE_DEV_FIXTURES）は本番バンドルから物理的に外す。
+      // モジュール読み込み時にダミーデータを組み立てる副作用があるため、
+      // Rollup の tree-shaking では落ちず、本番JSに架空のジム名等が入ってしまう。
+      // より限定的な別名を先に置く必要がある（"@" が先だとそちらが先にマッチしてしまう）。
+      ...(mode === "production"
+        ? { "@/dev/fixtureClient": path.resolve(__dirname, "./src/dev/fixtureClient.stub.ts") }
+        : {}),
       "@": path.resolve(__dirname, "./src"),
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],

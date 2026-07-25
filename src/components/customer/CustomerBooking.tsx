@@ -231,29 +231,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     setWaitlistTarget(null);
   };
 
-  // ============================================================
-  // 6月/7月の棲み分け対応・移行完了後に削除
-  // Salute御所南テナントのみ、2026年6月の予約日に対する新規作成と
-  // キャンセルを GymBoard 上で不可にする（従来の Salute アプリで管理）。
-  // 7月以降は通常通り利用可能。判定は予約日の文字列のみで行う。
-  // ============================================================
-  const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
-  const isJune2026 = (d: string) => d >= "2026-06-01" && d <= "2026-06-30";
-  const isSaluteJuneLocked = (d: string) =>
-    tenant?.id === SALUTE_TENANT_ID && !!d && isJune2026(d);
-  const JUNE_LOCK_MESSAGE = t("booking.juneLockMessage");
-  // ============================================================
-  // 棲み分け対応ここまで
-  // ============================================================
-
   const handleBook = async () => {
     if (submitting) return; // 二重送信ガード（ボタンのdisabledに加えた多重防御）
-    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約日は不可
-    if (isSaluteJuneLocked(dateKey)) {
-      toast.info(JUNE_LOCK_MESSAGE);
-      return;
-    }
-
     if (!selectedDate || !selectedSlot || !user || !selectedPlan) return;
     const slot = slots.find((s) => s.id === selectedSlot);
     if (!slot) return;
@@ -378,10 +357,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // 予約変更モードに入る: 対象を記録し、日付・スロット選択をリセットしてカレンダーへ誘導
   const startReschedule = (b: BookingWithTime) => {
-    if (isSaluteJuneLocked(b.date)) {
-      toast.info(JUNE_LOCK_MESSAGE);
-      return;
-    }
     setRescheduleTarget(b);
     setSelectedDate(undefined);
     setSelectedSlot(null);
@@ -453,11 +428,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   const handleCancel = async () => {
     if (!cancelTarget || cancelling) return;
-    // [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可
-    if (isSaluteJuneLocked(cancelTarget.date)) {
-      toast.info(JUNE_LOCK_MESSAGE);
-      return;
-    }
     // 同日キャンセルのペナルティ対象は、最初の押下では警告表示に切り替えるだけに
     // 留め、実際のキャンセルは警告を見た上でのもう一度の確定操作で行う。
     if (cancelTargetForfeits && !forfeitPending) {
@@ -616,34 +586,22 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         >
                           <CalendarPlus className="w-4 h-4" />
                         </button>
-                        {/* 日時変更（リスケジュール）。6月ロック中は不可 */}
-                        {!isSaluteJuneLocked(b.date) && (
-                          <button
-                            type="button"
-                            onClick={() => startReschedule(b)}
-                            className="text-muted-foreground hover:text-accent transition-colors p-2"
-                            title={t("booking.reschedule")}
-                          >
-                            <CalendarClock className="w-4 h-4" />
-                          </button>
-                        )}
-                        {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月の予約はキャンセル不可 */}
-                        {isSaluteJuneLocked(b.date) ? (
-                          <span
-                            className="text-muted-foreground/40 p-2 cursor-not-allowed"
-                            title={JUNE_LOCK_MESSAGE}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setCancelTarget(b)}
-                            className="text-destructive hover:text-destructive/80 transition-colors p-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* 日時変更（リスケジュール） */}
+                        <button
+                          type="button"
+                          onClick={() => startReschedule(b)}
+                          className="text-muted-foreground hover:text-accent transition-colors p-2"
+                          title={t("booking.reschedule")}
+                        >
+                          <CalendarClock className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCancelTarget(b)}
+                          className="text-destructive hover:text-destructive/80 transition-colors p-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
@@ -729,8 +687,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   toDate={addMonths(startOfDay(getJSTNow()), 1)}
                   disabled={(date) => {
                     const yyyyMMdd = format(date, "yyyy-MM-dd");
-                    // [6月/7月の棲み分け対応] Salute御所南×2026年6月は選択不可
-                    if (isSaluteJuneLocked(yyyyMMdd)) return true;
                     // 当日は「空き状況の閲覧のみ」できるよう選択可能にする。予約可否は
                     // スロット側の tooSoon 判定（isBookingDayClosed）が引き続き当日を
                     // 予約不可にするため、ここで塞ぐのは過去日だけでよい。
@@ -793,14 +749,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 />
               </CardContent>
             </Card>
-
-            {/* [6月/7月の棲み分け対応] Salute御所南×2026年6月は案内バナー */}
-            {isSaluteJuneLocked(dateKey) && (
-              <div className="mt-3 flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
-                <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                <p className="text-xs text-foreground leading-relaxed">{JUNE_LOCK_MESSAGE}</p>
-              </div>
-            )}
 
             {selectedDate && (
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">
@@ -972,7 +920,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                       size="lg"
                       className="w-full"
                       onClick={rescheduleTarget ? handleReschedule : handleBook}
-                      disabled={submitting || isSaluteJuneLocked(dateKey)}
+                      disabled={submitting}
                     >
                       {submitting ? (
                         <DumbbellLoader className="w-4 h-4 mr-2" />

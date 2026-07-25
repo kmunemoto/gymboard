@@ -475,7 +475,6 @@
     "completeTitle": "預約已完成!",
     "completeDescription": "預約內容確認",
     "shareText": "{{gym}} 訓練",
-    "juneLockMessage": "6月的預約與取消仍於Salute應用程式中受理。7月以後的預約請使用本應用程式。",
     "customerFallback": "顧客",
     "cancelDescWithTime": "將取消 {{date}} {{startTime}}〜{{endTime}} 的預約。",
     "sameDayForfeitWarningTitle": "確定要取消嗎？",

@@ -475,7 +475,6 @@
     "completeTitle": "予約が完了しました！",
     "completeDescription": "予約内容のご確認",
     "shareText": "{{gym}}トレーニング",
-    "juneLockMessage": "6月のご予約・キャンセルは、これまで通りSaluteアプリで承ります。7月以降のご予約はこちらのアプリをご利用ください。",
     "customerFallback": "お客様",
     "cancelDescWithTime": "{{date}} {{startTime}}〜{{endTime}} の予約をキャンセルします。",
     "sameDayForfeitWarningTitle": "本当にキャンセルしますか？",

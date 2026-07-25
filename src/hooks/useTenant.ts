@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { TENANT_COL_VARIANTS, normalizeTenantRow } from "@/lib/tenantColumns";
 
 export interface Tenant {
   id: string;
@@ -101,16 +102,8 @@ export function useTenant() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      // 基本カラムと、後から追加したカラム（same_day_cancel_penalty_enabled /
-      // trial_info_title / trial_info_body）を分けて持つ。
-      // 新カラムを含む select は、対象環境でマイグレーション未適用だと
-      // 「column does not exist」でクエリ全体が失敗し、tenant が読めず
-      // アプリ全体（プラン管理のロード等）が壊れる。そのため新カラム込みで試し、
-      // 失敗したら段階的に削って再取得する。段階的にするのは、trial_info_* だけ
-      // 未適用の環境で same_day_cancel_penalty_enabled（適用済み）まで巻き添えで
-      // OFF 扱いに落ちるのを防ぐため。
-      const TENANT_BASE_COLS =
-        "id, gym_name, gym_name_short, business_type, logo_url, primary_color, address, phone, email, website_url, operating_hours, slot_duration_minutes, booking_cutoff_type, booking_cutoff_hours, status, gymboard_plan, max_customers, subscription_status, trial_ends_at";
+      // 取得カラムとフォールバック段、既定値は src/lib/tenantColumns.ts に集約している
+      // （カラム追加時に手で10段書き換える必要をなくすため。詳細はそちらのコメント参照）。
       const memberQuery = (tenantCols: string) =>
         supabase
           .from("tenant_members")
@@ -120,32 +113,9 @@ export function useTenant() {
           .limit(1)
           .maybeSingle();
 
-      // 追加カラムの多い順にフォールバックする（全部→trial_info込み→same_dayのみ→基本のみ）。
-      // show_stat_* は最後に足した新カラム。未適用環境では先頭が失敗し、
-      // 次の変種に落ちて show_stat_* 無し（=既定trueにマッピング側でフォールバック、
-      // 全カード表示のまま）で正常動作する。
-      const DASHBOARD_STAT_COLS =
-        "show_stat_today_sessions, show_stat_active_clients, show_stat_month_sessions, show_stat_month_revenue";
-      // ホーム画面の各セクション + メニューの各タブの表示可否（最後に足した新カラム群）。
-      // 未適用環境では先頭の変種が失敗し、次の変種（この列群なし）に落ちて
-      // マッピング側で既定true（＝従来どおり全部表示）にフォールバックする。
-      const GYM_DISPLAY_COLS =
-        "show_today_schedule, show_trial_followup_alert, show_renewal_alerts, show_counseling_responses, show_revenue_chart, show_utilization_heatmap, show_nav_messages, show_nav_exercises, show_nav_counseling, show_nav_announcements, show_nav_notifications, show_nav_trial_followups";
-      const COL_VARIANTS = [
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url, ${DASHBOARD_STAT_COLS}, ${GYM_DISPLAY_COLS}`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url, ${DASHBOARD_STAT_COLS}`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body`,
-        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled`,
-        TENANT_BASE_COLS,
-      ];
       let mem: any = null;
       let memErr: any = null;
-      for (const cols of COL_VARIANTS) {
+      for (const cols of TENANT_COL_VARIANTS) {
         ({ data: mem, error: memErr } = (await memberQuery(cols)) as any);
         if (!memErr) break;
         console.warn("useTenant: 追加カラム付きのtenant取得に失敗。カラムを減らして再取得します。", memErr.message);
@@ -153,39 +123,8 @@ export function useTenant() {
       if (cancelled) return;
       if (mem && mem.tenants) {
         const raw = mem.tenants as unknown as Record<string, unknown>;
-        const tenant = {
-          ...raw,
-          same_day_cancel_penalty_enabled: raw.same_day_cancel_penalty_enabled === true,
-          // 既定は表示（列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
-          show_retention_alerts: raw.show_retention_alerts !== false,
-          // 既定はON（列が無い/未適用環境でも true）。明示的に false のときだけ送らない。
-          daily_summary_enabled: raw.daily_summary_enabled !== false,
-          // 列が無い/未適用環境では既定15分（従来どおりの60分+15分=75分フットプリント）。
-          booking_buffer_minutes: (raw.booking_buffer_minutes as number | null) ?? 15,
-          line_url: (raw.line_url as string | null) ?? null,
-          google_review_url: (raw.google_review_url as string | null) ?? null,
-          // 既定は表示（列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
-          show_stat_today_sessions: raw.show_stat_today_sessions !== false,
-          show_stat_active_clients: raw.show_stat_active_clients !== false,
-          show_stat_month_sessions: raw.show_stat_month_sessions !== false,
-          show_stat_month_revenue: raw.show_stat_month_revenue !== false,
-          // ホーム画面の各セクション／メニューの各タブ。いずれも既定は表示
-          // （列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
-          show_today_schedule: raw.show_today_schedule !== false,
-          show_trial_followup_alert: raw.show_trial_followup_alert !== false,
-          show_renewal_alerts: raw.show_renewal_alerts !== false,
-          show_counseling_responses: raw.show_counseling_responses !== false,
-          show_revenue_chart: raw.show_revenue_chart !== false,
-          show_utilization_heatmap: raw.show_utilization_heatmap !== false,
-          show_nav_messages: raw.show_nav_messages !== false,
-          show_nav_exercises: raw.show_nav_exercises !== false,
-          show_nav_counseling: raw.show_nav_counseling !== false,
-          show_nav_announcements: raw.show_nav_announcements !== false,
-          show_nav_notifications: raw.show_nav_notifications !== false,
-          show_nav_trial_followups: raw.show_nav_trial_followups !== false,
-          trial_info_title: (raw.trial_info_title as string | null) ?? null,
-          trial_info_body: (raw.trial_info_body as string | null) ?? null,
-        } as unknown as Tenant;
+        // 読めなかった列を既定値で埋め、どの段で取れても同じ形にして返す。
+        const tenant = normalizeTenantRow(raw) as unknown as Tenant;
         setMembership({
           tenant,
           role: (mem as any).role,

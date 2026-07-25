@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getWebOrigin } from "@/lib/nativeBridge";
-import { fetchMyTenantTrainerId } from "@/lib/tenantHelper";
+import { fetchMyTenantTrainerId, fetchMyTenantGymName } from "@/lib/tenantHelper";
 
 const logEmailInvoke = (
   context: string,
@@ -34,8 +34,12 @@ export const sendBookingNotification = async (
   customerEmail?: string,
 ) => {
   try {
-    // 宛先は自テナントの代表スタッフ（get_trainer_ids はテナント横断のため使わない）
-    const trainerId = await fetchMyTenantTrainerId();
+    // 宛先は自テナントの代表スタッフ（get_trainer_ids はテナント横断のため使わない）。
+    // gymName はメールの差出人名に使う（渡さないと製品名にフォールバックしてしまう）。
+    const [trainerId, gymName] = await Promise.all([
+      fetchMyTenantTrainerId(),
+      fetchMyTenantGymName(),
+    ]);
 
     const dateObj = new Date(date + "T00:00:00+09:00");
     const formattedDate = format(dateObj, "M月d日（E）", { locale: ja });
@@ -53,6 +57,7 @@ export const sendBookingNotification = async (
             bookingDate: formattedDate,
             bookingTime,
             planName,
+            gymName: gymName ?? undefined,
             // ネイティブアプリ内では window.location.origin が capacitor://localhost になり
             // メールのボタンが開けないため、共有リンクと同様に本番Webドメインへフォールバック
             dashboardUrl: getWebOrigin(),
@@ -78,6 +83,7 @@ export const sendBookingNotification = async (
             bookingDate: formattedDate,
             bookingTime,
             planName,
+            gymName: gymName ?? undefined,
             resolveUserId: customerUserId,
           },
         },

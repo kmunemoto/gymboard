@@ -33,6 +33,24 @@ export interface Tenant {
   show_stat_active_clients: boolean;
   show_stat_month_sessions: boolean;
   show_stat_month_revenue: boolean;
+  /** トレーナーのホーム画面の各セクション表示可否（各既定true） */
+  show_today_schedule: boolean;
+  show_trial_followup_alert: boolean;
+  show_renewal_alerts: boolean;
+  show_counseling_responses: boolean;
+  show_revenue_chart: boolean;
+  show_utilization_heatmap: boolean;
+  /**
+   * メニュー（サイドバー/モバイル下部ナビ）の各タブ表示可否（各既定true）。
+   * ホーム・顧客・予約・設定は隠すと操作不能になり得るため対象外。
+   * 非表示はメニューから消えるだけで、機能自体や他画面からの遷移は生きている。
+   */
+  show_nav_messages: boolean;
+  show_nav_exercises: boolean;
+  show_nav_counseling: boolean;
+  show_nav_announcements: boolean;
+  show_nav_notifications: boolean;
+  show_nav_trial_followups: boolean;
   /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */
   trial_info_title: string | null;
   /** 体験予約ページの案内カード説明文。null/空なら既定文言を表示 */
@@ -108,7 +126,13 @@ export function useTenant() {
       // 全カード表示のまま）で正常動作する。
       const DASHBOARD_STAT_COLS =
         "show_stat_today_sessions, show_stat_active_clients, show_stat_month_sessions, show_stat_month_revenue";
+      // ホーム画面の各セクション + メニューの各タブの表示可否（最後に足した新カラム群）。
+      // 未適用環境では先頭の変種が失敗し、次の変種（この列群なし）に落ちて
+      // マッピング側で既定true（＝従来どおり全部表示）にフォールバックする。
+      const GYM_DISPLAY_COLS =
+        "show_today_schedule, show_trial_followup_alert, show_renewal_alerts, show_counseling_responses, show_revenue_chart, show_utilization_heatmap, show_nav_messages, show_nav_exercises, show_nav_counseling, show_nav_announcements, show_nav_notifications, show_nav_trial_followups";
       const COL_VARIANTS = [
+        `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url, ${DASHBOARD_STAT_COLS}, ${GYM_DISPLAY_COLS}`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url, ${DASHBOARD_STAT_COLS}`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled, google_review_url`,
         `${TENANT_BASE_COLS}, same_day_cancel_penalty_enabled, trial_info_title, trial_info_body, line_url, show_retention_alerts, booking_buffer_minutes, daily_summary_enabled`,
@@ -145,6 +169,20 @@ export function useTenant() {
           show_stat_active_clients: raw.show_stat_active_clients !== false,
           show_stat_month_sessions: raw.show_stat_month_sessions !== false,
           show_stat_month_revenue: raw.show_stat_month_revenue !== false,
+          // ホーム画面の各セクション／メニューの各タブ。いずれも既定は表示
+          // （列が無い/未適用環境でも true）。明示的に false のときだけ非表示。
+          show_today_schedule: raw.show_today_schedule !== false,
+          show_trial_followup_alert: raw.show_trial_followup_alert !== false,
+          show_renewal_alerts: raw.show_renewal_alerts !== false,
+          show_counseling_responses: raw.show_counseling_responses !== false,
+          show_revenue_chart: raw.show_revenue_chart !== false,
+          show_utilization_heatmap: raw.show_utilization_heatmap !== false,
+          show_nav_messages: raw.show_nav_messages !== false,
+          show_nav_exercises: raw.show_nav_exercises !== false,
+          show_nav_counseling: raw.show_nav_counseling !== false,
+          show_nav_announcements: raw.show_nav_announcements !== false,
+          show_nav_notifications: raw.show_nav_notifications !== false,
+          show_nav_trial_followups: raw.show_nav_trial_followups !== false,
           trial_info_title: (raw.trial_info_title as string | null) ?? null,
           trial_info_body: (raw.trial_info_body as string | null) ?? null,
         } as unknown as Tenant;

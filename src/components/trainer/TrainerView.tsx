@@ -27,6 +27,7 @@ import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { useTenant } from "@/hooks/useTenant";
+import { isNavTabVisible } from "@/lib/gymDisplaySettings";
 
 export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "trial-followups" | "gym-settings";
 
@@ -127,18 +128,22 @@ const TrainerView = () => {
             )}
             <span className="text-xs sm:text-sm font-bold truncate">{tenant?.gym_name || t("common.brand")} <span className="hidden sm:inline">{t("trainerView.adminSuffix")}</span></span>
           </div>
-          <button
-            onClick={() => { setTab("messages"); setSelectedClientId(null); }}
-            className="relative p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label={t("common.chat")}
-          >
-            <MessageSquare className="w-5 h-5" />
-            {unreadMessages > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1">
-                {unreadMessages > 99 ? "99+" : unreadMessages}
-              </span>
-            )}
-          </button>
+          {/* メッセージをメニューから隠しているジムでは、ヘッダーの導線も併せて隠す
+              （メニューに無いのにヘッダーからだけ入れる、というちぐはぐを防ぐ） */}
+          {isNavTabVisible(tenant, "messages") && (
+            <button
+              onClick={() => { setTab("messages"); setSelectedClientId(null); }}
+              className="relative p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label={t("common.chat")}
+            >
+              <MessageSquare className="w-5 h-5" />
+              {unreadMessages > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1">
+                  {unreadMessages > 99 ? "99+" : unreadMessages}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
       <div style={{ paddingTop: "calc(3rem + env(safe-area-inset-top, 0px))" }}>

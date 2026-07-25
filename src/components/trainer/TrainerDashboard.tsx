@@ -96,6 +96,13 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   const showStatActiveClients = tenant?.show_stat_active_clients !== false;
   const showStatMonthSessions = tenant?.show_stat_month_sessions !== false;
   const showStatMonthRevenue = tenant?.show_stat_month_revenue !== false;
+  // ホーム画面の各セクション。同じくジムごとにON/OFF（既定は全て表示）。
+  const showTodaySchedule = tenant?.show_today_schedule !== false;
+  const showTrialFollowUpAlert = tenant?.show_trial_followup_alert !== false;
+  const showRenewalAlerts = tenant?.show_renewal_alerts !== false;
+  const showCounselingResponses = tenant?.show_counseling_responses !== false;
+  const showRevenueChart = tenant?.show_revenue_chart !== false;
+  const showUtilizationHeatmap = tenant?.show_utilization_heatmap !== false;
 
   // 体験フォロー待ち件数（体験CRM）。follow_up_status 列がマイグレーション未適用の環境では
   // 取得エラーになるため、その場合は静かに0件扱いにする（バナー非表示）。
@@ -304,7 +311,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
       })()}
 
       <div className="space-y-4 sm:space-y-6">
-        {/* Today's Schedule - REAL DATA（本日のセッションを最上部に） */}
+        {/* Today's Schedule - REAL DATA（本日のセッションを最上部に）。ジム設定でオフにできる。 */}
+        {showTodaySchedule && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
@@ -368,9 +376,11 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
             </div>
           )}
         </section>
+        )}
 
-        {/* 体験フォロー待ち（体験CRM）。過去の体験予約で follow_up_status が未対応のまま残っている件数。 */}
-        {pendingFollowUps > 0 && onNavigateFollowUps && (
+        {/* 体験フォロー待ち（体験CRM）。過去の体験予約で follow_up_status が未対応のまま残っている件数。
+            ジム設定でオフにできる。 */}
+        {showTrialFollowUpAlert && pendingFollowUps > 0 && onNavigateFollowUps && (
           <section>
             <button type="button" onClick={onNavigateFollowUps} className="w-full text-left">
               <Card className="card-hover border-warning/30">
@@ -441,8 +451,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
           </section>
         )}
 
-        {/* 更新が近い顧客（プラン更新リマインド） */}
-        {renewalSoon.length > 0 && (
+        {/* 更新が近い顧客（プラン更新リマインド）。ジム設定でオフにできる。 */}
+        {showRenewalAlerts && renewalSoon.length > 0 && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <RefreshCw className="w-3.5 h-3.5 text-info" />
@@ -484,8 +494,9 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
         )}
 
         {/* Counseling Responses（回答が1件でもある場合のみ表示。カウンセリングシートを
-            使わないジムに「まだありません」の空欄を出さない。回答が来れば自動で表示される） */}
-        {!counselingLoading && counselingResponses.length > 0 && (
+            使わないジムに「まだありません」の空欄を出さない。回答が来れば自動で表示される）。
+            ジム設定でオフにもできる。 */}
+        {showCounselingResponses && !counselingLoading && counselingResponses.length > 0 && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <ClipboardList className="w-3.5 h-3.5" />
@@ -500,7 +511,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
           </section>
         )}
 
-        {/* Revenue Chart */}
+        {/* Revenue Chart。ジム設定でオフにできる。 */}
+        {showRevenueChart && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
@@ -531,9 +543,10 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
             </CardContent>
           </Card>
         </section>
+        )}
 
-        {/* 稼働率ヒートマップ（曜日×時間帯） */}
-        <TrainerUtilizationHeatmap />
+        {/* 稼働率ヒートマップ（曜日×時間帯）。ジム設定でオフにできる。 */}
+        {showUtilizationHeatmap && <TrainerUtilizationHeatmap />}
 
       </div>
     </div>

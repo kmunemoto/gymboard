@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
+import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 
 // TrialBooking.tsx の複製（英語圏の観光客向け「単発ドロップインセッション ¥8,000・
 // 会員登録不要・現地決済」専用ページ）。無料体験(/trial)とは見出し・文言・言語が別物のため
@@ -42,9 +43,9 @@ interface PublicTenant {
   slot_duration_minutes: number | null;
 }
 
-// このドロップイン予約ページは現状 Salute御所南 専用（¥8,000・観光客向けの文言は
-// このジムの実際の運用に基づく）。テナント指定なしの /drop-in はこのジムを既定にする。
-const DEFAULT_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+// テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
+// 撤去手順は legacyDefaultTenant.ts のコメントを参照。
+const DEFAULT_TENANT_ID = LEGACY_DEFAULT_TENANT_ID;
 
 const DROP_IN_BOOKING_MAX_DAYS_AHEAD = 10;
 

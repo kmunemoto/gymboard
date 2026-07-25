@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
+import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 
 interface TrialSlotBooking {
   date: string;
@@ -38,11 +39,9 @@ interface PublicTenant {
   slot_duration_minutes: number | null;
 }
 
-// この体験予約サイト(app.kyoto-salute.com)は Salute御所南 専用。
-// テナント指定なしの /trial は必ずこのジムを既定にする。
-// (get_default_tenant_public は「作成が最も古いテナント」を返すため、別テナントが
-//  混ざり、空き状況のズレや予約が別テナントに作成される問題を招くため使わない)
-const DEFAULT_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+// テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
+// 撤去手順は legacyDefaultTenant.ts のコメントを参照。
+const DEFAULT_TENANT_ID = LEGACY_DEFAULT_TENANT_ID;
 
 // 予約可能な最大先日数。先すぎる日程は予約時点の意欲が薄れ、当日キャンセルが
 // 増えやすいため、心理的に近い期間に寄せる（旧: 1ヶ月先まで）。

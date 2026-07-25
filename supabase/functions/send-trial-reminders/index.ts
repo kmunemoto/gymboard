@@ -28,9 +28,11 @@ Deno.serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // trial-booking-reminder テンプレートは Salute御所南の住所を本文に固定で含むため、
-  // 他テナントのお客様へ誤った住所のリマインドを送らないよう、当面 Salute テナントに限定する
-  // (テナント別住所の差し込み対応まで)。
+  // 以前は trial-booking-reminder テンプレートに Salute御所南の住所が固定で入っていたため、
+  // 誤った住所を送らないようテナントを限定していた。その結果、他ジムのお客様には前日リマインドが
+  // 一切届いていなかった。テンプレートをジム情報の差し込み式にしたので、全ジムへ送る（2026-07）。
+  //
+  // 「初回無料体験」の名称で運用するジムだけ見出し・本文をその表記にする（確認メールと同じ判定）。
   const SALUTE_TENANT_ID = 'ceda19b0-d5e0-4928-ab2e-996a0b823af4'
 
   // Compute tomorrow's date in JST
@@ -48,7 +50,6 @@ Deno.serve(async (req) => {
   const { data: bookings, error } = await supabase
     .from('trial_bookings')
     .select('*')
-    .eq('tenant_id', SALUTE_TENANT_ID)
     .eq('status', '予約済み')
     // ドロップイン予約(booking_kind='drop_in')はこの日本語・無料体験向けリマインドの対象外。
     // 英語圏の観光客に無関係な文面が届くのを防ぐ(drop-in-book はリマインドを別途送らない)。
@@ -66,6 +67,21 @@ Deno.serve(async (req) => {
 
   console.log(`Found ${bookings?.length || 0} trial bookings for tomorrow`)
 
+  // 予約に紐づくジムの情報（名前・住所・連絡先・サイト）をまとめて1回で引き、
+  // メール本文にそのジムの情報を差し込む。予約1件ごとに問い合わせない。
+  const tenantIds = [...new Set((bookings ?? []).map((b: any) => b.tenant_id).filter(Boolean))]
+  const tenantMap = new Map<string, { gym_name: string | null; address: string | null; email: string | null; website_url: string | null }>()
+  if (tenantIds.length > 0) {
+    const { data: tenantRows, error: tenantErr } = await supabase
+      .from('tenants')
+      .select('id, gym_name, address, email, website_url')
+      .in('id', tenantIds)
+    if (tenantErr) console.error('Failed to fetch tenants for reminder:', tenantErr)
+    for (const row of tenantRows ?? []) {
+      tenantMap.set((row as any).id, row as any)
+    }
+  }
+
   let sentCount = 0
   const dowChars = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -75,6 +91,8 @@ Deno.serve(async (req) => {
       console.log(`Skip non-email contact: ${contact}`)
       continue
     }
+
+    const tenant = tenantMap.get(booking.tenant_id as string)
 
     const bd = new Date(booking.booking_date)
     const jstBd = new Date(bd.getTime() + jstOffset)
@@ -90,6 +108,12 @@ Deno.serve(async (req) => {
           guestName: booking.guest_name,
           bookingDate: dateStr,
           bookingTime: timeStr,
+          gymName: tenant?.gym_name || 'ジム',
+          gymAddress: (tenant?.address ?? '').trim(),
+          gymContactEmail: (tenant?.email ?? '').trim(),
+          gymWebsiteUrl: (tenant?.website_url ?? '').trim(),
+          // Salute だけ「初回無料体験」表記にする（確認メール trial-booking-confirmation と同じ判定）。
+          isFreeTrial: booking.tenant_id === SALUTE_TENANT_ID,
           // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
           // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
         },

@@ -29,9 +29,9 @@
   見出し・件名・本文・「内容」を「初回無料体験」表記にする（false＝他ジムは「体験」のまま）。
   `send-transactional-email` は `React.createElement(component, templateData)` と
   `subject(templateData)` で templateData をそのまま渡すため、プロップ追加だけで件名にも効く。
-- **前日リマインド** (`trial-booking-reminder.tsx`) は元々 Salute 専用送信
-  （`send-trial-reminders` が `.eq('tenant_id', SALUTE_TENANT_ID)`）＋テンプレートが
-  Salute 固定文面のため、出し分けせず直接「初回無料体験」表記に更新している。
+- **前日リマインド** (`trial-booking-reminder.tsx`) も確認メールと同じく `isFreeTrial` で
+  出し分ける（2026-07に多ジム対応。それ以前は Salute 固定文面＋Salute専用送信だった）。
+  `send-trial-reminders` が `isFreeTrial: booking.tenant_id === SALUTE_TENANT_ID` を渡す。
 
 ## API
 
@@ -78,8 +78,8 @@ status='キャンセル済み') すると、空き枠計算は GymBoard 自身�
   - `trial-book/index.ts` は**確認メールに `cancelUrl` を渡さない**。テンプレートの
     `cancelUrl ? <ボタン> : gymContactEmail ? <メール連絡＋アドレス> : <汎用案内>` 分岐で、
     常に2番目（メール連絡）が描画される。
-  - 前日リマインド (`send-trial-reminders`) は現状 Salute 限定送信（テンプレートに Salute 住所が固定）で、
-    こちらも `cancelUrl` を渡さずメール連絡案内のまま。変更なし。
+  - 前日リマインド (`send-trial-reminders`) も `cancelUrl` を渡さず、ジムの連絡先
+    (`tenants.email`) へのメール連絡案内にフォールバックする。
   - **再度セルフキャンセルのボタンに戻す場合**: `trial-book`（必要なら `send-trial-reminders`）で
     `cancelUrl = ${SUPABASE_URL}/functions/v1/trial-cancel?token=...`（`verify_jwt=false` の公開GET・
     トークンから予約とテナントを解決し着地ページにジム名/ロゴを表示・#94 の設計）を組み立て、
@@ -109,7 +109,7 @@ Salute御所南のマーケティングサイトの「Book Now」ボタン用に
   既存の仕組みを再利用しつつ、文言に「ドロップイン（¥8,000）」を明記して無料体験と区別できる
   ようにした（`send-push-notification` は `trial_bookings.booking_kind` を見てタイトル/本文を
   出し分け）。
-- **送らないもの**: `send-trial-reminders`（Salute専用・日本語の前日リマインド）は
+- **送らないもの**: `send-trial-reminders`（日本語の前日リマインド）は
   `booking_kind='trial'` のみ対象にした（ドロップインを除外）。英語圏の観光客に無関係な
   日本語文面が届かないようにするため。ドロップイン向けの前日リマインドは現状なし。
 - **価格・文言は Salute専用のハードコード**。他テナントが `/drop-in/:tenantId` を使う想定は
@@ -134,8 +134,16 @@ Salute御所南のマーケティングサイトの「Book Now」ボタン用に
 - 宛先トレーナーは **tenant_members (trainer→owner, active, joined_at 順)** で解決。
   旧 `get_trainer_ids` はテナント横断で他ジムのスタッフに誤通知するため使わない。
 - お客様確認メール (`trial-booking-confirmation`) と前日リマインド
-  (`trial-booking-reminder`) は住所が Salute 固定のため **当面 Salute テナント限定**。
-  他テナント対応時はテンプレートに gym_name / 住所を差し込む。
+  (`trial-booking-reminder`) は**どちらも多ジム対応済み**（ジム名・住所・連絡先・サイトURLを
+  差し込む）。前者は当初から、後者は 2026-07 に対応した。
+  - それ以前、リマインドはテンプレートに Salute の住所が直書きされていたため、誤った住所を
+    送らないよう `send-trial-reminders` を Salute テナント限定にしていた。その副作用で
+    **他ジムのお客様には前日リマインドが1通も届いていなかった**。テンプレートを差し込み式に
+    してテナント限定を解除済み。
+  - **LINE の前日リマインド (`line-booking-reminder`) は今も Salute 限定のまま**。これは
+    直し忘れではなく、LINEチャネルの資格情報 (`LINE_CHANNEL_ACCESS_TOKEN`) が全ジム共通で
+    1つしか無く、制限を外すと他ジムのお客様に Salute のLINE公式アカウントから届いてしまう
+    ため。多ジム対応にはテナントごとのチャネル資格情報を持つ仕組みが先に必要。
 - trial-book のレート制限: 同一メール24hで3件 (キャンセル済みは除外) +
   テナント全体1hで20件 (メール差し替え回避への防御)。
 - 予期しない失敗 (500) は詳細をログのみに残し、公開クライアントには汎用メッセージを返す。

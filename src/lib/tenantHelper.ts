@@ -53,6 +53,21 @@ export async function fetchMyTenantTrainerId(): Promise<string | null> {
 }
 
 /**
+ * 自テナントのジム名。メールの差出人名など「そのジムの名前で送りたい」場面で使う。
+ * 取得できなければ null（呼び出し側で製品名にフォールバックする想定）。
+ */
+export async function fetchMyTenantGymName(): Promise<string | null> {
+  const tenantId = await fetchMyTenantId();
+  if (!tenantId) return null;
+  const { data } = await supabase
+    .from("tenants")
+    .select("gym_name")
+    .eq("id", tenantId)
+    .maybeSingle();
+  return (data?.gym_name as string | null) ?? null;
+}
+
+/**
  * Attach tenant_id to a row payload. Throws if tenantId is missing so we never
  * insert rows that would be invisible to everyone after tenant-isolation RLS.
  */

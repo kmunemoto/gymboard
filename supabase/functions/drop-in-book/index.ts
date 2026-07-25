@@ -268,6 +268,7 @@ Deno.serve(async (req) => {
             bookingDate: dateStrJa,
             bookingTime: timeStrJa,
             planName: BOOKING_TYPE_LABEL,
+            gymName,
             dashboardUrl: "https://app.kyoto-salute.com",
             trainerUserId: trainerId,
           },

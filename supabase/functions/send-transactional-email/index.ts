@@ -8,11 +8,13 @@ import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from '../_shared/email-encoding
 // デプロイ時にバンドルする。テンプレートを更新したら、必ず本関数を再デプロイして
 // 再バンドルすること（共有ファイルだけ変えても本関数の再デプロイが無いと反映されない）。
 // 2026-07: 体験予約メールにお客様セルフキャンセルのボタンを追加（cancelUrl）→ 同月中に廃止し、
-// メール連絡（k.munemoto@kyoto-salute.com）への一本化に戻した。テンプレート側の分岐は残置。
+// ジムのメールアドレス（tenants.email）への連絡案内に一本化した。テンプレート側の分岐は残置。
 
-// Configuration baked in at scaffold time — do NOT change these manually.
-// To update, re-run the email domain setup flow.
-const SITE_NAME = "パーソナルジムSalute御所南"
+// 差出人名のフォールバック（製品名）。
+// 以前はここが "パーソナルジムSalute御所南" 固定で、どのジムのお客様に送るメールでも
+// 差出人が Salute になってしまっていた（本文のジム名は正しいのに受信箱の一覧だけ別のジム）。
+// 現在は templateData.gymName があればそれを差出人名に使い、無い場合だけこの製品名に落とす。
+const BRAND_NAME = "ジムボード"
 // SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
 // It MUST match the subdomain delegated to Lovable's nameservers — never the root domain.
 // The email API looks up this exact domain; a mismatch causes "No email domain record found".
@@ -415,6 +417,10 @@ Deno.serve(async (req) => {
   )
 
 
+  // 差出人名: そのジムの名前を優先（テンプレートに gymName が渡っている場合）。
+  const senderName =
+    String((templateData as Record<string, unknown>)?.gymName ?? '').trim() || BRAND_NAME
+
   // Resolve subject — supports static string or dynamic function
   const resolvedSubject =
     typeof template.subject === 'function'
@@ -437,7 +443,9 @@ Deno.serve(async (req) => {
     payload: {
       message_id: messageId,
       to: effectiveRecipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      // 差出人名はそのジムの名前にする（templateData.gymName）。渡ってこないテンプレートは
+      // 製品名にフォールバックし、特定のジム名が他ジムのメールに出ないようにする。
+      from: `${senderName} <noreply@${FROM_DOMAIN}>`,
       sender_domain: SENDER_DOMAIN,
       subject: resolvedSubject,
       html,

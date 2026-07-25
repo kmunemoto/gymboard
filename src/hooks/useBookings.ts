@@ -860,14 +860,17 @@ async function sendCancelEmailNotification(
   const m = dt.getMinutes();
   const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   // ジムごとに変更可能（tenants.slot_duration_minutes）。取得できない場合のみ既定60分。
+  // gym_name はメールの差出人名に使う（渡さないと製品名にフォールバックしてしまう）。
   let sessionMinutes = 60;
+  let gymName: string | null = null;
   if (booking.tenant_id) {
     const { data: tenantRow } = await supabase
       .from("tenants")
-      .select("slot_duration_minutes")
+      .select("slot_duration_minutes, gym_name")
       .eq("id", booking.tenant_id)
       .maybeSingle();
     if (tenantRow?.slot_duration_minutes) sessionMinutes = tenantRow.slot_duration_minutes;
+    gymName = (tenantRow?.gym_name as string | null) ?? null;
   }
   const endMin = h * 60 + m + sessionMinutes;
   const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
@@ -892,6 +895,7 @@ async function sendCancelEmailNotification(
           bookingDate: formattedDate,
           bookingTime,
           planName: booking.booking_type,
+          gymName: gymName ?? undefined,
           recipientRole: "trainer",
           cancelledByTrainer,
           forfeit,
@@ -913,6 +917,7 @@ async function sendCancelEmailNotification(
         bookingDate: formattedDate,
         bookingTime,
         planName: booking.booking_type,
+        gymName: gymName ?? undefined,
         recipientRole: "customer",
         cancelledByTrainer,
         forfeit,

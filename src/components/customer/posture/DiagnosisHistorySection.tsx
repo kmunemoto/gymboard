@@ -165,7 +165,6 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
         .eq("id", d.id)
         .select();
 
-      console.log("[skeletal_diagnoses] delete result:", { data, error });
 
       if (error) throw error;
 

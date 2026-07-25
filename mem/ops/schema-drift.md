@@ -41,14 +41,37 @@ PRごとに自動実行されるので、新しい乖離が入ると PR が赤�
 
 ### 確認方法
 
-Supabase SQL Editor で:
+Supabase SQL Editor（ダッシュボード → SQL Editor）で、これ1本を実行する:
 
 ```sql
-select to_regclass('public.booking_waitlist');            -- null なら未作成
-select column_name from information_schema.columns
- where table_schema = 'public' and table_name = 'profiles'
-   and column_name like 'milestone_goal%';                -- 0行なら未追加
+select
+  case when to_regclass('public.booking_waitlist') is null
+       then '未適用' else '適用済み' end                     as booking_waitlist,
+  case when not exists (
+         select 1 from information_schema.columns
+          where table_schema='public' and table_name='profiles'
+            and column_name='milestone_goal')
+       then '未適用' else '適用済み' end                     as milestone_goal;
 ```
+
+「未適用」が出たものは、対応するマイグレーションを同じ SQL Editor に貼って実行する:
+
+| 結果 | 実行するファイル |
+|---|---|
+| `booking_waitlist` = 未適用 | `supabase/migrations/20260624120000_booking_waitlist.sql` |
+| `milestone_goal` = 未適用 | `supabase/migrations/20260708150000_add_milestone_goal.sql` |
+
+**どちらも冪等**（全ての文が `IF NOT EXISTS` / `DROP ... IF EXISTS` 付き）なので、
+既に適用済みの状態で流しても何も壊れない。判定に迷ったら両方流してよい。
+
+適用後は Lovable 側で types.ts を再生成し、`KNOWN_DRIFT` から該当エントリを削除する。
+
+### クラウドセッションからは確認できない
+
+Claude のクラウドセッションはネットワークポリシーで `*.supabase.co` への通信が
+遮断されている（ゲートウェイが 403 を返す）ため、この確認は人が実行する必要がある。
+Lovable の MCP コネクタが「このチャットで有効」になっていれば代行できる可能性はあるが、
+既定では無効になっている。
 
 ### 解消したら
 

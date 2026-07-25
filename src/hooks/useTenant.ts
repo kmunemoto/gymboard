@@ -86,78 +86,137 @@ export interface TenantMembership {
   plan_id: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// テナント情報はモジュール単位で共有する
+//
+// 以前は useTenant() の呼び出しごとに独立した useState を持っていた（26ファイルが利用）。
+// そのため設定画面で refetch しても、同時にマウントされている他のコンポーネントは
+// 古いテナント情報を持ったままで、**設定を変えても画面に反映されない**という
+// 分かりにくい不具合が出ていた（例: メニューのタブをOFFにしても、サイドバーは
+// 画面を開き直すまでそのタブを出し続ける）。
+//
+// muscleGroup.ts / tenantMuscleGroups.ts と同じ「モジュール単位のキャッシュ＋購読」
+// パターンで、全ての利用箇所が同じ状態を見るようにする。
+// 併せて、画面を開くたびに26個ぶんの同じクエリが飛んでいた無駄も無くなる。
+// ---------------------------------------------------------------------------
+
+interface TenantStore {
+  userId: string | null;
+  membership: TenantMembership | null;
+  plans: TenantPlan[];
+  loading: boolean;
+}
+
+const store: TenantStore = { userId: null, membership: null, plans: [], loading: true };
+const listeners = new Set<() => void>();
+/** 同時マウント時に同じクエリを何本も投げないための共有Promise */
+let inflight: Promise<void> | null = null;
+
+const notify = () => {
+  for (const listener of [...listeners]) listener();
+};
+
+const setStore = (patch: Partial<TenantStore>) => {
+  Object.assign(store, patch);
+  notify();
+};
+
+async function fetchTenant(userId: string): Promise<void> {
+  // 取得カラムとフォールバック段、既定値は src/lib/tenantColumns.ts に集約している
+  // （カラム追加時に手で10段書き換える必要をなくすため。詳細はそちらのコメント参照）。
+  const memberQuery = (tenantCols: string) =>
+    supabase
+      .from("tenant_members")
+      .select(`role, plan_id, tenants:tenant_id(${tenantCols})`)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+  let mem: any = null;
+  let memErr: any = null;
+  for (const cols of TENANT_COL_VARIANTS) {
+    ({ data: mem, error: memErr } = (await memberQuery(cols)) as any);
+    if (!memErr) break;
+    console.warn("useTenant: 追加カラム付きのtenant取得に失敗。カラムを減らして再取得します。", memErr.message);
+  }
+
+  // 取得中に別のユーザーへ切り替わっていたら、この結果は捨てる
+  if (store.userId !== userId) return;
+
+  if (mem && mem.tenants) {
+    const raw = mem.tenants as unknown as Record<string, unknown>;
+    // 読めなかった列を既定値で埋め、どの段で取れても同じ形にして返す。
+    const tenant = normalizeTenantRow(raw) as unknown as Tenant;
+    const { data: planRows } = await supabase
+      .from("tenant_plans")
+      .select("*")
+      .eq("tenant_id", tenant.id)
+      .eq("is_active", true)
+      .order("sort_order");
+    if (store.userId !== userId) return;
+    setStore({
+      membership: { tenant, role: (mem as any).role, plan_id: (mem as any).plan_id },
+      plans: (planRows as TenantPlan[]) || [],
+      loading: false,
+    });
+  } else {
+    setStore({ membership: null, plans: [], loading: false });
+  }
+}
+
+/** テナント情報を読み込む。force=false なら、同じユーザーで取得済みなら何もしない */
+function loadTenant(userId: string | null, force: boolean): Promise<void> {
+  if (!userId) {
+    inflight = null;
+    setStore({ userId: null, membership: null, plans: [], loading: false });
+    return Promise.resolve();
+  }
+  const sameUser = store.userId === userId;
+  if (sameUser && !force) {
+    // 取得済み、または取得中なら相乗りする
+    if (inflight) return inflight;
+    if (!store.loading) return Promise.resolve();
+  }
+  if (!sameUser) setStore({ userId, membership: null, plans: [], loading: true });
+  else if (force) setStore({ loading: true });
+
+  inflight = fetchTenant(userId).finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+/**
+ * テスト用: 共有キャッシュを初期状態に戻す。
+ * 購読リストは触らない（マウント中のコンポーネントの購読を切ってしまわないため）。
+ */
+export function __resetTenantStoreForTests() {
+  inflight = null;
+  Object.assign(store, { userId: null, membership: null, plans: [], loading: true });
+}
+
 export function useTenant() {
   const { user } = useAuth();
-  const [membership, setMembership] = useState<TenantMembership | null>(null);
-  const [plans, setPlans] = useState<TenantPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchMembership = async () => {
-    if (!user) {
-      setMembership(null);
-      setPlans([]);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      // 取得カラムとフォールバック段、既定値は src/lib/tenantColumns.ts に集約している
-      // （カラム追加時に手で10段書き換える必要をなくすため。詳細はそちらのコメント参照）。
-      const memberQuery = (tenantCols: string) =>
-        supabase
-          .from("tenant_members")
-          .select(`role, plan_id, tenants:tenant_id(${tenantCols})`)
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .limit(1)
-          .maybeSingle();
-
-      let mem: any = null;
-      let memErr: any = null;
-      for (const cols of TENANT_COL_VARIANTS) {
-        ({ data: mem, error: memErr } = (await memberQuery(cols)) as any);
-        if (!memErr) break;
-        console.warn("useTenant: 追加カラム付きのtenant取得に失敗。カラムを減らして再取得します。", memErr.message);
-      }
-      if (cancelled) return;
-      if (mem && mem.tenants) {
-        const raw = mem.tenants as unknown as Record<string, unknown>;
-        // 読めなかった列を既定値で埋め、どの段で取れても同じ形にして返す。
-        const tenant = normalizeTenantRow(raw) as unknown as Tenant;
-        setMembership({
-          tenant,
-          role: (mem as any).role,
-          plan_id: (mem as any).plan_id,
-        });
-        const { data: planRows } = await supabase
-          .from("tenant_plans")
-          .select("*")
-          .eq("tenant_id", tenant.id)
-          .eq("is_active", true)
-          .order("sort_order");
-        if (!cancelled) setPlans((planRows as TenantPlan[]) || []);
-      } else {
-        setMembership(null);
-        setPlans([]);
-      }
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  };
+  const [, forceRender] = useState(0);
 
   useEffect(() => {
-    let cleanupFn: (() => void) | undefined;
-    fetchMembership().then((fn) => { cleanupFn = fn; });
-    return () => { cleanupFn?.(); };
-  }, [user]);
+    const listener = () => forceRender((n) => n + 1);
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  }, []);
+
+  useEffect(() => {
+    void loadTenant(user?.id ?? null, false);
+  }, [user?.id]);
 
   return {
-    membership,
-    tenant: membership?.tenant ?? null,
-    role: membership?.role ?? null,
-    plans,
-    loading,
-    refetch: fetchMembership,
+    membership: store.membership,
+    tenant: store.membership?.tenant ?? null,
+    role: store.membership?.role ?? null,
+    plans: store.plans,
+    loading: store.loading,
+    /** 再取得して、useTenant を使っている全てのコンポーネントに反映する */
+    refetch: () => loadTenant(user?.id ?? null, true),
   };
 }

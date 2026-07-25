@@ -5,7 +5,10 @@ import { normalizeTenantRow } from "@/lib/tenantColumns";
 import {
   DASHBOARD_SECTION_TOGGLES,
   DASHBOARD_STAT_TOGGLES,
+  GYM_DISPLAY_PRESETS,
   NAV_TAB_TOGGLES,
+  detectPreset,
+  presetToValues,
 } from "@/lib/gymDisplaySettings";
 import i18n from "@/lib/i18n";
 
@@ -147,6 +150,32 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
 
     const onRow = screen.getByText(i18n.t("trainerNav.exercises")).closest("div")!;
     expect(within(onRow).getByRole("switch").getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("表示量プリセットの3ボタンが出て、今の設定に一致するものが選択状態になる", () => {
+    render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    openCategory(i18n.t("settings.trainer.catAppearance"));
+    for (const preset of GYM_DISPLAY_PRESETS) {
+      expect(
+        screen.getByText(i18n.t(`settings.trainer.displayPreset.${preset}`)),
+        `${preset} のボタンが無い`,
+      ).toBeTruthy();
+    }
+    // makeTenant は全項目 true（＝DBの既定と同じ）なので full が選ばれている
+    expect(detectPreset(tenantRef.current)).toBe("full");
+  });
+
+  it("プリセットを押すと17項目をまとめて保存する", async () => {
+    // 1項目ずつ17回 update する実装だと、途中で失敗したとき中途半端な状態が残る
+    render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    openCategory(i18n.t("settings.trainer.catAppearance"));
+
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.displayPreset.simple")));
+
+    await waitFor(() => expect(tenantUpdates).toHaveLength(1));
+    expect(tenantUpdates[0]).toEqual(presetToValues("simple"));
+    expect(Object.keys(tenantUpdates[0])).toHaveLength(ALL_TOGGLES.length);
+    await waitFor(() => expect(refetchTenant).toHaveBeenCalled());
   });
 
   it("トグルを切ると、その列だけを tenants に保存して再取得する", async () => {

@@ -29,7 +29,11 @@ import {
   DASHBOARD_STAT_TOGGLES,
   DASHBOARD_SECTION_TOGGLES,
   NAV_TAB_TOGGLES,
+  GYM_DISPLAY_PRESETS,
+  detectPreset,
+  presetToValues,
   type GymDisplayColumn,
+  type GymDisplayPreset,
 } from "@/lib/gymDisplaySettings";
 
 interface TrainerGymSettingsProps {
@@ -66,6 +70,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   // 表示ON/OFFの各トグル。どれも同じ形の更新なので、保存中フラグは
   // 「どのカラムを保存中か」で共有する（トグルごとにstateを持たない）。
   const [savingStatKey, setSavingStatKey] = useState<string | null>(null);
+  const [savingPreset, setSavingPreset] = useState<GymDisplayPreset | null>(null);
   // 体験予約ページの案内カード（見出し＋説明文）のジム別カスタム文言。空欄=既定文言。
   const [trialInfoTitle, setTrialInfoTitle] = useState("");
   const [trialInfoBody, setTrialInfoBody] = useState("");
@@ -172,6 +177,23 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingStatKey(null);
+  };
+
+  // 17項目を1つずつ切るのは現実的でないため、表示量をまとめて切り替えられるようにする。
+  // 押したときだけ効く（既存ジムの表示が勝手に変わることはない）。
+  const handleApplyPreset = async (preset: GymDisplayPreset) => {
+    if (!tenant) return;
+    setSavingPreset(preset);
+    const { error } = await supabase
+      .from("tenants")
+      .update(presetToValues(preset) as any)
+      .eq("id", tenant.id);
+    if (error) toast.error(t("settings.trainer.statVisibilitySaveFailed"));
+    else {
+      toast.success(t("settings.trainer.statVisibilityUpdated"));
+      refetchTenant();
+    }
+    setSavingPreset(null);
   };
 
   const handleToggleDailySummary = async (checked: boolean) => {
@@ -698,6 +720,41 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             {/* === 表示設定（ホーム画面の各パーツ・メニューの各タブをジムごとにON/OFF） === */}
             <section className="space-y-3">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.displaySection")}</h3>
+
+              {/* 表示量のプリセット。17項目を1つずつ切るのは現実的でないため、
+                  まとめて切り替える手段を上に置く。押したときだけ反映される。 */}
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <div>
+                    <h4 className="font-bold text-sm">{t("settings.trainer.displayPresetGroup")}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displayPresetDesc")}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {GYM_DISPLAY_PRESETS.map((preset) => {
+                      const active = detectPreset(tenant) === preset;
+                      return (
+                        <Button
+                          key={preset}
+                          type="button"
+                          variant={active ? "default" : "outline"}
+                          size="sm"
+                          disabled={!tenant || savingPreset !== null}
+                          onClick={() => handleApplyPreset(preset)}
+                          className="h-auto py-2 flex flex-col gap-0.5"
+                        >
+                          <span className="text-xs font-bold">{t(`settings.trainer.displayPreset.${preset}`)}</span>
+                          <span className="text-[10px] font-normal opacity-70 leading-tight">
+                            {t(`settings.trainer.displayPresetHint.${preset}`)}
+                          </span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  {detectPreset(tenant) === null && (
+                    <p className="text-[11px] text-muted-foreground">{t("settings.trainer.displayPresetCustom")}</p>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* ホーム画面：上部の統計カード */}
               <Card>

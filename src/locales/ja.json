@@ -228,7 +228,20 @@
       "fileTooLarge": "ファイルサイズは2MB以下にしてください",
       "tenantUnavailable": "テナント情報が取得できません",
       "uploadFailed": "アップロードに失敗しました",
-      "deleteFailed": "削除に失敗しました"
+      "deleteFailed": "削除に失敗しました",
+      "displayPresetGroup": "表示する量",
+      "displayPresetDesc": "まとめて切り替えます。個別の項目は下でいつでも変えられます。",
+      "displayPreset": {
+        "simple": "シンプル",
+        "standard": "標準",
+        "full": "フル"
+      },
+      "displayPresetHint": {
+        "simple": "今日の予定だけ",
+        "standard": "売上・顧客フォローも",
+        "full": "すべての機能"
+      },
+      "displayPresetCustom": "個別に調整済み（どのプリセットとも一致していません）"
     },
     "notification": {
       "title": "通知設定",
@@ -1555,7 +1568,9 @@
     "copyLink": "招待リンクをコピー",
     "toastCodeCopied": "招待コードをコピーしました",
     "toastLinkCopied": "招待リンクをコピーしました",
-    "goDashboard": "管理画面へ進む →"
+    "goDashboard": "管理画面へ進む →",
+    "fieldDisplayPreset": "最初に表示する機能の量",
+    "displayPresetNote": "迷ったら「標準」。あとからジム設定でいつでも変えられます。"
   },
   "trialBooking": {
     "defaultGymName": "ジムボード",

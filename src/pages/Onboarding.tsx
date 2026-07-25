@@ -4,6 +4,7 @@ import { Check, Plus, Trash2, Upload, Copy, PartyPopper } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { GYM_DISPLAY_PRESETS, presetToValues, type GymDisplayPreset } from "@/lib/gymDisplaySettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +60,9 @@ const Onboarding = () => {
 
   const [gymName, setGymName] = useState("");
   const [businessType, setBusinessType] = useState<BusinessType>("personal_gym");
+  // 画面に出す機能の量。既定は「標準」。ジムボードは機能が多いので、
+  // いきなり全部盛りで始めない（後から設定画面でいつでも変えられる）。
+  const [displayPreset, setDisplayPreset] = useState<GymDisplayPreset>("standard");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -174,6 +178,15 @@ const Onboarding = () => {
         if (pErr) throw pErr;
       }
 
+      // 画面に出す機能の量（表示プリセット）を適用する。
+      // DBの既定は全17項目 true なので、何もしないと新しいジムがいきなり全部盛りで始まる。
+      // 失敗しても登録自体は止めない（後から設定画面で変えられるため）。
+      const { error: dErr } = await supabase
+        .from("tenants")
+        .update(presetToValues(displayPreset) as never)
+        .eq("id", tenant.id);
+      if (dErr) console.error("[Onboarding] display preset failed:", dErr.message);
+
       // トレーニング部位バランス(レーダーチャート)・種目管理の「部位」既定値をシードする
       // (tenant_muscle_groups は既存テナントのみマイグレーションでバックフィル済みのため、
       // 新規テナントはここで作らないと部位が0件になってしまう)。
@@ -267,6 +280,31 @@ const Onboarding = () => {
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                {/* ジムボードは機能が多いので、最初に出す量を選べるようにする。
+                    既定は「標準」。後から設定画面でいつでも変えられる。 */}
+                <Label>{t("onboarding.fieldDisplayPreset")}</Label>
+                <div className="grid grid-cols-3 gap-2 mt-1.5">
+                  {GYM_DISPLAY_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setDisplayPreset(preset)}
+                      className={`rounded-md border px-2 py-2 text-center transition-colors ${
+                        displayPreset === preset
+                          ? "border-accent bg-accent/10"
+                          : "border-input hover:bg-muted"
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">{t(`settings.trainer.displayPreset.${preset}`)}</span>
+                      <span className="block text-[10px] text-muted-foreground leading-tight mt-0.5">
+                        {t(`settings.trainer.displayPresetHint.${preset}`)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">{t("onboarding.displayPresetNote")}</p>
               </div>
               <div>
                 <Label>{t("onboarding.fieldAddress")}</Label>

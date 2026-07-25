@@ -34,6 +34,8 @@ const dateOnly = (d: Date) => new Date(d.getTime() + JST_OFFSET_MS).toISOString(
 
 export const DEV_TENANT_ID = "00000000-0000-4000-8000-000000000001";
 export const DEV_OWNER_ID = "00000000-0000-4000-8000-0000000000a1";
+/** お客様側の画面を確認するときにログイン扱いにするお客様（下の CUSTOMERS の1人目） */
+export const DEV_CUSTOMER_ID = "00000000-0000-4000-8000-0000000000c1";
 
 const CUSTOMERS = [
   { id: "00000000-0000-4000-8000-0000000000c1", name: "田中 花子", plan: 0, cycleOffset: -12 },

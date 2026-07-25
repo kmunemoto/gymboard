@@ -210,12 +210,19 @@ export function useTenant() {
     void loadTenant(user?.id ?? null, false);
   }, [user?.id]);
 
+  // ログインユーザーが切り替わった直後、上の useEffect が走るまでの1レンダーは、
+  // キャッシュにまだ前のユーザーのジム情報が残っている。マルチテナントなので
+  // 別ジムの情報が一瞬でも見えるのは許容できないため、ユーザーIDが一致している
+  // ときだけ値を返す（一致するまでは「読み込み中」として扱う）。
+  const isCurrentUser = store.userId === (user?.id ?? null);
+  const membership = isCurrentUser ? store.membership : null;
+
   return {
-    membership: store.membership,
-    tenant: store.membership?.tenant ?? null,
-    role: store.membership?.role ?? null,
-    plans: store.plans,
-    loading: store.loading,
+    membership,
+    tenant: membership?.tenant ?? null,
+    role: membership?.role ?? null,
+    plans: isCurrentUser ? store.plans : [],
+    loading: isCurrentUser ? store.loading : true,
     /** 再取得して、useTenant を使っている全てのコンポーネントに反映する */
     refetch: () => loadTenant(user?.id ?? null, true),
   };

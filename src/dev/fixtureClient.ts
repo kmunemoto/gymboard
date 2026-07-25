@@ -20,7 +20,7 @@
  * 畳まれ、このモジュールごと tree-shaking で落ちる（`npm run build` の出力で確認済み）。
  */
 
-import { buildDevFixtures, DEV_OWNER_ID, DEV_TENANT_ID } from "./fixtures";
+import { buildDevFixtures, DEV_CUSTOMER_ID, DEV_OWNER_ID, DEV_TENANT_ID } from "./fixtures";
 
 type Row = Record<string, unknown>;
 type Filter = (row: Row) => boolean;
@@ -214,10 +214,27 @@ class FixtureQuery implements PromiseLike<{ data: unknown; error: null }> {
   }
 }
 
+/**
+ * ジム側とお客様側、どちらとしてログインするか。
+ * ブラウザのコンソールで切り替えられる:
+ *   localStorage.setItem("devFixtureRole", "customer"); location.reload()
+ * 既定はジム（オーナー）側。お客様側の画面も確認できないと片手落ちなので用意している。
+ */
+const devRole = (() => {
+  try {
+    return localStorage.getItem("devFixtureRole") === "customer" ? "customer" : "trainer";
+  } catch {
+    return "trainer";
+  }
+})();
+
 const DEV_USER = {
-  id: DEV_OWNER_ID,
-  email: "owner@demo.example.com",
-  user_metadata: { role: "trainer", display_name: "デモ オーナー" },
+  id: devRole === "customer" ? DEV_CUSTOMER_ID : DEV_OWNER_ID,
+  email: devRole === "customer" ? "customer@demo.example.com" : "owner@demo.example.com",
+  user_metadata: {
+    role: devRole,
+    display_name: devRole === "customer" ? "田中 花子" : "デモ オーナー",
+  },
   app_metadata: {},
   aud: "authenticated",
   created_at: new Date().toISOString(),

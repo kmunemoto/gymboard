@@ -7,6 +7,13 @@ npm run dev:fixtures
 ```
 
 ログイン画面を通らず、いきなりトレーナー（オーナー）としてアプリが開く。
+お客様側の画面を見たいときは、ブラウザのコンソールで役割を切り替える:
+
+```js
+localStorage.setItem("devFixtureRole", "customer"); location.reload()
+// ジム側に戻す: localStorage.setItem("devFixtureRole", "trainer"); location.reload()
+```
+
 Supabase には一切接続しない。データは架空のジム「デモ・フィットネススタジオ」。
 
 通常の `npm run dev` は今までどおり本番プロジェクトに繋がる（挙動は変えていない）。

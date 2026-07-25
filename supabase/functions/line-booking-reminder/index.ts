@@ -34,6 +34,11 @@ Deno.serve(async (req) => {
     const tomorrowStart = new Date(Date.UTC(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 0, 0, 0));
     const tomorrowEnd = new Date(Date.UTC(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 23, 59, 59));
 
+    // ここのテナント限定は「直し忘れ」ではなく意図的な安全装置。
+    // LINE のチャネル資格情報が LINE_CHANNEL_ACCESS_TOKEN の1つしか無く（＝LINE公式アカウントが
+    // 全ジム共通の1つ）、この制限を外すと他ジムのお客様に Salute のLINEアカウントから
+    // メッセージが届いてしまう。多ジム対応するには先にテナントごとのチャネル資格情報を
+    // 持てるようにする必要がある（メールの前日リマインドは 2026-07 に多ジム対応済み）。
     const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
     const { data: bookings, error: bookingError } = await supabase
       .from("bookings")
@@ -68,6 +73,15 @@ Deno.serve(async (req) => {
 
     const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
 
+    // 署名に使うジム名。現状は上のとおり1テナント限定だが、テナントごとのLINEチャネルに
+    // 対応した際にそのまま動くよう、固定文字列ではなくDBから引く。
+    const { data: tenantRow } = await supabase
+      .from("tenants")
+      .select("gym_name")
+      .eq("id", SALUTE_TENANT_ID)
+      .maybeSingle();
+    const gymName = (tenantRow as { gym_name?: string } | null)?.gym_name || "ジム";
+
     let sent = 0;
     for (const booking of bookings) {
       const profile = profileMap.get(booking.user_id);
@@ -84,7 +98,7 @@ Deno.serve(async (req) => {
       const dow = dowChars[jstBooking.getUTCDay()];
       const planName = (profile as any).plan || booking.booking_type;
 
-      const message = `🔔 明日 ${month}/${day}（${dow}）${hours}:${mins}〜 トレーニング予約\n\n${profile.display_name || "お客"}様、ご予約のリマインドです。\n\nプラン：${planName}\n\nお気をつけてお越しください！\n\nパーソナルジムSalute御所南`;
+      const message = `🔔 明日 ${month}/${day}（${dow}）${hours}:${mins}〜 トレーニング予約\n\n${profile.display_name || "お客"}様、ご予約のリマインドです。\n\nプラン：${planName}\n\nお気をつけてお越しください！\n\n${gymName}`;
 
       const res = await fetch(LINE_API, {
         method: "POST",

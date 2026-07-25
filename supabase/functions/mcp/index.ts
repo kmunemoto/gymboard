@@ -120,10 +120,10 @@ var list_recent_measurements_default = defineTool3({
 // src/lib/mcp/index.ts
 var projectRef = "rrbfwitprzuevzytykrq";
 var mcp_default = defineMcp({
-  name: "salute-gosho-minami-mcp",
-  title: "\u30D1\u30FC\u30BD\u30CA\u30EB\u30B8\u30E0Salute\u5FA1\u6240\u5357 MCP",
+  name: "gymboard-mcp",
+  title: "\u30B8\u30E0\u30DC\u30FC\u30C9 MCP",
   version: "0.1.0",
-  instructions: "Tools for the Salute\u5FA1\u6240\u5357 personal-gym app. Use `get_profile` to read the signed-in customer's profile, `list_upcoming_bookings` for upcoming reservations, and `list_recent_measurements` for recent body measurements.",
+  instructions: "Tools for the GymBoard gym-management app. Use `get_profile` to read the signed-in customer's profile, `list_upcoming_bookings` for upcoming reservations, and `list_recent_measurements` for recent body measurements.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"

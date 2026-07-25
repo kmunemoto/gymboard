@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail, Settings, Trash2, AlertCircle, Database } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { GYMBOARD_SUPPORT_EMAIL } from "@/lib/marketing";
 
 const BackLink = () => {
   const { t } = useTranslation();
@@ -65,10 +66,10 @@ const DeleteAccount = () => {
               <p className="text-sm font-bold">{t("deleteAccount.requestLabel")}</p>
               <p className="text-sm">
                 <a
-                  href="mailto:k.munemoto@kyoto-salute.com?subject=gymboard%20アカウント削除リクエスト"
+                  href={`mailto:${GYMBOARD_SUPPORT_EMAIL}?subject=gymboard%20アカウント削除リクエスト`}
                   className="text-accent underline hover:text-accent/80"
                 >
-                  k.munemoto@kyoto-salute.com
+                  {GYMBOARD_SUPPORT_EMAIL}
                 </a>
               </p>
               <p className="text-xs text-muted-foreground pt-2">{t("deleteAccount.requestNote")}</p>

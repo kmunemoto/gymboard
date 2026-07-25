@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTenant } from "@/hooks/useTenant";
 
 // 型定義（supabase.auth.oauth はベータのため明示的にラップする）
 type OAuthNamespace = {
@@ -37,6 +38,8 @@ export default function OAuthConsent() {
   const [details, setDetails] = useState<AuthDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { tenant } = useTenant();
+  const gymName = tenant?.gym_name ?? "";
 
   useEffect(() => {
     let active = true;
@@ -110,6 +113,9 @@ export default function OAuthConsent() {
   }
 
   const clientName = details.client?.name ?? "外部アプリ";
+  // 連携先はログイン中のお客様が所属するジム。以前は特定ジム名が直書きされており、
+  // どのジムのお客様にも「Salute御所南のデータ」と表示されていた。
+  const dataOwnerName = gymName || "ご利用中のジム";
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
@@ -120,7 +126,7 @@ export default function OAuthConsent() {
               「{clientName}」をアカウントに連携しますか？
             </h1>
             <p className="text-sm text-muted-foreground">
-              このアプリがあなたとしてSalute御所南のデータ（予約・プロフィール・測定履歴）を読み取れるようになります。
+              このアプリがあなたとして{dataOwnerName}のデータ（予約・プロフィール・測定履歴）を読み取れるようになります。
             </p>
           </div>
           <div className="flex flex-col gap-2">

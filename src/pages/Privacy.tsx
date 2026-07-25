@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { GYMBOARD_SUPPORT_EMAIL } from "@/lib/marketing";
 
 const BackLink = () => {
   const { t } = useTranslation();
@@ -132,8 +133,8 @@ const Privacy = () => {
               <p className="text-sm">{t("privacy.contactOperator")}</p>
               <p className="text-sm">
                 {t("privacy.contactEmailLabel")}
-                <a href="mailto:k.munemoto@kyoto-salute.com" className="text-accent underline hover:text-accent/80">
-                  k.munemoto@kyoto-salute.com
+                <a href={`mailto:${GYMBOARD_SUPPORT_EMAIL}`} className="text-accent underline hover:text-accent/80">
+                  {GYMBOARD_SUPPORT_EMAIL}
                 </a>
               </p>
             </div>

@@ -475,7 +475,6 @@
     "completeTitle": "Booking complete!",
     "completeDescription": "Booking details",
     "shareText": "{{gym}} Training",
-    "juneLockMessage": "June bookings and cancellations are still handled in the Salute app as before. For July and after, please use this app.",
     "customerFallback": "Customer",
     "cancelDescWithTime": "Cancel your booking on {{date}} {{startTime}}–{{endTime}}.",
     "sameDayForfeitWarningTitle": "Are you sure you want to cancel?",

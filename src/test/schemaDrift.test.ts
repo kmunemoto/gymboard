@@ -1,36 +1,36 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 
-// マイグレーションが本番DBに「適用されたか分からない」問題を検出するテスト。
+// migrations と types.ts のズレを検出するテスト。
 //
-// 背景:
-//   supabase/migrations/*.sql はリポジトリに置いてあるだけで、適用は Lovable / Supabase 側の
-//   仕事なので、コミットされている＝適用済み とは限らない。未適用のまま気付かずにいると、
-//   クエリが "column does not exist" で落ちたり（→ useTenant の段階フォールバックが増える）、
-//   `as any` で型を握り潰した箇所が実行時に静かに失敗したりする。
+// **このテストは「本番DBに適用されたか」を判定するものではない。**
+//   当初は「types.ts は本番DBから自動生成されるので、そこに無ければ未適用」という前提で
+//   書いていたが、2026-07-25 に Lovable MCP 経由で本番DBを直接照会したところ、
+//   **types.ts は本番DBより先行しうる**ことが分かった（PRの中で types.ts だけが更新され、
+//   マイグレーションは適用されないまま進んでいた）。
+//   実際、未適用は6件あったのに、この方式では2件しか検出できていなかった。
+//   適用状況の確認手順は mem/ops/schema-drift.md を参照。
 //
-// 検出のしくみ:
-//   src/integrations/supabase/types.ts は **本番DBの実スキーマから自動生成** される。
-//   つまり「migrations で作ったはずのテーブル/カラムが types.ts に無い」なら、
-//   そのマイグレーションはまだ適用されていない（か、生成が止まっている）。
-//   このテストはその差分を洗い出し、既知ぶん(KNOWN_DRIFT)以外が出たら落ちる。
+// このテストが今も守っているもの:
+//   migrations で作ったテーブル/カラムが types.ts に載っているか。
+//   載っていないと補完も型検査も効かず、`as any` で握り潰す実装になり、
+//   タイプミスや列名変更が実行時まで表面化しない。
 //
 // 直しかた:
-//   1. Supabase SQL Editor で該当マイグレーションを実行する
+//   1. 本番DBに適用済みであることを先に確認する（mem/ops/schema-drift.md の手順）
 //   2. types.ts を再生成する（Lovable 側で自動、または supabase gen types）
-//   3. KNOWN_DRIFT から該当エントリを消す
+//   3. KNOWN_STALE から該当エントリを消し、対応する `as any` を外す
 
 const MIGRATIONS_DIR = "supabase/migrations";
 const TYPES_PATH = "src/integrations/supabase/types.ts";
 
 /**
- * 未適用と判明している既知の乖離。**新しい乖離を増やさないための番人**であって、
- * ここに足すこと自体が「本番DBに反映されていない」という申し送りになる。
- * 解消したらエントリごと削除する（残したままだと逆に「適用済みなのに未適用扱い」で落ちる）。
+ * types.ts に載っていないと分かっている既知のズレ。**新しいズレを増やさないための番人**。
+ * 解消したらエントリごと削除する（残したままだと逆に「載っているのに未掲載扱い」で落ちる）。
  */
-const KNOWN_DRIFT: Record<string, string> = {
+const KNOWN_STALE: Record<string, string> = {
   "booking_waitlist":
-    "キャンセル待ち機能(20260624120000)。types.ts に一度も現れたことがなく、以降のtypes再生成でも出てこないため本番未適用の可能性が高い。src/hooks/useWaitlist.ts は `as any` で参照しているため型エラーにならず気付けなかった。",
+    "キャンセル待ち(20260624120000)。本番DBには2026-07-25に適用済みだが types.ts が未再生成。src/hooks/useWaitlist.ts が `as any` で参照している。",
   "profiles.milestone_goal":
     "3ヶ月ごとの中目標(20260708150000)。同上。TrainerClientDetail.tsx が `as any` で読み書きしている。",
   "profiles.milestone_goal_set_at":
@@ -38,7 +38,7 @@ const KNOWN_DRIFT: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// types.ts（＝本番DBのスナップショット）を読む
+// types.ts（＝クライアント側が知っているスキーマ）を読む
 // ---------------------------------------------------------------------------
 
 /** types.ts の `Tables` から {テーブル名: Rowのカラム集合} を作る */
@@ -135,7 +135,7 @@ const TABLE_CONSTRAINT_KEYWORDS = new Set([
 
 // ---------------------------------------------------------------------------
 
-describe("スキーマ乖離（migrations と本番DB由来の types.ts の突き合わせ）", () => {
+describe("スキーマのズレ（migrations と types.ts の突き合わせ）", () => {
   const generated = readGeneratedSchema();
   const declared = readDeclaredSchema();
 
@@ -153,7 +153,7 @@ describe("スキーマ乖離（migrations と本番DB由来の types.ts の突�
     expect(declared.get("tenants")?.has("show_nav_messages")).toBe(true);
   });
 
-  it("migrations で宣言したテーブル/カラムが本番DB(types.ts)にすべて存在する", () => {
+  it("migrations で宣言したテーブル/カラムが types.ts に載っている", () => {
     const drift: string[] = [];
     for (const [table, cols] of declared) {
       const actual = generated.get(table);
@@ -164,21 +164,21 @@ describe("スキーマ乖離（migrations と本番DB由来の types.ts の突�
       for (const col of cols) if (!actual.has(col)) drift.push(`${table}.${col}`);
     }
 
-    const unexpected = drift.filter((d) => !(d in KNOWN_DRIFT));
+    const unexpected = drift.filter((d) => !(d in KNOWN_STALE));
     expect(
       unexpected,
       unexpected.length
-        ? `本番DBに未適用の可能性があるマイグレーションがあります:\n` +
+        ? `types.ts に載っていないテーブル/カラムがあります（型が効かず as any になります）:\n` +
           unexpected.map((d) => `  - ${d}`).join("\n") +
-          `\n\n対処: Supabase で該当マイグレーションを適用し types.ts を再生成する。` +
-          `\n未適用のまま進めるなら KNOWN_DRIFT に理由付きで登録する（src/test/schemaDrift.test.ts）。`
+          `\n\n対処: 本番DBへの適用を確認したうえで types.ts を再生成する（mem/ops/schema-drift.md）。` +
+          `\nすぐ直せないなら KNOWN_STALE に理由付きで登録する（src/test/schemaDrift.test.ts）。`
         : undefined,
     ).toEqual([]);
   });
 
-  it("KNOWN_DRIFT に解消済みのエントリが残っていない", () => {
-    // 適用されたのに登録が残っていると、次の乖離を「既知」として見逃してしまう
-    const resolved = Object.keys(KNOWN_DRIFT).filter((key) => {
+  it("KNOWN_STALE に解消済みのエントリが残っていない", () => {
+    // types.ts に載ったのに登録が残っていると、次のズレを「既知」として見逃してしまう
+    const resolved = Object.keys(KNOWN_STALE).filter((key) => {
       const [table, col] = key.split(".");
       const actual = generated.get(table);
       return col ? actual?.has(col) : Boolean(actual);
@@ -186,7 +186,7 @@ describe("スキーマ乖離（migrations と本番DB由来の types.ts の突�
     expect(
       resolved,
       resolved.length
-        ? `本番DBに存在するのに KNOWN_DRIFT に残っています。エントリを削除してください: ${resolved.join(", ")}`
+        ? `types.ts に載っているのに KNOWN_STALE に残っています。エントリを削除してください: ${resolved.join(", ")}`
         : undefined,
     ).toEqual([]);
   });

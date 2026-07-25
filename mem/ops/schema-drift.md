@@ -1,86 +1,99 @@
-# マイグレーションの適用状況を検証する（スキーマ乖離チェック）
+# マイグレーションの適用状況を確認する
 
-## 問題
+## 前提（重要・2026-07-25 に訂正）
 
 `supabase/migrations/*.sql` はリポジトリに置いてあるだけで、**適用は Lovable / Supabase 側の仕事**。
-コミットされている＝本番DBに反映済み、ではない。未適用に気付かないまま進むと:
+コミットされている＝本番DBに反映済み、ではない。
 
-- クエリが `column does not exist` でまるごと失敗する
-  → `useTenant` の段階フォールバックのような回避策が積み上がる
-- `as any` で型を握り潰した箇所は型エラーにならず、**実行時に静かに失敗する**
+一度「`src/integrations/supabase/types.ts` は本番DBから自動生成されるので、そこに無ければ未適用」
+という前提で検出テストを書いたが、**この前提は誤り**だった。実際には types.ts は
+PRの中で先に更新されており、**本番DBより先行しうる**。
 
-これまでこの状態を検出する手段が無かった。
+2026-07-25 に Lovable の MCP コネクタ（`query_database`）で本番DBを直接照会したところ、
+未適用は **6件** あった。types.ts 方式では **2件しか検出できていなかった**。
 
-## 検出のしくみ
+> **適用の確認は、実DBを見る以外に方法がない。**
 
-`src/integrations/supabase/types.ts` は **本番DBの実スキーマから自動生成** される
-（Lovable がマイグレーション適用時に再生成し、リポジトリにコミットされる）。
+## 確認方法
 
-したがって:
+### A. Lovable MCP から（このセッションからできる）
 
-> migrations で作ったはずのテーブル/カラムが `types.ts` に無い ＝ そのマイグレーションは未適用
+コネクタ設定で **Lovable を「このチャットで有効」にする**（既定は無効）。
+プロジェクトは `gymboard`（`69ac2641-45d8-44e0-b60d-4e002a4f9c1c`）。
 
-`src/test/schemaDrift.test.ts` がこの突き合わせを行う。CI（`.github/workflows/ci.yml`）で
-PRごとに自動実行されるので、新しい乖離が入ると PR が赤くなる。
-
-パーサが扱う DDL は `CREATE TABLE` / `ALTER TABLE ... ADD COLUMN` / `DROP TABLE` の3種類のみ
-（2026-07 時点の migrations に現れるのはこれだけ）。`DROP COLUMN` や `RENAME` を使うときは
-テストのパーサにも追加すること。追加を忘れても「あるはずの列が無い」側に倒れるだけで、
-乖離を見逃す方向には倒れない。
-
-## 既知の乖離（2026-07-25 時点）
-
-テスト内の `KNOWN_DRIFT` に理由付きで登録してある。
-
-| 対象 | マイグレーション | 状況 |
-|---|---|---|
-| `booking_waitlist`（テーブル） | `20260624120000_booking_waitlist.sql` | `types.ts` に一度も現れたことがない。以降に何度も types 再生成が走っているので、**未適用の可能性が高い**。`WAITLIST_ENABLED = true` なのでキャンセル待ちが実際には動いていない疑いがある |
-| `profiles.milestone_goal` / `milestone_goal_set_at` | `20260708150000_add_milestone_goal.sql` | 同上。`TrainerClientDetail.tsx` が `as any` で読み書きしている |
-
-どちらも `as any` でテーブル/列を参照しているため型エラーが出ず、これまで気付けなかった。
-
-### 確認方法
-
-Supabase SQL Editor（ダッシュボード → SQL Editor）で、これ1本を実行する:
+**先に、正しいDBか必ず確かめること。**似た名前のプロジェクトが複数ある
+（`gymboard-app` / `kyoto-salute` / `active-app-studio`）。ロゴURLに Supabase の
+プロジェクトrefが埋まっているので、これで判定できる:
 
 ```sql
-select
-  case when to_regclass('public.booking_waitlist') is null
-       then '未適用' else '適用済み' end                     as booking_waitlist,
-  case when not exists (
-         select 1 from information_schema.columns
-          where table_schema='public' and table_name='profiles'
-            and column_name='milestone_goal')
-       then '未適用' else '適用済み' end                     as milestone_goal;
+select substring(logo_url from 'https://([a-z0-9]+)\.supabase\.co') as supabase_ref, count(*)
+from public.tenants where logo_url is not null group by 1;
+-- rrbfwitprzuevzytykrq が返れば正しいDB
 ```
 
-「未適用」が出たものは、対応するマイグレーションを同じ SQL Editor に貼って実行する:
+### B. Supabase SQL Editor から
 
-| 結果 | 実行するファイル |
-|---|---|
-| `booking_waitlist` = 未適用 | `supabase/migrations/20260624120000_booking_waitlist.sql` |
-| `milestone_goal` = 未適用 | `supabase/migrations/20260708150000_add_milestone_goal.sql` |
+同じSQLをダッシュボードの SQL Editor に貼る。
 
-**どちらも冪等**（全ての文が `IF NOT EXISTS` / `DROP ... IF EXISTS` 付き）なので、
-既に適用済みの状態で流しても何も壊れない。判定に迷ったら両方流してよい。
+### C. 全件突き合わせ（推奨）
 
-適用後は Lovable 側で types.ts を再生成し、`KNOWN_DRIFT` から該当エントリを削除する。
+宣言と実DBを機械的に比較する。実DBのテーブルごとのカラム数を取り:
 
-### クラウドセッションからは確認できない
+```sql
+select table_name, count(*) as live_cols
+from information_schema.columns where table_schema='public'
+group by table_name order by table_name;
+```
 
-Claude のクラウドセッションはネットワークポリシーで `*.supabase.co` への通信が
-遮断されている（ゲートウェイが 403 を返す）ため、この確認は人が実行する必要がある。
-Lovable の MCP コネクタが「このチャットで有効」になっていれば代行できる可能性はあるが、
-既定では無効になっている。
+migrations 側の宣言（`CREATE TABLE` の列＋`ADD COLUMN`）と突き合わせ、
+**実DBのカラム数が宣言より少ないテーブル**と**実DBに無いテーブル**を探す。
+migrations は追加しかしないので、`live < declared` なら確実に未適用がある。
 
-### 解消したら
+### クラウドセッションから直接HTTPで叩くのは不可
 
-1. 該当マイグレーションを適用する
-2. `types.ts` を再生成する
-3. `KNOWN_DRIFT` から該当エントリを **削除する**
-   （残したままだと「適用済みなのに未適用扱い」でテストが落ちる。これも意図的な仕掛けで、
-   登録を消し忘れて番人が効かなくなるのを防ぐため）
-4. 対応する `as any` を外して型を効かせる
+ネットワークポリシーで `*.supabase.co` が遮断されている（ゲートウェイが CONNECT に 403）。
+
+## 2026-07-25 に適用した6件
+
+いずれも追加のみ・冪等。適用後、宣言87テーブルすべてが実DBに存在し、
+カラム不足のテーブルは0件になったことを確認済み。
+
+| マイグレーション | 内容 | 未適用だった間の影響 |
+|---|---|---|
+| `20260624120000_booking_waitlist` | `booking_waitlist` + RLS4本 | キャンセル待ちの登録が失敗していた（`WAITLIST_ENABLED=true` なのに機能せず） |
+| `20260708150000_add_milestone_goal` | `profiles.milestone_goal` / `_set_at` | 3ヶ月目標の保存・表示ができなかった |
+| `20260723060000_add_trial_bookings_booking_kind` | `trial_bookings.booking_kind` | **ドロップイン予約（¥8,000）が作成不能**。通常の体験予約は `trial-book` がこの列を書かないため無事だった |
+| `20260723080000_add_tenant_muscle_groups` | `tenant_muscle_groups` + RLS + バックフィル | 部位の追加・改名・削除が保存できなかった。レーダーチャートは既定8部位で表示だけはされていた |
+| `20260723100000_add_gym_display_visibility` | `tenants` に12列 | 表示ON/OFFの保存が失敗。`useTenant` のフォールバックにより全項目表示のままだった |
+| `20260725090000_drop_salute_june_2026_guard` | Salute専用6月ガードの撤去 | 関数1・トリガー2が残存。7月なので通常予約には無影響だが、6月の予約行の編集/削除が弾かれていた |
+
+適用結果: `tenant_muscle_groups` 104行（13テナント×8部位）、既存の体験予約52件は
+`booking_kind='trial'` を既定値で取得、`tenants` 13件すべて表示12列が `true`（＝見た目は不変）、
+ガード関数・トリガーとも0件。
+
+## いま残っているズレ: types.ts が古い
+
+`booking_waitlist` と `profiles.milestone_goal` / `_set_at` は**本番DBには入ったが types.ts に無い**。
+そのため `useWaitlist.ts` / `TrainerClientDetail.tsx` は `as any` のまま。
+Lovable 側で types.ts が再生成されたら、`src/test/schemaDrift.test.ts` の `KNOWN_STALE` から
+該当エントリを削除し、`as any` を外すこと（登録が残っているとテストが落ちるようにしてある）。
+
+## `src/test/schemaDrift.test.ts` が守っているもの
+
+**適用状況ではなく、types.ts の鮮度**。migrations で作ったものが types.ts に載っていなければ
+補完も型検査も効かず、`as any` で握り潰す実装になり、列名の変更やタイプミスが実行時まで
+表面化しない。それを検出する。
+
+パーサが扱う DDL は `CREATE TABLE` / `ALTER TABLE ... ADD COLUMN` / `DROP TABLE` の3種類のみ。
+`DROP COLUMN` や `RENAME` を使うときはパーサにも追加すること。
+
+## 教訓
+
+- **types.ts を「DBの実態」として信用しない。** PRで先行して更新されうる
+- マイグレーションを含むPRをマージしたら、**その場で実DBに適用されたか確認する**。
+  Lovable のPRマージがマイグレーション適用を保証しない
+- 新しいテーブル/カラムを `as any` で参照する実装は、**未適用でも型エラーが出ない**。
+  この2つが重なると、機能が丸ごと死んでいても誰も気付かない（実際に4機能がそうなっていた）
 
 ## tenants のカラム追加手順
 
@@ -95,5 +108,4 @@ Lovable の MCP コネクタが「このチャットで有効」になってい�
    - `TENANT_VALUE_DEFAULTS`: boolean 以外
 
 フォールバック段（旧 `COL_VARIANTS`）は上記から機械生成される。手で書き換える必要はない。
-登録漏れは `src/test/tenantColumns.test.ts` が検出する（select に足したのに既定値が無い／
-既定値だけあって select に無い／表示トグルの定義とのズレ、をそれぞれ落とす）。
+登録漏れは `src/test/tenantColumns.test.ts` が検出する。

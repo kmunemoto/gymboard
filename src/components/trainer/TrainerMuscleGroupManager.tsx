@@ -48,13 +48,13 @@ const TrainerMuscleGroupManager = ({ open, onClose, onChanged }: Props) => {
   const fetchGroups = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from("tenant_muscle_groups" as any)
+      .from("tenant_muscle_groups")
       .select("id, name, sort_order")
       .order("sort_order", { ascending: true });
     if (error) {
       toast.error(t("muscleGroupManage.fetchFailed"));
     } else {
-      setGroups((data as any) || []);
+      setGroups(data || []);
     }
     setLoading(false);
   };
@@ -80,8 +80,8 @@ const TrainerMuscleGroupManager = ({ open, onClose, onChanged }: Props) => {
     const tenantId = await fetchMyTenantId();
     const nextOrder = groups.length > 0 ? Math.max(...groups.map((g) => g.sort_order)) + 1 : 0;
     const { error } = await supabase
-      .from("tenant_muscle_groups" as any)
-      .insert(withTenant({ name, sort_order: nextOrder }, tenantId) as any);
+      .from("tenant_muscle_groups")
+      .insert(withTenant({ name, sort_order: nextOrder }, tenantId));
     setSaving(false);
     if (error) {
       toast.error(t("muscleGroupManage.addFailed"));
@@ -118,8 +118,8 @@ const TrainerMuscleGroupManager = ({ open, onClose, onChanged }: Props) => {
     }
     setSaving(true);
     const { error: gErr } = await supabase
-      .from("tenant_muscle_groups" as any)
-      .update({ name: newVal } as any)
+      .from("tenant_muscle_groups")
+      .update({ name: newVal })
       .eq("id", g.id);
     if (gErr) {
       toast.error(t("muscleGroupManage.updateFailed"));
@@ -129,7 +129,7 @@ const TrainerMuscleGroupManager = ({ open, onClose, onChanged }: Props) => {
     // 既存の種目をまとめて新しい名前に追従させる（RLSにより自テナント内のみ対象）。
     const { error: exErr } = await supabase
       .from("exercises")
-      .update({ muscle_group: newVal, category: newVal } as any)
+      .update({ muscle_group: newVal, category: newVal })
       .eq("muscle_group", g.name);
     if (exErr) {
       console.error("[TrainerMuscleGroupManager] cascade rename failed:", exErr.message);
@@ -155,14 +155,14 @@ const TrainerMuscleGroupManager = ({ open, onClose, onChanged }: Props) => {
     if ((deleteInUseCount ?? 0) > 0) {
       const { error: exErr } = await supabase
         .from("exercises")
-        .update({ muscle_group: "その他", category: "その他" } as any)
+        .update({ muscle_group: "その他", category: "その他" })
         .eq("muscle_group", deleteTarget.name);
       if (exErr) {
         console.error("[TrainerMuscleGroupManager] reassign before delete failed:", exErr.message);
       }
     }
     const { error } = await supabase
-      .from("tenant_muscle_groups" as any)
+      .from("tenant_muscle_groups")
       .delete()
       .eq("id", deleteTarget.id);
     setSaving(false);

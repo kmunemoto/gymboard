@@ -35,7 +35,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
     const fetch = async () => {
       setLoading(true);
       const { data } = await supabase
-        .from("monthly_reports" as any)
+        .from("monthly_reports")
         .select("*")
         .eq("user_id", clientId)
         .eq("month", selectedMonth)
@@ -56,7 +56,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
     setSaving(true);
     if (existingId) {
       const { error } = await supabase
-        .from("monthly_reports" as any)
+        .from("monthly_reports")
         .update({ trainer_comment: comment } as any)
         .eq("id", existingId);
       if (error) { toast.error(t("monthlyComment.saveFailed")); setSaving(false); return; }
@@ -64,7 +64,7 @@ const TrainerMonthlyComment = ({ clientId }: Props) => {
       const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
       const tenantId = await fetchMyTenantId();
       const { error, data } = await supabase
-        .from("monthly_reports" as any)
+        .from("monthly_reports")
         .insert(withTenant({ user_id: clientId, month: selectedMonth, trainer_comment: comment }, tenantId) as any)
         .select()
         .single();

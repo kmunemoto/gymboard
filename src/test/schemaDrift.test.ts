@@ -27,15 +27,11 @@ const TYPES_PATH = "src/integrations/supabase/types.ts";
 /**
  * types.ts に載っていないと分かっている既知のズレ。**新しいズレを増やさないための番人**。
  * 解消したらエントリごと削除する（残したままだと逆に「載っているのに未掲載扱い」で落ちる）。
+ *
+ * 2026-07-25 現在は空。未適用だった6件を本番DBに適用し、types.ts も実スキーマに
+ * 合わせて更新したため、migrations と types.ts は一致している。
  */
-const KNOWN_STALE: Record<string, string> = {
-  "booking_waitlist":
-    "キャンセル待ち(20260624120000)。本番DBには2026-07-25に適用済みだが types.ts が未再生成。src/hooks/useWaitlist.ts が `as any` で参照している。",
-  "profiles.milestone_goal":
-    "3ヶ月ごとの中目標(20260708150000)。同上。TrainerClientDetail.tsx が `as any` で読み書きしている。",
-  "profiles.milestone_goal_set_at":
-    "同上（milestone_goal と同じマイグレーション）。",
-};
+const KNOWN_STALE: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------
 // types.ts（＝クライアント側が知っているスキーマ）を読む

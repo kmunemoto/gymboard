@@ -104,7 +104,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         supabase.from("bookings").select("*").eq("user_id", user.id).gte("booking_date", pcsStr).lt("booking_date", pceStr).neq("status", "キャンセル済み").neq("status", SAME_DAY_FORFEIT_STATUS),
         supabase.from("workouts").select("*, exercises(name)").eq("user_id", user.id).gte("workout_date", format(cycleStart, "yyyy-MM-dd")).lt("workout_date", format(cycleEnd, "yyyy-MM-dd")).order("workout_date", { ascending: true }),
         supabase.from("workouts").select("*, exercises(name)").eq("user_id", user.id).gte("workout_date", format(prevCycleStart, "yyyy-MM-dd")).lt("workout_date", format(prevCycleEnd, "yyyy-MM-dd")).order("workout_date", { ascending: true }),
-        supabase.from("monthly_reports" as any).select("*").eq("user_id", user.id).eq("month", monthStr).maybeSingle(),
+        supabase.from("monthly_reports").select("*").eq("user_id", user.id).eq("month", monthStr).maybeSingle(),
       ]);
 
       setBookings(bRes.data || []);

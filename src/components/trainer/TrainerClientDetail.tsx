@@ -144,8 +144,8 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
         setTrainingGoal((data as any).training_goal || "");
-        setMilestoneGoal((data as any).milestone_goal || "");
-        setMilestoneGoalSetAt((data as any).milestone_goal_set_at ?? null);
+        setMilestoneGoal(data.milestone_goal || "");
+        setMilestoneGoalSetAt(data.milestone_goal_set_at ?? null);
         setShowUsagePeriod(data.show_usage_period ?? true);
         setGraceEnabled((data as any).grace_enabled ?? true);
       } else {
@@ -581,7 +581,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     const nowIso = new Date().toISOString();
     const { error } = await supabase
       .from("profiles")
-      .update({ milestone_goal: trimmed || null, milestone_goal_set_at: nowIso } as any)
+      .update({ milestone_goal: trimmed || null, milestone_goal_set_at: nowIso })
       .eq("user_id", clientId);
     setSavingMilestone(false);
     if (error) { toast.error(t("clientDetail.milestoneSaveFailed")); return; }

@@ -49,7 +49,7 @@ export const loadTenantMuscleGroups = async (force = false): Promise<MuscleGroup
   }
   loadPromise = (async () => {
     const { data, error } = await supabase
-      .from("tenant_muscle_groups" as any)
+      .from("tenant_muscle_groups")
       .select("id, name, sort_order")
       .order("sort_order", { ascending: true });
     if (!error && data && data.length > 0) {

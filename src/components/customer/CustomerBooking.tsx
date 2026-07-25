@@ -312,7 +312,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     // この枠のキャンセル待ちに入っていたら解除する（予約できたため不要）
     if (WAITLIST_ENABLED) {
       supabase
-        .from("booking_waitlist" as any)
+        .from("booking_waitlist")
         .delete()
         .eq("user_id", user.id)
         .eq("booking_date", dateKey)

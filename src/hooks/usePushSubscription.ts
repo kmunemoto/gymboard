@@ -201,7 +201,7 @@ export function usePushSubscription() {
         }
       }
       await detachNativeListeners();
-      await supabase.from("push_devices" as any).delete().eq("user_id", user.id);
+      await supabase.from("push_devices").delete().eq("user_id", user.id);
       setIsSubscribed(false);
       return true;
     } catch (err) {
@@ -219,7 +219,7 @@ export function usePushSubscription() {
     if (!user) return DEFAULT_PREFS;
     try {
       const { data } = await supabase
-        .from("notification_preferences" as any)
+        .from("notification_preferences")
         .select("reminder_day_before, reminder_hour_before, reminder_period")
         .eq("user_id", user.id)
         .maybeSingle();
@@ -243,7 +243,7 @@ export function usePushSubscription() {
         const current = await getNotificationPreferences();
         const next = { ...current, [key]: value };
         const { error } = await supabase
-          .from("notification_preferences" as any)
+          .from("notification_preferences")
           .upsert(
             { user_id: user.id, ...next, updated_at: new Date().toISOString() },
             { onConflict: "user_id" },

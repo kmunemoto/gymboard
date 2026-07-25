@@ -70,7 +70,7 @@ async function upsertDevice(
   token: string,
   platform: "ios" | "android",
 ): Promise<{ error: unknown }> {
-  const { error } = await supabase.from("push_devices" as any).upsert(
+  const { error } = await supabase.from("push_devices").upsert(
     {
       user_id: userId,
       fcm_token: token,
@@ -86,13 +86,13 @@ async function upsertDevice(
 export async function ensureDefaultPreferences(userId: string): Promise<void> {
   try {
     const { data } = await supabase
-      .from("notification_preferences" as any)
+      .from("notification_preferences")
       .select("user_id")
       .eq("user_id", userId)
       .maybeSingle();
     if (!data) {
       await supabase
-        .from("notification_preferences" as any)
+        .from("notification_preferences")
         .insert({ user_id: userId, ...DEFAULT_NOTIFICATION_PREFERENCES });
     }
   } catch (e) {
@@ -209,7 +209,7 @@ export async function isDeviceSubscribed(userId: string): Promise<boolean> {
   if (perm !== "granted") return false;
   try {
     const { data } = await supabase
-      .from("push_devices" as any)
+      .from("push_devices")
       .select("id")
       .eq("user_id", userId)
       .limit(1);

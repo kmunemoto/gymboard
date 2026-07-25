@@ -39,7 +39,7 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
   const fetch = async () => {
     setLoading(true);
     const { data: j } = await supabase
-      .from("weight_journey" as any)
+      .from("weight_journey")
       .select("id, start_weight, target_weight, start_date, is_active")
       .eq("user_id", clientId)
       .eq("is_active", true)
@@ -87,7 +87,7 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
       return;
     }
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("weight_journey" as any).upsert({
+    const { error } = await supabase.from("weight_journey").upsert({
       user_id: clientId,
       start_weight: s,
       target_weight: tn,
@@ -107,7 +107,7 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
   const handleReset = async () => {
     if (!journey) return;
     const { error } = await supabase
-      .from("weight_journey" as any)
+      .from("weight_journey")
       .update({ is_active: false } as any)
       .eq("id", journey.id);
     if (error) {

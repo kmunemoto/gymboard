@@ -3,8 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 // キャンセル待ち（booking_waitlist）の登録・解除・自分の登録状況取得。
-// テーブルは自動生成型(types.ts)に未反映のため as any でアクセスする
-// （google_calendar_tokens 等と同様の既存方針）。
 const slotKey = (date: string, time: string) => `${date}|${time}`;
 
 export const useWaitlist = (dateKey: string | null) => {
@@ -17,7 +15,7 @@ export const useWaitlist = (dateKey: string | null) => {
       return;
     }
     const { data, error } = await supabase
-      .from("booking_waitlist" as any)
+      .from("booking_waitlist")
       .select("booking_date, start_time")
       .eq("user_id", user.id)
       .eq("booking_date", dateKey);
@@ -25,7 +23,7 @@ export const useWaitlist = (dateKey: string | null) => {
       console.warn("useWaitlist fetch failed:", error.message);
       return;
     }
-    setEntries(new Set((data || []).map((r: any) => slotKey(r.booking_date, r.start_time))));
+    setEntries(new Set((data || []).map((r) => slotKey(r.booking_date, r.start_time))));
   }, [user, dateKey]);
 
   useEffect(() => {
@@ -40,7 +38,7 @@ export const useWaitlist = (dateKey: string | null) => {
     const key = slotKey(date, time);
     if (entries.has(key)) {
       const { error } = await supabase
-        .from("booking_waitlist" as any)
+        .from("booking_waitlist")
         .delete()
         .eq("user_id", user.id)
         .eq("booking_date", date)
@@ -56,7 +54,7 @@ export const useWaitlist = (dateKey: string | null) => {
     const tenantId = await fetchMyTenantId();
     if (!tenantId) return null;
     const { error } = await supabase
-      .from("booking_waitlist" as any)
+      .from("booking_waitlist")
       .insert({ tenant_id: tenantId, user_id: user.id, booking_date: date, start_time: time });
     if (error) {
       console.warn("waitlist insert failed:", error.message);

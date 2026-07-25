@@ -110,6 +110,18 @@ Deno.serve(async (req) => {
       return reject("validation", "That time slot isn't available. Please choose one of the times shown.");
     }
 
+    // ===== 提供ジムの確認 =====
+    // ドロップイン(¥8,000・現地決済・英語のみ)は Salute御所南 が観光客向けに
+    // 独自に始めた機能で、他ジムには提供していない。料金・言語・決済手段が
+    // すべて固定なので、他ジムのIDで叩かれても受け付けない。
+    // 画面側(src/pages/DropInBooking.tsx)でも同じ判定をしているが、
+    // 直接APIを叩かれる経路があるためサーバー側でも弾く。
+    // 提供ジムを増やすときは tenants に料金・提供有無の列を足して置き換えること。
+    const DROP_IN_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+    if (tenantId !== DROP_IN_TENANT_ID) {
+      return reject("not_available", "This gym does not offer drop-in sessions.");
+    }
+
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });

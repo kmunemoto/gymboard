@@ -1,6 +1,7 @@
 import { lazy, useEffect, useRef, useState } from "react";
 import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera, Star, X } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
+import { sendLineMessage } from "@/lib/lineNotify";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -204,9 +205,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       if (message && currentStreak > lastNotified) {
         streakNotifiedRef.current = true;
         try {
-          await supabase.functions.invoke("send-line-message", {
-            body: { userId: prof.line_user_id, message },
-          });
+          await sendLineMessage({ userId: prof.line_user_id, message }, "連続来店の記録通知");
           await supabase
             .from("profiles")
             .update({ last_streak_notified: currentStreak } as any)

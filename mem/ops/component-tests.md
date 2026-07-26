@@ -18,7 +18,7 @@
 | ファイル | 何を守っているか |
 |---|---|
 | `src/test/TrainerSidebar.test.tsx` | 表示トグルの反映。**ホーム・顧客・予約・設定は全OFFでも必ず残る**（ジムが自分で操作不能にできない）。開いているタブはOFFでも残る |
-| `src/test/TrainerGymSettings.test.tsx` | 設定画面の構造。招待コードがアコーディオンの外・最上部にあること、6カテゴリー、17トグルが全部出ること、切り替えが該当カラムだけを保存すること |
+| `src/test/TrainerGymSettings.test.tsx` | 設定画面の構造。招待コードが最上部にあること、17トグルが全部出ること、切り替えが該当カラムだけを保存すること |
 | `src/test/realtimeChannelCollision.test.tsx` | 2026-07-21 本番障害の回帰。supabase-js の「同名チャンネルは共有・購読後の `.on()` は throw」をモックで再現し、実接続なしに検出する。併せて `src` 全体を走査して固定名の `.channel()` を禁止する |
 
 `gymDisplaySettings.test.ts`（定義）→ `TrainerGymSettings.test.tsx`（設定画面に出るか）→
@@ -41,7 +41,10 @@ jsdom の `navigator.language`（en-US）で英語が選ばれ、さらに `@/li
 
 ### Radix のアコーディオンは閉じている間、中身をDOMに出さない
 
-`TrainerGymSettings` のトグルを見るには、先に該当カテゴリーのトリガーをクリックして開く。
+`TrainerGymSettings` は一度カテゴリー別アコーディオンに再編したが、オーナーの意向で撤回し
+1本の縦並びリストに戻した（2026-07-26）。そのため今は開閉操作なしで全トグルが見える。
+`TrainerHelpGuide` など、他の画面でアコーディオンを使う場合はこの注意が引き続き当てはまる
+（閉じている間は中身をDOMに出さないので、先にトリガーをクリックして開く）。
 
 ### Supabase を叩く子コンポーネントはスタブにする
 

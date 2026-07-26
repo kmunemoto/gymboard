@@ -17,7 +17,9 @@ import i18n from "@/lib/i18n";
 // ここは間の「設定画面にトグルが出るか」を見る。3つ揃って初めて
 // 「定義したのに設定に出てこない」「設定にあるのに効かない」の両方を塞げる。
 //
-// 併せて、オーナーの明示的な要望である「招待コードはカテゴリーにしまわず最上部」も担保する。
+// カテゴリー別アコーディオンは一度導入したが、オーナーの意向で撤回し
+// 1本の縦並びリストに戻した（2026-07-26）。招待コードが最上部にあることは
+// 引き続き担保する。
 
 const tenantRef = { current: null as Tenant | null };
 const refetchTenant = vi.fn();
@@ -85,9 +87,6 @@ const makeTenant = (overrides: Record<string, unknown> = {}): Tenant =>
     ...overrides,
   }) as unknown as Tenant;
 
-/** アコーディオンのカテゴリーを開く */
-const openCategory = (title: string) => fireEvent.click(screen.getByRole("button", { name: title }));
-
 // 実行順で言語がぶれないよう固定する（期待値は i18n.t で引くので言語非依存だが、
 // 失敗時のメッセージが読めるように日本語にしておく）
 beforeAll(async () => {
@@ -102,35 +101,26 @@ beforeEach(() => {
 });
 
 describe("TrainerGymSettings（設定画面の構造）", () => {
-  it("招待コードはアコーディオンの外・最上部に常時表示される", () => {
-    // お客様の招待に日常的に使うため、カテゴリーを開かずに使えること（オーナー要望）
-    const { container } = render(<TrainerGymSettings onSignOut={vi.fn()} />);
+  it("招待コードが最上部（他のカードより前）に表示される", () => {
+    // お客様の招待に日常的に使うため、画面を開いてすぐ使えること（オーナー要望）
+    render(<TrainerGymSettings onSignOut={vi.fn()} />);
     const invite = screen.getByTestId("invite-code-card");
-    const accordion = container.querySelector("[data-orientation]");
-    expect(accordion, "アコーディオンが見つからない").not.toBeNull();
-    expect(accordion!.contains(invite), "招待コードがアコーディオンの中に入っている").toBe(false);
-    // DOM 上でアコーディオンより前 = 画面上でより上
-    expect(invite.compareDocumentPosition(accordion!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const trialLink = screen.getByTestId("trial-link-card");
+    // DOM 上で招待コードが先 = 画面上でより上
+    expect(invite.compareDocumentPosition(trialLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("6つのカテゴリーが全て出る", () => {
+  it("カテゴリーのアコーディオンで折りたたまれず、全項目が最初から見えている", () => {
+    // カテゴリー別アコーディオンは一度導入したが撤回した。開閉操作なしで
+    // 表示設定のトグルが見えることを担保する。
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
-    for (const key of ["catGymInfo", "catBooking", "catGrowth", "catAppearance", "catNotifications", "catAccount"]) {
-      const title = i18n.t(`settings.trainer.${key}`);
-      expect(screen.getByRole("button", { name: title }), `${title} が無い`).toBeTruthy();
-    }
+    expect(screen.getByText(i18n.t("settings.trainer.displaySection"))).toBeTruthy();
+    expect(screen.getAllByRole("switch").length).toBeGreaterThanOrEqual(ALL_TOGGLES.length);
   });
 
-  it("既定では全カテゴリーが閉じていて、中身は出ていない", () => {
-    // 項目が増えすぎて探しにくい問題への対処なので、開いた状態で始まってはいけない
-    render(<TrainerGymSettings onSignOut={vi.fn()} />);
-    expect(screen.queryByText(i18n.t("settings.trainer.displaySection"))).toBeNull();
-  });
-
-  it("「表示・デザイン」を開くと、定義済みの表示トグルが全て出る", () => {
+  it("定義済みの表示トグルが全て出る", () => {
     // ここが落ちる = gymDisplaySettings に足したのに設定画面へ出し忘れている
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
-    openCategory(i18n.t("settings.trainer.catAppearance"));
 
     expect(ALL_TOGGLES.length).toBe(17);
     for (const { labelKey } of ALL_TOGGLES) {
@@ -143,7 +133,6 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
   it("トグルの初期状態がテナントの設定値どおりになる", () => {
     tenantRef.current = makeTenant({ show_nav_messages: false });
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
-    openCategory(i18n.t("settings.trainer.catAppearance"));
 
     const row = screen.getByText(i18n.t("trainerNav.messages")).closest("div")!;
     expect(within(row).getByRole("switch").getAttribute("aria-checked")).toBe("false");
@@ -154,7 +143,6 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
 
   it("表示量プリセットの3ボタンが出て、今の設定に一致するものが選択状態になる", () => {
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
-    openCategory(i18n.t("settings.trainer.catAppearance"));
     for (const preset of GYM_DISPLAY_PRESETS) {
       expect(
         screen.getByText(i18n.t(`settings.trainer.displayPreset.${preset}`)),
@@ -168,7 +156,6 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
   it("プリセットを押すと17項目をまとめて保存する", async () => {
     // 1項目ずつ17回 update する実装だと、途中で失敗したとき中途半端な状態が残る
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
-    openCategory(i18n.t("settings.trainer.catAppearance"));
 
     fireEvent.click(screen.getByText(i18n.t("settings.trainer.displayPreset.simple")));
 
@@ -181,7 +168,6 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
   it("トグルを切ると、その列だけを tenants に保存して再取得する", async () => {
     // ここが落ちる = スイッチは動くのに保存されない / 別の列を書き換えている
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
-    openCategory(i18n.t("settings.trainer.catAppearance"));
 
     const row = screen.getByText(i18n.t("trainerNav.messages")).closest("div")!;
     fireEvent.click(within(row).getByRole("switch"));

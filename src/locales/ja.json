@@ -132,12 +132,6 @@
     },
     "trainer": {
       "title": "ジム設定",
-      "catGymInfo": "ジム情報",
-      "catBooking": "予約・営業",
-      "catGrowth": "集客・体験予約",
-      "catAppearance": "表示・デザイン",
-      "catNotifications": "通知",
-      "catAccount": "アカウント",
       "invite": "お客様の招待",
       "trialLinkSection": "体験予約リンク",
       "trialPageSection": "体験予約ページの案内文",

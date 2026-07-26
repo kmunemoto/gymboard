@@ -9,10 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Upload, Trash2, Image, User, Save, LogOut, Settings } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrialLinkCard from "./TrialLinkCard";
 import TrainerPlanManager from "./TrainerPlanManager";
@@ -411,495 +411,488 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         {t("settings.trainer.title")}
       </h2>
 
-      {/* === 招待コード（お客様の招待に日常的に使うため、カテゴリーにしまわず最上部に常時表示） === */}
+      {/* === 招待コード === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.invite")}</h3>
         <InviteCodeCard />
       </section>
 
-      {/* 設定項目が増えたため、カテゴリー別のアコーディオンに整理している。
-          既定は全て閉じた状態で、探している分類だけ開いて使う。 */}
-      <Accordion type="multiple" className="w-full">
-        <AccordionItem value="gym-info">
-          <AccordionTrigger className="text-sm font-bold">
-            {t("settings.trainer.catGymInfo")}
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-1">
-            {/* ロゴ画像 */}
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                    <Image className="w-4 h-4 text-accent" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm">{t("settings.trainer.logo")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("settings.trainer.logoDesc")}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 shrink-0">
-                    {tenant?.logo_url ? (
-                      <img src={tenant.logo_url} alt={t("settings.trainer.logoAlt")} className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground">{t("common.notSet")}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2 flex-1">
-                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm" className="flex-1">
-                      <Upload className="w-4 h-4 mr-1" />
-                      {uploading ? t("common.processing") : tenant?.logo_url ? t("settings.trainer.change") : t("settings.trainer.upload")}
-                    </Button>
-                    {tenant?.logo_url && (
-                      <Button variant="destructive" onClick={handleDelete} disabled={uploading} size="sm">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      <Separator />
 
-            {/* === 連絡先メールアドレス === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.contactEmailSection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-xs text-muted-foreground">{t("settings.trainer.contactEmailDesc")}</p>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="contact-email" className="text-xs font-bold">{t("settings.trainer.contactEmailLabel")}</Label>
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder={t("settings.trainer.contactEmailPlaceholder")}
-                      maxLength={255}
-                    />
-                  </div>
-                  <Button onClick={handleSaveContactEmail} disabled={savingContactEmail || !tenant} size="sm" className="h-10">
-                    <Save className="w-4 h-4 mr-1" />
-                    {savingContactEmail ? t("common.saving") : t("common.save")}
-                  </Button>
-                </CardContent>
-              </Card>
-            </section>
+      {/* === 体験予約リンク === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
+        <TrialLinkCard />
+      </section>
 
-            {/* === 電話番号 === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.contactPhoneSection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-xs text-muted-foreground">{t("settings.trainer.contactPhoneDesc")}</p>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="contact-phone" className="text-xs font-bold">{t("settings.trainer.contactPhoneLabel")}</Label>
-                    <Input
-                      id="contact-phone"
-                      type="tel"
-                      value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                      placeholder={t("settings.trainer.contactPhonePlaceholder")}
-                      maxLength={30}
-                    />
-                  </div>
-                  <Button onClick={handleSaveContactPhone} disabled={savingContactPhone || !tenant} size="sm" className="h-10">
-                    <Save className="w-4 h-4 mr-1" />
-                    {savingContactPhone ? t("common.saving") : t("common.save")}
-                  </Button>
-                </CardContent>
-              </Card>
-            </section>
+      <Separator />
 
-            {/* === LINE連絡先 === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.lineUrlSection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-xs text-muted-foreground">{t("settings.trainer.lineUrlDesc")}</p>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="line-url" className="text-xs font-bold">{t("settings.trainer.lineUrlLabel")}</Label>
-                    <Input
-                      id="line-url"
-                      type="url"
-                      inputMode="url"
-                      value={lineUrl}
-                      onChange={(e) => setLineUrl(e.target.value)}
-                      placeholder={t("settings.trainer.lineUrlPlaceholder")}
-                      maxLength={255}
-                    />
-                  </div>
-                  <Button onClick={handleSaveLineUrl} disabled={savingLineUrl || !tenant} size="sm" className="h-10">
-                    <Save className="w-4 h-4 mr-1" />
-                    {savingLineUrl ? t("common.saving") : t("common.save")}
-                  </Button>
-                </CardContent>
-              </Card>
-            </section>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="booking">
-          <AccordionTrigger className="text-sm font-bold">
-            {t("settings.trainer.catBooking")}
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-1">
-            {/* === 営業時間 === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.businessHoursSection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursDesc")}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold">{t("settings.trainer.businessHoursStart")}</Label>
-                      <Select value={businessStart} onValueChange={setBusinessStart}>
-                        <SelectTrigger className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BUSINESS_START_HOURS.map((h) => (
-                            <SelectItem key={h} value={h}>{h}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold">{t("settings.trainer.businessHoursEnd")}</Label>
-                      <Select value={businessEnd} onValueChange={setBusinessEnd}>
-                        <SelectTrigger className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BUSINESS_END_HOURS.map((h) => (
-                            <SelectItem key={h} value={h}>{h}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold">{t("settings.trainer.businessHoursSlotDuration")}</Label>
-                    <Select value={String(businessSlotMinutes)} onValueChange={(v) => setBusinessSlotMinutes(parseInt(v, 10))}>
-                      <SelectTrigger className="h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BUSINESS_SLOT_OPTIONS.map((m) => (
-                          <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold">{t("settings.trainer.businessHoursBuffer")}</Label>
-                    <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursBufferDesc")}</p>
-                    <Select value={String(businessBufferMinutes)} onValueChange={(v) => setBusinessBufferMinutes(parseInt(v, 10))}>
-                      <SelectTrigger className="h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BUSINESS_BUFFER_OPTIONS.map((m) => (
-                          <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleSaveBusinessHours} disabled={savingBusinessHours || !tenant} size="sm" className="h-10">
-                    <Save className="w-4 h-4 mr-1" />
-                    {savingBusinessHours ? t("common.saving") : t("common.save")}
-                  </Button>
-                </CardContent>
-              </Card>
-            </section>
+      {/* === 体験予約ページの案内文 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPageSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.trialInfoDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="trial-info-title" className="text-xs font-bold">{t("settings.trainer.trialInfoTitleLabel")}</Label>
+              <Input
+                id="trial-info-title"
+                value={trialInfoTitle}
+                onChange={(e) => setTrialInfoTitle(e.target.value)}
+                placeholder={t("trialBooking.infoTitle")}
+                maxLength={40}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="trial-info-body" className="text-xs font-bold">{t("settings.trainer.trialInfoBodyLabel")}</Label>
+              <Textarea
+                id="trial-info-body"
+                value={trialInfoBody}
+                onChange={(e) => setTrialInfoBody(e.target.value)}
+                placeholder={t("trialBooking.infoBody")}
+                rows={3}
+                maxLength={300}
+              />
+            </div>
+            <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingTrialInfo ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
 
-            {/* === 予約ポリシー === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.bookingPolicySection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="font-bold text-sm">{t("settings.trainer.sameDayPenaltyTitle")}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.sameDayPenaltyDesc")}</p>
-                    </div>
-                    <Switch
-                      checked={!!tenant?.same_day_cancel_penalty_enabled}
-                      disabled={savingSameDayPenalty || !tenant}
-                      onCheckedChange={handleToggleSameDayPenalty}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
+      <Separator />
 
-            {/* === プラン管理 === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.planManage")}</h3>
-              <TrainerPlanManager />
-            </section>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="growth">
-          <AccordionTrigger className="text-sm font-bold">
-            {t("settings.trainer.catGrowth")}
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-1">
-            {/* === 体験予約リンク === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
-              <TrialLinkCard />
-            </section>
+      {/* === 連絡先メールアドレス === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.contactEmailSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.contactEmailDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-email" className="text-xs font-bold">{t("settings.trainer.contactEmailLabel")}</Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder={t("settings.trainer.contactEmailPlaceholder")}
+                maxLength={255}
+              />
+            </div>
+            <Button onClick={handleSaveContactEmail} disabled={savingContactEmail || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingContactEmail ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
 
-            {/* === 体験予約ページの案内文 === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPageSection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-xs text-muted-foreground">{t("settings.trainer.trialInfoDesc")}</p>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="trial-info-title" className="text-xs font-bold">{t("settings.trainer.trialInfoTitleLabel")}</Label>
-                    <Input
-                      id="trial-info-title"
-                      value={trialInfoTitle}
-                      onChange={(e) => setTrialInfoTitle(e.target.value)}
-                      placeholder={t("trialBooking.infoTitle")}
-                      maxLength={40}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="trial-info-body" className="text-xs font-bold">{t("settings.trainer.trialInfoBodyLabel")}</Label>
-                    <Textarea
-                      id="trial-info-body"
-                      value={trialInfoBody}
-                      onChange={(e) => setTrialInfoBody(e.target.value)}
-                      placeholder={t("trialBooking.infoBody")}
-                      rows={3}
-                      maxLength={300}
-                    />
-                  </div>
-                  <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
-                    <Save className="w-4 h-4 mr-1" />
-                    {savingTrialInfo ? t("common.saving") : t("common.save")}
-                  </Button>
-                </CardContent>
-              </Card>
-            </section>
+      <Separator />
 
-            {/* === Google口コミ依頼 === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.googleReviewSection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-xs text-muted-foreground">{t("settings.trainer.googleReviewDesc")}</p>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="google-review-url" className="text-xs font-bold">{t("settings.trainer.googleReviewUrlLabel")}</Label>
-                    <Input
-                      id="google-review-url"
-                      type="url"
-                      inputMode="url"
-                      value={googleReviewUrl}
-                      onChange={(e) => setGoogleReviewUrl(e.target.value)}
-                      placeholder={t("settings.trainer.googleReviewUrlPlaceholder")}
-                      maxLength={500}
-                    />
-                  </div>
-                  <Button onClick={handleSaveGoogleReviewUrl} disabled={savingGoogleReviewUrl || !tenant} size="sm" className="h-10">
-                    <Save className="w-4 h-4 mr-1" />
-                    {savingGoogleReviewUrl ? t("common.saving") : t("common.save")}
-                  </Button>
-                </CardContent>
-              </Card>
-            </section>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="appearance">
-          <AccordionTrigger className="text-sm font-bold">
-            {t("settings.trainer.catAppearance")}
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-1">
-            {/* === 表示設定（ホーム画面の各パーツ・メニューの各タブをジムごとにON/OFF） === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.displaySection")}</h3>
+      {/* === 電話番号 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.contactPhoneSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.contactPhoneDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-phone" className="text-xs font-bold">{t("settings.trainer.contactPhoneLabel")}</Label>
+              <Input
+                id="contact-phone"
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder={t("settings.trainer.contactPhonePlaceholder")}
+                maxLength={30}
+              />
+            </div>
+            <Button onClick={handleSaveContactPhone} disabled={savingContactPhone || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingContactPhone ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
 
-              {/* 表示量のプリセット。17項目を1つずつ切るのは現実的でないため、
-                  まとめて切り替える手段を上に置く。押したときだけ反映される。 */}
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div>
-                    <h4 className="font-bold text-sm">{t("settings.trainer.displayPresetGroup")}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displayPresetDesc")}</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {GYM_DISPLAY_PRESETS.map((preset) => {
-                      const active = detectPreset(tenant) === preset;
-                      return (
-                        <Button
-                          key={preset}
-                          type="button"
-                          variant={active ? "default" : "outline"}
-                          size="sm"
-                          disabled={!tenant || savingPreset !== null}
-                          onClick={() => handleApplyPreset(preset)}
-                          className="h-auto py-2 flex flex-col gap-0.5"
-                        >
-                          <span className="text-xs font-bold">{t(`settings.trainer.displayPreset.${preset}`)}</span>
-                          <span className="text-[10px] font-normal opacity-70 leading-tight">
-                            {t(`settings.trainer.displayPresetHint.${preset}`)}
-                          </span>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  {detectPreset(tenant) === null && (
-                    <p className="text-[11px] text-muted-foreground">{t("settings.trainer.displayPresetCustom")}</p>
-                  )}
-                </CardContent>
-              </Card>
+      <Separator />
 
-              {/* ホーム画面：上部の統計カード */}
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div>
-                    <h4 className="font-bold text-sm">{t("settings.trainer.displayStatsGroup")}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.statVisibilityDesc")}</p>
-                  </div>
-                  {DASHBOARD_STAT_TOGGLES.map(({ column, labelKey }) => (
-                    <div key={column} className="flex items-center justify-between gap-3">
-                      <span className="text-sm">{t(labelKey)}</span>
-                      <Switch
-                        checked={tenant?.[column] !== false}
-                        disabled={savingStatKey === column || !tenant}
-                        onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
-                      />
-                    </div>
+      {/* === LINE連絡先 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.lineUrlSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.lineUrlDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="line-url" className="text-xs font-bold">{t("settings.trainer.lineUrlLabel")}</Label>
+              <Input
+                id="line-url"
+                type="url"
+                inputMode="url"
+                value={lineUrl}
+                onChange={(e) => setLineUrl(e.target.value)}
+                placeholder={t("settings.trainer.lineUrlPlaceholder")}
+                maxLength={255}
+              />
+            </div>
+            <Button onClick={handleSaveLineUrl} disabled={savingLineUrl || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingLineUrl ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === Google口コミ依頼 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.googleReviewSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.googleReviewDesc")}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="google-review-url" className="text-xs font-bold">{t("settings.trainer.googleReviewUrlLabel")}</Label>
+              <Input
+                id="google-review-url"
+                type="url"
+                inputMode="url"
+                value={googleReviewUrl}
+                onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                placeholder={t("settings.trainer.googleReviewUrlPlaceholder")}
+                maxLength={500}
+              />
+            </div>
+            <Button onClick={handleSaveGoogleReviewUrl} disabled={savingGoogleReviewUrl || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingGoogleReviewUrl ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === プラン管理 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.planManage")}</h3>
+        <TrainerPlanManager />
+      </section>
+
+      <Separator />
+
+      {/* === 営業時間 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.businessHoursSection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursDesc")}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">{t("settings.trainer.businessHoursStart")}</Label>
+                <Select value={businessStart} onValueChange={setBusinessStart}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_START_HOURS.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">{t("settings.trainer.businessHoursEnd")}</Label>
+                <Select value={businessEnd} onValueChange={setBusinessEnd}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_END_HOURS.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.businessHoursSlotDuration")}</Label>
+              <Select value={String(businessSlotMinutes)} onValueChange={(v) => setBusinessSlotMinutes(parseInt(v, 10))}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_SLOT_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
                   ))}
-                </CardContent>
-              </Card>
-
-              {/* ホーム画面：各セクション */}
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div>
-                    <h4 className="font-bold text-sm">{t("settings.trainer.displaySectionsGroup")}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displaySectionsDesc")}</p>
-                  </div>
-                  {DASHBOARD_SECTION_TOGGLES.map(({ column, labelKey }) => (
-                    <div key={column} className="flex items-center justify-between gap-3">
-                      <span className="text-sm">{t(labelKey)}</span>
-                      <Switch
-                        checked={tenant?.[column] !== false}
-                        disabled={savingStatKey === column || !tenant}
-                        onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
-                      />
-                    </div>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.businessHoursBuffer")}</Label>
+              <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursBufferDesc")}</p>
+              <Select value={String(businessBufferMinutes)} onValueChange={(v) => setBusinessBufferMinutes(parseInt(v, 10))}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_BUFFER_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
                   ))}
-                </CardContent>
-              </Card>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSaveBusinessHours} disabled={savingBusinessHours || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingBusinessHours ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
 
-              {/* メニュー（サイドバー / 下部ナビ）の各タブ */}
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div>
-                    <h4 className="font-bold text-sm">{t("settings.trainer.displayNavGroup")}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displayNavDesc")}</p>
-                  </div>
-                  {NAV_TAB_TOGGLES.map(({ column, labelKey }) => (
-                    <div key={column} className="flex items-center justify-between gap-3">
-                      <span className="text-sm">{t(labelKey)}</span>
-                      <Switch
-                        checked={tenant?.[column] !== false}
-                        disabled={savingStatKey === column || !tenant}
-                        onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
-                      />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </section>
+      <Separator />
 
-            {/* === テーマカラー / Theme color === */}
-            <ThemeColorSwitcher variant="trainer" />
+      {/* === 予約ポリシー === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.bookingPolicySection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-sm">{t("settings.trainer.sameDayPenaltyTitle")}</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.sameDayPenaltyDesc")}</p>
+              </div>
+              <Switch
+                checked={!!tenant?.same_day_cancel_penalty_enabled}
+                disabled={savingSameDayPenalty || !tenant}
+                onCheckedChange={handleToggleSameDayPenalty}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
-            {/* === 背景画像 / Background image === */}
-            <BackgroundImagePicker variant="trainer" />
+      <Separator />
 
-            {/* === 言語 / Language === */}
-            <LanguageSwitcher variant="trainer" />
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="notifications">
-          <AccordionTrigger className="text-sm font-bold">
-            {t("settings.trainer.catNotifications")}
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-1">
-            {/* === 朝のサマリー通知 === */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.dailySummarySection")}</h3>
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="font-bold text-sm">{t("settings.trainer.dailySummaryTitle")}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.dailySummaryDesc")}</p>
-                    </div>
-                    <Switch
-                      checked={tenant?.daily_summary_enabled !== false}
-                      disabled={savingDailySummary || !tenant}
-                      onCheckedChange={handleToggleDailySummary}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="account">
-          <AccordionTrigger className="text-sm font-bold">
-            {t("settings.trainer.catAccount")}
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-1">
-            {/* トレーナー表示名 */}
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4 text-accent" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm">{t("settings.trainer.displayName")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("settings.trainer.displayNameDesc")}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("settings.trainer.displayNamePlaceholder")} className="flex-1" />
-                  <Button onClick={handleSaveName} disabled={savingName || !displayName.trim()} size="sm" className="h-10">
-                    <Save className="w-4 h-4 mr-1" />
-                    {savingName ? t("common.saving") : t("common.save")}
+      {/* === 表示設定（ホーム画面の各パーツ・メニューの各タブをジムごとにON/OFF） === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.displaySection")}</h3>
+
+        {/* 表示量のプリセット。17項目を1つずつ切るのは現実的でないため、
+            まとめて切り替える手段を上に置く。押したときだけ反映される。 */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.displayPresetGroup")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displayPresetDesc")}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {GYM_DISPLAY_PRESETS.map((preset) => {
+                const active = detectPreset(tenant) === preset;
+                return (
+                  <Button
+                    key={preset}
+                    type="button"
+                    variant={active ? "default" : "outline"}
+                    size="sm"
+                    disabled={!tenant || savingPreset !== null}
+                    onClick={() => handleApplyPreset(preset)}
+                    className="h-auto py-2 flex flex-col gap-0.5"
+                  >
+                    <span className="text-xs font-bold">{t(`settings.trainer.displayPreset.${preset}`)}</span>
+                    <span className="text-[10px] font-normal opacity-70 leading-tight">
+                      {t(`settings.trainer.displayPresetHint.${preset}`)}
+                    </span>
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* === プラン・お支払い（GymBoard SaaS）。課金無効化中は非表示 === */}
-            {BILLING_ENABLED && (
-              <>
-                <section className="space-y-3">
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
-                  <TrainerBilling />
-                </section>
-
-              </>
+                );
+              })}
+            </div>
+            {detectPreset(tenant) === null && (
+              <p className="text-[11px] text-muted-foreground">{t("settings.trainer.displayPresetCustom")}</p>
             )}
+          </CardContent>
+        </Card>
 
-            {/* === 使い方ガイド === */}
-            <section className="space-y-3">
-              <TrainerHelpGuide />
-            </section>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+        {/* ホーム画面：上部の統計カード */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.displayStatsGroup")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.statVisibilityDesc")}</p>
+            </div>
+            {DASHBOARD_STAT_TOGGLES.map(({ column, labelKey }) => (
+              <div key={column} className="flex items-center justify-between gap-3">
+                <span className="text-sm">{t(labelKey)}</span>
+                <Switch
+                  checked={tenant?.[column] !== false}
+                  disabled={savingStatKey === column || !tenant}
+                  onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
-      {/* === ログアウト・アカウント削除（いつでも押せるようアコーディオンの外に出す） === */}
+        {/* ホーム画面：各セクション */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.displaySectionsGroup")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displaySectionsDesc")}</p>
+            </div>
+            {DASHBOARD_SECTION_TOGGLES.map(({ column, labelKey }) => (
+              <div key={column} className="flex items-center justify-between gap-3">
+                <span className="text-sm">{t(labelKey)}</span>
+                <Switch
+                  checked={tenant?.[column] !== false}
+                  disabled={savingStatKey === column || !tenant}
+                  onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* メニュー（サイドバー / 下部ナビ）の各タブ */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.displayNavGroup")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displayNavDesc")}</p>
+            </div>
+            {NAV_TAB_TOGGLES.map(({ column, labelKey }) => (
+              <div key={column} className="flex items-center justify-between gap-3">
+                <span className="text-sm">{t(labelKey)}</span>
+                <Switch
+                  checked={tenant?.[column] !== false}
+                  disabled={savingStatKey === column || !tenant}
+                  onCheckedChange={(checked) => handleToggleDisplay(column, checked)}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === 朝のサマリー通知 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.dailySummarySection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-sm">{t("settings.trainer.dailySummaryTitle")}</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.dailySummaryDesc")}</p>
+              </div>
+              <Switch
+                checked={tenant?.daily_summary_enabled !== false}
+                disabled={savingDailySummary || !tenant}
+                onCheckedChange={handleToggleDailySummary}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === プラン・お支払い（GymBoard SaaS）。課金無効化中は非表示 === */}
+      {BILLING_ENABLED && (
+        <>
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
+            <TrainerBilling />
+          </section>
+
+          <Separator />
+        </>
+      )}
+
+      {/* === 言語 / Language === */}
+      <LanguageSwitcher variant="trainer" />
+
+      {/* === テーマカラー / Theme color === */}
+      <ThemeColorSwitcher variant="trainer" />
+
+      {/* === 背景画像 / Background image === */}
+      <BackgroundImagePicker variant="trainer" />
+
+      <Separator />
+
+      {/* === プロフィール === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.profileSection")}</h3>
+
+        {/* トレーナー表示名 */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">{t("settings.trainer.displayName")}</h3>
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.displayNameDesc")}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("settings.trainer.displayNamePlaceholder")} className="flex-1" />
+              <Button onClick={handleSaveName} disabled={savingName || !displayName.trim()} size="sm" className="h-10">
+                <Save className="w-4 h-4 mr-1" />
+                {savingName ? t("common.saving") : t("common.save")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ロゴ画像 */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                <Image className="w-4 h-4 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">{t("settings.trainer.logo")}</h3>
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.logoDesc")}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 shrink-0">
+                {tenant?.logo_url ? (
+                  <img src={tenant.logo_url} alt={t("settings.trainer.logoAlt")} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">{t("common.notSet")}</span>
+                )}
+              </div>
+              <div className="flex gap-2 flex-1">
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+                <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm" className="flex-1">
+                  <Upload className="w-4 h-4 mr-1" />
+                  {uploading ? t("common.processing") : tenant?.logo_url ? t("settings.trainer.change") : t("settings.trainer.upload")}
+                </Button>
+                {tenant?.logo_url && (
+                  <Button variant="destructive" onClick={handleDelete} disabled={uploading} size="sm">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === 使い方ガイド === */}
+      <section className="space-y-3">
+        <TrainerHelpGuide />
+      </section>
+
+      {/* === ログアウト === */}
       <section className="space-y-3">
         <Button
           variant="outline"

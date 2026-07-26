@@ -132,12 +132,6 @@
     },
     "trainer": {
       "title": "짐 설정",
-      "catGymInfo": "짐 정보",
-      "catBooking": "예약·영업",
-      "catGrowth": "고객 유치·체험",
-      "catAppearance": "표시·디자인",
-      "catNotifications": "알림",
-      "catAccount": "계정",
       "invite": "고객 초대",
       "trialLinkSection": "체험 예약 링크",
       "trialPageSection": "체험 예약 페이지 안내문",

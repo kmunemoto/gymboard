@@ -38,33 +38,73 @@ CLAUDE.mdの前提どおり、ネイティブビルド（Android Studio / Xcode�
 （workflow_dispatch）経由でCI上のmacOSランナーでのみ実ビルド検証が可能。
 Androidは完全にWindows + Android Studio側の手作業が必要。
 
-## Windows側（Android）でやる必要がある作業
-`android/` フォルダはgitignore対象でこのリポジトリに含まれない（ユーザーのPC上に
-既存プロジェクトとして存在する前提）。以下を手動で行う:
+## android/ の Gradle 設定は `scripts/patch-android.mjs` が自動で直す（2026-07-26 追加）
 
-1. **このブランチ/mainをpull → `npm install`**（package.jsonの更新を反映）
-2. **`android/variables.gradle`** を編集:
-   ```gradle
-   minSdkVersion = 24        // 旧: 23
-   compileSdkVersion = 36    // 旧: 35
-   targetSdkVersion = 36     // 旧: 35
-   ```
-3. **Gradle wrapper を 8.14.3 に更新**（`android/gradle/wrapper/gradle-wrapper.properties`）
-4. **Android Gradle Plugin (AGP) を 8.13.0 に更新**（`android/build.gradle`）。
-   Android StudioのAGP Upgrade Assistantを使うのが安全。
-5. **Android Studio を Otter (2025.2.1+) に更新**（未更新なら）
-6. **Java 17以上（21推奨）** がAndroid Studioの設定で使われていることを確認。
-   Kotlin 2.0+の場合、`kotlinOptions` ではなく新しい `compilerOptions` API を使う
-   （プラグイン側の話。プロジェクト自体のbuild.gradleでKotlin DSLを直接書いていなければ
-   通常は影響なし）
-7. **`android/app/src/main/AndroidManifest.xml`** の `<activity>` の `android:configChanges`
-   に `density` を追加（無いと画面密度変更時にActivityが再生成されずクラッシュ/表示崩れの
-   リスク）。例: `android:configChanges="...|density"`
-8. `npx cap sync android`
-9. Android Studioでクリーンビルド → 実機/エミュレータで一通り確認
+**`npx cap sync android` は `variables.gradle` / `build.gradle` /
+`gradle-wrapper.properties` を上書きしない。** 設定を壊さないための仕様だが、その結果
+package.json の `@capacitor/*` だけ 8 に上げても android/ は 7 のまま取り残される。
+実際にこれで 2026-07-26 に Play 用の AAB ビルドが失敗した:
+
+```
+2 issues were found when checking AAR metadata:
+  2. Dependency 'androidx.browser:browser:1.9.0' requires
+     Android Gradle plugin 8.9.1 or higher.
+     This build currently uses Android Gradle plugin 8.7.2.
+```
+
+`androidx.browser:1.9.0`（`@capacitor/browser@8` の既定値）は compileSdk 36 と
+AGP 8.9.1 以上を要求する。Capacitor 8 が引く `androidx.core 1.17.0` なども同様。
+
+そのため `scripts/patch-android.mjs` が次を自動で行うようにした（冪等、`cap sync` の後に走る）:
+
+| ファイル | 内容 |
+|---|---|
+| `android/variables.gradle` | minSdk 24 / compileSdk 36 / targetSdk 36 と AndroidX 各バージョン |
+| `android/gradle/wrapper/gradle-wrapper.properties` | Gradle 8.14.3 |
+| `android/build.gradle` | AGP 8.13.0 / google-services 4.4.4 |
+| `android/app/src/main/AndroidManifest.xml` | `configChanges` に `navigation|density` |
+
+値は Capacitor 8 の android-template と同一（8.0.0〜8.4.2 の全タグで一致を確認）。
+知らないキー（`firebaseMessagingVersion` 等）と **`versionCode` / `versionName` は触らない**。
+
+最後に検証を行い、直せなかった項目があれば**何が残ったかを表示して exit 1 する**
+（`build-android.bat` は `|| goto :err` なのでそこで止まる）。
+黙って成功扱いにすると、10分後に Gradle のエラーで気づくことになるため。
+
+`src/test/patchAndroid.test.ts` がモックの Capacitor 7 環境を組んで、この挙動を見張る。
+
+## Windows側（Android）でやる作業
+`android/` フォルダはgitignore対象でこのリポジトリに含まれない（ユーザーのPC上に
+既存プロジェクトとして存在する前提）。
+
+1. **`scripts\build-android.bat`** を実行（git pull → npm install → npm run build →
+   `npx cap sync android` → `patch-android.mjs`）。Gradle 設定の更新はここで自動的に入る。
+2. **Android Studio を Otter (2025.2.1+) に更新**（未更新なら）。古いと
+   `The project is using an incompatible version (AGP 8.13.0)` で開けない。
+   AGP 8.13 を扱える下限は Narwhal 3 Feature Drop (2025.1.3)。
+3. **Gradle JDK を 21 に**（Settings > Build, Execution, Deployment > Build Tools > Gradle）。
+   Capacitor 8 のネイティブモジュールは Java 21 でコンパイルされるため、17 のままだと
+   `error: invalid source release: 21` で落ちる。AGP 自体の下限は 17 なので
+   AGP は文句を言わず、コンパイル段階で初めて落ちる＝原因が分かりにくい。
+4. **SDK Manager で Android 16 (API 36) の SDK Platform** を入れる
+   （`Failed to find target with hash string 'android-36'` が出たら）。
+5. `versionCode` を +1、`versionName` を更新（`android/app/build.gradle`）。
+   Android の versionName は iOS とは別系統で採番している。
+6. Android Studioでクリーンビルド → 実機/エミュレータで一通り確認
    （特にプッシュ通知・アプリバッジ・スプラッシュ・ステータスバー）
-10. 新しい署名付きAAB/APKを生成し、Play Consoleへアップロード（versionCode/versionNameを
-    上げること）
+7. 新しい署名付きAAB/APKを生成し、Play Consoleへアップロード
+
+### やってはいけないこと
+- **`android/` を消して `npx cap add android` で作り直す。** `versionCode` が 1 に戻り
+  Play Console が `Version code 1 has already been used` で弾く。署名設定・アイコン・
+  `google-services.json` も失われる。
+- **AGP を 9.x に上げる。** Upgrade Assistant が勧めてくるが、
+  `getDefaultProguardFile('proguard-android.txt')` が廃止されて別のエラーになる。
+  Capacitor 8 との組み合わせも未検証。**8.13.0 で止める。**
+- **`androidxCoreVersion` を 1.18.0 以降にする。** 1.18.0 から compileSdk 36.1 を要求するため、
+  compileSdk 36 のままだと再び AAR metadata エラーになる。
+- **`npx cap migrate` を Windows で使う。** 内部で `./gradlew wrapper` を叩くため失敗しうる。
+  `patch-android.mjs` で同じことをやる。
 
 ## 既知の挙動変化（ビルドは通るが視覚的に変わりうる）
 Android 16 (API 36) をターゲットにすると、Android自体のedge-to-edge強制の影響で

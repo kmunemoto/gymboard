@@ -297,9 +297,22 @@ rgba.resize((256, 256), Image.LANCZOS).save("public/favicon.ico", sizes=[(256, 2
 # そのまま object-contain で正方形に収めると小さく・下寄りに出るので、
 # 中身のbboxで切り出して正方形の中央に置き直す。16〜24pxのボタン内表示でも
 # 図形を最大限使えるようにするため。
+#
+# ロゴ原本は**盾の内側が白で塗りつぶされている**（外側だけ透過）。ほぼ白の通常画面では
+# 気づかないが、写真背景（theme-glass）では白い板として浮く。ここで白を抜いて、
+# ティールの輪郭とGBだけを残す。
 LOADER = 512
 LOADER_MARGIN = 0.04                      # 端に触れないぶんだけの余白
 logo = Image.open("src/assets/gymboard-logo.png").convert("RGBA")
+
+# 白いほど透明にする。純白(255)で0、minc<=215 で完全不透明。
+# 40段のランプにしているのは、輪郭と白の境目のアンチエイリアスを残すため
+# （閾値で切ると縁に白い輪が残り、逆に強く抜くとインクの色が薄くなる）。
+px = np.array(logo).astype(np.float32)
+minc = px[:, :, :3].min(axis=2)
+px[:, :, 3] *= np.clip((255.0 - minc) / 40.0, 0.0, 1.0)
+logo = Image.fromarray(np.clip(px, 0, 255).astype(np.uint8), "RGBA")
+
 logo = logo.crop(logo.getbbox())          # 透明な余白を落とす
 inner = int(LOADER * (1 - LOADER_MARGIN * 2))
 scale = min(inner / logo.width, inner / logo.height)

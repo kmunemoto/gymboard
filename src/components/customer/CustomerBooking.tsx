@@ -15,7 +15,7 @@ import { format, addMonths, startOfDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
 import { trialLabel } from "@/lib/dummyData";
-import { sendBookingNotification } from "@/lib/bookingNotification";
+import { sendBookingNotifications } from "@/lib/bookingNotification";
 import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
@@ -257,7 +257,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     // 念のため、予約可能期間（1ヶ月先まで）を超える回数が紛れ込んでいないか送信直前にも
     // 絞り込む（UI側の自動絞り込みと合わせた二重防御。日付選択後に日をまたいだ等のケース向け）。
     const effectiveRepeatWeeks = Math.min(repeatWeeks, maxRepeatWeeksFor(selectedDate));
-    let firstBooking: { id: string; date: string };
+    // 作成できた予約は全件保持する。メールは1件ずつ送るため、ここで取りこぼすと
+    // 定期予約の2回目以降に受付メールが届かなくなる（実際にそうなっていた）。
+    let createdBookings: { id: string; date: string }[];
     if (effectiveRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
         user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks,
@@ -267,7 +269,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         setSubmitting(false);
         return;
       }
-      firstBooking = booked[0];
+      createdBookings = booked;
       toast.success(t("booking.repeatResult", { count: booked.length }));
       if (skipped.length > 0) {
         const dates = skipped
@@ -282,8 +284,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         setSubmitting(false);
         return;
       }
-      firstBooking = { id: data.id, date: dateKey };
+      createdBookings = [{ id: data.id, date: dateKey }];
     }
+    const firstBooking = createdBookings[0];
 
     const [h, m] = slot.time.split(":").map(Number);
     const endMin = h * 60 + m + slotMinutes;
@@ -321,8 +324,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         .then(() => refreshWaitlist());
     }
 
-    // Fire-and-forget notification email to trainer
-    sendBookingNotification(firstBooking.id, profile?.display_name || t("booking.customerFallback"), firstBooking.date, slot.time, endTime, selectedPlan, user.id, user.email);
+    // Fire-and-forget notification email to trainer + confirmation to customer.
+    // 定期予約では作成できた全件を渡す（1件目だけ渡すと2回目以降にメールが届かない）。
+    sendBookingNotifications(createdBookings, profile?.display_name || t("booking.customerFallback"), slot.time, endTime, selectedPlan, user.id, user.email);
 
     // Fire-and-forget LINE message to customer
     // Gated by feature flag — customer LINE booking notifications are currently disabled

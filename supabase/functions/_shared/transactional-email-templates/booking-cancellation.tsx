@@ -20,7 +20,7 @@ interface BookingCancellationProps {
   recipientRole?: 'trainer' | 'customer'
   cancelledByTrainer?: boolean
   isTrial?: boolean
-  /** 同日キャンセルのペナルティ（ジム設定でON時）で1回消化扱いになった場合 true */
+  /** 当日キャンセルのペナルティ（ジム設定でON時）で1回消化扱いになった場合 true */
   forfeit?: boolean
 }
 
@@ -74,7 +74,7 @@ const BookingCancellationEmail = ({
           {forfeit && (
             <Section style={detailSection}>
               <Text style={noticeText}>
-                ※同日キャンセルのため、今回の予約は1回消化した扱いとなります。
+                ※当日キャンセルのため、今回の予約は1回消化した扱いとなります。
               </Text>
             </Section>
           )}

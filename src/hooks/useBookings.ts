@@ -785,7 +785,7 @@ async function sendCancelLineNotification(
   const md = formatJST(booking.booking_date, "M/d", { locale: ja });
   const dow = formatJST(booking.booking_date, "E", { locale: ja });
   const hm = formatJST(booking.booking_date, "HH:mm", { locale: ja });
-  const forfeitNote = forfeit ? "\n\n※同日キャンセルのため、今回の予約は1回消化した扱いになります。" : "";
+  const forfeitNote = forfeit ? "\n\n※当日キャンセルのため、今回の予約は1回消化した扱いになります。" : "";
 
   // Always fetch customer name & trainer id (needed for both paths)
   // 宛先は自テナントの代表スタッフ（get_trainer_ids はテナント横断のため使わない）

@@ -180,7 +180,7 @@
       "businessHoursBufferDesc": "予約と予約の間に必ず空ける時間です。他のお客様の予約枠との重複判定に使われます。",
       "planManage": "プラン管理",
       "bookingPolicySection": "予約ポリシー",
-      "sameDayPenaltyTitle": "同日キャンセルを自動で消化扱いにする",
+      "sameDayPenaltyTitle": "当日キャンセルを自動で消化扱いにする",
       "sameDayPenaltyDesc": "オンにすると、当日キャンセルされた予約は自動的に1回分の消化として扱われます。オフの場合は現状通りペナルティなしでキャンセルできます。",
       "sameDayPenaltyUpdated": "予約ポリシーを更新しました",
       "sameDayPenaltySaveFailed": "予約ポリシーの保存に失敗しました",

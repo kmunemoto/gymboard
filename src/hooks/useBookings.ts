@@ -918,7 +918,18 @@ async function sendCancelPushNotification(
   try {
     const md = formatJST(booking.booking_date, "M月d日", { locale: ja });
     const hm = formatJST(booking.booking_date, "HH:mm", { locale: ja });
-    const forfeitSuffix = forfeit ? "（1回消化扱い）" : "";
+    // 消化扱いになった理由まで書く。「（1回消化扱い）」だけだと、なぜ回数が減ったのかが
+    // お客様にもトレーナーにも伝わらない。文言はお客様が確定前に見る警告
+    // （booking.sameDayForfeitWarningDesc「当日キャンセルは枠を他の方にご案内できないため…」）
+    // と同じ「当日キャンセル」に揃えている。
+    //
+    // ここで「当日」と言い切れるのは、forfeit=true になるのが予約当日(JST)のキャンセルだけだから
+    // （CustomerBooking の cancelTargetForfeits / TrainerSchedule の deleteTargetForfeitable が
+    //  どちらも date === getJSTToday() を条件にしている）。この条件を緩める場合はここも直すこと。
+    //
+    // 改行は入れない。本文は FCM の notification.body にそのまま渡るが、
+    // このリポジトリに改行を含むプッシュの前例が無く、表示の確認が取れていないため。
+    const forfeitSuffix = forfeit ? "（当日キャンセルのため1回消化扱い）" : "";
 
     // 宛先は自テナントのスタッフ全員（get_trainer_ids はテナント横断のため使わない）
     const [{ data: profile }, trainers] = await Promise.all([

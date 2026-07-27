@@ -20,10 +20,25 @@ function pngSize(path: string): [number, number] {
 }
 
 describe("アプリアイコンのアセット", () => {
-  it("ローディング表示はアプリアイコンを使う", () => {
+  it("ローディング表示は盾とGBのロゴを使う", () => {
     const src = readFileSync("src/components/ui/dumbbell-loader.tsx", "utf8");
     expect(src).toContain("@/assets/gymboard-loader.png");
     expect(existsSync("src/assets/gymboard-loader.png")).toBe(true);
+    // 生成元はブランドロゴ。アイコン（雪山の背景つき）に戻すと、
+    // ボタン内の16〜24px表示で背景が主張してマークが読めなくなる。
+    const gen = readFileSync("scripts/generate-app-icon.py", "utf8");
+    expect(gen).toMatch(/Image\.open\("src\/assets\/gymboard-logo\.png"\)/);
+  });
+
+  it("ローディング画像は背景を持たない（アルファチャンネルあり）", () => {
+    // 背景つきの画像を貼ると、白い画面の上で四角い板が浮いて見える。
+    // PNG の IHDR 25バイト目が色タイプ。6 = truecolor+alpha、2 = alpha無しのRGB。
+    // 背景つきのアプリアイコン（=2）を流用すると、この判定で落ちる。
+    const colorType = (p: string) => readFileSync(p).readUInt8(25);
+    expect(colorType("src/assets/gymboard-loader.png"),
+      "ローディング画像にアルファチャンネルが無い").toBe(6);
+    expect(colorType("assets/icon-only.png"),
+      "前提が崩れている: アプリアイコンは背景つき(色タイプ2)のはず").toBe(2);
   });
 
   it("ワールドカップのトロフィー画像が復活していない", () => {

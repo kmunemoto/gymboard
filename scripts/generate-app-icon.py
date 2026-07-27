@@ -285,16 +285,28 @@ icon.resize((32, 32), Image.LANCZOS).save("public/favicon.png")
 rgba.resize((256, 256), Image.LANCZOS).save("public/favicon.ico", sizes=[(256, 256)])
 
 # =========================================================================
-# 2) アプリ内ローディング表示（角丸・透過）
+# 2) アプリ内ローディング表示（盾とGBだけ・透過）
 # =========================================================================
-# 正方形のまま貼ると「青い四角」に見えるので、アイコンらしく角を丸める。
-# 64px 表示の 3倍解像度に耐えるよう 512 で書き出す。
+# 背景（雪山）は入れず、ブランドロゴ src/assets/gymboard-logo.png の
+# 「ティールの輪郭の盾＋GB」をそのまま使う（オーナーの指定）。
+#
+# 白背景に沈まないのは、盾が白ベタではなくティールの輪郭で描かれているため。
+# アプリの背景は --background: 30 20% 99% のほぼ白1色でダークテーマは無い。
+#
+# ロゴ原本は周囲に余白があり、上下の中心も少しずれている（上165px/下64px）。
+# そのまま object-contain で正方形に収めると小さく・下寄りに出るので、
+# 中身のbboxで切り出して正方形の中央に置き直す。16〜24pxのボタン内表示でも
+# 図形を最大限使えるようにするため。
 LOADER = 512
-corner = Image.new("L", (LOADER, LOADER), 0)
-ImageDraw.Draw(corner).rounded_rectangle(
-    [0, 0, LOADER - 1, LOADER - 1], radius=int(LOADER * 0.225), fill=255)
-loader = icon.convert("RGBA").resize((LOADER, LOADER), Image.LANCZOS)
-loader.putalpha(corner)
+LOADER_MARGIN = 0.04                      # 端に触れないぶんだけの余白
+logo = Image.open("src/assets/gymboard-logo.png").convert("RGBA")
+logo = logo.crop(logo.getbbox())          # 透明な余白を落とす
+inner = int(LOADER * (1 - LOADER_MARGIN * 2))
+scale = min(inner / logo.width, inner / logo.height)
+logo = logo.resize((max(1, round(logo.width * scale)),
+                    max(1, round(logo.height * scale))), Image.LANCZOS)
+loader = Image.new("RGBA", (LOADER, LOADER), (0, 0, 0, 0))
+loader.paste(logo, ((LOADER - logo.width) // 2, (LOADER - logo.height) // 2), logo)
 loader.save("src/assets/gymboard-loader.png")
 
 # =========================================================================

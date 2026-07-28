@@ -55,6 +55,20 @@ const countActiveInRange = (bookings: DatedBooking[], from: Date, toExclusive: D
   }).length;
 
 /**
+ * サイクル窓 [start, end) に入る有効予約（キャンセル除外）を日時順で返す。
+ * 予約は絶対時刻なので、JST擬似Dateの窓と比較するため toJSTDate でJST基準に揃える
+ * （端末TZがJST以外でもサイクル判定が1日ずれないように）。
+ */
+const activeBookingsInWindow = <T extends DatedBooking>(bookings: T[], window: CycleWindow): T[] =>
+  bookings
+    .filter((b) => b.status !== "キャンセル済み")
+    .filter((b) => {
+      const d = toJSTDate(b.booking_date);
+      return d >= window.start && d < window.end;
+    })
+    .sort((a, b) => new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime());
+
+/**
  * 猶予（grace）で「参照サイクル窓 [windowStart, windowEnd) の中から、直前サイクルへ
  * 繰り入れる（大目に見た消化とみなす）予約の件数」を返す。
  * = min(直前サイクルの残り回数, 猶予帯 [windowStart, windowStart+graceDays) の予約数)。
@@ -286,15 +300,7 @@ export const computeCourseProgress = (
   }
 
   const now = referenceDate;
-  const cycleBookings = bookings
-    .filter((b) => b.status !== "キャンセル済み")
-    .filter((b) => {
-      // 予約は絶対時刻。JST擬似Dateの窓と比較するため toJSTDate でJST基準に揃える
-      // （端末TZがJST以外でもサイクル判定が1日ずれないように）。
-      const d = toJSTDate(b.booking_date);
-      return d >= cycle.start && d < cycle.end;
-    })
-    .sort((a, b) => new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime());
+  const cycleBookings = activeBookingsInWindow(bookings, cycle);
 
   const completedCount = cycleBookings.filter((b) => toJSTDate(b.booking_date) <= now).length;
   const upcomingCount = cycleBookings.length - completedCount;
@@ -416,6 +422,15 @@ export const shouldRebaseCycleStart = (params: {
  * 特定の予約がそのお客様の今回の何回目に当たるかを返す
  * 戻り値: { index: 1始まり, total: 月間回数 or null(通い放題/未設定) }
  *
+ * 数える窓は暦の応当日窓ではなく resolveEffectiveCycle が返す「実効サイクル」で決める
+ * （プロフィールの「予約済み n/N」を出す computePlanUsage と同じ窓）。
+ * このジムの運用では回数を使い切った時点で、期限の終わりを待たずに次のルーティンが始まる。
+ * 暦窓のまま数えると、新ルーティンの途中で応当日をまたいだ予約がその窓の1件目になり、
+ * プロフィールの回数とチップの回数がずれる。
+ * 例: 起算日 6/30・月4回で 6/30, 7/8, 7/13, 7/21, 7/28, 8/7 と予約したケース。
+ *     7/28 から新ルーティンが始まっているのに、暦窓 [7/31, 8/31) では 8/7 が窓の1件目になり、
+ *     2/4 と出るべきチップが 1/4 と表示されていた。
+ *
  * graceDays（猶予日数）を渡すと、期限明けの猶予帯で前サイクルへ繰り入れられた
  * 予約（大目に見た消化）は「前サイクルの続きの回数」として数える。
  * 例: 月8回・前サイクル7回消化・期限翌日の予約 → 「8/8」（新ルーティンの1/8ではなく）。
@@ -435,51 +450,65 @@ export const getBookingProgressIndex = (
   if (!progress.cycle) {
     return { index: 0, total: progress.monthlyTotal, isUnlimited: progress.isUnlimited, isUnconfigured: progress.isUnconfigured, isOverflow: false, isGraceCarryover: false };
   }
-  const rawIndex = progress.cycleBookings.findIndex((b) => b.id === bookingId) + 1;
-  if (rawIndex === 0) return null;
   const total = progress.monthlyTotal;
 
-  // 猶予: この窓の先頭で前サイクルへ繰り入れられた予約なら「前サイクルの n 回目」として返す。
-  // 繰り入れは窓先頭の予約から順に（前サイクルの残り回数ぶんまで）適用される。
+  // 暦窓（computeCourseProgress）を実効サイクルの窓に置き換える。
+  // 回数上限のあるプランだけが対象で、通い放題・未設定は暦窓のまま（従来どおり）。
+  let cycle = progress.cycle;
+  let cycleBookings = progress.cycleBookings;
+  let effStartKey = cycleStartDate ?? "";
+  let lent = 0;
   if (!progress.isUnlimited && total !== null && total > 0 && cycleStartDate) {
-    const active = bookings.filter((b) => b.status !== "キャンセル済み");
-    const lent = graceLentToPrevCount({
+    const eff = resolveEffectiveCycle({
       cycleStartDate,
       maxSessions: total,
       cycleMonths,
       graceDays,
-      windowStart: progress.cycle.start,
-      windowEnd: progress.cycle.end,
-      bookings: active,
+      bookings,
+      referenceDate: targetDate,
     });
-    if (lent > 0) {
-      if (rawIndex <= lent) {
-        // 前サイクルの消化数 + 繰入順 = 前サイクルとしての回数（例: 7消化 + 1件目 = 8/8）
-        const prevWindow = getCycleWindow(cycleStartDate, addDays(progress.cycle.start, -1), cycleMonths);
-        const prevCount = prevWindow ? countActiveInRange(active, prevWindow.start, progress.cycle.start) : 0;
-        return {
-          index: Math.min(total, prevCount + rawIndex),
-          total,
-          isUnlimited: progress.isUnlimited,
-          isUnconfigured: progress.isUnconfigured,
-          isOverflow: false,
-          isGraceCarryover: true, // 大目に見た消化（前サイクルへ繰入）
-        };
-      }
-      // 繰入より後の予約は、繰入分を除いた順番で数える（新ルーティンの1回目から）
-      const adjusted = rawIndex - lent;
+    if (eff) {
+      cycle = eff.window;
+      cycleBookings = activeBookingsInWindow(bookings, eff.window);
+      effStartKey = eff.cycleStartDate;
+      lent = eff.lent;
+    }
+  }
+
+  const rawIndex = cycleBookings.findIndex((b) => b.id === bookingId) + 1;
+  if (rawIndex === 0) return null;
+
+  // 猶予: この窓の先頭で前サイクルへ繰り入れられた予約なら「前サイクルの n 回目」として返す。
+  // 繰り入れは窓先頭の予約から順に（前サイクルの残り回数ぶんまで）適用される。
+  if (lent > 0 && total !== null) {
+    if (rawIndex <= lent) {
+      // 前サイクルの消化数 + 繰入順 = 前サイクルとしての回数（例: 7消化 + 1件目 = 8/8）
+      const prevWindow = getCycleWindow(effStartKey, addDays(cycle.start, -1), cycleMonths);
+      const prevCount = prevWindow ? countActiveInRange(bookings, prevWindow.start, cycle.start) : 0;
       return {
-        index: ((adjusted - 1) % total) + 1,
+        index: Math.min(total, prevCount + rawIndex),
         total,
         isUnlimited: progress.isUnlimited,
         isUnconfigured: progress.isUnconfigured,
         isOverflow: false,
-        isGraceCarryover: false,
+        isGraceCarryover: true, // 大目に見た消化（前サイクルへ繰入）
       };
     }
+    // 繰入より後の予約は、繰入分を除いた順番で数える（新ルーティンの1回目から）
+    const adjusted = rawIndex - lent;
+    return {
+      index: ((adjusted - 1) % total) + 1,
+      total,
+      isUnlimited: progress.isUnlimited,
+      isUnconfigured: progress.isUnconfigured,
+      isOverflow: false,
+      isGraceCarryover: false,
+    };
   }
 
-  // ルーティン循環: プラン回数を超えたら次のルーティンの1回目として扱う
+  // ルーティン循環: プラン回数を超えたら次のルーティンの1回目として扱う。
+  // 実効サイクルを使えば窓が回数上限を超えることは基本的に無いが、同日に上限を超える
+  // 予約が入った場合など resolveEffectiveCycle が窓を引き直せないケースの保険として残す。
   const index = (!progress.isUnlimited && total !== null && total > 0)
     ? ((rawIndex - 1) % total) + 1
     : rawIndex;

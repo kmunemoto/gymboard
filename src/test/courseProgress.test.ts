@@ -9,6 +9,7 @@ import {
   shouldRebaseCycleStart,
   type BookingForProgress,
 } from "@/lib/courseProgress";
+import { computePlanUsage } from "@/lib/planUsage";
 import { toJSTDate } from "@/lib/timezone";
 
 const NOW = toJSTDate("2026-07-10T12:00:00+09:00"); // 2026-07-10 12:00 JST 固定
@@ -261,6 +262,47 @@ describe("getBookingProgressIndex × 猶予（大目に見た回は前サイク�
     ]);
     const r = getBookingProgressIndex("grace-1", "2026-06-04", "月8回", [...eight, graceBooking], 1, 7);
     expect(r!.index).toBe(1);
+  });
+});
+
+describe("getBookingProgressIndex × 使い切り後のロール（暦の応当日をまたいでも数え直さない）", () => {
+  // 本番で出た不具合。起算日 6/30・月4回・猶予OFF。
+  // 6/30〜7/28 の5件で暦窓 [6/30,7/31) の上限4回を超え、7/28 から新ルーティンが始まっている。
+  // 暦窓で数えると 8/7 は次の窓 [7/31,8/31) の1件目になり、2/4 と出るべきチップが 1/4 になっていた
+  // （プロフィールの「予約済み 2/4・利用期間 7/28〜8/29」とも食い違う）。
+  const mk = (dates: string[]): BookingForProgress[] =>
+    dates.map((d, i) => ({ id: `${d}-${i}`, booking_date: `${d}T11:00:00+09:00`, status: "予約済み" }));
+  const all = mk([
+    "2026-06-30", "2026-07-08", "2026-07-13", "2026-07-21", "2026-07-28", "2026-08-07",
+  ]);
+  const idx = (id: string) => getBookingProgressIndex(id, "2026-06-30", "月4回", all, 1, 0);
+
+  it("使い切るまでは 1→4 で数える", () => {
+    expect(idx(all[0].id)!.index).toBe(1); // 6/30
+    expect(idx(all[1].id)!.index).toBe(2); // 7/8
+    expect(idx(all[2].id)!.index).toBe(3); // 7/13
+    expect(idx(all[3].id)!.index).toBe(4); // 7/21
+  });
+
+  it("5件目は新ルーティンの1回目", () => {
+    expect(idx(all[4].id)!.index).toBe(1); // 7/28
+  });
+
+  it("応当日をまたいだ次の予約は新ルーティンの2回目（1回目に戻らない）", () => {
+    const r = idx(all[5].id)!; // 8/7。暦窓では [7/31,8/31) の1件目になってしまう
+    expect(r.index).toBe(2);
+    expect(r.total).toBe(4);
+  });
+
+  it("プロフィールの消化数（computePlanUsage）と一致する", () => {
+    // チップとプロフィールで別の窓を使っていたのが不具合の本体。同じ実効サイクルで揃える。
+    const usage = computePlanUsage(
+      { planType: "subscription", maxSessions: 4, validityDays: null, startDate: "2026-06-30", cycleMonths: 1, graceDays: 0 },
+      all,
+      toJSTDate("2026-08-07T11:00:00+09:00"),
+    );
+    expect(usage.used).toBe(2);
+    expect(idx(all[5].id)!.index).toBe(usage.used);
   });
 });
 

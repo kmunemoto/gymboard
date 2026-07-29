@@ -1,0 +1,64 @@
+{
+  "_comment": "接骨院・整体（施術所）向けの用語オーバーレイ。ja.json に差分だけを重ねる（src/lib/i18n.ts の applyTerminologyOverlay）。ここに書けるのは ja.json に実在するキーだけで、src/test/businessProfile.test.ts が検査する。ja.json 本体は1文字も変えないので、既存のジムの表示には一切影響しない。",
+  "common": {
+    "gymLogo": "院のロゴ"
+  },
+  "nav": {
+    "training": "施術記録"
+  },
+  "trainerNav": {
+    "clients": "患者一覧",
+    "gymSettings": "院の設定",
+    "mClients": "患者",
+    "exercises": "施術メニュー",
+    "mExercises": "メニュー",
+    "counseling": "問診票",
+    "trialFollowUps": "再来フォロー"
+  },
+  "clientList": {
+    "title": "患者一覧",
+    "dormantSection": "しばらく来院のない患者（{{count}}）",
+    "visibleEmpty": "表示中の患者はいません"
+  },
+  "schedule": {
+    "labelClient": "患者",
+    "errorSelectAll": "日付・時間・患者・プランを選択してください"
+  },
+  "booking": {
+    "customerFallback": "患者",
+    "noPlanHelp": "院にお問い合わせの上、プランを設定してもらってください。",
+    "sameDayViewOnlyNotice": "本日分の空き状況です。当日のご予約は院へ直接お問い合わせください。"
+  },
+  "dashboard": {
+    "trainerFallback": "施術者"
+  },
+  "training": {
+    "noRecordsHelp": "施術者が記録を入力すると、ここに表示されます"
+  },
+  "report": {
+    "trainerComment": "施術者からのコメント"
+  },
+  "muscleGroupManage": {
+    "title": "施術部位を編集",
+    "desc": "施術メニューの分類に使う部位の一覧です。"
+  },
+  "settings": {
+    "trainer": {
+      "title": "院の設定",
+      "invite": "患者の招待",
+      "displayName": "施術者の表示名",
+      "logoAlt": "院のロゴ",
+      "businessHoursDesc": "患者の予約画面に表示される受付時間・予約枠の間隔です。変更すると、以降の新規予約からこの時間帯・間隔が使われます。",
+      "businessHoursBufferDesc": "予約と予約の間に必ず空ける時間です。他の患者の予約枠との重複判定に使われます。",
+      "showRetentionDesc": "オンにすると、ホーム画面に「しばらく来院・予約がない患者」の一覧を表示します。オフにすると非表示になります。",
+      "dailySummaryDesc": "オンにすると、毎朝その日の予約一覧（時間・患者名）を院長/施術者へプッシュ通知します。予約が無い日は届きません。",
+      "contactEmailDesc": "予約の確認メールで、患者への連絡先として案内されるメールアドレスです。空欄にすると連絡先を表示しません。"
+    },
+    "notification": {
+      "receiveMessage": "患者からのメッセージ"
+    },
+    "billing": {
+      "customers": "患者 {{limit}}"
+    }
+  }
+}

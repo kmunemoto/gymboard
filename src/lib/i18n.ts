@@ -82,4 +82,38 @@ if (!i18n.isInitialized) {
   }
 }
 
+/**
+ * 業種ごとの用語オーバーレイを ja に重ねる。
+ *
+ * 接骨院では「お客様」「ジム」「トレーナー」ではなく「患者」「院」「施術者」と呼ぶ。
+ * ja.json 本体を書き換えると既存のジム（Salute御所南ほか）の表示が変わってしまうため、
+ * **差分キーだけを持つ別ファイルを実行時に重ねる**（deep=true / overwrite=true）。
+ * ja.json は1文字も変わらないので、既存テナントの1900キー超は完全に不変。
+ *
+ * テナントが解決されるまでは業種が分からないため、ごく短い間だけジム向けの文言が
+ * 見えうる（各画面のローディング表示でほぼ隠れるが、完全には消せない）。
+ * オーバーレイを画面描画より先に確定させるには tenant の先読みが要るので、
+ * そこまでの複雑さは今は引き受けていない。
+ *
+ * 現状は ja のみ。接骨院版は国内向けで多言語を出す予定が無く、
+ * 医療系の海外配信はストア側の申告義務の射程に入りうるため、意図的に ja 限定にしている。
+ */
+let appliedOverlay: string | null = null;
+
+export async function applyTerminologyOverlay(overlay: "clinic" | null): Promise<void> {
+  if (overlay === appliedOverlay) return;
+  // 一度重ねたオーバーレイは i18next 側から綺麗に剥がせない（deep merge のため）。
+  // 業種はテナント単位で変わらず、テナントの切替時は必ずリロードが挟まるので、
+  // 「重ねるだけ・剥がさない」で運用する。null への戻しは何もしない。
+  if (!overlay) return;
+  try {
+    const mod = await import("@/locales/ja.clinic.json");
+    const { _comment, ...bundle } = mod.default as Record<string, unknown>;
+    i18n.addResourceBundle("ja", "translation", bundle, true, true);
+    appliedOverlay = overlay;
+  } catch (e) {
+    console.warn(`[i18n] terminology overlay load failed: ${overlay}`, e);
+  }
+}
+
 export default i18n;

@@ -1478,14 +1478,21 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                           const setsData = r.sets || (r.weight != null ? [{ set: 1, weight: r.weight, reps: r.reps }] : []);
                           const muscleIconUrl = getMuscleIconUrl(r.exercise_name, clientGender ?? "male", (r as any).muscle_group ?? null);
                           return (
-                          <div key={r.id} className="flex items-start gap-2 text-sm min-w-0">
+                          <div key={r.id} className="flex items-start gap-2 text-sm">
                             <Dumbbell className="w-3 h-3 text-accent shrink-0 mt-1" />
-                            <span className="font-medium break-all min-w-0">{r.exercise_name}</span>
-                            <span className="text-muted-foreground whitespace-nowrap shrink-0">
-                              {setsData.map((s: any, si: number) => (
-                                <span key={si}>{si > 0 && " / "}{s.weight}kg×{s.reps}</span>
-                              ))}
-                            </span>
+                            {/* 種目名とセットは縦に積む。横一列に並べると、兄弟（セット文字列・筋肉図・
+                                削除ボタン）がすべて shrink-0 で幅を譲らないため、唯一伸縮する種目名が
+                                幅0まで潰れ、スマホ（375px）で1文字ずつ縦積みになっていた。
+                                flex-1 min-w-0 で行の全幅を種目名に渡す。筋肉図(96px)が行高を決めるので、
+                                2段にしても行は高くならない。 */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium break-words">{r.exercise_name}</p>
+                              <p className="text-muted-foreground">
+                                {setsData.map((s: any, si: number) => (
+                                  <span key={si}>{si > 0 && " / "}<span className="whitespace-nowrap">{s.weight}kg×{s.reps}</span></span>
+                                ))}
+                              </p>
+                            </div>
                             {muscleIconUrl && (
                               <img
                                 src={muscleIconUrl}
@@ -1494,7 +1501,8 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                                 className="w-24 h-24 object-contain opacity-60 shrink-0 ml-2"
                               />
                             )}
-                            <button onClick={() => setDeleteTarget(r)} className="ml-auto p-1.5 rounded-lg hover:bg-destructive/10 transition-colors shrink-0" title={t("common.delete")}>
+                            {/* スマホにはホバーが無く title は出ないので、読み上げ用に aria-label も付ける */}
+                            <button onClick={() => setDeleteTarget(r)} className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors shrink-0" title={t("common.delete")} aria-label={t("common.delete")}>
                               <Trash2 className="w-3.5 h-3.5 text-destructive/70" />
                             </button>
                           </div>

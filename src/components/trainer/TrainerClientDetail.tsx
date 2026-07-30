@@ -42,6 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { resolveGraceDays } from "@/lib/courseProgress";
+import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { isMilestoneOverdue } from "@/lib/milestoneGoal";
@@ -243,7 +244,8 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           const h = dt.getHours();
           const m = dt.getMinutes();
           const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-          const endMin = h * 60 + m + sessionMinutes;
+          const rowSessionMinutes = resolvePlanSlotMinutes(row.booking_type, tenantPlans, sessionMinutes);
+          const endMin = h * 60 + m + rowSessionMinutes;
           const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
           return {
             id: row.id,
@@ -259,7 +261,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       setLoadingBookings(false);
     };
     fetchBookings();
-  }, [clientId, sessionMinutes]);
+  }, [clientId, sessionMinutes, tenantPlans]);
 
   const handleSaveNote = async (bookingId: string) => {
     setSavingNote(true);

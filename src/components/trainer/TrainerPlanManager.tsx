@@ -30,6 +30,11 @@ import { useTranslation } from "react-i18next";
 
 type PlanType = "subscription" | "ticket" | "period";
 
+// tenants.slot_duration_minutes（ジム全体の予約枠の間隔）の選択肢と揃える
+// （TrainerGymSettings.tsx の BUSINESS_SLOT_OPTIONS）。プランはここに無い値
+// （例: 15分）を持たせたくなったら両方に足すこと。
+const PLAN_SLOT_OPTIONS = [30, 45, 60, 90, 120];
+
 interface FormState {
   plan_name: string;
   plan_type: PlanType;
@@ -38,6 +43,9 @@ interface FormState {
   validity_days: string;
   cycle_months: string;
   grace_days: string;
+  // 空文字列 = 継承（ジムの既定値を使う）。plan_type を問わず全プランで設定可能
+  // （cycle_months/grace_days と違い、セッションの長さはサブスク固有の概念ではないため）。
+  slot_duration_minutes: string;
   is_active: boolean;
 }
 
@@ -49,6 +57,7 @@ const emptyForm: FormState = {
   validity_days: "",
   cycle_months: "",
   grace_days: "",
+  slot_duration_minutes: "",
   is_active: true,
 };
 
@@ -80,7 +89,9 @@ const TrainerPlanManager = () => {
       .eq("tenant_id", tenantId)
       .order("sort_order");
     if (error) toast.error(t("settings.plans.fetchFailed"));
-    setPlans((data as TenantPlan[]) || []);
+    // types.ts はまだ slot_duration_minutes を知らない（本番DB未適用。schemaDrift.test.ts の
+    // KNOWN_STALE 参照）ため、生成された Row 型と TenantPlan が一致せず単純な as は通らない。
+    setPlans((data as unknown as TenantPlan[]) || []);
     setLoading(false);
   };
 
@@ -105,6 +116,7 @@ const TrainerPlanManager = () => {
       validity_days: plan.validity_days != null ? String(plan.validity_days) : "",
       cycle_months: plan.cycle_months != null ? String(plan.cycle_months) : "",
       grace_days: plan.grace_days != null ? String(plan.grace_days) : "",
+      slot_duration_minutes: plan.slot_duration_minutes != null ? String(plan.slot_duration_minutes) : "",
       is_active: plan.is_active,
     });
     setDialogOpen(true);
@@ -145,13 +157,16 @@ const TrainerPlanManager = () => {
         form.plan_type === "subscription" && form.grace_days
           ? Math.max(0, parseInt(form.grace_days) || 0)
           : null,
+      // 空欄（"継承"）は null。plan_type を問わず全プランで設定できる。
+      slot_duration_minutes: form.slot_duration_minutes ? parseInt(form.slot_duration_minutes) : null,
       is_active: form.is_active,
     };
 
     if (editing) {
+      // slot_duration_minutes は types.ts 未反映のため as any（上の fetchPlans と同じ理由）。
       const { error } = await supabase
         .from("tenant_plans")
-        .update(payload)
+        .update(payload as any)
         .eq("id", editing.id);
       if (error) {
         toast.error(t("settings.plans.updateFailed"));
@@ -163,7 +178,7 @@ const TrainerPlanManager = () => {
       const sort_order = (plans[plans.length - 1]?.sort_order ?? 0) + 1;
       const { error } = await supabase
         .from("tenant_plans")
-        .insert({ ...payload, sort_order });
+        .insert({ ...payload, sort_order } as any);
       if (error) {
         toast.error(t("settings.plans.addFailed"));
         setSaving(false);
@@ -251,6 +266,7 @@ const TrainerPlanManager = () => {
                     {plan.validity_days != null && ` / ${t("settings.plans.daysSuffix", { count: plan.validity_days })}`}
                     {plan.plan_type === "subscription" && plan.cycle_months != null && plan.cycle_months > 1 && ` / ${t("settings.plans.cycleMonthsSuffix", { count: plan.cycle_months })}`}
                     {plan.plan_type === "subscription" && plan.grace_days != null && plan.grace_days > 0 && ` / ${t("settings.plans.graceDaysSuffix", { count: plan.grace_days })}`}
+                    {plan.slot_duration_minutes != null && ` / ${t("settings.plans.slotDurationSuffix", { count: plan.slot_duration_minutes })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -332,6 +348,24 @@ const TrainerPlanManager = () => {
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
                 placeholder={t("settings.plans.pricePlaceholder")}
               />
+            </div>
+            <div>
+              <Label>{t("settings.plans.slotDuration")}</Label>
+              <select
+                value={form.slot_duration_minutes}
+                onChange={(e) => setForm({ ...form, slot_duration_minutes: e.target.value })}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="">
+                  {t("settings.plans.slotDurationInherit", { minutes: tenant?.slot_duration_minutes ?? 60 })}
+                </option>
+                {PLAN_SLOT_OPTIONS.map((min) => (
+                  <option key={min} value={min}>
+                    {t("settings.plans.slotDurationSuffix", { count: min })}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground mt-1">{t("settings.plans.slotDurationHint")}</p>
             </div>
             {showValidity && (
               <div>

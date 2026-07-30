@@ -50,17 +50,31 @@ Deno.serve(async (req) => {
 
   // 予約1件の表示時間（DTEND）は「そのジムのセッション長＋予約バッファ」。profiles.tenant_id は
   // マルチテナント以前の名残で信頼できないため、各予約行自身の tenant_id から引く。
+  // プランごとにセッション長の上書き（tenant_plans.slot_duration_minutes）があれば優先する
+  // （null/未設定はジムの既定値を継承。src/lib/planSlotDuration.ts と同じ「null=継承」の作法）。
   const tenantIds = [...new Set((bookings || []).map((b) => b.tenant_id).filter(Boolean))] as string[];
   const bufferByTenant = new Map<string, number>();
   const sessionByTenant = new Map<string, number>();
+  const sessionByTenantPlan = new Map<string, number>(); // key: `${tenant_id}::${plan_name}`
   if (tenantIds.length > 0) {
-    const { data: tenantRows } = await supabase
-      .from("tenants")
-      .select("id, booking_buffer_minutes, slot_duration_minutes")
-      .in("id", tenantIds);
+    const [{ data: tenantRows }, { data: planRows }] = await Promise.all([
+      supabase
+        .from("tenants")
+        .select("id, booking_buffer_minutes, slot_duration_minutes")
+        .in("id", tenantIds),
+      supabase
+        .from("tenant_plans")
+        .select("tenant_id, plan_name, slot_duration_minutes")
+        .in("tenant_id", tenantIds),
+    ]);
     (tenantRows || []).forEach((t: any) => {
       bufferByTenant.set(t.id, t.booking_buffer_minutes ?? 15);
       sessionByTenant.set(t.id, t.slot_duration_minutes ?? 60);
+    });
+    (planRows || []).forEach((p: any) => {
+      if (p.slot_duration_minutes != null) {
+        sessionByTenantPlan.set(`${p.tenant_id}::${p.plan_name}`, p.slot_duration_minutes);
+      }
     });
   }
 
@@ -69,7 +83,8 @@ Deno.serve(async (req) => {
 
   const events = (bookings || []).map((b) => {
     const bufferMinutes = (b.tenant_id && bufferByTenant.get(b.tenant_id)) ?? 15;
-    const sessionMinutes = (b.tenant_id && sessionByTenant.get(b.tenant_id)) ?? 60;
+    const tenantDefaultMinutes = (b.tenant_id && sessionByTenant.get(b.tenant_id)) ?? 60;
+    const sessionMinutes = (b.tenant_id && sessionByTenantPlan.get(`${b.tenant_id}::${b.booking_type}`)) ?? tenantDefaultMinutes;
     const start = new Date(b.booking_date);
     const end = new Date(start.getTime() + (sessionMinutes + bufferMinutes) * 60 * 1000);
     return [

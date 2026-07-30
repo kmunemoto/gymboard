@@ -29,6 +29,7 @@ import CourseProgressBadge from "@/components/trainer/CourseProgressBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 
 // セッション長・バッファはどちらもジムごとに変更可能（tenants.slot_duration_minutes /
 // tenants.booking_buffer_minutes）。未設定/未ロード時のみこの既定値を使う。
@@ -57,7 +58,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   };
   const openHour = parseHour(tenant?.operating_hours?.start) ?? 10;
   const closeHour = parseHour(tenant?.operating_hours?.end) ?? 21;
-  const slotMinutes = tenant?.slot_duration_minutes ?? 60;
+  // お客様ごとに契約プラン（profile.plan）は1つだけなので、この画面全体を通じて
+  // 「このお客様の予約が占有する時間」はプランごとの設定を解決した1つの値でよい
+  // （プランに未設定ならジムの既定値を継承。resolvePlanSlotMinutes 参照）。
+  const slotMinutes = resolvePlanSlotMinutes(profile?.plan, tenantPlans, tenant?.slot_duration_minutes ?? 60);
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);

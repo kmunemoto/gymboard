@@ -23,6 +23,7 @@ import { Calendar } from "@/components/ui/calendar";
 import WeekTimelineView from "./WeekTimelineView";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
+import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 const TrainerSchedule = () => {
@@ -53,6 +54,9 @@ const TrainerSchedule = () => {
   const { tenant, plans } = useTenant();
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
+  // 代理予約する候補（proxyBookingType）の占有時間。プランごとの設定があればそちらを使う。
+  // 「枠をブロックする」（時間帯を手動指定）はプランと無関係なので sessionMinutes のまま。
+  const proxySessionMinutes = resolvePlanSlotMinutes(proxyBookingType, plans, sessionMinutes);
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
   // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
   // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
@@ -120,7 +124,7 @@ const TrainerSchedule = () => {
       toast.error(t("schedule.errorSelectAll"));
       return;
     }
-    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, sessionMinutes)) {
+    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes)) {
       toast.error(t("schedule.errorSlotTaken"));
       return;
     }
@@ -162,7 +166,7 @@ const TrainerSchedule = () => {
     }
 
     const [hh, mm] = proxyTime.split(":").map(Number);
-    const endMin = hh * 60 + mm + sessionMinutes;
+    const endMin = hh * 60 + mm + proxySessionMinutes;
     const proxyEndTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
     setProxyDialogOpen(false);
@@ -662,7 +666,7 @@ const TrainerSchedule = () => {
                       const h = Math.floor(totalMin / 60);
                       const m = totalMin % 60;
                       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, sessionMinutes);
+                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes);
                       slots.push({ time, blocked });
                     }
                     return slots.map((slot) => (

@@ -28,10 +28,16 @@ const TYPES_PATH = "src/integrations/supabase/types.ts";
  * types.ts に載っていないと分かっている既知のズレ。**新しいズレを増やさないための番人**。
  * 解消したらエントリごと削除する（残したままだと逆に「載っているのに未掲載扱い」で落ちる）。
  *
- * 2026-07-25 現在は空。未適用だった6件を本番DBに適用し、types.ts も実スキーマに
- * 合わせて更新したため、migrations と types.ts は一致している。
+ * 2026-07-25 現在は空だったが、20260730120000_tenant_plans_slot_duration.sql を
+ * 追加した際に1件登録した。クラウドセッションからは本番DBに適用できない
+ * （Lovable MCP コネクタがこのセッションでは未接続）ため、Lovable 側での適用と
+ * types.ts 再生成を待つ。適用確認後、このエントリを消して該当箇所の
+ * `as any`/明示キャストを外すこと（mem/ops/schema-drift.md）。
  */
-const KNOWN_STALE: Record<string, string> = {};
+const KNOWN_STALE: Record<string, string> = {
+  "tenant_plans.slot_duration_minutes":
+    "20260730120000_tenant_plans_slot_duration.sql で追加。本番DB適用・types.ts再生成待ち。",
+};
 
 // ---------------------------------------------------------------------------
 // types.ts（＝クライアント側が知っているスキーマ）を読む

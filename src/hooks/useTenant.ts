@@ -76,6 +76,8 @@ export interface TenantPlan {
   cycle_months: number | null;
   /** サブスクの猶予日数。期限超過後この日数までは前サイクル分として大目に見る。null/未設定は0 */
   grace_days: number | null;
+  /** このプランの予約1件あたりの占有時間（分）。null/未設定はジムの既定値（tenants.slot_duration_minutes）を継承 */
+  slot_duration_minutes: number | null;
   sort_order: number;
   is_active: boolean;
 }
@@ -157,7 +159,9 @@ async function fetchTenant(userId: string): Promise<void> {
     if (store.userId !== userId) return;
     setStore({
       membership: { tenant, role: (mem as any).role, plan_id: (mem as any).plan_id },
-      plans: (planRows as TenantPlan[]) || [],
+      // types.ts はまだ slot_duration_minutes を知らない（本番DB未適用。schemaDrift.test.ts の
+      // KNOWN_STALE 参照）ため、生成された Row 型と TenantPlan が一致せず単純な as は通らない。
+      plans: (planRows as unknown as TenantPlan[]) || [],
       loading: false,
     });
   } else {

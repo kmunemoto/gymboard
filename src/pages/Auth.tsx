@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Navigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Dumbbell, Mail, Lock, User, Shield, Eye, EyeOff } from "lucide-react";
+import { Dumbbell, Mail, Lock, User, Shield, Eye, EyeOff, MailCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
@@ -30,11 +30,28 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  /**
+   * 「確認メールを送信した（＝まだログインできない）」ことを画面に残すためのフラグ。
+   * 以前はトーストを出して setMode("login") でログイン画面に戻していたが、
+   * 画面が「メール入力済み・パスワード空・アカウントにログイン」に化けるため
+   * 登録失敗と区別が付かず、下に出る小さなトーストも見落とされていた。
+   * パスワード再設定側（forgotSent）と同じく、カードの中身をパネルに差し替える。
+   */
+  const [signupSent, setSignupSent] = useState<null | { email: string }>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectParam = searchParams.get("redirect");
+
+  // パネルへフォーカスを移す。押した送信ボタンが unmount されるため、
+  // 何もしないとフォーカスが body に落ちてスクリーンリーダーのカーソルが行方不明になる。
+  // hooks は下の早期 return より前に置くこと（authLoading が切り替わった瞬間に
+  // 「Rendered more hooks than expected」で白画面になる）。
+  const sentPanelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (signupSent) sentPanelRef.current?.focus();
+  }, [signupSent]);
 
   if (authLoading) {
     return (
@@ -96,10 +113,12 @@ const Auth = () => {
         if (error) throw error;
 
         if (!authData.session) {
-          toast.success(t("auth.signupEmailSent"), { duration: 8000 });
+          // トーストは出さない。画面下部に8秒だけ出る小さな板は見落とされ、
+          // しかもログイン画面に戻すと「登録できなかった」ように見えてしまう。
+          // カード内をパネルに差し替えて、自分で閉じるまで残す。
           setPassword("");
           setPasswordConfirm("");
-          setMode("login");
+          setSignupSent({ email });
           return;
         }
 
@@ -127,6 +146,15 @@ const Auth = () => {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err ?? "");
       console.error("Auth error:", msg);
+      // 「メール未確認でログインできない」も同じパネルで返す。
+      // ここをトーストにしていると、確認メールの案内を見落とした人が
+      // そのままログインを試し、その失敗理由も同じ場所で見落とす、という
+      // 同じ壁を2枚続けて踏むことになる。
+      if (msg.includes("Email not confirmed")) {
+        setPassword("");
+        setSignupSent({ email });
+        return;
+      }
       const localized =
         msg.includes("Invalid login credentials")
           ? t("auth.errInvalidCredentials")
@@ -158,11 +186,22 @@ const Auth = () => {
           <img src={gymboardLogo} alt={t("auth.logoAlt")} className="h-20 w-auto object-contain" />
           <h1 className="text-2xl font-bold tracking-tight mt-1">{t("auth.appTitle")}</h1>
           <p className="text-sm text-foreground/70">{t("auth.appTagline")}</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {mode === "login" ? t("auth.modeLogin") : mode === "signup" ? t("auth.modeSignup") : t("auth.modeForgot")}
-          </p>
+          {/* 送信済みパネル中はモード名を出さない。パネルの見出しが
+              「確認メールを送信しました」なのに、その上に「新規アカウント作成」や
+              「アカウントにログイン」が残ると、まだ入力が必要なように読める。 */}
+          {!signupSent && (
+            <p className="text-sm text-muted-foreground mt-2">
+              {mode === "login" ? t("auth.modeLogin") : mode === "signup" ? t("auth.modeSignup") : t("auth.modeForgot")}
+            </p>
+          )}
         </div>
 
+        {/* 送信済みパネルの表示中はタブ行を出さない。
+            タブは setMode("login") を呼ぶだけなので、残しておくと1タップでパネルが消え、
+            まさに直したかった「登録失敗に見えるログイン画面」に戻ってしまう。
+            さらにタブを変えて同じメールで登録し直すと user_metadata.role が
+            上書きされ、確認後にジムオーナーが顧客として扱われる事故につながる。 */}
+        {!signupSent && (
         <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
           <button
             type="button"
@@ -185,10 +224,38 @@ const Auth = () => {
             {t("auth.tabTrainer")}
           </button>
         </div>
+        )}
 
         <Card>
           <CardContent className="p-6">
-            {mode === "forgot" ? (
+            {signupSent ? (
+              <div
+                ref={sentPanelRef}
+                tabIndex={-1}
+                className="space-y-4 text-center outline-none"
+              >
+                <MailCheck className="w-10 h-10 text-accent mx-auto" aria-hidden="true" />
+                {/* 本文だけをライブリージョンに入れる。ボタンを含めると
+                    スクリーンリーダーが操作を読み上げ直してしまう。 */}
+                <div role="status" aria-live="polite" className="space-y-2">
+                  <h2 className="text-base font-bold">{t("auth.signupSentTitle")}</h2>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-foreground/70">{t("auth.labelEmail")}</p>
+                    <p className="text-sm font-bold break-all">{signupSent.email}</p>
+                  </div>
+                  <p className="text-sm leading-relaxed">{t("auth.signupSentNext")}</p>
+                  <p className="text-sm text-foreground/80 leading-relaxed">{t("auth.signupSentNative")}</p>
+                  <p className="text-sm text-foreground/80 leading-relaxed">{t("auth.forgotSentNote")}</p>
+                </div>
+                <Button
+                  variant="accent"
+                  className="w-full"
+                  onClick={() => { setSignupSent(null); setMode("login"); }}
+                >
+                  {t("auth.backToLogin")}
+                </Button>
+              </div>
+            ) : mode === "forgot" ? (
               forgotSent ? (
                 <div className="space-y-4 text-center">
                   <p className="text-sm leading-relaxed">{t("auth.forgotSentTitle")}</p>
@@ -354,7 +421,7 @@ const Auth = () => {
 
             {/* ソーシャルログインは顧客・トレーナー両タブで表示。
                 トレーナータブの場合は OAuth 後に signup-trainer で trainer ロールを付与する。 */}
-            {mode !== "forgot" && SOCIAL_LOGIN_ENABLED && (
+            {mode !== "forgot" && !signupSent && SOCIAL_LOGIN_ENABLED && (
               <div className="mt-5">
                 <SocialAuthButtons
                   redirectParam={redirectParam}
@@ -363,7 +430,10 @@ const Auth = () => {
               </div>
             )}
 
-            {mode !== "forgot" && (
+            {/* パネル表示中は出口を「ログインへ戻る」1本に絞る。
+                ここを残すと、確認前のユーザーをログインへ誘導する2つ目の出口になり、
+                押した先で「メール未確認」の壁に当たる。 */}
+            {mode !== "forgot" && !signupSent && (
             <div className="mt-4 text-center">
               {isTrainer ? (
                 <button
@@ -388,7 +458,7 @@ const Auth = () => {
         </Card>
 
         <div className="text-center text-xs text-muted-foreground">
-          {mode === "signup" && (
+          {mode === "signup" && !signupSent && (
             <p className="mb-2">{t("auth.signupAgreement")}</p>
           )}
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">

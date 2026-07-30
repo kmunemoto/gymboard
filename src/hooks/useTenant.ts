@@ -159,7 +159,9 @@ async function fetchTenant(userId: string): Promise<void> {
     if (store.userId !== userId) return;
     setStore({
       membership: { tenant, role: (mem as any).role, plan_id: (mem as any).plan_id },
-      plans: (planRows as TenantPlan[]) || [],
+      // types.ts はまだ slot_duration_minutes を知らない（本番DB未適用。schemaDrift.test.ts の
+      // KNOWN_STALE 参照）ため、生成された Row 型と TenantPlan が一致せず単純な as は通らない。
+      plans: (planRows as unknown as TenantPlan[]) || [],
       loading: false,
     });
   } else {

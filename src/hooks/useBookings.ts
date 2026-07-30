@@ -855,19 +855,21 @@ async function sendCancelEmailNotification(
   let sessionMinutes = 60;
   let gymName: string | null = null;
   if (booking.tenant_id) {
+    // slot_duration_minutes は types.ts 未反映のため select("*") + as unknown キャストで読む
+    // （本番DB未適用。schemaDrift.test.ts の KNOWN_STALE 参照。select() に直接列名を書くと、
+    // 型上その列が存在しない扱いになり SelectQueryError 型になってしまう）。
     const [{ data: tenantRow }, { data: planRow }] = await Promise.all([
       supabase.from("tenants").select("slot_duration_minutes, gym_name").eq("id", booking.tenant_id).maybeSingle(),
       supabase
         .from("tenant_plans")
-        .select("slot_duration_minutes")
+        .select("*")
         .eq("tenant_id", booking.tenant_id)
         .eq("plan_name", booking.booking_type)
         .maybeSingle(),
     ]);
     if (tenantRow?.slot_duration_minutes) sessionMinutes = tenantRow.slot_duration_minutes;
-    if ((planRow as { slot_duration_minutes?: number | null } | null)?.slot_duration_minutes != null) {
-      sessionMinutes = (planRow as { slot_duration_minutes: number }).slot_duration_minutes;
-    }
+    const planSlotMinutes = (planRow as unknown as { slot_duration_minutes?: number | null } | null)?.slot_duration_minutes;
+    if (planSlotMinutes != null) sessionMinutes = planSlotMinutes;
     gymName = (tenantRow?.gym_name as string | null) ?? null;
   }
   const endMin = h * 60 + m + sessionMinutes;

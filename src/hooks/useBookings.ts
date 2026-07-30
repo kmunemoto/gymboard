@@ -9,6 +9,7 @@ import { getGymNameForUser } from "@/lib/tenantLookup";
 import { fetchMyTenantStaffIds, fetchMyTenantTrainerId } from "@/lib/tenantHelper";
 import { WAITLIST_ENABLED } from "@/lib/featureFlags";
 import { shouldRebaseCycleStart, getMonthlySessionCount } from "@/lib/courseProgress";
+import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { devLog } from "@/lib/devLog";
@@ -63,8 +64,15 @@ export interface BookingWithTime {
   isBlocked?: boolean;
 }
 
-// sessionMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
-function parseBooking(row: BookingRow, sessionMinutes: number = 60): BookingWithTime {
+// tenantDefaultMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
+// tenantPlans があり、row.booking_type に一致するプランで slot_duration_minutes が
+// 設定されていれば、そちらを優先する（プランごとの予約枠の間隔。resolvePlanSlotMinutes 参照）。
+function parseBooking(
+  row: BookingRow,
+  tenantDefaultMinutes: number = 60,
+  tenantPlans?: ReadonlyArray<{ plan_name: string; slot_duration_minutes?: number | null }> | null,
+): BookingWithTime {
+  const sessionMinutes = resolvePlanSlotMinutes(row.booking_type, tenantPlans, tenantDefaultMinutes);
   // booking_date is a UTC ISO; render it in JST wall-clock.
   const dt = toJSTDate(row.booking_date);
   const h = dt.getHours();
@@ -88,7 +96,7 @@ function parseBooking(row: BookingRow, sessionMinutes: number = 60): BookingWith
 
 export const useMyBookings = () => {
   const { user } = useAuth();
-  const { tenant } = useTenant();
+  const { tenant, plans } = useTenant();
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   const [bookings, setBookings] = useState<BookingWithTime[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,10 +121,10 @@ export const useMyBookings = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      setBookings(data.map((r) => parseBooking({ ...r, display_name: profile?.display_name || "自分" }, sessionMinutes)));
+      setBookings(data.map((r) => parseBooking({ ...r, display_name: profile?.display_name || "自分" }, sessionMinutes, plans)));
     }
     setLoading(false);
-  }, [user, sessionMinutes]);
+  }, [user, sessionMinutes, plans]);
 
   useEffect(() => {
     void fetchBookings();
@@ -145,7 +153,7 @@ export const useMyBookings = () => {
 };
 
 export const useAllBookings = () => {
-  const { tenant } = useTenant();
+  const { tenant, plans } = useTenant();
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   const [bookings, setBookings] = useState<BookingWithTime[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +189,7 @@ export const useAllBookings = () => {
     }
 
     const parsed: BookingWithTime[] = allRows.map((r) =>
-      parseBooking({ ...r, display_name: nameMap[r.user_id] || "不明" }, sessionMinutes)
+      parseBooking({ ...r, display_name: nameMap[r.user_id] || "不明" }, sessionMinutes, plans)
     );
 
     // Merge trial bookings as BookingWithTime entries
@@ -234,7 +242,7 @@ export const useAllBookings = () => {
     parsed.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     setBookings(parsed);
     setLoading(false);
-  }, [sessionMinutes]);
+  }, [sessionMinutes, plans]);
 
   const removeBooking = useCallback((bookingId: string) => {
     setBookings((current) => current.filter((booking) => booking.id !== bookingId));
@@ -841,17 +849,25 @@ async function sendCancelEmailNotification(
   const h = dt.getHours();
   const m = dt.getMinutes();
   const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  // ジムごとに変更可能（tenants.slot_duration_minutes）。取得できない場合のみ既定60分。
-  // gym_name はメールの差出人名に使う（渡さないと製品名にフォールバックしてしまう）。
+  // ジムごとに変更可能（tenants.slot_duration_minutes）。プラン（booking.booking_type）側に
+  // 設定があればそちらを優先する（resolvePlanSlotMinutes と同じ「null=継承」の作法）。
+  // 取得できない場合のみ既定60分。gym_name はメールの差出人名に使う（渡さないと製品名にフォールバックしてしまう）。
   let sessionMinutes = 60;
   let gymName: string | null = null;
   if (booking.tenant_id) {
-    const { data: tenantRow } = await supabase
-      .from("tenants")
-      .select("slot_duration_minutes, gym_name")
-      .eq("id", booking.tenant_id)
-      .maybeSingle();
+    const [{ data: tenantRow }, { data: planRow }] = await Promise.all([
+      supabase.from("tenants").select("slot_duration_minutes, gym_name").eq("id", booking.tenant_id).maybeSingle(),
+      supabase
+        .from("tenant_plans")
+        .select("slot_duration_minutes")
+        .eq("tenant_id", booking.tenant_id)
+        .eq("plan_name", booking.booking_type)
+        .maybeSingle(),
+    ]);
     if (tenantRow?.slot_duration_minutes) sessionMinutes = tenantRow.slot_duration_minutes;
+    if ((planRow as { slot_duration_minutes?: number | null } | null)?.slot_duration_minutes != null) {
+      sessionMinutes = (planRow as { slot_duration_minutes: number }).slot_duration_minutes;
+    }
     gymName = (tenantRow?.gym_name as string | null) ?? null;
   }
   const endMin = h * 60 + m + sessionMinutes;

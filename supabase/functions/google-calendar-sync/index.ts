@@ -142,6 +142,20 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const sessionMinutes = (tenantRow as any)?.slot_duration_minutes ?? 60;
 
+    // プランごとのセッション長上書き（tenant_plans.slot_duration_minutes）。null/未設定は
+    // 上のジムの既定値（sessionMinutes）を継承する（src/lib/planSlotDuration.ts と同じ
+    // 「null=継承」の作法）。体験予約(trial_bookings)はプランと無関係なので対象外。
+    const { data: planRows } = await supabase
+      .from("tenant_plans")
+      .select("plan_name, slot_duration_minutes")
+      .eq("tenant_id", tenantId);
+    const sessionByPlan = new Map<string, number>();
+    (planRows || []).forEach((p: any) => {
+      if (p.slot_duration_minutes != null) sessionByPlan.set(p.plan_name, p.slot_duration_minutes);
+    });
+    const resolveSessionMinutes = (planName?: string | null) =>
+      (planName && sessionByPlan.get(planName)) ?? sessionMinutes;
+
     // ---- アクセストークン（期限切れならリフレッシュ）----
     let accessToken = tokenRow.access_token;
     if (new Date(tokenRow.expires_at) <= new Date()) {
@@ -169,7 +183,7 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       const startDt = new Date(booking_date);
-      const endDt = new Date(startDt.getTime() + sessionMinutes * 60 * 1000);
+      const endDt = new Date(startDt.getTime() + resolveSessionMinutes(is_trial ? null : booking_type) * 60 * 1000);
 
       const event = {
         summary: `🏋️ ${client_name || "顧客"} - ${booking_type || "トレーニング"}`,
@@ -268,7 +282,8 @@ Deno.serve(async (req) => {
         }
 
         const startDt = new Date(item.booking_date);
-        const endDt = new Date(startDt.getTime() + sessionMinutes * 60 * 1000);
+        const itemSessionMinutes = item.source === "bookings" ? resolveSessionMinutes(item.booking_type) : sessionMinutes;
+        const endDt = new Date(startDt.getTime() + itemSessionMinutes * 60 * 1000);
         const cName = item.source === "trial_bookings"
           ? (item as any).guest_name || "体験ゲスト"
           : nameMap[item.user_id!] || "顧客";

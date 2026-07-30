@@ -4,13 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Dumbbell, Mail, Lock, User, Shield, Eye, EyeOff, MailCheck } from "lucide-react";
+import { Dumbbell, Mail, Lock, User, Shield, Eye, EyeOff, MailCheck, AlertCircle, X, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { SOCIAL_LOGIN_ENABLED } from "@/lib/featureFlags";
 import gymboardLogo from "@/assets/gymboard-logo.png";
+import {
+  findConflictingPendingRole,
+  rememberPendingSignup,
+  clearPendingSignup,
+  type PendingRole,
+} from "@/lib/pendingSignupRole";
 
 type AuthMode = "login" | "signup" | "forgot";
 type LoginTarget = "customer" | "trainer";
@@ -18,6 +24,31 @@ type LoginTarget = "customer" | "trainer";
 import { getAuthCallbackUrl } from "@/lib/nativeBridge";
 
 const EMAIL_CALLBACK_URL = getAuthCallbackUrl();
+
+/**
+ * signUp/signInWithPassword の失敗を errCode（gotrue の ErrorCode）で判定する。
+ * message.includes 判定は gotrue のバージョンで文言が変わると静かに死ぬ
+ * （実例: "Email rate limit exceeded" は小文字化されたバージョンがある）。
+ * code が取れない場合（ネットワークエラー等）は null を返し、呼び出し側は
+ * 既存の message ベースのチェーンにフォールバックする。
+ */
+const errCodeOf = (err: unknown): string | null =>
+  (err as { code?: string } | null)?.code ?? null;
+
+/** "For security purposes, you can only request this after 54 seconds." から秒数を抜く */
+const parseRetrySeconds = (message: string): number | null => {
+  const m = message.match(/after (\d+) seconds?/);
+  return m ? parseInt(m[1], 10) : null;
+};
+
+/** 送信済みパネルに出す理由。同じパネルの骨格を使い回し、文面と再送導線の有無だけ変える。 */
+type SignupSentReason = "sent" | "unconfirmed" | "alreadyRegistered" | "roleMismatch";
+interface SignupSentState {
+  email: string;
+  reason: SignupSentReason;
+  /** roleMismatch のときだけ使う。競合している既存ロールの表示名（訳済み）。 */
+  roleLabel?: string;
+}
 
 const Auth = () => {
   const { t } = useTranslation();
@@ -37,12 +68,21 @@ const Auth = () => {
    * 登録失敗と区別が付かず、下に出る小さなトーストも見落とされていた。
    * パスワード再設定側（forgotSent）と同じく、カードの中身をパネルに差し替える。
    */
-  const [signupSent, setSignupSent] = useState<null | { email: string }>(null);
+  const [signupSent, setSignupSent] = useState<SignupSentState | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const redirectParam = searchParams.get("redirect");
+  // AuthCallback が確認リンクの失敗（期限切れ等）を ?error=code で返してくる。
+  // 遅延初期化で最初の描画時にだけ読む（このSPA内でクエリが変わることはなく、
+  // 変わるのは window.location.replace を伴う実ページ遷移のときだけ）。
+  const [linkError, setLinkError] = useState<string | null>(() => searchParams.get("error"));
+
+  // 確認メール再送のクールダウン。resendAt は「これ以降なら押せる」という epoch ms。
+  const [resendState, setResendState] = useState<"idle" | "sending">("idle");
+  const [resendAt, setResendAt] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   // パネルへフォーカスを移す。押した送信ボタンが unmount されるため、
   // 何もしないとフォーカスが body に落ちてスクリーンリーダーのカーソルが行方不明になる。
@@ -52,6 +92,29 @@ const Auth = () => {
   useEffect(() => {
     if (signupSent) sentPanelRef.current?.focus();
   }, [signupSent]);
+
+  // アドレスバーから ?error= を消す（リロード・戻るボタンで再表示されないように）。
+  // linkError は上の遅延初期化で既に読み終えているので、ここで消しても表示には影響しない。
+  useEffect(() => {
+    if (!searchParams.has("error")) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("error");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 再送クールダウンの秒数表示。resendAt が未来の間だけ1秒ごとに更新する
+  // （常時ポーリングしない。カウントダウンは role="status" の外に置くので、
+  // スクリーンリーダーが毎秒読み上げ直す心配もない）。
+  // resendAt が変わった直後にまず nowTick を今の時刻へ合わせる。これが無いと、
+  // フォームの入力に時間をかけてから再送を押したときなど、mount 時刻のまま古い
+  // nowTick で残り秒数を計算してしまい、実際より長い秒数が一瞬表示される。
+  useEffect(() => {
+    if (!resendAt || resendAt <= Date.now()) return;
+    setNowTick(Date.now());
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [resendAt]);
 
   if (authLoading) {
     return (
@@ -66,6 +129,10 @@ const Auth = () => {
 
   const isTrainer = loginTarget === "trainer";
   const passwordMismatch = mode === "signup" && passwordConfirm.length > 0 && password !== passwordConfirm;
+  const resendCooldownRemaining = resendAt ? Math.max(0, Math.ceil((resendAt - nowTick) / 1000)) : 0;
+
+  /** ロール表示名（お客様/ジムオーナー）を訳して返す。roleMismatch パネルの文面に埋め込む用。 */
+  const roleLabel = (role: PendingRole) => t(role === "trainer" ? "auth.tabTrainer" : "auth.tabCustomer");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,11 +161,24 @@ const Auth = () => {
         return;
       }
     }
+
+    const role: PendingRole = isTrainer ? "trainer" : "customer";
+
+    if (mode === "signup") {
+      // gotrue は未確認の既存ユーザーに signUp を再実行しても user_metadata を更新しない。
+      // つまりタブを変えて登録し直しても、実際のロールは最初に選んだ方のまま固定される。
+      // API 側にはこれを判別する手段が無いので、この端末での直近の試行を自分で覚えておく。
+      const conflictingRole = findConflictingPendingRole(email, role);
+      if (conflictingRole) {
+        setSignupSent({ email, reason: "roleMismatch", roleLabel: roleLabel(conflictingRole) });
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       if (mode === "signup") {
-        const role = isTrainer ? "trainer" : "customer";
         const { data: authData, error } = await supabase.auth.signUp({
           email,
           password,
@@ -113,12 +193,19 @@ const Auth = () => {
         if (error) throw error;
 
         if (!authData.session) {
-          // トーストは出さない。画面下部に8秒だけ出る小さな板は見落とされ、
-          // しかもログイン画面に戻すと「登録できなかった」ように見えてしまう。
-          // カード内をパネルに差し替えて、自分で閉じるまで残す。
+          // session が無いのは2パターンある: (a) 新規の未確認ユーザー（これから確認メールが
+          // 効く）、(b) Confirm email/phone が両方有効な環境で、既に確認済みの既存ユーザーに
+          // signUp した（gotrue が偽装レスポンスを返す。メールは飛ばない）。
+          // (b) は identities が空配列になるので、ここで見分ける。
           setPassword("");
           setPasswordConfirm("");
-          setSignupSent({ email });
+          if ((authData.user?.identities?.length ?? 0) === 0) {
+            setSignupSent({ email, reason: "alreadyRegistered" });
+          } else {
+            rememberPendingSignup(email, role);
+            setResendAt(Date.now() + 60_000); // gotrue の既定クールダウンと同じ60秒
+            setSignupSent({ email, reason: "sent" });
+          }
           return;
         }
 
@@ -141,37 +228,47 @@ const Auth = () => {
           password,
         });
         if (error) throw error;
+        clearPendingSignup();
         navigate(redirectParam || "/");
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err ?? "");
-      console.error("Auth error:", msg);
+      const code = errCodeOf(err);
+      console.error("Auth error:", code ?? msg);
+
       // 「メール未確認でログインできない」も同じパネルで返す。
       // ここをトーストにしていると、確認メールの案内を見落とした人が
       // そのままログインを試し、その失敗理由も同じ場所で見落とす、という
       // 同じ壁を2枚続けて踏むことになる。
-      if (msg.includes("Email not confirmed")) {
+      if (code === "email_not_confirmed" || msg.includes("Email not confirmed")) {
         setPassword("");
-        setSignupSent({ email });
+        setResendAt(null); // 前回送信時刻が分からないので、押せる状態から始める
+        setSignupSent({ email, reason: "unconfirmed" });
+        return;
+      }
+      // 確認済みの既存メールで signUp が例外を投げる経路（Confirm email/phone の
+      // どちらかが無効な環境）。identities:[] での判定（上の signup ブロック）と
+      // 対になる、もう一方の「既に登録済み」の出方。
+      if (code === "user_already_exists" || msg.includes("User already registered")) {
+        setSignupSent({ email, reason: "alreadyRegistered" });
+        return;
+      }
+      if (code === "over_email_send_rate_limit" || msg.includes("Email rate limit exceeded") || msg.includes("email rate limit exceeded")) {
+        const seconds = parseRetrySeconds(msg);
+        toast.error(seconds ? t("auth.errRateLimitSeconds", { seconds }) : t("auth.errRateLimit"));
         return;
       }
       const localized =
-        msg.includes("Invalid login credentials")
+        code === "invalid_credentials" || msg.includes("Invalid login credentials")
           ? t("auth.errInvalidCredentials")
-        : msg.includes("Email not confirmed")
-          ? t("auth.errEmailNotConfirmed")
-        : msg.includes("User already registered")
-          ? t("auth.errUserAlreadyRegistered")
+        : code === "weak_password" || msg.toLowerCase().includes("weak") || msg.toLowerCase().includes("easy to guess")
+          ? t("auth.errPasswordWeak")
         : msg.includes("Password should be at least")
           ? t("auth.errPasswordPolicy")
-        : msg.includes("Unable to validate email")
+        : code === "email_address_invalid" || msg.includes("Unable to validate email")
           ? t("auth.errInvalidEmail")
-        : msg.includes("Email rate limit exceeded")
-          ? t("auth.errRateLimit")
         : (msg.includes("password") && msg.includes("breach"))
           ? t("auth.errPasswordBreached")
-        : (msg.toLowerCase().includes("weak") || msg.toLowerCase().includes("easy to guess"))
-          ? t("auth.errPasswordWeak")
         : t("auth.errGeneric", { message: msg });
       toast.error(localized);
     } finally {
@@ -179,9 +276,100 @@ const Auth = () => {
     }
   };
 
+  const handleResend = async () => {
+    if (!signupSent) return;
+    setResendState("sending");
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: signupSent.email,
+        options: { emailRedirectTo: EMAIL_CALLBACK_URL },
+      });
+      if (error) {
+        const code = errCodeOf(error);
+        if (code === "over_email_send_rate_limit") {
+          const seconds = parseRetrySeconds(error.message) ?? 60;
+          setResendAt(Date.now() + seconds * 1000);
+          toast.error(t("auth.errRateLimitSeconds", { seconds }));
+        } else {
+          toast.error(t("auth.resendFailed"));
+        }
+        return;
+      }
+      setResendAt(Date.now() + 60_000);
+      // resend は宛先が存在しない/既に確認済みでも 200 を返す（＝メールは1通も飛んでいない
+      // ことがある）。「届きました」と断定できないので、非断定形の文言にしている。
+      toast.success(t("auth.resendDone"));
+    } finally {
+      setResendState("idle");
+    }
+  };
+
+  // 送信済みパネルの文面と、再送導線を出すかどうか。理由ごとに1箇所へ集約する
+  // （JSX側に reason の分岐を散らすと、パネルを触るたびに数箇所を同時に直す羽目になる）。
+  const panelContent = signupSent && {
+    sent: {
+      title: t("auth.signupSentTitle"),
+      body: (
+        <>
+          <p className="text-sm leading-relaxed">{t("auth.signupSentNext")}</p>
+          <p className="text-sm text-foreground/80 leading-relaxed">{t("auth.signupSentNative")}</p>
+          <p className="text-sm text-foreground/80 leading-relaxed">{t("auth.forgotSentNote")}</p>
+        </>
+      ),
+      showResend: true,
+    },
+    unconfirmed: {
+      title: t("auth.unconfirmedTitle"),
+      body: (
+        <>
+          <p className="text-sm leading-relaxed">{t("auth.unconfirmedBody", { email: signupSent.email })}</p>
+          <p className="text-sm text-foreground/80 leading-relaxed">{t("auth.forgotSentNote")}</p>
+        </>
+      ),
+      showResend: true,
+    },
+    alreadyRegistered: {
+      title: t("auth.alreadyRegisteredTitle"),
+      body: <p className="text-sm leading-relaxed">{t("auth.alreadyRegisteredHint")}</p>,
+      showResend: false,
+    },
+    roleMismatch: {
+      title: t("auth.roleMismatchTitle"),
+      body: (
+        <p className="text-sm leading-relaxed">
+          {t("auth.roleMismatchBody", { role: signupSent.roleLabel })}
+        </p>
+      ),
+      showResend: false,
+    },
+  }[signupSent.reason];
+
   return (
     <div className="min-h-screen bg-background flex flex-col justify-start px-4 py-8 overflow-y-auto">
       <div className="w-full max-w-md space-y-6 slide-up mx-auto my-auto">
+        {/* 確認リンクの処理失敗（期限切れ・使用済み等）。AuthCallback から ?error=code で
+            戻ってくる。トーストにすると読まれないまま消えるので、閉じるまで残す。 */}
+        {linkError && !signupSent && (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="flex-1 leading-relaxed">
+              {t(linkError === "otp_expired" ? "auth.linkErrorExpired" : "auth.linkErrorGeneric")}
+            </p>
+            <button
+              type="button"
+              onClick={() => setLinkError(null)}
+              aria-label={t("common.close")}
+              className="shrink-0 text-destructive/70 hover:text-destructive"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <div className="text-center flex flex-col items-center gap-1">
           <img src={gymboardLogo} alt={t("auth.logoAlt")} className="h-20 w-auto object-contain" />
           <h1 className="text-2xl font-bold tracking-tight mt-1">{t("auth.appTitle")}</h1>
@@ -199,8 +387,10 @@ const Auth = () => {
         {/* 送信済みパネルの表示中はタブ行を出さない。
             タブは setMode("login") を呼ぶだけなので、残しておくと1タップでパネルが消え、
             まさに直したかった「登録失敗に見えるログイン画面」に戻ってしまう。
-            さらにタブを変えて同じメールで登録し直すと user_metadata.role が
-            上書きされ、確認後にジムオーナーが顧客として扱われる事故につながる。 */}
+            なお、タブを変えて同じメールで登録し直しても user_metadata.role は
+            上書きされない（gotrue は未確認の既存ユーザーを本人確認できないため更新
+            しない仕様）。むしろ最初に選んだロールのまま固定されるので、そちらは
+            pendingSignupRole.ts の検知（roleMismatch パネル）で案内している。 */}
         {!signupSent && (
         <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
           <button
@@ -228,7 +418,7 @@ const Auth = () => {
 
         <Card>
           <CardContent className="p-6">
-            {signupSent ? (
+            {signupSent && panelContent ? (
               <div
                 ref={sentPanelRef}
                 tabIndex={-1}
@@ -238,22 +428,47 @@ const Auth = () => {
                 {/* 本文だけをライブリージョンに入れる。ボタンを含めると
                     スクリーンリーダーが操作を読み上げ直してしまう。 */}
                 <div role="status" aria-live="polite" className="space-y-2">
-                  <h2 className="text-base font-bold">{t("auth.signupSentTitle")}</h2>
+                  <h2 className="text-base font-bold">{panelContent.title}</h2>
                   <div className="space-y-0.5">
                     <p className="text-xs text-foreground/70">{t("auth.labelEmail")}</p>
                     <p className="text-sm font-bold break-all">{signupSent.email}</p>
                   </div>
-                  <p className="text-sm leading-relaxed">{t("auth.signupSentNext")}</p>
-                  <p className="text-sm text-foreground/80 leading-relaxed">{t("auth.signupSentNative")}</p>
-                  <p className="text-sm text-foreground/80 leading-relaxed">{t("auth.forgotSentNote")}</p>
+                  {panelContent.body}
                 </div>
+                {panelContent.showResend && (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendState === "sending" || resendCooldownRemaining > 0}
+                    className="mx-auto inline-flex items-center gap-1.5 text-sm text-accent hover:underline transition-colors font-medium disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                  >
+                    <RotateCw
+                      className={`w-3.5 h-3.5 ${resendState === "sending" ? "animate-spin" : ""}`}
+                      aria-hidden="true"
+                    />
+                    {resendState === "sending"
+                      ? t("auth.resendSending")
+                      : resendCooldownRemaining > 0
+                        ? t("auth.resendCooldown", { seconds: resendCooldownRemaining })
+                        : t("auth.resendButton")}
+                  </button>
+                )}
                 <Button
                   variant="accent"
                   className="w-full"
-                  onClick={() => { setSignupSent(null); setMode("login"); }}
+                  onClick={() => { setSignupSent(null); setResendAt(null); setMode("login"); }}
                 >
                   {t("auth.backToLogin")}
                 </Button>
+                {signupSent.reason === "alreadyRegistered" && (
+                  <button
+                    type="button"
+                    onClick={() => { setSignupSent(null); setResendAt(null); setMode("forgot"); }}
+                    className="text-sm text-accent hover:underline transition-colors font-medium"
+                  >
+                    {t("auth.toForgotFromSent")}
+                  </button>
+                )}
               </div>
             ) : mode === "forgot" ? (
               forgotSent ? (

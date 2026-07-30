@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { sanitizeAuthNext } from "@/lib/nativeBridge";
 
 const AuthCallback = () => {
   const { t } = useTranslation();
@@ -28,7 +29,10 @@ const AuthCallback = () => {
       const code = params.get("code");
       const tokenHash = params.get("token_hash");
       const type = params.get("type");
-      const next = params.get("next");
+      // next はメールのリンクにそのまま入っている＝攻撃者が細工できる。
+      // 自オリジン/ネイティブアプリのスキーム以外は sanitizeAuthNext が破棄する
+      // （オープンリダイレクト対策。詳細は nativeBridge.ts のコメント参照）。
+      const next = sanitizeAuthNext(params.get("next"));
 
       if (tokenHash && type) {
         try {
@@ -38,7 +42,10 @@ const AuthCallback = () => {
           });
           if (error) {
             console.error("[AuthCallback] verifyOtp error:", error.message);
-            window.location.replace(`/auth?error=${encodeURIComponent(error.message)}`);
+            // message は英文かつgotrueのバージョンで文言が変わりうるので、
+            // 遷移先の Auth 画面には安定した code を渡す（無ければ generic）。
+            const code = (error as { code?: string }).code || "generic";
+            window.location.replace(`/auth?error=${encodeURIComponent(code)}`);
             return;
           }
           if (type === "recovery") {
@@ -49,7 +56,7 @@ const AuthCallback = () => {
           return;
         } catch (err) {
           console.error("[AuthCallback] verifyOtp unexpected error:", err);
-          window.location.replace("/auth");
+          window.location.replace("/auth?error=generic");
           return;
         }
       }
@@ -70,6 +77,8 @@ const AuthCallback = () => {
             }
           }
           await finalizePendingRole();
+          // dest（sessionStorage）はアプリ自身が書いた値なので次のサニタイズ対象外。
+          // next はURL由来なので、dest が無いときのフォールバックとしてのみ使う。
           const dest = sessionStorage.getItem("postAuthRedirect");
           sessionStorage.removeItem("postAuthRedirect");
           window.location.replace(dest || next || "/");

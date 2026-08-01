@@ -20,8 +20,12 @@ describe("ブランド名のロケール注入", () => {
   it("ロケールJSONに製品名の literal が残っていない", () => {
     for (const l of LANGS) {
       const src = raw(l);
-      // {{brandJa}} などの変数名に含まれる "brand" は別物なので、製品名そのものだけを見る
-      const hits = src.match(/ジムボード|GymBoard|gymboardアプリ/g) ?? [];
+      // {{brandJa}} などの変数名に含まれる "brand" は別物なので、製品名そのものだけを見る。
+      // 製品名は brand.ts から引く。直書きすると、兄弟アプリ（業種特化フォーク）が
+      // 自分のブランド名をロケールに書き戻しても、この番人が素通りしてしまう。
+      const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const names = [BRAND.ja, BRAND.en, `${BRAND.app}アプリ`].map(escape);
+      const hits = src.match(new RegExp(names.join("|"), "g")) ?? [];
       expect(hits, `${l}.json に製品名の直書きが残っています: ${hits.join(", ")}`).toEqual([]);
     }
   });

@@ -71,7 +71,9 @@ const DropInBooking = () => {
 
   useEffect(() => {
     (async () => {
+      // 既定テナントを持たない兄弟アプリでは null になるので、RPC自体を呼ばない。
       const resolveId = tenantId || DEFAULT_TENANT_ID;
+      if (!resolveId) return;
       const { data, error } = await supabase.rpc("get_tenant_public", { p_id: resolveId });
       if (error) { console.error("Failed to load tenant:", error); return; }
       const row = Array.isArray(data) ? data[0] : data;

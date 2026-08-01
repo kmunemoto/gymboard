@@ -5,6 +5,7 @@ import {
   detectStripeEnvironment,
   formatLimit,
 } from "@/lib/gymboardPlans";
+import { STRIPE_LIVE_HOSTS } from "@/lib/brand";
 import { PLAN_MAP, FREE_PLAN } from "../../supabase/functions/_shared/gymboard-plans";
 
 // 各プランの上限は「請求と実際に使える人数」を決める値なので、取り違えると
@@ -65,9 +66,17 @@ describe("gymboardPlans", () => {
   });
 
   it("uses live environment only for production hosts", () => {
-    expect(detectStripeEnvironment("gymboard.lovable.app")).toBe("live");
-    // 本番カスタムドメインも live（以前は sandbox に落ちて実課金が通らなかった）
-    expect(detectStripeEnvironment("app.kyoto-salute.com")).toBe("live");
+    // ホスト名は brand.ts の STRIPE_LIVE_HOSTS から引く。直書きすると、兄弟アプリ
+    // （業種特化フォーク）が自分のドメインに差し替えた瞬間にこのテストが落ちる。
+    // 本番カスタムドメインが live になることも含めて、ここで一括して担保する
+    // （以前 app.kyoto-salute.com が sandbox に落ちて実課金が通らなかった回帰）。
+    // 未公開の兄弟アプリは STRIPE_LIVE_HOSTS を空にして「どこでも sandbox」に
+    // しておくことがある。その場合このループは空回りするが、それは意図どおり
+    // （空 = 実課金しない安全側。ドメイン確定後に埋める）。
+    for (const host of STRIPE_LIVE_HOSTS) {
+      expect(detectStripeEnvironment(host), `${host} は live のはず`).toBe("live");
+    }
+
     expect(detectStripeEnvironment("id-preview--69ac2641-45d8-44e0-b60d-4e002a4f9c1c.lovable.app")).toBe("sandbox");
     expect(detectStripeEnvironment("localhost")).toBe("sandbox");
   });

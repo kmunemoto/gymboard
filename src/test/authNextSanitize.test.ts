@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { sanitizeAuthNext } from "@/lib/nativeBridge";
+import { NATIVE_APP_SCHEME } from "@/lib/brand";
 
 // AuthCallback のオープンリダイレクト対策。攻撃者が
 //   https://app.kyoto-salute.com/auth/callback?token_hash=...&next=https://evil.example
@@ -38,9 +39,12 @@ describe("sanitizeAuthNext", () => {
   it("ネイティブアプリのカスタムURLスキームは許可する", () => {
     // supabase/functions/auth-email-hook が emailRedirectTo をそのまま next に載せて送ってくる、
     // アプリへ戻すための正規の遷移先。ここを弾くと確認メールからアプリに戻れなくなる。
-    expect(sanitizeAuthNext("app.gymboard.mobile://auth/callback")).toBe(
-      "app.gymboard.mobile://auth/callback",
-    );
+    //
+    // スキームは brand.ts から引く。ここに "app.gymboard.mobile" と直書きすると、
+    // 兄弟アプリ（業種特化フォーク）が brand.ts を書き換えた瞬間にこのテストが落ち、
+    // フォーク側が上流のテストを編集する羽目になる（＝毎回のマージで衝突する）。
+    const callback = `${NATIVE_APP_SCHEME}//auth/callback`;
+    expect(sanitizeAuthNext(callback)).toBe(callback);
   });
 
   it("javascript: など危険なスキームは破棄する", () => {

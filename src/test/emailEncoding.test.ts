@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from "../../supabase/functions/_shared/email-encoding";
 import { readFileSync } from "node:fs";
+import { BRAND } from "@/lib/brand";
 
 // パスワード再設定メール本文（recovery.tsx の本文と同一）。
 // 送信経路の固定幅折り返しで「パスワード」が「パスワ???ード」と化けていた回帰対象。
+// 製品名は brand.ts から引く（recoveryEmail.test.ts と同じ理由）。
 const RECOVERY_BODY =
-  "ジムボードのパスワード再設定リクエストを受け付けました。下のボタンから新しいパスワードを設定してください。";
+  `${BRAND.ja}のパスワード再設定リクエストを受け付けました。下のボタンから新しいパスワードを設定してください。`;
 
 const encoder = new TextEncoder();
 

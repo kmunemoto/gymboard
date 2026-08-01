@@ -27,20 +27,20 @@ vi.mock("@/hooks/useTenant", () => ({
 
 /** 隠せないタブ（デスクトップ表記 / モバイル表記） */
 const CORE_TABS = [
-  ["ダッシュボード", "ホーム"],
-  ["顧客一覧", "顧客"],
-  ["スケジュール", "予約"],
-  ["ジム設定", "設定"],
+  [i18n.t("trainerNav.dashboard"), i18n.t("trainerNav.mDashboard")],
+  [i18n.t("trainerNav.clients"), i18n.t("trainerNav.mClients")],
+  [i18n.t("trainerNav.schedule"), i18n.t("trainerNav.mSchedule")],
+  [i18n.t("trainerNav.gymSettings"), i18n.t("trainerNav.mGymSettings")],
 ];
 
 /** ジム設定でOFFにできるタブ（モバイル下部ナビに無いものは null） */
 const OPTIONAL_TABS: { column: string; desktop: string; mobile: string | null }[] = [
-  { column: "show_nav_messages", desktop: "メッセージ", mobile: null },
-  { column: "show_nav_exercises", desktop: "種目管理", mobile: "種目" },
-  { column: "show_nav_counseling", desktop: "カウンセリング", mobile: null },
-  { column: "show_nav_announcements", desktop: "お知らせ管理", mobile: "お知らせ" },
-  { column: "show_nav_notifications", desktop: "通知設定", mobile: "通知" },
-  { column: "show_nav_trial_followups", desktop: "体験フォロー", mobile: null },
+  { column: "show_nav_messages", desktop: i18n.t("trainerNav.messages"), mobile: null },
+  { column: "show_nav_exercises", desktop: i18n.t("trainerNav.exercises"), mobile: i18n.t("trainerNav.mExercises") },
+  { column: "show_nav_counseling", desktop: i18n.t("trainerNav.counseling"), mobile: null },
+  { column: "show_nav_announcements", desktop: i18n.t("trainerNav.announcements"), mobile: i18n.t("trainerNav.mAnnouncements") },
+  { column: "show_nav_notifications", desktop: i18n.t("trainerNav.notifications"), mobile: i18n.t("trainerNav.mNotifications") },
+  { column: "show_nav_trial_followups", desktop: i18n.t("trainerNav.trialFollowUps"), mobile: null },
 ];
 
 /** raw な列値からテナントを作る（既定値の穴埋めは本番と同じ normalizeTenantRow を通す） */
@@ -118,7 +118,7 @@ describe("TrainerSidebar（メニューの表示ON/OFF）", () => {
     const onTabChange = vi.fn();
     tenantRef.current = makeTenant();
     render(<TrainerSidebar activeTab="dashboard" onTabChange={onTabChange} />);
-    fireEvent.click(screen.getAllByRole("button", { name: "顧客一覧" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: i18n.t("trainerNav.clients") })[0]);
     expect(onTabChange).toHaveBeenCalledWith("clients");
   });
 

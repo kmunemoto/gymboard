@@ -27,19 +27,29 @@ Lovable は「1プロジェクト = 1 GitHubリポジトリ」なので、兄弟
 
 **まず自分のリポジトリで確かめること。思い込みで手順を選ばない。**
 
+> **⚠️ 先に `git fetch --unshallow` すること。** claude.ai/code のクラウドセッションで
+> 新規に開いたリポジトリは既定で shallow clone（浅いクローン）になっている。
+> shallow のまま `git log --oneline | tail -1` を打つと、**実際の最初のコミットではなく
+> 浅いクローンの取得境界にあるコミットを「最初のコミット」として返す**（ピラボードの
+> 棚卸しで実際に踏んだ。`a788eba Enhance icon generation...` という偽の最初のコミットが
+> 返り、正しくは `b976665 Initial commit from remix` だった）。
+> 診断コマンドを打つ前に必ず `git fetch --unshallow` を実行すること。
+
 ```bash
+git fetch --unshallow                    # 先に必須（上記）
 git log --oneline | tail -1              # 最初のコミット
 git remote -v                            # GitHub リモートの有無
 git merge-base HEAD upstream/main        # 共通祖先があるか（要 git fetch upstream）
 ```
 
-実測した2件が、まったく違う結果だった:
+実測した3件が、それぞれ違う結果だった:
 
-| | セッコツボード | ストレッチボード |
-|---|---|---|
-| 最初のコミット | `dd56aa6 Initial commit from remix` | 上流の履歴を引き継いでいる |
-| 上流との共通祖先 | **無し** | **あり**（`d0aa895` = 上流 #212） |
-| 必要な手順 | `--allow-unrelated-histories` | **普通の `git merge upstream/main` で衝突ゼロ** |
+| | セッコツボード | ストレッチボード | ピラボード |
+|---|---|---|---|
+| 最初のコミット | `dd56aa6 Initial commit from remix` | 上流の履歴を引き継いでいる | `b976665 Initial commit from remix`（2026-05-31） |
+| コミット数 | ― | ― | 223 |
+| 上流との共通祖先 | **無し** | **あり**（`d0aa895` = 上流 #212） | **無し** |
+| 必要な手順 | `--allow-unrelated-histories` | **普通の `git merge upstream/main` で衝突ゼロ** | `--allow-unrelated-histories` |
 
 つまり「remix は必ず別系統の履歴になる」は**誤り**だった
 （セッコツボード1件だけを見て一般化してしまっていた）。
@@ -74,6 +84,14 @@ grep -rn "supabase.co\|VITE_SUPABASE" .env* src/integrations/supabase/ supabase/
 衝突は `-X theirs` で一括処理せず、1件ずつ解決する。
 **上流を採ってよいのは「上流と同じはずのファイル」だけ**で、
 下記チェックリストに載っているものはフォーク側を残す。
+
+> **もう1件、同じ理由の実例（ピラボード・2026-08-01）。** `src/lib/featureFlags.ts` の
+> `STREAK_ENABLED` / `MONTHLY_REPORT_ENABLED` を独自に `false` へ変更し、
+> `BILLING_ENABLED` のコメントも自社サービス名に書き換えていた。加えて
+> フォーク独自のファイルが15、フォーク独自の Edge Function が2つある。
+> これらは「上流と同じはずのファイル」ではなく**フォーク所有**。
+> merge 時にこの5フラグの値を上書きしないこと、独自ファイル・独自 Edge Function を
+> 上流に無いからといって削除しないこと。
 
 ### Lovable の再生成で消えるもの（取り込み後に必ず確認）
 
@@ -437,22 +455,29 @@ git checkout -- src/lib/brand.ts src/lib/featureFlags.ts \
 | | セッコツボード | ストレッチボード | ピラボード |
 |---|---|---|---|
 | Lovable | `fd707295-…` | `26210a2c-…` | `c841c1c0-…` |
-| Supabase | 独自 | 独自 `enablfwvguohfmaampgw` | 独自 |
-| GitHub 接続 | あり ✅ | あり ✅ | 未確認 |
-| リポジトリ | `project-fd707295-…` | `project-26210a2c-…` | 未確認 |
-| 上流との共通祖先 | **無し**（remix） | **あり**（`d0aa895`） | 未確認 |
-| 上流の取り込み | **未** | 済み ✅（PR #1） | 未確認 |
-| `ja.json` | 接骨院語彙に**直接書き換え済み**（1,569キー・他言語は削除） | 上流のまま＋`vertical.ja.json` ✅ | 未確認 |
-| `brand.ts` / `vertical.ja.json` | 無し | あり ✅ | 無し |
-| Phase 0-B の機能フラグ | 無し | あり ✅（姿勢分析のみON） | 無し |
-| `sanitizeAuthNext`（認証の脆弱性修正） | **無し** | あり ✅ | 未確認 |
-| `booking_capacity` | 無し | あり ✅ | 未確認 |
-| Salute の tenant UUID | 除去済み ✅ | 除去済み ✅（列 DEFAULT も） | 未確認 |
-| bundle ID / URLスキーム | `app.sekkotsuboard.mobile` ✅ | `app.stretchboard.mobile` ✅ | 未確認 |
+| Supabase | 独自 | 独自 `enablfwvguohfmaampgw` | 独自 `tlfyobddatpidykkmpci` |
+| GitHub 接続 | あり ✅ | あり ✅ | あり ✅ |
+| リポジトリ | `project-fd707295-…` | `project-26210a2c-…` | `active-app-studio` |
+| 上流との共通祖先 | **無し**（remix） | **あり**（`d0aa895`） | **無し**（remix） |
+| 上流の取り込み | 済み ✅（PR #222まで） | 済み ✅（PR #1） | **未**（PR #25独自止まり。上流は#224） |
+| `ja.json` | 接骨院語彙に**直接書き換え済み**（1,569キー・他言語は削除） | 上流のまま＋`vertical.ja.json` ✅ | 上流と88%バイト一致・21キー追加＋11キー変更の中途半端な状態 |
+| `brand.ts` / `vertical.ja.json` | 無し（直接書き換え方式のまま） | あり ✅ | 無し |
+| Phase 0-B の機能フラグ | あり ✅（`SKELETAL_DIAGNOSIS`/`GOOGLE_REVIEW`/`LANGUAGE_SWITCHER` を`false`に設定） | あり ✅（姿勢分析のみON） | 無し（独自5フラグのみ。上流の業種フラグ群は無い） |
+| `sanitizeAuthNext`（認証の脆弱性修正） | あり ✅ | あり ✅ | **無し。`verifyOtp`／ハッシュ分岐／recovery導線ごと欠落**（機能欠落。merge以外に直しようがない） |
+| `booking_capacity` | 未確認 | あり ✅ | 未確認 |
+| Salute の tenant UUID | 除去済み ✅ | 除去済み ✅（列 DEFAULT も） | 実質空振り1件のみ（別Supabaseのため）。**merge後に2ファイル分流入するので null化が必要** |
+| bundle ID / URLスキーム | `app.sekkotsuboard.mobile` ✅ | `app.stretchboard.mobile` ✅ | `app.pilaboard.mobile` ✅（既に正しい） |
 | `public/manifest.json` | ジムボードのまま ❌ | 未確認 | 未確認 |
 | `STRIPE_LIVE_HOSTS` | 上流のまま ❌ | 空（＝常に sandbox）⚠️ | 未確認 |
 | `PRODUCTION_WEB_ORIGIN` | 自ドメイン ✅ | **上流のまま** ❌ | 未確認 |
 | Firebase / プロビジョニング | ジムボードのまま ❌ | ジムボードのまま ❌ | 未確認 |
+| その他 | — | — | `PushNotifications` プラグイン設定が `capacitor.config.ts` に無い（上流にはある） |
+
+ピラボードの詳細は `mem/ops/vertical-presets/pilates.md`。他の2つより**フォークされたのが最も古く**
+（2026-05-31、業種フォーク機構が実装される前）、上流との乖離が3兄弟で最大。
+特に認証コールバックの機能欠落は「セキュリティ対策が無い」以上に
+「メール確認・パスワード再設定そのものが動いていない」実害があるため、
+業種対応より merge を優先すべき状態。
 
 **セッコツボードはまだ上流を取り込んでいない**（`sanitizeAuthNext` の
 オープンリダイレクト対策が入っていない）。作り込みより取り込みを先にすること。

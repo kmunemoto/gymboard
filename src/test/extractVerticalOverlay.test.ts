@@ -75,6 +75,30 @@ describe("業種オーバーレイの抽出スクリプト", () => {
     expect(log).toContain("nav.extra");
   });
 
+  // Phase 0-A より前の世代のフォークは、製品名がロケールに**リテラルで**入っている。
+  // 上流は `{{brandJa}}` に追い出しているので値が違い、機械的には「フォークが変えた葉」に
+  // 見えるが、これを写すと brand.ts からの注入が効かなくなる（＝Phase 0-A が死ぬ）。
+  // セッコツボードで実際に26葉が紛れ込んだ（2026-08-01）。
+  it("上流がブランド補間に追い出した葉はオーバーレイに入れない", () => {
+    const { overlay, log } = run(
+      {
+        common: { brand: "{{brandJa}}", ok: "OK" },
+        auth: { appTitle: "{{brandJa}}", tab: "オーナー" },
+        nav: { training: "記録" },
+      },
+      {
+        common: { brand: "セッコツボード", ok: "OK" },
+        auth: { appTitle: "セッコツボード", tab: "院オーナー" },
+        nav: { training: "施術記録" },
+      },
+    );
+    // 製品名の葉は落ちる。業種語彙の葉だけが残る。
+    expect(overlay).toEqual({ auth: { tab: "院オーナー" }, nav: { training: "施術記録" } });
+    expect(log).toContain("ブランド補間の葉");
+    expect(log).toContain("common.brand");
+    expect(log).toContain("auth.appTitle");
+  });
+
   it("形が変わったキーを警告し、オーバーレイには入れない", () => {
     const { overlay, log } = run({ brand: "ジムボード" }, { brand: { nested: "x" } });
     expect(log).toContain("形が変わったキー");

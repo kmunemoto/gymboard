@@ -1,6 +1,7 @@
 import { Home, CalendarDays, Utensils, Dumbbell, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { CustomerTab } from "./CustomerView";
+import { WORKOUT_LOG_ENABLED, MEALS_ENABLED } from "@/lib/featureFlags";
 
 interface BottomNavProps {
   activeTab: CustomerTab;
@@ -8,13 +9,29 @@ interface BottomNavProps {
   unreadChat?: number;
 }
 
-const tabs: { id: CustomerTab; labelKey: string; icon: typeof Home; center?: boolean }[] = [
-  { id: "home", labelKey: "nav.home", icon: Home },
-  { id: "training", labelKey: "nav.training", icon: Dumbbell },
-  { id: "booking", labelKey: "nav.booking", icon: CalendarDays, center: true },
-  { id: "meals", labelKey: "nav.meals", icon: Utensils },
-  { id: "settings", labelKey: "nav.settings", icon: Settings },
+/**
+ * お客様アプリの下部ナビ。
+ *
+ * ホーム・予約・設定は**常に出す**（消すとアプリが操作不能になるため）。
+ * トレーニング記録と食事記録は業種によって不要なのでフラグで落とす
+ * （src/lib/featureFlags.ts。理由はそちらのコメント参照）。
+ * flex-1 で並べているので、タブが3つでも5つでも自然に幅が分かれる。
+ */
+const ALL_TABS: {
+  id: CustomerTab;
+  labelKey: string;
+  icon: typeof Home;
+  center?: boolean;
+  enabled: boolean;
+}[] = [
+  { id: "home", labelKey: "nav.home", icon: Home, enabled: true },
+  { id: "training", labelKey: "nav.training", icon: Dumbbell, enabled: WORKOUT_LOG_ENABLED },
+  { id: "booking", labelKey: "nav.booking", icon: CalendarDays, center: true, enabled: true },
+  { id: "meals", labelKey: "nav.meals", icon: Utensils, enabled: MEALS_ENABLED },
+  { id: "settings", labelKey: "nav.settings", icon: Settings, enabled: true },
 ];
+
+const tabs = ALL_TABS.filter((t) => t.enabled);
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   const { t } = useTranslation();

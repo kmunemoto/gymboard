@@ -23,16 +23,77 @@ Lovable は「1プロジェクト = 1 GitHubリポジトリ」なので、兄弟
 3. **フォークが編集するファイルを増やさない。**
    触るファイルが増えるほど merge 衝突が増える。「このファイルは上流所有」という線引きを守る。
 
-## 上流を追従する（フォークリポジトリで最初にやる）
+## ⚠️ 前提の訂正: Lovable の複製は「git のフォーク」ではない（2026-08-01）
+
+当初この手順書は `git remote add upstream && git merge upstream/main` で追従できる前提で
+書いていたが、**これは成立しない**。2026-08-01 にセッコツボードで実際に確認した結果:
+
+```
+$ git log --oneline | tail -1
+dd56aa6 Initial commit from remix        ← 上流とは無関係な、独立した最初のコミット
+$ git remote -v
+origin  <Lovable内部のgitストレージ>      ← GitHub リモートが無い
+secondary s3://lovable-repositories/…
+```
+
+つまり Lovable の複製（remix）は、
+
+1. **GitHub リポジトリを持たない**（Lovable 内部のgitストレージだけで動く）
+2. **上流と共通の祖先を持たない**（`Initial commit from remix` から始まる別系統の履歴）
+
+したがって `git merge upstream/main` は「共通の祖先が無い」で失敗する。
+`--allow-unrelated-histories` を付ければ動くが、**全ファイルが衝突**する。
+
+### 追従できる形にするブートストラップ（フォークごとに1回だけ）
+
+**手順0: Lovable で GitHub に接続する**（Lovable の画面から。これだけは手作業）
+接続すると、そのプロジェクトの現在の中身で新しい GitHub リポジトリが作られる。
+
+**手順1: 上流を接ぎ木する**
 
 ```bash
 git remote add upstream https://github.com/kmunemoto/gymboard.git
 git fetch upstream
-git merge upstream/main        # 以後、定期的にこれを回す
+
+# 上流の main を「取り込み用ブランチ」として自分の履歴に接ぐ。
+# これ以降は共通の祖先ができるので、普通の git merge が使えるようになる。
+git checkout -b upstream-merge
+git merge --allow-unrelated-histories -X theirs upstream/main
 ```
 
-`git merge upstream/main` が毎回すんなり通るなら、この手順書は守れている。
-毎回同じファイルで衝突するなら、そのファイルは「差分を値に追い出す」対象。
+`-X theirs` は「衝突したら上流を採る」。フォーク側の変更を**上流で上書きする**ので、
+**フォーク独自の変更を先に退避してから**やること（下記）。
+
+**手順2: フォーク独自の差分を「値」に移してから当て直す**
+
+退避するのは、この手順書の「ブランド差し替えチェックリスト」に挙がっているものだけ。
+それ以外の差分（＝上流と同じはずのファイルの差分）は、原則として捨てて上流に揃える。
+
+**手順3: 以後は普通に追従する**
+
+```bash
+git fetch upstream && git merge upstream/main
+```
+
+すんなり通るなら手順書は守れている。毎回同じファイルで衝突するなら、
+そのファイルは「差分を値に追い出す」対象。
+
+### すでに `ja.json` を直接書き換えてしまったフォークの直し方
+
+セッコツボードがこの状態（`ja.json` の約1,569キーを接骨院の語彙に全面書き換え済み。
+`ジム` / `トレーナー` / `トレーニング` は値に0件、`院` 69件・`患者` 82件・`施術` 71件）。
+
+このまま上流を `-X theirs` で取り込むと**接骨院の語彙が全部消える**ので、順番が要る。
+
+1. 取り込む**前**に、フォークの `ja.json` と、フォーク元となった時点の上流 `ja.json` を
+   葉ごとに比較し、**値が違う葉だけ**を抜き出す
+2. それをそのまま `src/locales/vertical.ja.json` として保存する（これが業種オーバーレイ）
+3. `ja.json` は上流のものに戻す（＝バイト一致させる）
+4. そのうえで上流を取り込む
+
+こうすると、以後 `ja.json` は上流所有・オーバーレイだけがフォーク所有になり、
+上流が文言を足しても衝突しなくなる。**業種語彙の中身は
+`mem/ops/vertical-presets/` にプリセットとして上流側に保管する**（下記）。
 
 ---
 
@@ -59,8 +120,8 @@ git merge upstream/main        # 以後、定期的にこれを回す
 **対処**: `legacyDefaultTenantId` を `null` にできる形に変え、兄弟では `null`（＝「予約リンクが
 正しくありません」を表示）にする。ドロップインは業種ごとに要否を判断（不要なら機能ごとOFF）。
 
-> **既知**: 2026-08 時点で **セッコツボード にこのUUIDがそのまま残っている**（`src/lib/legacyDefaultTenant.ts`）。
-> 兄弟側で先に潰すこと。
+> **状況**: セッコツボードは 2026-08-01 に除去済み。
+> **ストレッチボードは未除去**（素の複製のまま）。
 
 ### 2. 課金が黙って sandbox になる
 
@@ -124,6 +185,13 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 `.lovable/mcp/manifest.json` に `salute-gosho-minami-mcp` / `パーソナルジムSalute御所南 MCP` が入っている。
 自動生成物だが、リポジトリにコミットされているのでフォークに付いてくる。
 
+### 7. `public/manifest.json` がジムボードのまま
+
+`index.html` の `<title>` はブランド変更時に気づきやすいが、**PWA マニフェストは見落とす**。
+`name` / `short_name` がジムボードのままだと、**ホーム画面に追加したときのアプリ名が
+「ジムボード」になる**。セッコツボードは 2026-08-01 時点でこの状態だった
+（`index.html` は「セッコツボード」なのに `manifest.json` は「ジムボード」）。
+
 ---
 
 ## ブランド差し替えチェックリスト
@@ -180,6 +248,11 @@ GymBoard 本体ではこのファイルは `{}`（何も上書きしない）。
 他言語も差し替えたくなったら `vertical.<lng>.json` を足して
 `src/locales/vertical.ts` のマップに登録すれば同じ仕組みで効く。
 登録しない言語は base（＝ジム向けの語彙）がそのまま出る。
+
+**中身は毎回考え直さず、`mem/ops/vertical-presets/` のプリセットを使う。**
+業種ごとの語彙・機能ON/OFF・ブランド値を1セットにして上流に置いてある。
+`src/test/verticalPresets.test.ts` が、プリセットのキーが `ja.json` に実在することを
+検査しているので、上流がキーをリネームすればプリセット側が落ちて気づける。
 
 **課金**
 - [ ] Stripe の商品と lookup key（`mem/features/gymboard-saas-plans.md`）
@@ -241,12 +314,35 @@ GymBoard は「パーソナルジム全部盛り」なので、他業種では�
 | `capacitor.config.ts` / `index.html` / `public/manifest.json` | ビルド設定側なので `brand.ts` から読めていない。フォークごとに手で書き換える |
 | `.github/workflows/ios-build.yml` | 同上 |
 | `supabase/functions/**` のブランド文字列 | **Edge Function はフロントの設定を読まない**ため別管理。メール本文・件名がここ |
-| 業種語彙（ジム／トレーナー／トレーニング…約320キー） | i18n オーバーレイ層が未実装。次の工事 |
-| 顧客側アプリの機能ON/OFF | 仕組み自体が無い（`show_*` はトレーナー画面専用）。次の工事 |
+
+（業種語彙の i18n オーバーレイと顧客側アプリの機能ON/OFF は Phase 0-B / 0-C で実装済み。
+それぞれ `src/locales/vertical.ja.json` と `src/lib/featureFlags.ts` に集約されている）
 
 **merge 時の解決方針**: 上の表のファイルで衝突したら「兄弟側を優先」でよい
 （＝ブランド設定は上流から降ろさない）。それ以外のファイルで衝突したら
 「業種差分をコードに書いてしまっている」サインなので、値に追い出せないか検討すること。
+
+## 兄弟アプリの現況（2026-08-01）
+
+| | セッコツボード | ストレッチボード | ピラボード |
+|---|---|---|---|
+| Lovable | `fd707295-…` | `26210a2c-…` | `c841c1c0-…` |
+| Supabase | 独自 | 独自 `enablfwvguohfmaampgw` | 独自 |
+| GitHub 接続 | **無し** | **無し** | 未確認 |
+| 上流との共通祖先 | **無し**（remix） | **無し**（remix） | 未確認 |
+| `ja.json` | 接骨院語彙に**直接書き換え済み**（1,569キー・他言語は削除） | 素の GymBoard のまま | 未確認 |
+| `brand.ts` / `vertical.ja.json` | 無し | 無し | 無し |
+| Phase 0-B の機能フラグ | 無し | 無し | 無し |
+| `sanitizeAuthNext`（認証の脆弱性修正） | **無し** | **無し** | 未確認 |
+| `booking_capacity` | 無し | 無し | 未確認 |
+| Salute の tenant UUID | 除去済み ✅ | **未除去** | 未確認 |
+| bundle ID / URLスキーム | `app.sekkotsuboard.mobile` ✅ | `app.gymboard.mobile` のまま | 未確認 |
+| `public/manifest.json` | ジムボードのまま ❌ | ジムボードのまま ❌ | 未確認 |
+| `STRIPE_LIVE_HOSTS` | 上流のまま ❌ | 上流のまま ❌ | 未確認 |
+
+**どの兄弟も、まず GitHub 接続→ブートストラップ（上記）が先**。
+それをやらずに作り込むほど、上流の修正（特に `sanitizeAuthNext` の
+オープンリダイレクト対策）が降りてこない期間が延びる。
 
 ## 関連
 
@@ -254,3 +350,4 @@ GymBoard は「パーソナルジム全部盛り」なので、他業種では�
 - `mem/features/app-icon-splash-assets.md` … アイコン・スプラッシュ生成
 - `mem/features/capacitor-8-upgrade.md` … Android/iOS ビルド手順
 - `mem/ops/schema-drift.md` … マイグレーション適用と types.ts
+- `mem/ops/vertical-presets/` … 業種ごとに流し込む値の束（語彙・機能ON/OFF・ブランド）

@@ -73,6 +73,22 @@ Stripe が sandbox 判定になる。**画面上は決済成功に見えて、�
   → 直さないとメール確認・OAuth からアプリに戻れない。**ビルドもテストも緑のまま壊れる。**
 - 同 `PRODUCTION_WEB_ORIGIN`（`https://app.kyoto-salute.com`）
   → ネイティブアプリが配る招待リンク・体験予約リンクが全部 GymBoard 側を指す。
+- `supabase/functions/trial-book/index.ts` の `dashboardUrl`
+  → **Edge Function は `brand.ts` を読まない**ので、ここは別に直す必要がある。
+  体験予約のスタッフ宛メールの「ダッシュボードを開く」が上流アプリに飛ぶ。
+
+さらに `capacitor.config.ts` の `appId` も `app.gymboard.mobile` のままなので、
+**兄弟アプリと GymBoard が同じ bundle ID になる**。App Store / Play では同一IDのアプリを
+2本出せず、両方入った端末では `app.gymboard.mobile://auth/callback` が
+どちらのアプリに解決されるか不定になる。`appId` / `NATIVE_APP_SCHEME` /
+`ios-build.yml` の bundle ID は**必ず3つとも同じ値に揃える**こと。
+
+命名は `app.<英字ブランド>.mobile` で統一する（例: `app.gymboard.mobile` →
+セッコツボードは `app.sekkotsuboard.mobile`）。**App Store に初回提出したら二度と変えられない**
+ので、提出前に確定させること。
+
+新しいスキームは、その兄弟の **Supabase の Auth → URL Configuration →
+Additional Redirect URLs** にも追加が要る（登録しないとメール確認・OAuth の戻りが弾かれる）。
 
 ### 4. お客様に届くメールが「ジムボード」と名乗る
 
@@ -86,6 +102,22 @@ Stripe が sandbox 判定になる。**画面上は決済成功に見えて、�
 `.github/workflows/ios-build.yml` の bundle id 置換（`PRODUCT_BUNDLE_IDENTIFIER = app.gymboard.mobile`）は、
 IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `aps-environment` が入らず、
 **プッシュ通知だけが動かないアプリ**が出荷される。
+
+`capacitor.config.ts` の `appId` を変えたら、`ios-build.yml` 側の bundle id も必ず同時に直す。
+直すのは3箇所（sed のパターンと置換文字列で2回＋`ExportOptions.plist` の
+`provisioningProfiles` のキー）。
+
+### 5-b. GymBoard の Firebase 設定がワークフローに直書きされている
+
+`ios-build.yml` の `Inject GoogleService-Info.plist` ステップは、**GymBoard の Firebase
+プロジェクト（`gymboard-bc7f3`）の API_KEY / GCM_SENDER_ID / GOOGLE_APP_ID / BUNDLE_ID を
+ヒアドキュメントで直書き**している（`.gitignore` されているのは生成物の方だけで、
+この注入元はリポジトリに入っている）。
+
+直さないと、**兄弟アプリのプッシュ通知が GymBoard の Firebase プロジェクトにぶら下がる**。
+`PROVISIONING_PROFILE_SPECIFIER = "GymBoard App Store"` も同様。
+兄弟ごとに Firebase プロジェクトとプロビジョニングプロファイルを作って差し替えること
+（Android の `google-services.json`・Web の VAPID鍵も同じ）。
 
 ### 6. Lovable の MCP マニフェスト
 

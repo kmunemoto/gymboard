@@ -24,6 +24,12 @@ import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
 import AnnouncementsDialog from "./AnnouncementsDialog";
 import PlanLimitBanner from "@/components/PlanLimitBanner";
 import { useTenant } from "@/hooks/useTenant";
+import {
+  WORKOUT_LOG_ENABLED,
+  MEALS_ENABLED,
+  POSTURE_ENABLED,
+  MONTHLY_REPORT_ENABLED,
+} from "@/lib/featureFlags";
 
 export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report" | "photos";
 
@@ -125,15 +131,18 @@ const CustomerView = () => {
 
         <PlanLimitBanner />
         <LazyBoundary>
+          {/* 業種によって落とす画面はフラグでも塞ぐ。ナビから消すだけだと、
+              ホームのカードや古いディープリンク経由でまだ到達できてしまうため
+              （src/lib/featureFlags.ts / mem/ops/vertical-fork.md）。 */}
           {tab === "home" && <CustomerHome onNavigate={setTab} />}
           {tab === "booking" && <CustomerBooking onOpenChat={() => setTab("chat")} />}
-          {tab === "training" && <CustomerTraining initialSubTab="workout" />}
-          {tab === "photos" && <CustomerTraining initialSubTab="photos" />}
-          {tab === "meals" && <CustomerMeals />}
+          {tab === "training" && WORKOUT_LOG_ENABLED && <CustomerTraining initialSubTab="workout" />}
+          {tab === "photos" && WORKOUT_LOG_ENABLED && <CustomerTraining initialSubTab="photos" />}
+          {tab === "meals" && MEALS_ENABLED && <CustomerMeals />}
           {tab === "chat" && <CustomerChat />}
           {tab === "settings" && <CustomerSettings />}
-          {tab === "posture" && <CustomerPosture />}
-          {tab === "report" && <CustomerMonthlyReport onBack={() => setTab("home")} />}
+          {tab === "posture" && POSTURE_ENABLED && <CustomerPosture />}
+          {tab === "report" && MONTHLY_REPORT_ENABLED && <CustomerMonthlyReport onBack={() => setTab("home")} />}
         </LazyBoundary>
       </div>
       <BottomNav activeTab={tab} onTabChange={setTab} unreadChat={unreadChat} />

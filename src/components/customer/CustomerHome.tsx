@@ -31,7 +31,13 @@ import { useTenant } from "@/hooks/useTenant";
 import PlanUsageCard from "./PlanUsageCard";
 import StreakCard from "./StreakCard";
 import MilestoneGoalCard from "./MilestoneGoalCard";
-import { STREAK_ENABLED } from "@/lib/featureFlags";
+import {
+  STREAK_ENABLED,
+  MONTHLY_REPORT_ENABLED,
+  WORKOUT_LOG_ENABLED,
+  POSTURE_ENABLED,
+  BODY_METRICS_ENABLED,
+} from "@/lib/featureFlags";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 // Fallback for legacy Salute plans when tenant_plans has no match
@@ -252,10 +258,13 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
               <Target className="w-3.5 h-3.5" />
               <span className="text-xs font-medium">{t("home.sessionsAchieved", { count: bookings.length })}</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
-              <Flame className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">{currentStreak > 0 ? t("home.weeksStreak", { count: currentStreak }) : t("home.keepingUp")}</span>
-            </div>
+            {/* STREAK_ENABLED=false でもここだけ残っていた漏れを塞ぐ */}
+            {STREAK_ENABLED && (
+              <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
+                <Flame className="w-3.5 h-3.5" />
+                <span className="text-xs font-medium">{currentStreak > 0 ? t("home.weeksStreak", { count: currentStreak }) : t("home.keepingUp")}</span>
+              </div>
+            )}
           </div>
         </div>
     </div>
@@ -362,7 +371,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       )}
 
       {/* 4. Weight / Body Fat Cards */}
-      {latest && (latest.weight != null || latest.body_fat != null) && (
+      {BODY_METRICS_ENABLED && latest && (latest.weight != null || latest.body_fat != null) && (
         <div className="grid grid-cols-2 gap-3">
           {latest.weight != null && (
             <Card className="card-hover">
@@ -404,6 +413,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       )}
 
       {/* 4b. Measurement Input */}
+      {BODY_METRICS_ENABLED && (
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <Weight className="w-3.5 h-3.5" />
@@ -461,15 +471,18 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           </CardContent>
         </Card>
       </section>
+      )}
 
       {/* 5. Progress Charts（遅延読込。本体もデータ到着まで null を描画するため
           fallback も null にして読込中のレイアウトを本来の初期状態と一致させる） */}
-      <LazyBoundary fallback={null}>
-        <ProgressCharts />
-      </LazyBoundary>
+      {WORKOUT_LOG_ENABLED && (
+        <LazyBoundary fallback={null}>
+          <ProgressCharts />
+        </LazyBoundary>
+      )}
 
       {/* 6. Latest Workout */}
-      {latestSession && latestSession.exerciseCount > 0 && (
+      {WORKOUT_LOG_ENABLED && latestSession && latestSession.exerciseCount > 0 && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Dumbbell className="w-3.5 h-3.5" />
@@ -568,6 +581,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       )}
 
       {/* 7. Cycle Report Card */}
+      {MONTHLY_REPORT_ENABLED && (
       <section>
         <Card className="card-hover border-l-4 border-l-accent cursor-pointer" onClick={() => onNavigate?.("report")}>
           <CardContent className="p-4">
@@ -602,8 +616,10 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           </CardContent>
         </Card>
       </section>
+      )}
 
       {/* 7.5 Body Progress Photos (before/after) */}
+      {WORKOUT_LOG_ENABLED && (
       <section>
         <Card className="card-hover border-l-4 border-l-accent cursor-pointer" onClick={() => onNavigate?.("photos")}>
           <CardContent className="p-4">
@@ -622,8 +638,10 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           </CardContent>
         </Card>
       </section>
+      )}
 
       {/* 8. Posture Check CTA */}
+      {POSTURE_ENABLED && (
       <section>
         <Button
           variant="outline"
@@ -634,6 +652,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
           {t("home.postureCheck")}
         </Button>
       </section>
+      )}
 
       <WorkoutShareModal
         open={shareOpen}

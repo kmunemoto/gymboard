@@ -32,6 +32,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { MUSCLE_RADAR_ENABLED, WORKOUT_SHARE_ENABLED } from "@/lib/featureFlags";
 
 interface SetData {
   set: number;
@@ -244,7 +245,7 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
         <ProgressPhotosTab />
       ) : (
         <>
-          <MuscleBalanceRadar />
+          {MUSCLE_RADAR_ENABLED && <MuscleBalanceRadar />}
           {workouts.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
@@ -423,6 +424,7 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
         </>
       )}
 
+      {WORKOUT_SHARE_ENABLED && (
       <WorkoutShareModal
         open={!!shareDate}
         onClose={() => setShareDate(null)}
@@ -430,6 +432,7 @@ const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "work
         streakWeeks={currentStreak}
         totalSessions={totalSessions}
       />
+      )}
 
       <WorkoutEditModal
         workout={editingWorkout}

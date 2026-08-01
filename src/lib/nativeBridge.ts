@@ -1,5 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+// URLスキームと本番ドメインは製品ごとに違うため src/lib/brand.ts に集約している
+// （兄弟アプリはそちらだけ差し替える。mem/ops/vertical-fork.md）。
+import { NATIVE_APP_SCHEME, PRODUCTION_WEB_ORIGIN } from '@/lib/brand';
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -14,11 +17,6 @@ export async function openExternalUrl(url: string) {
   }
   window.open(url, '_blank');
 }
-
-// ネイティブアプリの確認メール/コールバックが使うカスタムURLスキーム。
-// getAuthCallbackUrl() とサニタイズ側の両方でこの1箇所だけを見るようにし、
-// 文字列のコピーによるズレを防ぐ。
-const NATIVE_APP_SCHEME = 'app.gymboard.mobile:';
 
 export function getAuthCallbackUrl() {
   if (isNative()) {
@@ -55,14 +53,6 @@ export function sanitizeAuthNext(next: string | null | undefined): string | null
   }
   return null;
 }
-
-// GymBoard 本体の本番 Web ドメイン。ネイティブアプリ内では window.location.origin が
-// 'capacitor://localhost' に解決されてしまい、招待リンク・体験予約リンクなど「コピーして
-// 他人に共有する」リンクがそのままでは開けなくなる（誰も capacitor:// を解決できないため）。
-// ネイティブ時はこの本番ドメインにフォールバックする。
-// 注意: 'app.gymboard.app' は DNS が存在しない未設定ドメインだったため、実際に生きている
-// 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07、共有リンクが開けない不具合の調査より）。
-const PRODUCTION_WEB_ORIGIN = 'https://app.kyoto-salute.com';
 
 export function getWebOrigin() {
   if (isNative()) {

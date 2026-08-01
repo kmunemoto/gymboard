@@ -1,3 +1,5 @@
+import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
+
 export function buildGoogleCalendarUrl(
   date: string,
   startTime: string,
@@ -8,7 +10,7 @@ export function buildGoogleCalendarUrl(
   const dateClean = date.replace(/-/g, "");
   const startClean = startTime.replace(":", "") + "00";
   const endClean = endTime.replace(":", "") + "00";
-  const gym = gymName || "ジムボード";
+  const gym = gymName || BRAND_FALLBACK_GYM_NAME;
 
   const params = new URLSearchParams({
     action: "TEMPLATE",

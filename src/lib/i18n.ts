@@ -6,6 +6,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 // 5言語すべてを初期バンドルに同梱すると約440KBになるため、
 // 使う言語だけを読み込んで初期表示を軽くする（バンドル最適化）。
 import ja from "@/locales/ja.json";
+import { BRAND } from "@/lib/brand";
 
 export const SUPPORTED_LANGUAGES = ["ja", "en", "ko", "zh-CN", "zh-TW"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -61,7 +62,21 @@ if (!i18n.isInitialized) {
       fallbackLng: "ja",
       nonExplicitSupportedLngs: false,
       load: "currentOnly",
-      interpolation: { escapeValue: false },
+      interpolation: {
+        escapeValue: false,
+        // 製品名はロケールJSONに書かず、ここから注入する。
+        // こうすることで src/locales/*.json に製品固有の文字列が一切入らず、
+        // 兄弟アプリ（業種特化版）のフォークでロケールファイルがバイト一致する
+        // ＝ upstream からの merge が永久に衝突しない（mem/ops/vertical-fork.md）。
+        //
+        // 変数を言語別ではなく「表記別」にしているのは defaultVariables が全言語共通のため。
+        // 日本語表記を使うか英字表記を使うかは、各ロケールJSONがどちらの変数を書くかで選ぶ。
+        defaultVariables: {
+          brandJa: BRAND.ja,
+          brandEn: BRAND.en,
+          brandApp: BRAND.app,
+        },
+      },
       detection: {
         order: ["localStorage", "navigator"],
         caches: ["localStorage"],

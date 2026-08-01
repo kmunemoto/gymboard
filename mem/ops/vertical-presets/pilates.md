@@ -71,7 +71,7 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
 | トレーニング（`training.*` の記録画面内） | **エクササイズ** | 個々の種目を指す文脈。ピラボード自身の `training.equipmentReformer` 等の粒度に合わせる |
 | 来店 | **来店**（変えない） | スタジオでも自然に使える |
 
-76項目（`personal-stretch` の72項目・`sekkotsu` の相当分より少し多い）。
+86項目（`personal-stretch` の72項目・`sekkotsu` の相当分より少し多い）。
 
 ### 姿勢分析はこの業種でも中核機能。内容を全面的に書き直した
 
@@ -115,6 +115,30 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
 | `GOOGLE_REVIEW_ENABLED` | `true` | 柔道整復師法のような広告規制の対象業種ではない |
 | `LANGUAGE_SWITCHER_ENABLED` | `false` | `ja.json` が上流とバイト一致でない（21項目追加・11項目変更）ため、他言語に切り替えるとジム向け語彙のまま出る箇所が生まれる。上流取り込み・オーバーレイ移行が終わるまでは日本語固定にする |
 
+## `src/lib/brand.ts`（新規作成）
+
+監査で判明済みの値。未確認のものは「まだ決まっていない値」に残す。
+
+| 定数 | 値 | 根拠 |
+|---|---|---|
+| `BRAND.ja` | `ピラボード` | Lovable プロジェクト名・想定アプリ名より |
+| `BRAND.en` | `PilaBoard` | `featureFlags.ts` の `BILLING_ENABLED` コメント「PilaBoard SaaS課金の…」より確認済み |
+| `BRAND.app` | `pilaboard` | `capacitor.config.ts` の `appId`＝`app.pilaboard.mobile` より確認済み |
+| `NATIVE_APP_SCHEME` | `app.pilaboard.mobile:` | `capacitor.config.ts` の `appId` と `nativeBridge.ts` のスキームが一致していることを監査で確認済み |
+| `PRODUCTION_WEB_ORIGIN` | `https://active-app-studio.lovable.app` | 公開URL（本表冒頭）。独自ドメインへ切り替えたら要更新 |
+| `BRAND_FALLBACK_GYM_NAME` | `BRAND.ja` | 他プリセットと同じ方針 |
+| `POWERED_BY_LABEL` | `` `Powered by ${BRAND.en}` `` | 他プリセットと同じ方針 |
+| `SUPPORT_EMAIL` | 未確認 | ピラボード側の実際の問い合わせ先を確認すること |
+
+## ⚠️ `STRIPE_LIVE_HOSTS` を入れ忘れると決済が sandbox 判定のまま（地雷2）
+
+`BILLING_ENABLED = true` で**すでに課金を有効化している**ため、この3兄弟アプリの中で
+最も差し迫ったリスク。`PRODUCTION_WEB_ORIGIN`（上表）に対応するホストを
+`STRIPE_LIVE_HOSTS` へ追加しないと、本番公開URL上でも Stripe が sandbox 扱いのままになり、
+**決済成功に見えてお客様に課金されない**状態になる
+（`personal-stretch.md` の同項目を参照。ストレッチボードはこれを未公開のため先送りできているが、
+ピラボードは既に公開URLがあるため先送りできない）。
+
 ## まだ決まっていない値（出荷前・merge後に埋める）
 
 - [ ] スプリング記法の入力フォーム — 語彙オーバーレイでは再現できない
@@ -126,7 +150,9 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
       `mem/ops/vertical-fork.md` のピラボード状況欄）
 - [ ] `capacitor.config.ts` に `PushNotifications` プラグイン設定ブロックが無い
       （上流にはある）。iOS のプッシュ通知が正しく初期化されない可能性がある
-- [ ] `src/lib/brand.ts` の新規作成（`BRAND.ja = "ピラボード"` 等）
+- [ ] `STRIPE_LIVE_HOSTS` の実際の設定（上記「地雷2」参照。値は
+      `PRODUCTION_WEB_ORIGIN` 確定後に埋める）
+- [ ] `SUPPORT_EMAIL` の実際の値
 - [ ] Firebase / プロビジョニングプロファイル / アイコン・スプラッシュ
 - [ ] 法務3ページの事業者情報
 - [ ] Supabase の Additional Redirect URLs に

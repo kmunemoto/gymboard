@@ -90,21 +90,47 @@
 | `PRODUCTION_WEB_ORIGIN` | `https://fit-client-coach.lovable.app`（独自ドメイン取得後に差し替え） |
 | `STRIPE_LIVE_HOSTS` | `["fit-client-coach.lovable.app"]` ＋ 独自ドメイン |
 
-## 機能のON/OFF（**未確定 — 実装前に必ず確認すること**）
+## 機能のON/OFF（2026-08-01 確定）
 
-接骨院向けの妥当な出発点。まだオーナーの確認を取っていないので、勝手に確定させないこと。
-
-| フラグ | 提案 | 根拠 |
+| フラグ | 値 | 根拠 |
 |---|---|---|
-| `POSTURE_ENABLED` | `true` | 姿勢分析は施術系と相性が良い。ただし推奨内容が筋トレ種目なので要差し替え |
-| `WORKOUT_LOG_ENABLED` | `false`? | 接骨院で種目×重量×回数は使わない。ただし**施術記録の置き場を別に用意する必要がある** |
-| `MEALS_ENABLED` | `false`? | 減量が売りではない |
-| `BODY_METRICS_ENABLED` | `false`? | ボディメイク文脈の指標 |
+| `POSTURE_ENABLED` | `true` | 姿勢分析は施術系と相性が良い。ただし骨格診断部分は別扱い（下記） |
+| `WORKOUT_LOG_ENABLED` | `false` | 接骨院で種目×重量×回数は使わない。施術記録は当面 `bookings.trainer_note` で代替（専用UIは別の設計課題として保留） |
+| `MEALS_ENABLED` | `false` | 減量が売りではない |
+| `BODY_METRICS_ENABLED` | `false` | ボディメイク文脈の指標 |
 | `MUSCLE_RADAR_ENABLED` | `false` | `WORKOUT_LOG_ENABLED` を切ると集計元が消えるので道連れ |
-| `WORKOUT_SHARE_ENABLED` | `false`? | |
+| `WORKOUT_SHARE_ENABLED` | `false` | 記録が無いので共有するものが無い |
+| `MONTHLY_REPORT_ENABLED` | `false` | 中身が筋トレ/減量指標のため、記録系OFFなら道連れでOFF |
 
-`ja.json` で `home.training` を「施術」に読み替えている以上、
-**記録タブを単純に消すと施術記録の導線ごと無くなる**。ここは要設計。
+`ja.json` で `home.training` を「施術」に読み替えているが、記録タブ自体は今回は無くす。
+ちゃんとした施術記録UIは別の設計課題として保留し、当面は `bookings.trainer_note`（1件のフリーテキスト）で代替する。
+
+### 法令リスクのある機能は新設フラグで無効化する（2026-08-01 に上流へ追加）
+
+以下は `WORKOUT_LOG_ENABLED` 等とは別枠。GymBoard では問題にならないが、
+医療隣接の業種で有効なままだと法令に触れうるため、`src/lib/featureFlags.ts` に
+専用フラグを追加した（詳細はそのファイルのコメント）。**このセクションは法的助言ではない**。
+実際に出荷する前に専門家の確認を挟むこと。
+
+| フラグ | 値 | 根拠 |
+|---|---|---|
+| `SKELETAL_DIAGNOSIS_ENABLED` | `false` | ストレート/ウェーブ/ナチュラルのタイプ分類＋タイプ別推奨。医療隣接の文脈で「診断」を名乗ると薬機法のSaMD判定に触れうる |
+| `GOOGLE_REVIEW_ENABLED` | `false` | 来店10回目の口コミ依頼バナー。柔道整復師法24条の広告規制に触れうる |
+| `LANGUAGE_SWITCHER_ENABLED` | `false` | 言語切替UI自体を隠す。ロケールファイルは上流のまま5言語持ち続ける（下記） |
+
+**`SKELETAL_DIAGNOSIS_ENABLED=false` にしても、姿勢分析の看板機能は残る。**
+猫背・ストレートネック・骨盤の傾きといった「見えている姿勢の指摘＋ストレッチ提案」
+（`TrainingRecommendationCard` の postureTips セクション、`feedbacks` から算出）は
+タイプ分類とは独立しているので消えない。「タイプを診断する」部分だけが消える。
+
+### 多言語は「ロケールファイルは上流のまま・切替UIだけ隠す」
+
+`ja.json` を直接書き換えて他言語ファイルを削除するのではなく、
+`LANGUAGE_SWITCHER_ENABLED=false` で切替UIだけ隠す方針にした。
+`src/locales/*.json` を上流とバイト一致のまま保てるので merge が永久に衝突しない
+（`mem/ops/vertical-fork.md` の鉄則1）。すでに他言語ファイルを削除・
+`singleLocale.test.ts` を追加している場合は、ファイルを復元し
+`singleLocale.test.ts` を削除すること。
 
 ## まだ決まっていない値（出荷前に埋める）
 

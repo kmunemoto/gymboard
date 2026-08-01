@@ -89,9 +89,7 @@ const TrainerPlanManager = () => {
       .eq("tenant_id", tenantId)
       .order("sort_order");
     if (error) toast.error(t("settings.plans.fetchFailed"));
-    // types.ts はまだ slot_duration_minutes を知らない（本番DB未適用。schemaDrift.test.ts の
-    // KNOWN_STALE 参照）ため、生成された Row 型と TenantPlan が一致せず単純な as は通らない。
-    setPlans((data as unknown as TenantPlan[]) || []);
+    setPlans(data || []);
     setLoading(false);
   };
 
@@ -163,10 +161,9 @@ const TrainerPlanManager = () => {
     };
 
     if (editing) {
-      // slot_duration_minutes は types.ts 未反映のため as any（上の fetchPlans と同じ理由）。
       const { error } = await supabase
         .from("tenant_plans")
-        .update(payload as any)
+        .update(payload)
         .eq("id", editing.id);
       if (error) {
         toast.error(t("settings.plans.updateFailed"));
@@ -178,7 +175,7 @@ const TrainerPlanManager = () => {
       const sort_order = (plans[plans.length - 1]?.sort_order ?? 0) + 1;
       const { error } = await supabase
         .from("tenant_plans")
-        .insert({ ...payload, sort_order } as any);
+        .insert({ ...payload, sort_order });
       if (error) {
         toast.error(t("settings.plans.addFailed"));
         setSaving(false);

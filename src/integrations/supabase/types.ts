@@ -2442,6 +2442,7 @@ export type Database = {
           plan_name: string
           plan_type: string
           price: number
+          slot_duration_minutes: number | null
           sort_order: number | null
           tenant_id: string
           validity_days: number | null
@@ -2457,6 +2458,7 @@ export type Database = {
           plan_name: string
           plan_type?: string
           price?: number
+          slot_duration_minutes?: number | null
           sort_order?: number | null
           tenant_id: string
           validity_days?: number | null
@@ -2472,6 +2474,7 @@ export type Database = {
           plan_name?: string
           plan_type?: string
           price?: number
+          slot_duration_minutes?: number | null
           sort_order?: number | null
           tenant_id?: string
           validity_days?: number | null
@@ -2490,6 +2493,7 @@ export type Database = {
         Row: {
           address: string | null
           booking_buffer_minutes: number
+          booking_capacity: number
           booking_cutoff_hours: number | null
           booking_cutoff_type: string | null
           business_type: string
@@ -2545,6 +2549,7 @@ export type Database = {
         Insert: {
           address?: string | null
           booking_buffer_minutes?: number
+          booking_capacity?: number
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           business_type?: string
@@ -2600,6 +2605,7 @@ export type Database = {
         Update: {
           address?: string | null
           booking_buffer_minutes?: number
+          booking_capacity?: number
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           business_type?: string
@@ -3646,6 +3652,7 @@ export type Database = {
         Returns: {
           address: string
           booking_buffer_minutes: number
+          booking_capacity: number
           gym_name: string
           gym_name_short: string
           id: string

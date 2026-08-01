@@ -76,8 +76,14 @@ resolvePlanSlotMinutes(planName, tenantPlans, tenantDefaultMinutes)
   （DB・Edge Function）を経由すること。
 
 ## 適用状況
-`20260730120000_tenant_plans_slot_duration.sql` はコミット時点では本番DB未適用
-（`src/test/schemaDrift.test.ts` の `KNOWN_STALE` に登録済み）。適用確認・types.ts
-再生成の手順は `mem/ops/schema-drift.md` を参照。適用後は `KNOWN_STALE` のエントリを
-消し、`useBookings.ts`/`google-calendar-sync`/`calendar-feed` 内の明示キャストが
-不要なら外すこと。
+`20260730120000_tenant_plans_slot_duration.sql` は **2026-08-01 に本番DBへ適用済み**
+（Lovable MCP 経由）。types.ts にも `tenant_plans.slot_duration_minutes` を反映し、
+`KNOWN_STALE` のエントリと、型を迂回するために入れていたキャスト
+（`TrainerPlanManager.tsx` / `useTenant.ts` / `useBookings.ts`）も外した。
+`useBookings.ts` の `sendCancelEmailNotification` は型が効くようになったので
+`select("*")` を `select("slot_duration_minutes")` に戻してある。
+
+Edge Function（`google-calendar-sync` / `calendar-feed`）は Deno 側で types.ts を
+使わないため、こちらのキャストは types.ts とは無関係にそのまま。
+
+手順は `mem/ops/schema-drift.md` の「types.ts の追従」を参照。

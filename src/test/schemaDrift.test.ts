@@ -28,16 +28,11 @@ const TYPES_PATH = "src/integrations/supabase/types.ts";
  * types.ts に載っていないと分かっている既知のズレ。**新しいズレを増やさないための番人**。
  * 解消したらエントリごと削除する（残したままだと逆に「載っているのに未掲載扱い」で落ちる）。
  *
- * いずれも本番DBには適用済みだが、types.ts は Lovable 側でしか再生成できないため
- * 一時的にここへ登録している。types.ts が再生成されたらエントリを消し、
- * 該当箇所の `as any`/明示キャストも外すこと（mem/ops/schema-drift.md）。
+ * 2026-08-01 現在は空。tenant_plans.slot_duration_minutes と tenants.booking_capacity は
+ * 本番DBに適用したうえで types.ts を実スキーマに合わせて更新し、一時的に入れていた
+ * `as any` / `as unknown as` のキャストも外したため、migrations と types.ts は一致している。
  */
-const KNOWN_STALE: Record<string, string> = {
-  "tenant_plans.slot_duration_minutes":
-    "20260730120000_tenant_plans_slot_duration.sql で追加。本番DB適用済み・types.ts再生成待ち。",
-  "tenants.booking_capacity":
-    "20260801000000_booking_capacity.sql で追加。同時に受けられる予約数（既定1）。types.ts再生成待ち。",
-};
+const KNOWN_STALE: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------
 // types.ts（＝クライアント側が知っているスキーマ）を読む

@@ -343,7 +343,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         slot_duration_minutes: businessSlotMinutes,
         booking_buffer_minutes: businessBufferMinutes,
         booking_capacity: businessCapacity,
-      } as any)
+      })
       .eq("id", tenant.id);
     if (error) {
       console.error("営業時間の保存に失敗:", error);

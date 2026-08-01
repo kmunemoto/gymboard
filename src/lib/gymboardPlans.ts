@@ -1,6 +1,8 @@
 // GymBoard SaaS subscription plan definitions (client-side).
 // Mirrors supabase/functions/_shared/gymboard-plans.ts.
 
+import { STRIPE_LIVE_HOSTS as BRAND_STRIPE_LIVE_HOSTS } from "@/lib/brand";
+
 export type GymboardPlan = "free" | "light" | "standard" | "premium";
 export type GymboardPeriod = "monthly" | "yearly";
 
@@ -92,7 +94,8 @@ const STRIPE_ENV_STORAGE_KEY = "gymboard_stripe_env_override";
  *   https://app.kyoto-salute.com/?stripe_env=auto
  */
 // 本番として live 課金を使うホスト。プレビュー(id-preview--*.lovable.app)や localhost は含めない。
-const STRIPE_LIVE_HOSTS = new Set(["gymboard.lovable.app", "app.kyoto-salute.com"]);
+// 値は製品ごとに違うため src/lib/brand.ts に集約している（mem/ops/vertical-fork.md）。
+const LIVE_HOSTS = new Set<string>(BRAND_STRIPE_LIVE_HOSTS);
 export function detectStripeEnvironment(hostname: string): "sandbox" | "live" {
   if (typeof window !== "undefined") {
     try {
@@ -109,7 +112,7 @@ export function detectStripeEnvironment(hostname: string): "sandbox" | "live" {
       if (stored === "sandbox" || stored === "live") return stored;
     } catch { /* ignore storage errors */ }
   }
-  if (STRIPE_LIVE_HOSTS.has(hostname)) return "live";
+  if (LIVE_HOSTS.has(hostname)) return "live";
   return "sandbox";
 }
 

@@ -98,9 +98,19 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 
 出荷前に全部埋まっているか確認する。
 
-**アプリ識別**
-- [ ] `capacitor.config.ts` … `appId` / `appName`
-- [ ] `src/lib/nativeBridge.ts` … `NATIVE_APP_SCHEME`（appId と一致させる）／ `PRODUCTION_WEB_ORIGIN`
+### ✅ `src/lib/brand.ts` … まずここを書き換える（2026-08-01〜）
+
+製品名・URLスキーム・本番ドメイン・Stripe liveホスト・LP URL・運営者連絡先は
+**`src/lib/brand.ts` 1ファイルに集約済み**。フォークはここを書き換えるだけでよい。
+
+特に **`src/locales/*.json` からは製品名の文字列が完全に消えている**
+（`{{brandJa}}` / `{{brandEn}}` / `{{brandApp}}` の補間に置き換え、`brand.ts` から注入）。
+つまり **5言語のロケールファイルは上流とバイト一致のまま**にでき、
+かつては最大のコンフリクト源だったロケールが merge で衝突しなくなった。
+`src/test/brandInterpolation.test.ts` が「ロケールに製品名を書き戻す」のを検出する。
+
+**アプリ識別**（brand.ts の外に残るもの）
+- [ ] `capacitor.config.ts` … `appId` / `appName` — **`brand.ts` の `NATIVE_APP_SCHEME` と必ず一致させる**
 - [ ] `.github/workflows/ios-build.yml` … bundle id・プロビジョニングプロファイル・`MARKETING_VERSION`
 - [ ] Firebase プロジェクト … `GoogleService-Info.plist` / `google-services.json` / Web VAPID鍵
 - [ ] Supabase プロジェクト … `.env` / `supabase/config.toml` / `deploy-functions.yml` の project ref
@@ -112,12 +122,10 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 - [ ] `src/index.css` のテーマ色
 
 **文言**
-- [ ] `src/locales/*.json` の製品名（5言語）
-- [ ] 法務3ページ（利用規約 / プライバシー / 特商法）と `src/lib/marketing.ts`
-- [ ] Edge Function 側のブランド文字列（上記「地雷4」）
+- [ ] 法務3ページの本文（利用規約 / プライバシー / 特商法）— 事業者情報そのものは差し替えが要る
+- [ ] Edge Function 側のブランド文字列（上記「地雷4」。**ここはまだ brand.ts の外**）
 
 **課金**
-- [ ] `STRIPE_LIVE_HOSTS`
 - [ ] Stripe の商品と lookup key（`mem/features/gymboard-saas-plans.md`）
 - [ ] 特商法ページの価格表
 
@@ -145,15 +153,19 @@ GymBoard は「パーソナルジム全部盛り」なので、他業種では�
 
 ## 現状の限界（正直なところ）
 
-**業種差分を1ファイルに集約する preset 層は、まだ無い。** 上のチェックリストは現時点では手作業。
-そのため、フォーク直後に上流と衝突しやすいファイルは次の通り:
+**ブランドは `src/lib/brand.ts` に集約済み**（ロケールJSONも上流とバイト一致にできる）。
+一方、**まだ集約できていないもの**が残っている:
 
-`capacitor.config.ts` / `index.html` / `public/manifest.json` / `src/locales/*.json` /
-`.github/workflows/ios-build.yml` / `supabase/functions/_shared/*`
+| 残っているもの | 状況 |
+|---|---|
+| `capacitor.config.ts` / `index.html` / `public/manifest.json` | ビルド設定側なので `brand.ts` から読めていない。フォークごとに手で書き換える |
+| `.github/workflows/ios-build.yml` | 同上 |
+| `supabase/functions/**` のブランド文字列 | **Edge Function はフロントの設定を読まない**ため別管理。メール本文・件名がここ |
+| 業種語彙（ジム／トレーナー／トレーニング…約320キー） | i18n オーバーレイ層が未実装。次の工事 |
+| 顧客側アプリの機能ON/OFF | 仕組み自体が無い（`show_*` はトレーナー画面専用）。次の工事 |
 
-上流側でこれらを「1つの設定ファイルから読む」形に寄せるのが次の工事。
-それが入るまでは、**merge 時にこれらのファイルは「兄弟側を優先」で解決**してよい
-（＝ブランド設定は上流から降ろさない）。逆に、それ以外のファイルで衝突したら
+**merge 時の解決方針**: 上の表のファイルで衝突したら「兄弟側を優先」でよい
+（＝ブランド設定は上流から降ろさない）。それ以外のファイルで衝突したら
 「業種差分をコードに書いてしまっている」サインなので、値に追い出せないか検討すること。
 
 ## 関連

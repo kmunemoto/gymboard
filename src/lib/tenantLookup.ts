@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
 /**
  * Resolve the gym (tenant) name for a given user_id.
@@ -14,8 +15,8 @@ export async function getGymNameForUser(userId: string): Promise<string> {
       .eq("status", "active")
       .maybeSingle();
     const name = (data as any)?.tenants?.gym_name as string | undefined;
-    return name || "ジムボード";
+    return name || BRAND_FALLBACK_GYM_NAME;
   } catch {
-    return "ジムボード";
+    return BRAND_FALLBACK_GYM_NAME;
   }
 }

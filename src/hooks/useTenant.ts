@@ -18,6 +18,11 @@ export interface Tenant {
   slot_duration_minutes: number;
   /** 予約と予約の間に必ず空ける時間（分）。既定15分。予約の重複判定に使う（60分セッション+この値）*/
   booking_buffer_minutes: number;
+  /**
+   * 同じ時間帯に受けられる予約の数（ベッド数・施術者数など）。既定1＝同時1件のみ。
+   * ブロック枠はこの数に関係なく店全体を塞ぐ（mem/features/booking-capacity.md）。
+   */
+  booking_capacity: number;
   booking_cutoff_type: string;
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;

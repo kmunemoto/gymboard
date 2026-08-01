@@ -22,6 +22,8 @@ interface TrialSlotBooking {
   date: string;
   startTime: string;
   endTime: string;
+  /** ブロック枠（休憩・臨時休業）か。ブロックは同時受入数に関係なく店全体を塞ぐ。 */
+  isBlock: boolean;
 }
 
 interface PublicTenant {
@@ -37,6 +39,8 @@ interface PublicTenant {
   booking_buffer_minutes: number | null;
   /** 1セッションの長さ（分）。null/未設定は既定60分。 */
   slot_duration_minutes: number | null;
+  /** 同時に受けられる予約数（ベッド数・施術者数）。null/未設定は既定1。 */
+  booking_capacity: number | null;
 }
 
 // テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
@@ -107,6 +111,7 @@ const TrialBooking = () => {
         date: format(dt, "yyyy-MM-dd"),
         startTime: `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
         endTime: `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`,
+        isBlock: r.status === "ブロック済み",
       });
     });
     setExistingBookings(slots);
@@ -122,6 +127,8 @@ const TrialBooking = () => {
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   // ジムごとに変更可能（tenants.slot_duration_minutes）。未ロード時のみ既定60分。
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
+  // 同時に受けられる予約数。未ロード時は安全側の1。
+  const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (s: string) => {
@@ -130,7 +137,7 @@ const TrialBooking = () => {
     };
     const newMin = timeToMin(time);
     const newEnd = newMin + sessionMinutes + bookingBufferMinutes;
-    return existingBookings.some((b) => {
+    const overlapping = existingBookings.filter((b) => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
       // get_tenant_booked_slots の end_booking_date は既にテナントのバッファ込みで計算済み
@@ -138,6 +145,9 @@ const TrialBooking = () => {
       const bEnd = timeToMin(b.endTime);
       return newMin < bEnd && bMin < newEnd;
     });
+    // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定。
+    if (overlapping.some((b) => b.isBlock)) return true;
+    return overlapping.length >= bookingCapacity;
   };
 
   // 体験予約の締切は会員予約と同じ「前日まで」。予約日の0:00 JST を過ぎたら（＝当日以降）締切。

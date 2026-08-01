@@ -29,6 +29,8 @@ interface TrialSlotBooking {
   date: string;
   startTime: string;
   endTime: string;
+  /** ブロック枠（休憩・臨時休業）か。ブロックは同時受入数に関係なく店全体を塞ぐ。 */
+  isBlock: boolean;
 }
 
 interface PublicTenant {
@@ -42,6 +44,8 @@ interface PublicTenant {
   trial_info_body: string | null;
   booking_buffer_minutes: number | null;
   slot_duration_minutes: number | null;
+  /** 同時に受けられる予約数（ベッド数・施術者数）。null/未設定は既定1。 */
+  booking_capacity: number | null;
 }
 
 // テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
@@ -99,6 +103,7 @@ const DropInBooking = () => {
         date: format(dt, "yyyy-MM-dd"),
         startTime: `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
         endTime: `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`,
+        isBlock: r.status === "ブロック済み",
       });
     });
     setExistingBookings(slots);
@@ -112,6 +117,8 @@ const DropInBooking = () => {
 
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
+  // 同時に受けられる予約数。未ロード時は安全側の1。
+  const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (s: string) => {
@@ -120,12 +127,15 @@ const DropInBooking = () => {
     };
     const newMin = timeToMin(time);
     const newEnd = newMin + sessionMinutes + bookingBufferMinutes;
-    return existingBookings.some((b) => {
+    const overlapping = existingBookings.filter((b) => {
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
       const bEnd = timeToMin(b.endTime);
       return newMin < bEnd && bMin < newEnd;
     });
+    // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定。
+    if (overlapping.some((b) => b.isBlock)) return true;
+    return overlapping.length >= bookingCapacity;
   };
 
   // ドロップインの締切も無料体験・会員予約と同じ「前日まで」。

@@ -57,6 +57,10 @@ const TrainerSchedule = () => {
   // 代理予約する候補（proxyBookingType）の占有時間。プランごとの設定があればそちらを使う。
   // 「枠をブロックする」（時間帯を手動指定）はプランと無関係なので sessionMinutes のまま。
   const proxySessionMinutes = resolvePlanSlotMinutes(proxyBookingType, plans, sessionMinutes);
+  // 同時に受けられる予約数（ベッド数・施術者数）。未ロード時は安全側の1。
+  // 予約を入れるときだけ使う。ブロック枠の作成は「1件でも予約があれば不可」のままにする
+  // （ブロックは店全体を閉めるので、空きベッドがあっても既存予約を巻き込むため）。
+  const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
   // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
   // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
@@ -124,7 +128,7 @@ const TrainerSchedule = () => {
       toast.error(t("schedule.errorSelectAll"));
       return;
     }
-    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes)) {
+    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity)) {
       toast.error(t("schedule.errorSlotTaken"));
       return;
     }
@@ -666,7 +670,7 @@ const TrainerSchedule = () => {
                       const h = Math.floor(totalMin / 60);
                       const m = totalMin % 60;
                       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes);
+                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity);
                       slots.push({ time, blocked });
                     }
                     return slots.map((slot) => (

@@ -44,6 +44,7 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "google_review_url",
   DASHBOARD_STAT_COLS,
   GYM_DISPLAY_COLS,
+  "booking_capacity",
 ];
 
 /**
@@ -98,6 +99,8 @@ export const TENANT_DEFAULT_FALSE_COLS: readonly string[] = [
 export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 列が無い環境では従来どおり15分（60分セッション + 15分 = 75分フットプリント）
   booking_buffer_minutes: 15,
+  // 列が無い環境では従来どおり「同時に1件だけ」。安全側（少なく見積もる）に倒す
+  booking_capacity: 1,
   line_url: null,
   google_review_url: null,
   trial_info_title: null,

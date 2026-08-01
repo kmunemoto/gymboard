@@ -71,12 +71,33 @@ migrations は追加しかしないので、`live < declared` なら確実に未
 `booking_kind='trial'` を既定値で取得、`tenants` 13件すべて表示12列が `true`（＝見た目は不変）、
 ガード関数・トリガーとも0件。
 
-## いま残っているズレ: types.ts が古い
+## いま残っているズレ: 無し（2026-08-01 時点）
 
-`booking_waitlist` と `profiles.milestone_goal` / `_set_at` は**本番DBには入ったが types.ts に無い**。
-そのため `useWaitlist.ts` / `TrainerClientDetail.tsx` は `as any` のまま。
-Lovable 側で types.ts が再生成されたら、`src/test/schemaDrift.test.ts` の `KNOWN_STALE` から
-該当エントリを削除し、`as any` を外すこと（登録が残っているとテストが落ちるようにしてある）。
+`KNOWN_STALE` は空。migrations で宣言したテーブル/カラムはすべて types.ts に載っている。
+
+### types.ts の追従は「Lovable の再生成待ち」ではなく、こちらで手で書いてよい
+
+過去に `booking_waitlist` / `profiles.milestone_goal` を「Lovable が再生成するまで `as any`」
+にしていたが、再生成はPRのタイミングでは走らない。`39e38d0` で types.ts を実スキーマに
+合わせて手で書き、`as any` を43件外した。**これを標準の手順とする。**
+
+2026-08-01 の `tenant_plans.slot_duration_minutes` / `tenants.booking_capacity` も同じ手順:
+
+1. 本番DBに適用する（このドキュメントの「確認方法」）
+2. 実DBから列の型・null許容・既定値を引く:
+   ```sql
+   select table_name, column_name, data_type, is_nullable, column_default
+   from information_schema.columns
+   where table_schema='public' and column_name in ('slot_duration_minutes','booking_capacity');
+   ```
+3. `types.ts` の該当テーブルの `Row` / `Insert` / `Update` **3箇所すべて**に、
+   アルファベット順の位置へ追記する（`Row` は必須/`Insert`・`Update` は `?` 付き。
+   NOT NULL + DEFAULT ありの列は `Insert` でも省略可なので `?`）。
+   RPC が返す列なら `Functions` の `Returns` にも足す。
+4. `KNOWN_STALE` から該当エントリを消し、その列のために入れた `as any` /
+   `as unknown as` と、型を迂回するための `select("*")` を元に戻す
+5. `npx tsc --noEmit -p tsconfig.app.json` で確認する
+   （**CI はこの形で走る。素の `npx tsc --noEmit` では同じエラーが出ない**）
 
 ## `src/test/schemaDrift.test.ts` が守っているもの
 

@@ -56,6 +56,8 @@ Dr.stretch のような、来店して受けるストレッチ専門のサロン
 |---|---|---|
 | `POSTURE_ENABLED` | `true` | この業種の看板機能。ビフォーアフターを見せられる |
 | `SKELETAL_DIAGNOSIS_ENABLED` | `true` | フィットネス文脈の体型分類（ファッション業界の「骨格診断」と同じ語）で、医療隣接の業種ではないので上流のまま `true` でよい（セッコツボードとは違い、ここは変更不要） |
+| `GOOGLE_REVIEW_ENABLED` | `true` | 柔道整復師法のような広告規制の対象業種ではない。上流のまま変更不要 |
+| `LANGUAGE_SWITCHER_ENABLED` | `false` | ロケールは `ja` のみ整備。他言語に切り替えるとジム向けの語彙が混ざって出る（`mem/ops/vertical-fork.md` の「フォークは当面日本語のみ」方針） |
 | `WORKOUT_LOG_ENABLED` | `false` | 種目×重量×回数はストレッチ店では使わない |
 | `MEALS_ENABLED` | `false` | 減量が売りではない |
 | `BODY_METRICS_ENABLED` | `false` | 体重・体脂肪はボディメイク文脈の指標 |

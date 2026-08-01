@@ -1,3 +1,42 @@
+# scripts/
+
+| スクリプト | 用途 |
+|---|---|
+| `translate-locales.mjs` | `ja.json` を正として `en` / `ko` などの欠けを機械翻訳で補完（下記） |
+| `extract-vertical-overlay.mjs` | 兄弟アプリが直接書き換えた `ja.json` から業種オーバーレイを抜き出す（下記） |
+| `generate-app-icon.py` / `patch-android.mjs` / `build-android.bat` | ネイティブビルド補助 |
+
+---
+
+# 業種オーバーレイの抽出（extract-vertical-overlay.mjs）
+
+兄弟アプリ（業種特化フォーク）が `src/locales/ja.json` を直接書き換えてしまっている場合に、
+上流と値が違う葉だけを抜き出して `src/locales/vertical.ja.json` を作る移行ツール。
+
+書き換えたまま上流を取り込むと、業種語彙が全部消えるか全ファイル衝突になる。
+先にオーバーレイへ逃がしてから `ja.json` を上流に戻す
+（手順は `mem/ops/vertical-fork.md`）。
+
+```bash
+# フォークのリポジトリで、上流を fetch 済みの状態から
+git show upstream/main:src/locales/ja.json > /tmp/upstream-ja.json
+node scripts/extract-vertical-overlay.mjs \
+  /tmp/upstream-ja.json src/locales/ja.json src/locales/vertical.ja.json
+git checkout upstream/main -- src/locales/ja.json
+```
+
+**警告は必ず読むこと。** オーバーレイは「上書き」しかできないので、
+
+- フォークが**削除した**キー … 表現できない。上流の文言がそのまま出る
+- フォークが**追加した**キー … 上流に無いので i18next が黙って無視する
+- **形が変わった**キー（文字列↔オブジェクト↔配列）
+
+の3つは人間の判断が要る。握り潰さず標準エラー出力に列挙する。
+
+回帰テストは `src/test/extractVerticalOverlay.test.ts`。
+
+---
+
 # 翻訳ファイル自動生成
 
 `src/locales/ja.json` を正として、欠けているキーを機械翻訳で `en.json` / `ko.json` に補完します。

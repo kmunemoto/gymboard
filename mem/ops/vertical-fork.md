@@ -85,11 +85,31 @@ git fetch upstream && git merge upstream/main
 
 このまま上流を `-X theirs` で取り込むと**接骨院の語彙が全部消える**ので、順番が要る。
 
-1. 取り込む**前**に、フォークの `ja.json` と、フォーク元となった時点の上流 `ja.json` を
-   葉ごとに比較し、**値が違う葉だけ**を抜き出す
-2. それをそのまま `src/locales/vertical.ja.json` として保存する（これが業種オーバーレイ）
-3. `ja.json` は上流のものに戻す（＝バイト一致させる）
-4. そのうえで上流を取り込む
+この抜き出しは `scripts/extract-vertical-overlay.mjs` に実装してある。
+
+```bash
+git remote add upstream https://github.com/kmunemoto/gymboard.git
+git fetch upstream
+
+# 1. 上流と値が違う葉だけを抜き出して vertical.ja.json にする
+git show upstream/main:src/locales/ja.json > /tmp/upstream-ja.json
+node scripts/extract-vertical-overlay.mjs \
+  /tmp/upstream-ja.json src/locales/ja.json src/locales/vertical.ja.json
+
+# 2. ja.json は上流のものに戻す（＝以後バイト一致させる）
+git checkout upstream/main -- src/locales/ja.json
+
+# 3. そのうえで上流を取り込む
+git merge --allow-unrelated-histories upstream/main
+```
+
+**スクリプトが出す警告は必ず読むこと。** オーバーレイは「上書き」しかできないので、
+次の3つは自動では移せず、人間の判断が要る:
+
+- フォークが**削除した**キー … 上流の文言がそのまま出るようになる
+  （セッコツボードは 1,569キー vs 上流1,884キーなので、**300以上が該当する**）
+- フォークが**追加した**キー … 上流に無いキーは i18next が黙って無視する
+- **形が変わった**キー（文字列↔オブジェクト↔配列）
 
 こうすると、以後 `ja.json` は上流所有・オーバーレイだけがフォーク所有になり、
 上流が文言を足しても衝突しなくなる。**業種語彙の中身は

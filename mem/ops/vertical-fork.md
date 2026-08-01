@@ -23,53 +23,70 @@ Lovable は「1プロジェクト = 1 GitHubリポジトリ」なので、兄弟
 3. **フォークが編集するファイルを増やさない。**
    触るファイルが増えるほど merge 衝突が増える。「このファイルは上流所有」という線引きを守る。
 
-## ⚠️ 前提の訂正: Lovable の複製は「git のフォーク」ではない（2026-08-01）
+## Lovable の複製と上流の関係は、**フォークごとに違う**（2026-08-01 に再訂正）
 
-当初この手順書は `git remote add upstream && git merge upstream/main` で追従できる前提で
-書いていたが、**これは成立しない**。2026-08-01 にセッコツボードで実際に確認した結果:
-
-```
-$ git log --oneline | tail -1
-dd56aa6 Initial commit from remix        ← 上流とは無関係な、独立した最初のコミット
-$ git remote -v
-origin  <Lovable内部のgitストレージ>      ← GitHub リモートが無い
-secondary s3://lovable-repositories/…
-```
-
-つまり Lovable の複製（remix）は、
-
-1. **GitHub リポジトリを持たない**（Lovable 内部のgitストレージだけで動く）
-2. **上流と共通の祖先を持たない**（`Initial commit from remix` から始まる別系統の履歴）
-
-したがって `git merge upstream/main` は「共通の祖先が無い」で失敗する。
-`--allow-unrelated-histories` を付ければ動くが、**全ファイルが衝突**する。
-
-### 追従できる形にするブートストラップ（フォークごとに1回だけ）
-
-**手順0: Lovable で GitHub に接続する**（Lovable の画面から。これだけは手作業）
-接続すると、そのプロジェクトの現在の中身で新しい GitHub リポジトリが作られる。
-
-**手順1: 上流を接ぎ木する**
+**まず自分のリポジトリで確かめること。思い込みで手順を選ばない。**
 
 ```bash
-git remote add upstream https://github.com/kmunemoto/gymboard.git
-git fetch upstream
-
-# 上流の main を「取り込み用ブランチ」として自分の履歴に接ぐ。
-# これ以降は共通の祖先ができるので、普通の git merge が使えるようになる。
-git checkout -b upstream-merge
-git merge --allow-unrelated-histories -X theirs upstream/main
+git log --oneline | tail -1              # 最初のコミット
+git remote -v                            # GitHub リモートの有無
+git merge-base HEAD upstream/main        # 共通祖先があるか（要 git fetch upstream）
 ```
 
-`-X theirs` は「衝突したら上流を採る」。フォーク側の変更を**上流で上書きする**ので、
-**フォーク独自の変更を先に退避してから**やること（下記）。
+実測した2件が、まったく違う結果だった:
 
-**手順2: フォーク独自の差分を「値」に移してから当て直す**
+| | セッコツボード | ストレッチボード |
+|---|---|---|
+| 最初のコミット | `dd56aa6 Initial commit from remix` | 上流の履歴を引き継いでいる |
+| 上流との共通祖先 | **無し** | **あり**（`d0aa895` = 上流 #212） |
+| 必要な手順 | `--allow-unrelated-histories` | **普通の `git merge upstream/main` で衝突ゼロ** |
 
-退避するのは、この手順書の「ブランド差し替えチェックリスト」に挙がっているものだけ。
-それ以外の差分（＝上流と同じはずのファイルの差分）は、原則として捨てて上流に揃える。
+つまり「remix は必ず別系統の履歴になる」は**誤り**だった
+（セッコツボード1件だけを見て一般化してしまっていた）。
 
-**手順3: 以後は普通に追従する**
+- 共通祖先が**ある**なら、普通に `git merge upstream/main`。それで通る。
+- 共通祖先が**無い**なら、`--allow-unrelated-histories` を足す。
+
+どちらの場合も **GitHub 接続は手作業**（Lovable の画面から）。接続すると、
+そのプロジェクトの現在の中身で新しい GitHub リポジトリが作られる。
+
+### ⚠️ `-X theirs` を安易に使わない
+
+以前この手順書は「カスタマイズが少ないフォークは `-X theirs` で丸ごと上流に揃えてよい」
+と書いていたが、**これは危険なので撤回した**。
+
+ストレッチボードで実際に起きかけたこと: 「まだ何もカスタマイズしていない」と判断して
+`-X theirs` を勧めたが、remix 後の4コミットに**そのプロジェクト固有の Supabase 参照**
+（`enablfwvguohfmaampgw`）が入っていた。`-X theirs` で上書きしていたら
+`rrbfwitprzuevzytykrq`（**GymBoard 本番DB**）に戻り、
+**兄弟アプリが別ジムの本番データベースを触る**状態になっていた。
+
+「カスタマイズがゼロに見える」は当てにならない。**先に差分を実際に見ること。**
+
+```bash
+# remix 以降にフォークが触ったファイルを洗い出す
+git log --oneline --name-only <最初のコミット>..HEAD | sort -u
+
+# 特に Supabase プロジェクト参照は必ず確認する（取り違えると別ジムの本番DBを触る）
+grep -rn "supabase.co\|VITE_SUPABASE" .env* src/integrations/supabase/ supabase/config.toml
+```
+
+衝突は `-X theirs` で一括処理せず、1件ずつ解決する。
+**上流を採ってよいのは「上流と同じはずのファイル」だけ**で、
+下記チェックリストに載っているものはフォーク側を残す。
+
+### Lovable の再生成で消えるもの（取り込み後に必ず確認）
+
+Lovable が自動生成し直したファイルから、手で足した設定が**黙って落ちる**ことがある。
+ストレッチボードで実際に消えていた2件:
+
+- `supabase/config.toml` の `[functions.*] verify_jwt = false`
+  → この状態で deploy すると `trial-book`・LINEログイン・Stripe webhook が **401 で全滅**する
+- `src/integrations/supabase/client.ts` の dev fixtures 切り替え
+
+取り込み後に `git diff upstream/main -- supabase/config.toml` で差分を確認すること。
+
+### 追従が通ることの確認
 
 ```bash
 git fetch upstream && git merge upstream/main
@@ -137,11 +154,28 @@ git merge --allow-unrelated-histories upstream/main
 兄弟アプリが別 Supabase プロジェクトを使っている場合、このUUIDは**存在しないID**になるので
 エラーにならず「何も起きない」形で壊れる。テストも通る。気づけない。
 
-**対処**: `legacyDefaultTenantId` を `null` にできる形に変え、兄弟では `null`（＝「予約リンクが
-正しくありません」を表示）にする。ドロップインは業種ごとに要否を判断（不要なら機能ごとOFF）。
+**対処**: 兄弟では `LEGACY_DEFAULT_TENANT_ID` / `DROP_IN_TENANT_ID` を **`null` にするだけ**。
+上流のコードは `null` を渡されても壊れない形に揃えてある（2026-08-01）ので、
+フォーク側でコードの形を変える必要は無い。
 
-> **状況**: セッコツボードは 2026-08-01 に除去済み。
-> **ストレッチボードは未除去**（素の複製のまま）。
+> #### ⚠️ `null` にしたとき `null === null` で**逆に有効になる**罠
+>
+> 素朴に `tenantId === DEFAULT_TENANT_ID` と書くと、両方 `null` のときに **true** になる。
+> テナントID無しのURL（`/trial`・`/drop-in`）では `effectiveTenantId` も `null` になるため、
+> **「無効化したつもりが、そのURLでだけ複製元専用の挙動が出る」**という逆の結果になる。
+> エラーも警告も出ない。
+>
+> 上流では次の3箇所にガードを入れ済み（`src/test/forkTenantNullSafety.test.ts` が番人）:
+> - `dropInTenant.ts` … `!!DROP_IN_TENANT_ID && tenantId === DROP_IN_TENANT_ID`
+> - `TrialBooking.tsx` … 見出しの分岐に `DEFAULT_TENANT_ID !== null &&`
+> - `TrialBooking.tsx` / `DropInBooking.tsx` … `if (!resolveId) return;` で RPC を呼ばない
+>
+> 上流を取り込んでいないフォークで自前で `null` 化した場合は、この3箇所を必ず確認すること。
+
+> **状況**: セッコツボード・ストレッチボードとも 2026-08-01 に除去済み。
+> ストレッチボードでは `counseling_responses.tenant_id` の**列 DEFAULT** にも
+> 同じ UUID が残っていたため `DROP DEFAULT` するマイグレーションを追加している。
+> **コード内の grep だけでは足りない**（DB のデフォルト値・制約も見ること）。
 
 ### 2. 課金が黙って sandbox になる
 
@@ -348,21 +382,30 @@ GymBoard は「パーソナルジム全部盛り」なので、他業種では�
 |---|---|---|---|
 | Lovable | `fd707295-…` | `26210a2c-…` | `c841c1c0-…` |
 | Supabase | 独自 | 独自 `enablfwvguohfmaampgw` | 独自 |
-| GitHub 接続 | **無し** | **無し** | 未確認 |
-| 上流との共通祖先 | **無し**（remix） | **無し**（remix） | 未確認 |
-| `ja.json` | 接骨院語彙に**直接書き換え済み**（1,569キー・他言語は削除） | 素の GymBoard のまま | 未確認 |
-| `brand.ts` / `vertical.ja.json` | 無し | 無し | 無し |
-| Phase 0-B の機能フラグ | 無し | 無し | 無し |
-| `sanitizeAuthNext`（認証の脆弱性修正） | **無し** | **無し** | 未確認 |
-| `booking_capacity` | 無し | 無し | 未確認 |
-| Salute の tenant UUID | 除去済み ✅ | **未除去** | 未確認 |
-| bundle ID / URLスキーム | `app.sekkotsuboard.mobile` ✅ | `app.gymboard.mobile` のまま | 未確認 |
-| `public/manifest.json` | ジムボードのまま ❌ | ジムボードのまま ❌ | 未確認 |
-| `STRIPE_LIVE_HOSTS` | 上流のまま ❌ | 上流のまま ❌ | 未確認 |
+| GitHub 接続 | あり ✅ | あり ✅ | 未確認 |
+| リポジトリ | `project-fd707295-…` | `project-26210a2c-…` | 未確認 |
+| 上流との共通祖先 | **無し**（remix） | **あり**（`d0aa895`） | 未確認 |
+| 上流の取り込み | **未** | 済み ✅（PR #1） | 未確認 |
+| `ja.json` | 接骨院語彙に**直接書き換え済み**（1,569キー・他言語は削除） | 上流のまま＋`vertical.ja.json` ✅ | 未確認 |
+| `brand.ts` / `vertical.ja.json` | 無し | あり ✅ | 無し |
+| Phase 0-B の機能フラグ | 無し | あり ✅（姿勢分析のみON） | 無し |
+| `sanitizeAuthNext`（認証の脆弱性修正） | **無し** | あり ✅ | 未確認 |
+| `booking_capacity` | 無し | あり ✅ | 未確認 |
+| Salute の tenant UUID | 除去済み ✅ | 除去済み ✅（列 DEFAULT も） | 未確認 |
+| bundle ID / URLスキーム | `app.sekkotsuboard.mobile` ✅ | `app.stretchboard.mobile` ✅ | 未確認 |
+| `public/manifest.json` | ジムボードのまま ❌ | 未確認 | 未確認 |
+| `STRIPE_LIVE_HOSTS` | 上流のまま ❌ | 空（＝常に sandbox）⚠️ | 未確認 |
+| `PRODUCTION_WEB_ORIGIN` | 自ドメイン ✅ | **上流のまま** ❌ | 未確認 |
+| Firebase / プロビジョニング | ジムボードのまま ❌ | ジムボードのまま ❌ | 未確認 |
 
-**どの兄弟も、まず GitHub 接続→ブートストラップ（上記）が先**。
-それをやらずに作り込むほど、上流の修正（特に `sanitizeAuthNext` の
-オープンリダイレクト対策）が降りてこない期間が延びる。
+**セッコツボードはまだ上流を取り込んでいない**（`sanitizeAuthNext` の
+オープンリダイレクト対策が入っていない）。作り込みより取り込みを先にすること。
+
+ストレッチボードの `PRODUCTION_WEB_ORIGIN` が上流のままなのは、
+**まだ公開していなくて自分のURLが無い**ため。ネイティブアプリを出すまでは
+表面化しないが、出した瞬間に招待・体験予約リンクが全部ジムボードを指す。
+Lovable で Publish して `<slug>.lovable.app` を得たら、
+`PRODUCTION_WEB_ORIGIN` と `STRIPE_LIVE_HOSTS` を**同時に**埋めること。
 
 ## 関連
 

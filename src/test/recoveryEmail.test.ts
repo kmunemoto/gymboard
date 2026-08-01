@@ -3,6 +3,14 @@ import {
   renderRecoveryHtml,
   renderRecoveryText,
 } from "../../supabase/functions/_shared/email-templates/recovery-plain";
+import { BRAND } from "@/lib/brand";
+
+// 本文の製品名は brand.ts から引く。直書きすると、兄弟アプリ（業種特化フォーク）が
+// Edge Function のテンプレートを自分のブランド名に変えた瞬間にこのテストが落ちる。
+// brand.ts から引いておけば、逆に「テンプレートと brand.ts のブランド名が食い違う」
+// ことを検出する番人になる（Edge Function は Deno なので brand.ts を import できず、
+// 両者が手動で同期されている前提のため、この突き合わせに意味がある）。
+const RECOVERY_LEAD = `${BRAND.ja}のパスワード再設定リクエストを受け付けました。`;
 
 const URL =
   "https://gymboard.lovable.app/reset-password?token_hash=abcdef0123456789&type=recovery";
@@ -22,14 +30,14 @@ describe("recovery-plain（素のテンプレート文字列・文字化けし�
     const decoded = decodeHtmlForAssertion(html);
     expect(html).not.toContain("�"); // 置換文字（???）が無い
     expect(decoded).toContain("パスワードの再設定");
-    expect(decoded).toContain("ジムボードのパスワード再設定リクエストを受け付けました。");
+    expect(decoded).toContain(RECOVERY_LEAD);
     expect(decoded).toContain("新しいパスワードを設定してください。");
     expect(decoded).toContain("パスワードを再設定する");
   });
 
   it("HTML表示テキストはASCII安全な数値文字参照で送る", () => {
     const html = renderRecoveryHtml(URL);
-    expect(html).not.toContain("ジムボードのパスワード");
+    expect(html).not.toContain(`${BRAND.ja}のパスワード`);
     expect(html).toContain("&#12497;"); // パ
     expect(html).toContain("&#12540;"); // ー
     expect(html).toContain("<!--\n-->");
@@ -38,7 +46,7 @@ describe("recovery-plain（素のテンプレート文字列・文字化けし�
   it("プレーンテキストも文字化けせず日本語が正しい", () => {
     const text = renderRecoveryText(URL);
     expect(text).not.toContain("�");
-    expect(text).toContain("ジムボードのパスワード再設定リクエストを受け付けました。");
+    expect(text).toContain(RECOVERY_LEAD);
     expect(text).toContain("パスワード");
   });
 
@@ -54,7 +62,7 @@ describe("recovery-plain（素のテンプレート文字列・文字化けし�
     const decoded = decodeHtmlForAssertion(html);
     // U+30D1 U+30B9 U+30EF U+30FC U+30C9 が連続している
     expect(decoded.includes("パスワード")).toBe(true);
-    const i = decoded.indexOf("ジムボードのパスワード");
+    const i = decoded.indexOf(`${BRAND.ja}のパスワード`);
     expect(i).toBeGreaterThan(-1);
   });
 });

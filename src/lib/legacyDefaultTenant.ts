@@ -17,5 +17,15 @@
  *
  * 各ジムがジム設定からコピーするリンクは元々 `/trial/:tenantId` 形式なので、
  * 他ジムがこの既定値に依存することはない。
+ *
+ * ## 兄弟アプリ（業種特化フォーク）では `null` にする
+ *
+ * フォークにはこの既存リンクが存在しないので、既定テナントを持つ理由が無い
+ * （むしろ他院の予約が誤ったテナントに入るリスクだけが残る）。
+ *
+ * **型を `string | null` にしてあるのは、フォークが値を `null` に変えるだけで
+ * 済むようにするため。** 上流のコードは `null` を渡されても壊れない形に揃えてある
+ * （`TrialBooking.tsx` / `DropInBooking.tsx` / `dropInTenant.ts`）。
+ * フォーク側でコードの形を変える必要は無い（mem/ops/vertical-fork.md 鉄則1）。
  */
-export const LEGACY_DEFAULT_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+export const LEGACY_DEFAULT_TENANT_ID: string | null = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";

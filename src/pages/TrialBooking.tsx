@@ -72,8 +72,10 @@ const TrialBooking = () => {
 
   useEffect(() => {
     (async () => {
-      // テナント指定なしの /trial は Salute御所南 を既定にする（このサイトはSalute専用）。
+      // テナント指定なしの /trial は既定テナント（Salute御所南）にフォールバックする。
+      // 既定テナントを持たない兄弟アプリでは null になるので、RPC自体を呼ばない。
       const resolveId = tenantId || DEFAULT_TENANT_ID;
+      if (!resolveId) return;
       const { data, error } = await supabase.rpc("get_tenant_public", { p_id: resolveId });
       if (error) { console.error("Failed to load tenant:", error); return; }
       const row = Array.isArray(data) ? data[0] : data;
@@ -86,8 +88,12 @@ const TrialBooking = () => {
   // ページ見出し。Salute御所南（このサイトの既定テナント）は「初回無料体験」の名称で
   // 運用するため専用ラベルを出す。他ジムは「無料」かどうかがジムによるため、共通の
   // 「体験予約」を使う（多ジム方針: 特定ジム専用の文言を全ジムに適用しない）。
+  //
+  // `DEFAULT_TENANT_ID !== null` を先に見ているのは、既定テナントを持たない兄弟アプリで
+  // **null === null が成立して全テナントに Salute 専用の見出しが出る**のを防ぐため。
+  // テナントID無しの /trial では effectiveTenantId も null になるので実際に起きる。
   const headerTitle =
-    effectiveTenantId === DEFAULT_TENANT_ID
+    DEFAULT_TENANT_ID !== null && effectiveTenantId === DEFAULT_TENANT_ID
       ? t("trialBooking.headerTitleFreeTrial")
       : t("trialBooking.headerTitle");
 

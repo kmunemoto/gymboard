@@ -111,15 +111,37 @@ Dr.stretch のような、来店して受けるストレッチ専門のサロン
 - [ ] Supabase の Additional Redirect URLs に
       `app.stretchboard.mobile://auth/callback` を登録
 
-## 未着手の前提
+## 適用状況: **適用済み**（2026-08-01・PR #1）
 
-ストレッチボードは 2026-08-01 時点で **GitHub 未接続**かつ**素の GymBoard クローン**
-（`capacitor.config.ts` が `app.gymboard.mobile` / 「ジムボード」のまま、
-`featureFlags.ts` に Phase 0-B のフラグが無い）。
+リポジトリ `kmunemoto/project-26210a2c-1268-4ae3-b4ff-ee9d19e9f11a`。
+Supabase は独自プロジェクト `enablfwvguohfmaampgw`（GymBoard とは別）。
 
-Supabase は独自プロジェクト `enablfwvguohfmaampgw` なので、
-**GymBoard のデータと混ざる心配は無い**。
+上流との共通祖先（`d0aa895` = 上流 #212）があったため、
+**`--allow-unrelated-histories` も `-X theirs` も使わず、普通の `git merge upstream/main`
+で衝突ゼロで通った**。
 
-このプリセットを当てる前に、必ず上流を取り込むこと。
-取り込まないと `vertical.ja.json` も `brand.ts` も存在せず、
-`ja.json`（約1,900キー）を直接書き換えるしかなくなる ＝ 以後ずっと merge が衝突する。
+適用済み: 語彙72項目・featureFlags（姿勢分析のみON → 下タブ3つ）・`brand.ts`・
+bundle ID の3点一致（`app.stretchboard.mobile`）・Edge Function のメール文言・
+Salute の tenant UUID 除去（`counseling_responses.tenant_id` の列 DEFAULT も
+`DROP DEFAULT` するマイグレーションを追加）。
+
+### 取り込みで分かったこと（手順書に反映済み）
+
+- **「カスタマイズがゼロ」は当てにならなかった。** remix 後の4コミットに
+  このプロジェクト固有の Supabase 参照が入っていた。当初この手順書は
+  `-X theirs` を勧めていたが、そのまま実行していたら GymBoard 本番DBに戻り、
+  **別ジムの本番データを触る**状態になっていた（手順書から撤回済み）。
+- **Lovable の再生成で `supabase/config.toml` の `verify_jwt` 設定が消えていた。**
+  そのまま deploy すると `trial-book`・LINEログイン・Stripe webhook が401で全滅する。
+- **`null === null` の罠。** UUID を `null` にすると素朴な `===` 比較が逆に成立する。
+  上流側にガードを入れた（`src/test/forkTenantNullSafety.test.ts`）。
+
+### 残っている確認事項
+
+- `PRODUCTION_WEB_ORIGIN` が**上流のまま**（`app.kyoto-salute.com`）。
+  まだ公開していなくて自分のURLが無いため。**Lovable で Publish して
+  `<slug>.lovable.app` を得たら、`STRIPE_LIVE_HOSTS` と同時に埋めること。**
+  ネイティブアプリを出すまでは表面化しないが、出した瞬間に招待・体験予約リンクが
+  全部ジムボードを指す。
+- `STRIPE_LIVE_HOSTS` は空（＝どこでも sandbox）。安全側だが、公開後に埋め忘れると
+  「決済成功に見えて課金されない」になる。上と同時に対応する。

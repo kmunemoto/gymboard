@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { readFileSync } from "node:fs";
-import "@/lib/i18n";
+import i18n from "@/lib/i18n";
+import { upstreamOnly } from "./helpers/upstream";
 import TrainingRecommendationCard from "@/components/customer/posture/TrainingRecommendationCard";
 import type { PostureFeedback } from "@/components/customer/posture/types";
 
@@ -26,14 +27,14 @@ const feedbacks: PostureFeedback[] = [
 describe("骨格診断（TrainingRecommendationCard の疎結合）", () => {
   it("skeletalType があれば、タイプ別推奨セクションが出る", () => {
     render(<TrainingRecommendationCard skeletalType="straight" feedbacks={[]} />);
-    expect(screen.getByText("トレーニング推奨")).toBeTruthy();
+    expect(screen.getByText(i18n.t("posture.recommendation.title"))).toBeTruthy();
   });
 
   it("skeletalType が null でも、姿勢フィードバックに基づく提案は独立して出る", () => {
     // SKELETAL_DIAGNOSIS_ENABLED=false のフォークでは、CustomerPosture.tsx が
     // skeletalType に常に null を渡す。この状態でも postureTips は消えないこと。
     render(<TrainingRecommendationCard skeletalType={null} feedbacks={feedbacks} />);
-    expect(screen.getByText("姿勢改善エクササイズ")).toBeTruthy();
+    expect(screen.getByText(i18n.t("posture.recommendation.postureExerciseTitle"))).toBeTruthy();
   });
 
   it("skeletalType が null かつ提案する feedback も無ければ、何も描画しない", () => {
@@ -51,8 +52,19 @@ describe("骨格診断（TrainingRecommendationCard の疎結合）", () => {
   });
 });
 
-describe("フラグの既定値（ジムボード本体では従来どおり全ON）", () => {
-  it("SKELETAL_DIAGNOSIS_ENABLED / GOOGLE_REVIEW_ENABLED / LANGUAGE_SWITCHER_ENABLED は既定 true", async () => {
+describe("フラグが公開されている", () => {
+  // 値（true/false）は業種ごとに変わるので、ここでは存在と型だけを見る。
+  // 値を断言するとフォークで必ず赤くなる（helpers/upstream.ts のコメント参照）。
+  it("3つのフラグが boolean として公開されている", async () => {
+    const flags = (await import("@/lib/featureFlags")) as unknown as Record<string, unknown>;
+    for (const k of ["SKELETAL_DIAGNOSIS_ENABLED", "GOOGLE_REVIEW_ENABLED", "LANGUAGE_SWITCHER_ENABLED"]) {
+      expect(typeof flags[k], `${k} が未定義、または boolean でない`).toBe("boolean");
+    }
+  });
+});
+
+upstreamOnly("ジムボード本体の既定値", () => {
+  it("3つのフラグは既定 true（従来どおりの挙動）", async () => {
     const flags = await import("@/lib/featureFlags");
     expect(flags.SKELETAL_DIAGNOSIS_ENABLED).toBe(true);
     expect(flags.GOOGLE_REVIEW_ENABLED).toBe(true);
@@ -102,9 +114,14 @@ describe("Google口コミ依頼セクション（TrainerGymSettings）", () => {
     render(<TrainerGymSettings onSignOut={() => {}} />);
   };
 
-  it("既定（GOOGLE_REVIEW_ENABLED=true）ではセクションが出る", async () => {
+  it("GOOGLE_REVIEW_ENABLED=true でセクションが出る", async () => {
+    // 実フラグに依存させない。フォークが false にしていてもこのテストは意味を保つ。
+    vi.doMock("@/lib/featureFlags", async (orig) => ({
+      ...(await orig<Record<string, unknown>>()),
+      GOOGLE_REVIEW_ENABLED: true,
+    }));
     await setup();
-    expect(screen.getByText("Google口コミ依頼")).toBeTruthy();
+    expect(screen.getByText(i18n.t("settings.trainer.googleReviewSection"))).toBeTruthy();
   });
 
   it("GOOGLE_REVIEW_ENABLED=false でセクションが消える", async () => {
@@ -113,10 +130,14 @@ describe("Google口コミ依頼セクション（TrainerGymSettings）", () => {
       GOOGLE_REVIEW_ENABLED: false,
     }));
     await setup();
-    expect(screen.queryByText("Google口コミ依頼")).toBeNull();
+    expect(screen.queryByText(i18n.t("settings.trainer.googleReviewSection"))).toBeNull();
   });
 
-  it("既定（LANGUAGE_SWITCHER_ENABLED=true）では言語切替が出る", async () => {
+  it("LANGUAGE_SWITCHER_ENABLED=true で言語切替が出る", async () => {
+    vi.doMock("@/lib/featureFlags", async (orig) => ({
+      ...(await orig<Record<string, unknown>>()),
+      LANGUAGE_SWITCHER_ENABLED: true,
+    }));
     await setup();
     expect(screen.getByTestId("language-switcher")).toBeTruthy();
   });

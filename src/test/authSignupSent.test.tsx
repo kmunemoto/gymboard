@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import Auth from "@/pages/Auth";
 // Auth.tsx は @/lib/i18n を import していないので、ここで読み込まないと
 // t() が生キー（"auth.modeLogin"）を返して日本語のアサーションが全滅する。
-import "@/lib/i18n";
+import i18n from "@/lib/i18n";
 
 // 新規登録後の「確認メールを送信しました」がトーストで見落とされていた問題と、
 // その周辺で見つかった一連の不具合の回帰テスト。
@@ -70,8 +70,8 @@ const submitSignup = async (email = EMAIL) => {
 
 /** ジムオーナータブに切り替えてから登録フォームを送信する */
 const submitTrainerSignup = async (email = EMAIL) => {
-  fireEvent.click(screen.getByText("ジムオーナー"));
-  fireEvent.click(screen.getByText("ジムオーナーの方はこちらから新規登録"));
+  fireEvent.click(screen.getByText(i18n.t("auth.tabTrainer")));
+  fireEvent.click(screen.getByText(i18n.t("auth.switchToTrainerSignup")));
   fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: email } });
   fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
   fireEvent.change(screen.getByLabelText("パスワード（確認用）"), { target: { value: "abcdef12" } });

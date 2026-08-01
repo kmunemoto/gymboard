@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
+import { upstreamOnly } from "./helpers/upstream";
 
 // 兄弟アプリ（業種特化フォーク）が「自社ジムの tenant UUID を null にして無効化する」
 // ときの安全性を見張るテスト。
@@ -19,10 +20,9 @@ afterEach(() => {
 });
 
 describe("isDropInAvailable の null 安全性", () => {
-  it("ジムボード本体（UUIDあり）では、そのテナントだけ true", async () => {
-    const { isDropInAvailable, DROP_IN_TENANT_ID } = await import("@/lib/dropInTenant");
-    expect(DROP_IN_TENANT_ID).toBeTruthy();
-    expect(isDropInAvailable(DROP_IN_TENANT_ID)).toBe(true);
+  it("どの構成でも、無関係なID・null・undefined は false", async () => {
+    // フォーク（DROP_IN_TENANT_ID=null）でも成り立つ不変条件だけをここで見る
+    const { isDropInAvailable } = await import("@/lib/dropInTenant");
     expect(isDropInAvailable("00000000-0000-0000-0000-000000000000")).toBe(false);
     expect(isDropInAvailable(null)).toBe(false);
     expect(isDropInAvailable(undefined)).toBe(false);
@@ -80,5 +80,15 @@ describe("既定テナントを null にできる形になっている", () => {
         /if \(!resolveId\) return;/,
       );
     }
+  });
+});
+
+// 「ジムボード本体では、その1テナントだけ true」は上流の設定値そのものへの断言なので、
+// DROP_IN_TENANT_ID を null にするフォークでは成り立たない。上流だけで見る。
+upstreamOnly("ジムボード本体のドロップイン設定", () => {
+  it("DROP_IN_TENANT_ID が設定されていて、そのテナントだけ true", async () => {
+    const { isDropInAvailable, DROP_IN_TENANT_ID } = await import("@/lib/dropInTenant");
+    expect(DROP_IN_TENANT_ID).toBeTruthy();
+    expect(isDropInAvailable(DROP_IN_TENANT_ID)).toBe(true);
   });
 });

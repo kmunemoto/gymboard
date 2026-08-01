@@ -372,6 +372,41 @@ GymBoard は「パーソナルジム全部盛り」なので、他業種では�
 **5言語ぶん全部が上流とバイト一致のまま保てる**。兄弟が翻訳を減らす必要はなく、
 「触らない」のが最も安全で、上流の文言追加もそのまま流入する。
 
+## 上流のテストがフォークで落ちないようにする
+
+上流のテストが「ジムボードの値」を断言していると、フォークで CI が恒常的に赤くなる。
+するとフォークが上流のテストを編集せざるを得ず、**鉄則3に反して毎回の merge 衝突源になる**。
+
+| 書き方 | 直し方 |
+|---|---|
+| UI文言のリテラル（`getByText("記録")`） | `i18n.t("nav.training")` から引く。フォークは語彙を差し替える |
+| ブランド値のリテラル（`"app.gymboard.mobile"`） | `brand.ts` から引く |
+| フラグの既定値（`expect(FLAG).toBe(true)`） | 挙動は `vi.doMock` で固定してから見る。既定値そのものは `upstreamOnly` へ |
+| テナントUUIDが truthy | フォークは `null` にする。`upstreamOnly` へ |
+| `vertical.ja.json` が `{}` | 同上 |
+| ジムボード固有の設定値（プラン上限・Stripe lookup key） | 弱めず `upstreamOnly` で囲う |
+
+`src/test/helpers/upstream.ts` の `upstreamOnly` は、`BRAND.app` を見て
+フォークでは describe ごと skip する。**上流にとって意味のある回帰テストを弱めずに**
+フォークを緑に保つための逃がし口。使い分けの基準はそのファイルのコメントに書いてある。
+
+### フォーク構成での確認のしかた
+
+上流で緑でも、フォークで落ちるかは分からない。**値をフォーク相当に差し替えて回す**のが確実:
+
+```bash
+# brand.ts / featureFlags.ts / dropInTenant.ts / legacyDefaultTenant.ts /
+# vertical.ja.json を兄弟アプリの値に一時的に書き換えてから
+npm test -- --run
+git checkout -- src/lib/brand.ts src/lib/featureFlags.ts \
+  src/lib/dropInTenant.ts src/lib/legacyDefaultTenant.ts src/locales/vertical.ja.json
+```
+
+2026-08-01 にこの手順で、静的な監査では見つからなかった2件
+（`verticalOverlay.test.ts` の深いマージ検証がオーバーレイの漏れで落ちる／
+`recoveryEmail.test.ts` の文字化け検証がブランド名に依存していた）を発見した。
+**テストを読むだけでは足りない。実際にフォークの値で回すこと。**
+
 ## 出荷前の検査
 
 - [ ] `ceda19b0-d5e0-4928-ab2e-996a0b823af4` がコードに残っていない

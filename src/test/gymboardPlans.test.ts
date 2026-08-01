@@ -6,6 +6,7 @@ import {
   formatLimit,
 } from "@/lib/gymboardPlans";
 import { STRIPE_LIVE_HOSTS } from "@/lib/brand";
+import { upstreamOnly } from "./helpers/upstream";
 import { PLAN_MAP, FREE_PLAN } from "../../supabase/functions/_shared/gymboard-plans";
 
 // 各プランの上限は「請求と実際に使える人数」を決める値なので、取り違えると
@@ -19,7 +20,10 @@ const EXPECTED_LIMITS: Record<string, { customers: number | null; trainers: numb
   premium: { customers: null, trainers: null },
 };
 
-describe("gymboardPlans", () => {
+// Stripe の lookup_key と人数上限は**ジムボードの商品設定そのもの**。
+// 兄弟アプリは自前の Stripe 商品を持つので値が変わる。ここは弱めずに上流限定で固定する
+// （弱めると「Standard を 30名に変えたのに片方だけ直し忘れた」を検出できなくなる）。
+upstreamOnly("gymboardPlans（ジムボードの商品設定）", () => {
   it("maps plan + period to lookup_key", () => {
     expect(lookupKeyFor("light", "monthly")).toBe("gymboard_starter_monthly");
     expect(lookupKeyFor("light", "yearly")).toBe("gymboard_starter_yearly");
@@ -65,6 +69,9 @@ describe("gymboardPlans", () => {
     }
   });
 
+});
+
+describe("gymboardPlans（どの構成でも成り立つ規則）", () => {
   it("uses live environment only for production hosts", () => {
     // ホスト名は brand.ts の STRIPE_LIVE_HOSTS から引く。直書きすると、兄弟アプリ
     // （業種特化フォーク）が自分のドメインに差し替えた瞬間にこのテストが落ちる。

@@ -25,8 +25,8 @@ export type PlanLookupKey = typeof PLAN_LOOKUP_KEYS[number];
 export const PLAN_MAP: Record<PlanLookupKey, PlanDefinition> = {
   gymboard_starter_monthly:  { plan: 'light',    period: 'monthly', max_customers: 20,   max_trainers: 3 },
   gymboard_starter_yearly:   { plan: 'light',    period: 'yearly',  max_customers: 20,   max_trainers: 3 },
-  gymboard_standard_monthly: { plan: 'standard', period: 'monthly', max_customers: 50,   max_trainers: 5 },
-  gymboard_standard_yearly:  { plan: 'standard', period: 'yearly',  max_customers: 50,   max_trainers: 5 },
+  gymboard_standard_monthly: { plan: 'standard', period: 'monthly', max_customers: 30,   max_trainers: 5 },
+  gymboard_standard_yearly:  { plan: 'standard', period: 'yearly',  max_customers: 30,   max_trainers: 5 },
   gymboard_pro_monthly:      { plan: 'premium',  period: 'monthly', max_customers: null, max_trainers: null },
   gymboard_pro_yearly:       { plan: 'premium',  period: 'yearly',  max_customers: null, max_trainers: null },
 };

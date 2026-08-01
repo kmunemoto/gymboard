@@ -157,7 +157,8 @@ export function buildDevFixtures(): Record<string, Record<string, unknown>[]> {
         invite_code: "DEMO1234",
         status: "active",
         gymboard_plan: "standard",
-        max_customers: 50,
+        // Standard プランの上限（src/lib/gymboardPlans.ts の PLAN_CARDS と揃える）
+        max_customers: 30,
         max_trainers: 3,
         owner_user_id: DEV_OWNER_ID,
         subscription_status: "active",

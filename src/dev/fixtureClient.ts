@@ -256,7 +256,13 @@ const RPC_RESULTS: Record<string, () => unknown> = {
   get_tenant_public: () => [clone(rowsOf("tenants")[0])],
   lookup_tenant_by_invite_code: () => [{ tenant_id: DEV_TENANT_ID }],
   get_tenant_booked_slots: () => [],
-  get_tenant_limit_status: () => [{ max_customers: 50, current_customers: 4, is_over_limit: false }],
+  // 上限はフィクスチャのテナント行から引く。ここに数値を直書きすると、プラン定義
+  // （src/lib/gymboardPlans.ts）を変えたときにプランカードの「N名まで」と
+  // 上限バナーの数字が dev:fixtures 上だけ食い違う（実際に 50 のまま取り残されていた）。
+  get_tenant_limit_status: () => {
+    const t = rowsOf("tenants")[0] as { max_customers?: number | null } | undefined;
+    return [{ max_customers: t?.max_customers ?? null, current_customers: 4, is_over_limit: false }];
+  },
 };
 
 export function createFixtureClient() {

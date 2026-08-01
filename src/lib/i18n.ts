@@ -7,6 +7,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 // 使う言語だけを読み込んで初期表示を軽くする（バンドル最適化）。
 import ja from "@/locales/ja.json";
 import { BRAND } from "@/lib/brand";
+import { VERTICAL_OVERLAYS } from "@/locales/vertical";
 
 export const SUPPORTED_LANGUAGES = ["ja", "en", "ko", "zh-CN", "zh-TW"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -19,6 +20,19 @@ const LAZY_LOCALES: Record<string, () => Promise<{ default: Record<string, unkno
 };
 
 /**
+ * 業種語彙のオーバーレイを base のロケールへ深いマージで重ねる。
+ * 兄弟アプリ（業種特化版）が「ジム→サロン」等の語彙だけを差し替えるための口。
+ * GymBoard 本体ではオーバーレイが空なので何も起きない。
+ * 詳細は src/locales/vertical.ts のコメント参照。
+ */
+function applyVerticalOverlay(lng: string): void {
+  const overlay = VERTICAL_OVERLAYS[lng as SupportedLanguage];
+  if (!overlay || Object.keys(overlay).length === 0) return;
+  // deep=true / overwrite=true: 書いたキーだけを上書きし、他は base のまま残す
+  i18n.addResourceBundle(lng, "translation", overlay, true, true);
+}
+
+/**
  * 指定言語のロケールを読み込んで登録する。
  * 戻り値: 読込不要（ja・登録済み・未対応言語）または成功なら true、読込失敗なら false。
  * 失敗時も例外は投げず、ja フォールバック表示のまま継続できる。
@@ -29,6 +43,8 @@ export async function loadLocale(lng: string): Promise<boolean> {
   try {
     const mod = await loader();
     i18n.addResourceBundle(lng, "translation", mod.default, true, true);
+    // base を載せた「後」に重ねる。逆順だと base で上書きされて消える。
+    applyVerticalOverlay(lng);
     return true;
   } catch (e) {
     console.warn(`[i18n] locale load failed: ${lng}`, e);
@@ -96,5 +112,14 @@ if (!i18n.isInitialized) {
     });
   }
 }
+
+// ja は init の resources で同梱しているので、ここで業種語彙を重ねる
+// （他言語は loadLocale の中で base を載せた直後に重ねている）。
+//
+// 初期化ガード（if (!i18n.isInitialized)）の**外**に置いているのは、
+// i18next のインスタンスが別経路で先に初期化されていた場合でも語彙を必ず適用するため。
+// 中に入れると「先に誰かが初期化していたら業種語彙が当たらない」という、
+// 気づきにくい取りこぼしになる。addResourceBundle は冪等なので何度呼んでも安全。
+applyVerticalOverlay("ja");
 
 export default i18n;

@@ -55,6 +55,7 @@ Dr.stretch のような、来店して受けるストレッチ専門のサロン
 | フラグ | 値 | 理由 |
 |---|---|---|
 | `POSTURE_ENABLED` | `true` | この業種の看板機能。ビフォーアフターを見せられる |
+| `SKELETAL_DIAGNOSIS_ENABLED` | `true` | フィットネス文脈の体型分類（ファッション業界の「骨格診断」と同じ語）で、医療隣接の業種ではないので上流のまま `true` でよい（セッコツボードとは違い、ここは変更不要） |
 | `WORKOUT_LOG_ENABLED` | `false` | 種目×重量×回数はストレッチ店では使わない |
 | `MEALS_ENABLED` | `false` | 減量が売りではない |
 | `BODY_METRICS_ENABLED` | `false` | 体重・体脂肪はボディメイク文脈の指標 |

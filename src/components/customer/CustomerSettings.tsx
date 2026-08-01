@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import PushNotificationSection from "./PushNotificationSection";
-import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_CUSTOMER_ENABLED, APPLE_CONNECTION_ENABLED } from "@/lib/featureFlags";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_CUSTOMER_ENABLED, APPLE_CONNECTION_ENABLED, LANGUAGE_SWITCHER_ENABLED } from "@/lib/featureFlags";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();
@@ -268,7 +268,7 @@ const CustomerSettings = () => {
 
 
       {/* Language */}
-      <LanguageSwitcher variant="customer" />
+      {LANGUAGE_SWITCHER_ENABLED && <LanguageSwitcher variant="customer" />}
 
       {/* Theme color */}
       <ThemeColorSwitcher variant="customer" />

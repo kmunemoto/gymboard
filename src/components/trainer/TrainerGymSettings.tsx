@@ -24,7 +24,7 @@ import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import BackgroundImagePicker from "@/components/BackgroundImagePicker";
 import { resizeImageToJpeg } from "@/lib/imageResize";
 import { useTranslation } from "react-i18next";
-import { BILLING_ENABLED } from "@/lib/featureFlags";
+import { BILLING_ENABLED, GOOGLE_REVIEW_ENABLED, LANGUAGE_SWITCHER_ENABLED } from "@/lib/featureFlags";
 import {
   DASHBOARD_STAT_TOGGLES,
   DASHBOARD_SECTION_TOGGLES,
@@ -549,33 +549,39 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </Card>
       </section>
 
-      <Separator />
+      {/* 柔道整復師法24条など、業種によっては口コミ依頼が広告規制に触れうるため
+          フラグで無効化できるようにしてある（src/lib/featureFlags.ts）。 */}
+      {GOOGLE_REVIEW_ENABLED && (
+        <>
+          <Separator />
 
-      {/* === Google口コミ依頼 === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.googleReviewSection")}</h3>
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">{t("settings.trainer.googleReviewDesc")}</p>
-            <div className="space-y-1.5">
-              <Label htmlFor="google-review-url" className="text-xs font-bold">{t("settings.trainer.googleReviewUrlLabel")}</Label>
-              <Input
-                id="google-review-url"
-                type="url"
-                inputMode="url"
-                value={googleReviewUrl}
-                onChange={(e) => setGoogleReviewUrl(e.target.value)}
-                placeholder={t("settings.trainer.googleReviewUrlPlaceholder")}
-                maxLength={500}
-              />
-            </div>
-            <Button onClick={handleSaveGoogleReviewUrl} disabled={savingGoogleReviewUrl || !tenant} size="sm" className="h-10">
-              <Save className="w-4 h-4 mr-1" />
-              {savingGoogleReviewUrl ? t("common.saving") : t("common.save")}
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
+          {/* === Google口コミ依頼 === */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.googleReviewSection")}</h3>
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.googleReviewDesc")}</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="google-review-url" className="text-xs font-bold">{t("settings.trainer.googleReviewUrlLabel")}</Label>
+                  <Input
+                    id="google-review-url"
+                    type="url"
+                    inputMode="url"
+                    value={googleReviewUrl}
+                    onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                    placeholder={t("settings.trainer.googleReviewUrlPlaceholder")}
+                    maxLength={500}
+                  />
+                </div>
+                <Button onClick={handleSaveGoogleReviewUrl} disabled={savingGoogleReviewUrl || !tenant} size="sm" className="h-10">
+                  <Save className="w-4 h-4 mr-1" />
+                  {savingGoogleReviewUrl ? t("common.saving") : t("common.save")}
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        </>
+      )}
 
       <Separator />
 
@@ -831,7 +837,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       )}
 
       {/* === 言語 / Language === */}
-      <LanguageSwitcher variant="trainer" />
+      {LANGUAGE_SWITCHER_ENABLED && <LanguageSwitcher variant="trainer" />}
 
       {/* === テーマカラー / Theme color === */}
       <ThemeColorSwitcher variant="trainer" />

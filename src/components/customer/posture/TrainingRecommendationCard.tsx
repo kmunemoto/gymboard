@@ -28,14 +28,16 @@ type Props = {
 const TrainingRecommendationCard = ({ skeletalType, feedbacks = [] }: Props) => {
   const { t } = useTranslation();
 
-  if (!skeletalType) return null;
-
-  const color = TYPE_COLORS[skeletalType];
-
-  const rec: RecommendationData = {
-    summary: t(`posture.recommendation.types.${skeletalType}.summary`),
-    tips: t(`posture.recommendation.types.${skeletalType}.tips`, { returnObjects: true }) as TrainingTip[],
-  };
+  // タイプ別の推奨（rec）は骨格診断に依存するので SKELETAL_DIAGNOSIS_ENABLED=false の
+  // フォークでは skeletalType が常に null になり、この部分だけ出なくなる
+  // （CustomerPosture.tsx 側でフラグに応じて null を渡している）。
+  const color = skeletalType ? TYPE_COLORS[skeletalType] : undefined;
+  const rec: RecommendationData | null = skeletalType
+    ? {
+        summary: t(`posture.recommendation.types.${skeletalType}.summary`),
+        tips: t(`posture.recommendation.types.${skeletalType}.tips`, { returnObjects: true }) as TrainingTip[],
+      }
+    : null;
 
   const POSTURE_EXERCISES: Record<string, TrainingTip> = {
     "頭部の前傾（ストレートネック）": t("posture.recommendation.postureExercises.straightNeck", { returnObjects: true }) as TrainingTip,
@@ -43,13 +45,17 @@ const TrainingRecommendationCard = ({ skeletalType, feedbacks = [] }: Props) => 
     "骨盤の前傾/後傾": t("posture.recommendation.postureExercises.pelvicTilt", { returnObjects: true }) as TrainingTip,
   };
 
-  // Build posture-based extra tips from warnings/bad feedbacks
+  // 見えている姿勢の癖（猫背・ストレートネック・骨盤の傾き）に対する提案は、
+  // 骨格タイプの分類（診断）とは独立している。skeletalType が null でも出る。
   const postureTips: TrainingTip[] = [];
   for (const fb of feedbacks) {
     if (fb.severity !== "good" && POSTURE_EXERCISES[fb.category]) {
       postureTips.push(POSTURE_EXERCISES[fb.category]);
     }
   }
+
+  // rec も postureTips も無ければ、カード自体を出す意味が無い
+  if (!rec && postureTips.length === 0) return null;
 
   return (
     <Card className="border-accent/30">
@@ -59,26 +65,30 @@ const TrainingRecommendationCard = ({ skeletalType, feedbacks = [] }: Props) => 
           <span className="text-sm font-bold">{t("posture.recommendation.title")}</span>
         </div>
 
-        <p className="text-xs text-muted-foreground">{rec.summary}</p>
+        {rec && (
+          <>
+            <p className="text-xs text-muted-foreground">{rec.summary}</p>
 
-        <div className="space-y-3">
-          {rec.tips.map((tip, i) => (
-            <div key={i} className="bg-muted/40 rounded-lg p-3 space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <Dumbbell className="w-3.5 h-3.5 shrink-0" style={{ color }} />
-                <span className="text-xs font-bold">{tip.area}</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {tip.exercises.map((ex) => (
-                  <span key={ex} className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${color}20`, color }}>
-                    {ex}
-                  </span>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground">{tip.reason}</p>
+            <div className="space-y-3">
+              {rec.tips.map((tip, i) => (
+                <div key={i} className="bg-muted/40 rounded-lg p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Dumbbell className="w-3.5 h-3.5 shrink-0" style={{ color }} />
+                    <span className="text-xs font-bold">{tip.area}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tip.exercises.map((ex) => (
+                      <span key={ex} className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${color}20`, color }}>
+                        {ex}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{tip.reason}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
         {/* Posture-based additional exercises */}
         {postureTips.length > 0 && (

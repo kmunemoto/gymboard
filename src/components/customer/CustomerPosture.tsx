@@ -13,6 +13,7 @@ import { analyzePosture } from "./posture/postureAnalysis";
 import { diagnoseSkeletalType } from "./posture/skeletalDiagnosis";
 import type { Keypoint } from "./posture/types";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { SKELETAL_DIAGNOSIS_ENABLED } from "@/lib/featureFlags";
 
 // BlazePose 33-keypoint skeleton edges
 const SKELETON_EDGES: [number, number][] = [
@@ -270,8 +271,14 @@ const CustomerPosture = () => {
     [keypoints, imgSize.h]
   );
 
+  // SKELETAL_DIAGNOSIS_ENABLED=false のフォークでは常に null。
+  // SkeletalTypeCard / saveDiagnosis / TrainingRecommendationCard のタイプ別セクションが
+  // 連鎖的に非表示になる（src/lib/featureFlags.ts のコメント参照）。
   const skeletalDiagnosis = useMemo(
-    () => (keypoints.length > 0 ? diagnoseSkeletalType(keypoints, imgSize.h) : null),
+    () =>
+      SKELETAL_DIAGNOSIS_ENABLED && keypoints.length > 0
+        ? diagnoseSkeletalType(keypoints, imgSize.h)
+        : null,
     [keypoints, imgSize.h]
   );
 

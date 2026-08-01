@@ -120,6 +120,14 @@ git checkout upstream/main -- src/locales/ja.json
 git merge --allow-unrelated-histories upstream/main
 ```
 
+> **⚠️ ブランド補間の葉に注意。** フォークの `ja.json` が Phase 0-A より前の世代だと、
+> 製品名が**リテラル**で入っている（上流は `{{brandJa}}` に追い出し済み）。
+> 値が違うので機械的には「フォークが変えた葉」に見えるが、これをオーバーレイに写すと
+> **brand.ts からの注入が効かなくなる**（＝Phase 0-A が死ぬ）。
+> スクリプトは自動で除外し、件数と内訳を報告する。
+> セッコツボードでは26葉が該当した（2026-08-01）。
+> `brandInterpolation.test.ts` がオーバーレイとプリセットも走査して最後の砦になる。
+
 **スクリプトが出す警告は必ず読むこと。** オーバーレイは「上書き」しかできないので、
 次の3つは自動では移せず、人間の判断が要る:
 
@@ -267,7 +275,20 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 - [ ] `capacitor.config.ts` … `appId` / `appName` — **`brand.ts` の `NATIVE_APP_SCHEME` と必ず一致させる**
 - [ ] `.github/workflows/ios-build.yml` … bundle id・プロビジョニングプロファイル・`MARKETING_VERSION`
 - [ ] Firebase プロジェクト … `GoogleService-Info.plist` / `google-services.json` / Web VAPID鍵
-- [ ] Supabase プロジェクト … `.env` / `supabase/config.toml` / `deploy-functions.yml` の project ref
+- [ ] Supabase プロジェクト（project ref）… **5箇所。1つでも漏れると別プロジェクトを向く**
+  - [ ] `.env` の `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`
+  - [ ] `supabase/config.toml` の `project_id`
+  - [ ] `.github/workflows/deploy-functions.yml` の `--project-ref`
+  - [ ] **`supabase/functions/mcp/index.ts` の `projectRef`** ← 見落としやすい。
+        MCPサーバーの OAuth issuer になるので、間違っていると
+        **別プロジェクトの issuer で認証を要求する**。型もテストも通る
+  - [ ] `.lovable/mcp/manifest.json`（自動生成物だがコミットされている）
+
+  > **merge で戻る。** これらは上流にジムボードの値が入っているので、
+  > 取り込みのたびに `rrbfwitprzuevzytykrq` に戻りうる。セッコツボードでは
+  > 実際に `mcp/index.ts` が戻っていた（2026-08-01）。
+  > 取り込み後に必ず `grep -rn rrbfwitprzuevzytykrq --include='*.ts' --include='*.toml' --include='*.yml' --include='*.json' .`
+  > で確認すること（`supabase/migrations/` の過去分と `mem/` は履歴なのでそのままでよい）。
 
 **見た目**
 - [ ] `index.html`（title / description / OGP）

@@ -44,8 +44,24 @@ const overlay = {};
 const removed = []; // 上流にあってフォークに無い（＝フォークが消した）
 const added = []; // フォークにあって上流に無い（＝フォークが足した）
 const reshaped = []; // 同じキーだが文字列/オブジェクト/配列の形が変わった
+const interpolated = []; // 上流が {{brandJa}} 等の補間に置き換えたキー（下記）
 let changed = 0;
 let same = 0;
+
+/**
+ * 上流が製品名を `{{brandJa}}` 等の補間に追い出したキーかどうか。
+ *
+ * フォークの ja.json が Phase 0-A より前の世代だと、そこには製品名が**リテラルで**
+ * 入っている（例: 上流 `"{{brandJa}}へようこそ"` ／ フォーク `"セッコツボードへようこそ"`）。
+ * 値が違うので機械的には「フォークが変えた葉」に見えるが、これをオーバーレイに
+ * 書き写すと **Phase 0-A（brand.ts からの注入）が死ぬ**:
+ *   - brand.ts を変えても文言が追従しなくなる
+ *   - `brandInterpolation.test.ts` は base のロケールしか見ないので気づけない
+ * セッコツボードでは実際に26葉が紛れ込んだ（2026-08-01）。
+ *
+ * 補間のまま base に任せるのが正しいので、オーバーレイからは外して警告する。
+ */
+const BRAND_INTERPOLATION = /\{\{\s*brand(Ja|En|App)\s*\}\}/;
 
 /** overlay の dotted path に値を書き込む */
 function setPath(root, path, value) {
@@ -77,6 +93,9 @@ function walk(up, fk, path) {
     // 配列（returnObjects で丸ごと引かれる）は要素ごとではなく丸ごと比較する
     if (JSON.stringify(upValue) === JSON.stringify(fkValue)) {
       same++;
+    } else if (typeof upValue === "string" && BRAND_INTERPOLATION.test(upValue)) {
+      // 上流が製品名を補間に追い出した葉。オーバーレイに写すと補間が死ぬので外す。
+      interpolated.push({ path: dotted, up: upValue, fork: String(fkValue) });
     } else {
       setPath(overlay, here, fkValue);
       changed++;
@@ -105,6 +124,25 @@ const warn = (label, list) => {
 };
 
 console.error(`\n上書きする葉: ${changed}件 / 上流と同じ葉: ${same}件`);
+
+if (interpolated.length) {
+  console.error(
+    `\nℹ️  ブランド補間の葉を ${interpolated.length}件、オーバーレイから除外した`,
+  );
+  console.error(
+    "   上流が製品名を {{brandJa}} 等に追い出したキー。フォーク側は製品名がリテラルで" +
+      "\n   入っているため差分に見えるが、写すと brand.ts からの注入が効かなくなる。" +
+      "\n   base の補間に任せるのが正しい（製品名は brand.ts で変える）。",
+  );
+  for (const { path, up, fork } of interpolated.slice(0, 10)) {
+    console.error(`   - ${path}\n       上流: ${up}\n       フォーク: ${fork}`);
+  }
+  if (interpolated.length > 10) console.error(`   … 他 ${interpolated.length - 10}件`);
+  console.error(
+    "   ※ 製品名の差し替え以外の理由でも文言を変えていた葉があれば、手で戻すこと。",
+  );
+}
+
 warn(
   "フォークが削除したキー（オーバーレイでは表現できない。上流の文言がそのまま出る）",
   removed,

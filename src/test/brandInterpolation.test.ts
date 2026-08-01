@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import i18n from "@/lib/i18n";
 import { loadLocale } from "@/lib/i18n";
 import { BRAND } from "@/lib/brand";
@@ -16,6 +16,13 @@ import { BRAND } from "@/lib/brand";
 const LANGS = ["ja", "en", "ko", "zh-CN", "zh-TW"] as const;
 const raw = (l: string) => readFileSync(`src/locales/${l}.json`, "utf8");
 
+/** 製品名の直書きを探す正規表現（brand.ts から作る） */
+function brandLiteralPattern(): RegExp {
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = [BRAND.ja, BRAND.en, `${BRAND.app}アプリ`].map(escape);
+  return new RegExp(names.join("|"), "g");
+}
+
 describe("ブランド名のロケール注入", () => {
   it("ロケールJSONに製品名の literal が残っていない", () => {
     for (const l of LANGS) {
@@ -23,10 +30,35 @@ describe("ブランド名のロケール注入", () => {
       // {{brandJa}} などの変数名に含まれる "brand" は別物なので、製品名そのものだけを見る。
       // 製品名は brand.ts から引く。直書きすると、兄弟アプリ（業種特化フォーク）が
       // 自分のブランド名をロケールに書き戻しても、この番人が素通りしてしまう。
-      const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const names = [BRAND.ja, BRAND.en, `${BRAND.app}アプリ`].map(escape);
-      const hits = src.match(new RegExp(names.join("|"), "g")) ?? [];
+      const hits = src.match(brandLiteralPattern()) ?? [];
       expect(hits, `${l}.json に製品名の直書きが残っています: ${hits.join(", ")}`).toEqual([]);
+    }
+  });
+
+  // 業種オーバーレイと業種プリセットも同じ規則で守る。
+  //
+  // ここを見ていないと、`scripts/extract-vertical-overlay.mjs` の出力を
+  // そのまま採用したときに **Phase 0-A（brand.ts からの注入）が死ぬ**。
+  // フォークの ja.json が Phase 0-A より前の世代だと製品名がリテラルで入っており、
+  // 上流の `{{brandJa}}` と値が違うので「フォークが変えた葉」として抽出されてしまう。
+  // セッコツボードでは実際に26葉が紛れ込んだ（2026-08-01）。
+  // 抽出スクリプト側でも除外・警告するが、最後の砦としてここでも見る。
+  it("業種オーバーレイ・プリセットに製品名の literal が残っていない", () => {
+    const targets = [
+      "src/locales/vertical.ja.json",
+      ...readdirSync("mem/ops/vertical-presets")
+        .filter((f) => f.endsWith(".vertical.ja.json"))
+        .map((f) => `mem/ops/vertical-presets/${f}`),
+    ];
+    for (const path of targets) {
+      const src = readFileSync(path, "utf8");
+      const hits = src.match(brandLiteralPattern()) ?? [];
+      expect(
+        hits,
+        `${path} に製品名の直書きが残っています: ${hits.join(", ")}\n` +
+          `オーバーレイに製品名を書くと brand.ts を変えても文言が追従しません。` +
+          `該当キーはオーバーレイから外し、base の {{brandJa}} 等の補間に任せてください。`,
+      ).toEqual([]);
     }
   });
 

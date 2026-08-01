@@ -170,6 +170,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const selectedPlan = customerPlan;
 
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? DEFAULT_BOOKING_BUFFER_MINUTES;
+  // 同時に受けられる予約数（ベッド数・施術者数）。未ロード時は安全側の1。
+  const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
@@ -179,7 +181,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     // configured buffer (既定15分). Apply the same footprint to both existing bookings
     // and the candidate so the buffer is enforced
     // before and after every booking.
-    return bookedSlots.some((b) => {
+    const overlapping = bookedSlots.filter((b) => {
       if (b.date !== date) return false;
       // 予約変更中は、変更対象（旧枠）を占有としてカウントしない。
       // これで同日の近い時刻（旧枠のバッファ内）にも移動できる（旧枠は削除して作り直すため）。
@@ -192,6 +194,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       const bEnd = timeToMin(b.endTime);
       return newMin < bEnd && bMin < newEnd;
     });
+    // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定する。
+    if (overlapping.some((b) => b.isBlock)) return true;
+    return overlapping.length >= bookingCapacity;
   };
 
   const isBookingDayClosed = (date: string): boolean => {

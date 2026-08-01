@@ -51,6 +51,8 @@ const BUSINESS_END_HOURS = Array.from({ length: 13 }, (_, i) => hourOption(17, i
 const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
 // 予約と予約の間に必ず空ける時間（分）。15分刻み。
 const BUSINESS_BUFFER_OPTIONS = [0, 15, 30, 45, 60];
+// 同じ時間帯に受けられる予約の数（ベッド数・施術者数など）。1＝従来どおり同時1件のみ。
+const BUSINESS_CAPACITY_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10];
 
 // 表示ON/OFFの項目定義は src/lib/gymDisplaySettings.ts に集約している
 // （実際に表示を出し分ける TrainerSidebar / TrainerDashboard と同じ定義を参照し、
@@ -100,6 +102,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [businessEnd, setBusinessEnd] = useState("21:00");
   const [businessSlotMinutes, setBusinessSlotMinutes] = useState(60);
   const [businessBufferMinutes, setBusinessBufferMinutes] = useState(15);
+  const [businessCapacity, setBusinessCapacity] = useState(1);
   const [savingBusinessHours, setSavingBusinessHours] = useState(false);
 
   useEffect(() => {
@@ -132,7 +135,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (tenant?.operating_hours?.end) setBusinessEnd(tenant.operating_hours.end);
     if (tenant?.slot_duration_minutes) setBusinessSlotMinutes(tenant.slot_duration_minutes);
     if (tenant?.booking_buffer_minutes != null) setBusinessBufferMinutes(tenant.booking_buffer_minutes);
-  }, [tenant?.operating_hours?.start, tenant?.operating_hours?.end, tenant?.slot_duration_minutes, tenant?.booking_buffer_minutes]);
+    if (tenant?.booking_capacity != null) setBusinessCapacity(tenant.booking_capacity);
+  }, [tenant?.operating_hours?.start, tenant?.operating_hours?.end, tenant?.slot_duration_minutes, tenant?.booking_buffer_minutes, tenant?.booking_capacity]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -338,7 +342,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         operating_hours: { start: businessStart, end: businessEnd },
         slot_duration_minutes: businessSlotMinutes,
         booking_buffer_minutes: businessBufferMinutes,
-      })
+        booking_capacity: businessCapacity,
+      } as any)
       .eq("id", tenant.id);
     if (error) {
       console.error("営業時間の保存に失敗:", error);
@@ -639,6 +644,20 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 <SelectContent>
                   {BUSINESS_BUFFER_OPTIONS.map((m) => (
                     <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.businessHoursCapacity")}</Label>
+              <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursCapacityDesc")}</p>
+              <Select value={String(businessCapacity)} onValueChange={(v) => setBusinessCapacity(parseInt(v, 10))}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_CAPACITY_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>{t("settings.trainer.businessHoursCapacityUnit", { count: n })}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -291,6 +291,8 @@ export const checkSlotBlocked = (
   // 呼び出し元が渡さない場合のみ既定値（15分バッファ・60分セッション）を使う。
   bufferMinutes: number = 15,
   sessionMinutes: number = 60,
+  // 同時に受けられる予約数（tenants.booking_capacity）。既定1＝従来どおり「1件でも重なれば満枠」。
+  capacity: number = 1,
 ): boolean => {
   const BUFFER_MINUTES = bufferMinutes;
   const timeToMin = (t: string) => {
@@ -304,12 +306,18 @@ export const checkSlotBlocked = (
   // before or after an existing booking.
   const newEnd = endTimeOverride ? timeToMin(endTimeOverride) : newMin + sessionMinutes + BUFFER_MINUTES;
 
-  return bookings.some((b) => {
+  const overlapping = bookings.filter((b) => {
     if (b.date !== date || b.status === "キャンセル済み") return false;
     const bMin = timeToMin(b.startTime);
     const bEnd = timeToMin(b.endTime) + (b.isBlocked ? 0 : BUFFER_MINUTES);
     return newMin < bEnd && bMin < newEnd;
   });
+
+  // ブロック枠（休憩・臨時休業）は店全体を塞ぐので、空きベッドが何台あっても予約不可。
+  // それ以外は「重なっている件数が上限に達しているか」で判定する。
+  // DB側の check_booking_overlap も同じ規則で最終判定する。
+  if (overlapping.some((b) => b.isBlocked)) return true;
+  return overlapping.length >= Math.max(capacity, 1);
 };
 
 /**

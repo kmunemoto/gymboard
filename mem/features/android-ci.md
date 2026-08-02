@@ -155,29 +155,98 @@ YAMLを読んで検査している（配線が外れると上記のとおりCI�
 - Secret の値を `echo` していないこと
 
 
-| Secret | 内容 | 取得方法 |
+| Secret | 内容 | base64化 |
 |---|---|---|
-| `GOOGLE_SERVICES_JSON_BASE64` | `google-services.json` をbase64化したもの | Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("google-services.json")) \| Set-Clipboard` でクリップボードにコピーしてSecretへ貼り付け |
-| `ANDROID_KEYSTORE_BASE64` | リリース署名用キーストア（.jks/.keystore）をbase64化したもの | 同上のコマンドをキーストアファイルに対して実行。**Android Studioの署名ウィザードで今まさに使っているファイルと同じもの** |
-| `ANDROID_KEYSTORE_PASSWORD` | ストアのパスワード | 署名ウィザードで毎回入力している値と同じ |
-| `ANDROID_KEY_ALIAS` | キーのエイリアス名 | 同上 |
-| `ANDROID_KEY_PASSWORD` | キーのパスワード | 同上 |
-| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Play Console API用サービスアカウントのJSON鍵（**新規に作る**。生のJSON文字列をそのまま貼る、base64化しない） | 下記手順 |
+| `GOOGLE_SERVICES_JSON_BASE64` | Firebase の `google-services.json` | **する** |
+| `ANDROID_KEYSTORE_BASE64` | リリース署名用キーストア（.jks / .keystore） | **する** |
+| `ANDROID_KEYSTORE_PASSWORD` | ストアのパスワード | しない |
+| `ANDROID_KEY_ALIAS` | キーのエイリアス名 | しない |
+| `ANDROID_KEY_PASSWORD` | キーのパスワード | しない |
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Play Console API 用サービスアカウントのJSON鍵 | **しない**（生JSONをそのまま） |
 
-`GOOGLE_SERVICES_JSON_BASE64` 以外はiOS側の `APPLE_TEAM_ID` / `IOS_P12_BASE64` 等と
-同じ考え方（証明書・鍵の類）。**⚠️ これらはCLAUDE.mdの「秘密情報（サービスアカウントJSON、
-署名鍵など）はコミットしない」に該当する。リポジトリに直接書かず、必ずGitHub Secretsに登録すること。**
+**⚠️ これらはCLAUDE.mdの「秘密情報（サービスアカウントJSON、署名鍵など）はコミットしない」に該当する。
+リポジトリに直接書かず、必ずGitHub Secretsに登録すること。**
 
-### `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` の作り方（初回のみ）
+登録場所: リポジトリ → Settings → Secrets and variables → Actions → New repository secret。
+**Name は大文字小文字も含めて完全一致**させること（1文字違うと「未設定」扱いになる）。
 
-1. Play Console → 該当アプリ → 設定 → API アクセス
-2. 「新しいサービス アカウントを作成」→ Google Cloud Console に飛ぶのでそこで作成
-   （プロジェクトが未リンクなら先にリンクする）
-3. 作成したサービスアカウントの「鍵」タブ → 鍵を追加 → JSON → ダウンロード
-4. Play Console に戻り、そのサービスアカウントを「ユーザーを招待」から追加し、
-   `app.gymboard.mobile` に対して「リリースの管理」権限を付与
-5. ダウンロードしたJSONファイルの中身をそのまま `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
-   Secretに貼る（base64化は不要。`r0adkll/upload-google-play` が生JSON文字列を期待する）
+### base64 化の共通手順（Windows PowerShell）
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\file")) | Set-Clipboard
+```
+
+クリップボードに入るのでそのまま Secret 欄に貼る。
+
+> **⚠️ `certutil -encode` を使わないこと。** `-----BEGIN CERTIFICATE-----` のヘッダが付き、
+> ワークフローの `base64 --decode` が失敗する。改行が混ざるだけなら問題ない
+> （`base64 --decode` は改行を無視する）が、ヘッダ行は無視しない。
+
+### 1. `GOOGLE_SERVICES_JSON_BASE64`
+
+ファイルは既に Windows のプロジェクトにある: `android\app\google-services.json`。
+無ければ Firebase コンソール → プロジェクト（`gymboard-bc7f3`）→ 歯車 → プロジェクトの設定 →
+全般 → マイアプリ → Android アプリ（`app.gymboard.mobile`）→ `google-services.json` をダウンロード。
+
+上の base64 コマンドをこのファイルに対して実行する。
+
+### 2. `ANDROID_KEYSTORE_BASE64`
+
+**Android Studio の署名ウィザードで今まさに使っているファイルと同じもの。**
+新しく作ってはいけない（Play Store の署名は原則変更不可）。
+
+場所が分からないときは Android Studio → Build → Generate Signed App Bundle / APK →
+「Key store path」に前回のパスが残っている。
+
+上の base64 コマンドをそのファイルに対して実行する。
+
+> Play App Signing（Google が配布用の署名を管理する仕組み）を使っている場合、
+> 手元にあるのは「アップロード鍵」になる。**それで正しい。** CI がやるのは
+> アップロード用の署名までで、配布用の署名は Google 側で行われる。
+
+### 3〜5. パスワードとエイリアス
+
+署名ウィザードで毎回入力している値をそのまま入れる。
+
+**エイリアス名が思い出せない場合**は、キーストアから読み出せる。
+
+```powershell
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -list -v -keystore "C:\path\to\release.jks"
+```
+
+ストアのパスワードを聞かれるので入力すると、`別名 (Alias name):` に出る。
+`keytool` は Android Studio 同梱の JDK に入っているのでインストール不要
+（パスは Android Studio のバージョンで変わる。`jbr` が無ければ `jre`）。
+
+**パスワードが分からない場合は詰み**（キーストアは復旧できない）。
+Play App Signing を有効にしていればアップロード鍵の再設定を Google に申請できるが、
+していない場合はアプリの更新自体ができなくなるので、必ず控えを取っておくこと。
+
+### 6. `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`（新規に作る。ここだけ手数が多い）
+
+1. **Play Console のトップ**（個別アプリではなく全アプリの画面）→ 左メニュー最下部の
+   「設定」→「デベロッパー アカウント」→ **「API アクセス」**
+2. Google Cloud プロジェクトが未リンクなら、ここでリンクする（新規作成でよい）
+3. 「サービス アカウント」の欄 → **「新しいサービス アカウントを作成」** →
+   案内に従って **Google Cloud Console** を開く
+4. Cloud Console 側で: サービス アカウントを作成 → 名前を入れる（例 `play-publisher`）→
+   **ロールの付与は不要**（権限は Play Console 側で与える）→ 完了
+5. 作成したサービス アカウントを開く → **「キー」タブ** → 「鍵を追加」→
+   「新しい鍵を作成」→ **JSON** → ダウンロード
+6. **Play Console に戻って「完了」/「更新」を押す**と、一覧にそのアカウントが出る
+7. そのアカウントの「アクセス権を管理」→ **アプリを `app.gymboard.mobile` に限定** →
+   権限で最低限 **「リリース」系（製品版リリースの管理 / テストリリースの管理 / アプリ情報の閲覧）**
+   を付与 → 招待/保存
+8. ダウンロードした JSON をテキストエディタで開き、**中身をそのまま**貼る
+   （**base64 化しない。** `r0adkll/upload-google-play` が生JSON文字列を期待する）
+
+**落とし穴:**
+
+- 権限の反映に数分かかることがある。直後に実行して権限エラーが出たら少し待つ
+- 手順6を飛ばすと Play Console 側にサービス アカウントが現れず、権限を付けられない
+- JSON をダウンロードできるのは作成時の1回だけ。無くしたら鍵を作り直す
+- **そのアプリに一度も AAB/APK を上げたことがないと API 経由のアップロードはできない。**
+  ジムボードは既に公開済み（versionCode 81 / versionName 9.0）なので該当しない
 
 ## Windows + Android Studio の扱い
 

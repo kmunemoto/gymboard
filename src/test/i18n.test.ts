@@ -1,5 +1,20 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import i18n, { SUPPORTED_LANGUAGES, changeLanguage, loadLocale } from "@/lib/i18n";
+
+/**
+ * ja 側の期待値は「base + 業種オーバーレイ」から引く。
+ * リテラル（"設定"）で断言すると、その語をオーバーレイしたフォークで必ず落ちる
+ * （mem/ops/vertical-fork.md「上流のテストがフォークで落ちないようにする」）。
+ * en 側はロケールを上流とバイト一致のまま保つ方針なのでリテラルでよい。
+ */
+const effectiveJa = (key: string): string => {
+  const base = JSON.parse(readFileSync("src/locales/ja.json", "utf8"));
+  const overlay = JSON.parse(readFileSync("src/locales/vertical.ja.json", "utf8"));
+  const at = (o: unknown, k: string) =>
+    k.split(".").reduce<unknown>((v, part) => (v as Record<string, unknown>)?.[part], o);
+  return (at(overlay, key) ?? at(base, key)) as string;
+};
 
 describe("i18n configuration", () => {
   beforeEach(() => {
@@ -14,7 +29,9 @@ describe("i18n configuration", () => {
 
   it("translates known keys in ja and en (en は遅延読込)", async () => {
     await changeLanguage("ja");
-    expect(i18n.t("settings.title")).toBe("設定");
+    // 生のキーがそのまま返る＝リソース未ロード、を確実に弾く
+    expect(i18n.t("settings.title")).not.toBe("settings.title");
+    expect(i18n.t("settings.title")).toBe(effectiveJa("settings.title"));
     await changeLanguage("en");
     expect(i18n.t("settings.title")).toBe("Settings");
     expect(i18n.t("common.save")).toBe("Save");
@@ -38,6 +55,6 @@ describe("i18n configuration", () => {
 
   it("falls back to ja for unsupported languages", async () => {
     await changeLanguage("fr");
-    expect(i18n.t("settings.title")).toBe("設定");
+    expect(i18n.t("settings.title")).toBe(effectiveJa("settings.title"));
   });
 });

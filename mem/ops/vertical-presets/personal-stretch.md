@@ -63,7 +63,7 @@ Dr.stretch のような、来店して受けるストレッチ専門のサロン
 | `BODY_METRICS_ENABLED` | `false` | 体重・体脂肪はボディメイク文脈の指標 |
 | `MUSCLE_RADAR_ENABLED` | `false` | **筋トレ記録がOFFだとデータ源が無くなる**ため道連れでOFF |
 | `WORKOUT_SHARE_ENABLED` | `false` | 記録が無いので共有するものが無い |
-| `TRIAL_BOOKING_ENABLED` | `false` | 体験予約はジム特有の集客手法。ジムボード以外の兄弟アプリは全て無くす方針（2026-08-02決定）。false でも `trial_bookings` のデータ・Edge Functionは削除しない。既存の `trialBooking`/`trialCancel` オーバーレイキー（`personal-stretch.vertical.ja.json`）は不可用時の案内文以外は出なくなるが、害はないのでそのまま残してよい |
+| `TRIAL_BOOKING_ENABLED` | `false` | 体験予約はジム特有の集客手法。ジムボード以外の兄弟アプリは全て無くす方針（2026-08-02決定）。false でも `trial_bookings` のデータ・Edge Functionは削除しない。既存の `trialBooking`/`trialCancel` オーバーレイキー（`personal-stretch.vertical.ja.json`）は不可用時の案内文以外は出なくなるが、害はないのでそのまま残してよい。**OFFでも公開ページは残り「現在受け付けていません」の案内が実際にお客様の目に触れるので、`trialBooking.notAvailableTitle`／`notAvailableBody` をオーバーレイで差し替えること**（既定文は「ジムまでお問い合わせください」） |
 
 `MUSCLE_RADAR_ENABLED` を単独で ON にしないこと。レーダーは `workouts` の集計で
 描かれるので、記録タブを閉じたまま残すと**常に空のチャート**が出る。

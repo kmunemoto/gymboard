@@ -114,7 +114,7 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
 | `MEALS_ENABLED` | `false` | 食事指導を売りにしないスタジオが大半という想定。栄養指導も行う場合は個別に見直す |
 | `GOOGLE_REVIEW_ENABLED` | `true` | 柔道整復師法のような広告規制の対象業種ではない |
 | `LANGUAGE_SWITCHER_ENABLED` | `false` | `ja.json` が上流とバイト一致でない（21項目追加・11項目変更）ため、他言語に切り替えるとジム向け語彙のまま出る箇所が生まれる。上流取り込み・オーバーレイ移行が終わるまでは日本語固定にする |
-| `TRIAL_BOOKING_ENABLED` | `false` | 体験予約はジム特有の集客手法。ジムボード以外の兄弟アプリは全て無くす方針（2026-08-02決定）。false でも `trial_bookings` のデータ・Edge Functionは削除しない。既存の `trialBooking`/`trialCancel` オーバーレイキー（`pilates.vertical.ja.json`）は不可用時の案内文以外は出なくなるが、害はないのでそのまま残してよい |
+| `TRIAL_BOOKING_ENABLED` | `false` | 体験予約はジム特有の集客手法。ジムボード以外の兄弟アプリは全て無くす方針（2026-08-02決定）。false でも `trial_bookings` のデータ・Edge Functionは削除しない。既存の `trialBooking`/`trialCancel` オーバーレイキー（`pilates.vertical.ja.json`）は不可用時の案内文以外は出なくなるが、害はないのでそのまま残してよい。**OFFでも公開ページは残り「現在受け付けていません」の案内が実際にお客様の目に触れるので、`trialBooking.notAvailableTitle`／`notAvailableBody` をオーバーレイで差し替えること**（既定文は「ジムまでお問い合わせください」） |
 
 
 > **トレーナー側**: 上記の顧客側フラグは `TrainerClientDetail`（カルテの記録/食事タブ・体重パネル・レーダー）と `CustomerMonthlyReport`（体重・記録・食事セクション）にも同じ値が効く。フォークでお客様側だけ OFF にしたとき、トレーナー画面が上流のまま残らない。

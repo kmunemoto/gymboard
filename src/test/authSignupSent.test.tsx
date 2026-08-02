@@ -7,6 +7,18 @@ import Auth from "@/pages/Auth";
 // t() が生キー（"auth.modeLogin"）を返して日本語のアサーションが全滅する。
 import i18n from "@/lib/i18n";
 
+/**
+ * i18n の値を正規表現に埋めるためのエスケープ。
+ * 文言には「（確認用）」「…」など正規表現のメタ文字が入りうるので、必ず通すこと。
+ */
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * 「再送できるまであと{{seconds}}秒」を秒数不定で照合するための正規表現。
+ * 文言はオーバーレイで変わりうるので、数字の位置だけを \d+ に差し替えて組み立てる。
+ */
+const COOLDOWN_RE = esc(i18n.t("auth.resendCooldown", { seconds: "__N__" })).replace("__N__", "\\d+");
+
 // 新規登録後の「確認メールを送信しました」がトーストで見落とされていた問題と、
 // その周辺で見つかった一連の不具合の回帰テスト。
 //
@@ -61,21 +73,21 @@ const renderAuth = (initialPath = "/auth") =>
 
 /** 新規登録フォームを開いて送信する（既定の「お客様」タブのまま） */
 const submitSignup = async (email = EMAIL) => {
-  fireEvent.click(screen.getByText("アカウントをお持ちでない方はこちら"));
-  fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: email } });
-  fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
-  fireEvent.change(screen.getByLabelText("パスワード（確認用）"), { target: { value: "abcdef12" } });
-  fireEvent.click(screen.getByRole("button", { name: "アカウント作成" }));
+  fireEvent.click(screen.getByText(i18n.t("auth.switchToSignupCustomer")));
+  fireEvent.change(screen.getByLabelText(i18n.t("auth.labelEmail")), { target: { value: email } });
+  fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPassword")), { target: { value: "abcdef12" } });
+  fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPasswordConfirm")), { target: { value: "abcdef12" } });
+  fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.submitSignup") }));
 };
 
 /** ジムオーナータブに切り替えてから登録フォームを送信する */
 const submitTrainerSignup = async (email = EMAIL) => {
   fireEvent.click(screen.getByText(i18n.t("auth.tabTrainer")));
   fireEvent.click(screen.getByText(i18n.t("auth.switchToTrainerSignup")));
-  fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: email } });
-  fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
-  fireEvent.change(screen.getByLabelText("パスワード（確認用）"), { target: { value: "abcdef12" } });
-  fireEvent.click(screen.getByRole("button", { name: "アカウント作成" }));
+  fireEvent.change(screen.getByLabelText(i18n.t("auth.labelEmail")), { target: { value: email } });
+  fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPassword")), { target: { value: "abcdef12" } });
+  fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPasswordConfirm")), { target: { value: "abcdef12" } });
+  fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.submitSignup") }));
 };
 
 beforeEach(() => {
@@ -93,13 +105,13 @@ describe("確認メール送信後の画面", () => {
     await submitSignup();
 
     await waitFor(() => {
-      expect(screen.getByText("確認メールを送信しました")).toBeTruthy();
+      expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy();
     });
     // 宛先を出して「打ち間違えていないか」を自分で確認できるようにする
     expect(screen.getByText(EMAIL)).toBeTruthy();
     // 確認したあと何をすればいいかまで書く（メール本文のボタン名と一致させている）
-    expect(screen.getByText(/メールアドレスを確認する/)).toBeTruthy();
-    expect(screen.getByText(/迷惑メールフォルダ/)).toBeTruthy();
+    expect(screen.getByText(new RegExp(esc(i18n.t("auth.signupSentNext"))))).toBeTruthy();
+    expect(screen.getByText(new RegExp(esc(i18n.t("auth.forgotSentNote"))))).toBeTruthy();
   });
 
   it("ログイン画面に戻さない（登録失敗に見える画面を作らない）", async () => {
@@ -107,41 +119,41 @@ describe("確認メール送信後の画面", () => {
     renderAuth();
     await submitSignup();
 
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
     // 以前はここでログインフォームが出ていた
-    expect(screen.queryByRole("button", { name: "ログイン" })).toBeNull();
-    expect(screen.queryByLabelText("パスワード")).toBeNull();
-    expect(screen.queryByText("アカウントにログイン")).toBeNull();
+    expect(screen.queryByRole("button", { name: i18n.t("auth.submitLogin") })).toBeNull();
+    expect(screen.queryByLabelText(i18n.t("auth.labelPassword"))).toBeNull();
+    expect(screen.queryByText(i18n.t("auth.modeLogin"))).toBeNull();
   });
 
   it("パネル表示中は出口が「ログインへ戻る」だけになる（再送ボタンを除く）", async () => {
     signUp.mockResolvedValue(newUnconfirmedUser());
     renderAuth();
     await submitSignup();
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
 
     // タブ行を残すと1タップでパネルが消え、直したかった画面に戻ってしまう。
-    expect(screen.queryByText("お客様")).toBeNull();
-    expect(screen.queryByText("ジムオーナー")).toBeNull();
+    expect(screen.queryByText(i18n.t("auth.tabCustomer"))).toBeNull();
+    expect(screen.queryByText(i18n.t("auth.tabTrainer"))).toBeNull();
     // 確認前のユーザーをログインへ誘導する2つ目の出口を作らない
-    expect(screen.queryByText("すでにアカウントをお持ちの方はこちら")).toBeNull();
+    expect(screen.queryByText(i18n.t("auth.switchToLoginExisting"))).toBeNull();
     // 送信後に「同意したものとみなされます」が残ると、まだ操作が要るように読める
-    expect(screen.queryByText(/同意したものとみなされます/)).toBeNull();
+    expect(screen.queryByText(new RegExp(esc(i18n.t("auth.signupAgreement"))))).toBeNull();
 
-    expect(screen.getByRole("button", { name: "ログインへ戻る" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: i18n.t("auth.backToLogin") })).toBeTruthy();
   });
 
   it("「ログインへ戻る」でログインフォームに戻り、パネルが残らない", async () => {
     signUp.mockResolvedValue(newUnconfirmedUser());
     renderAuth();
     await submitSignup();
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("button", { name: "ログインへ戻る" }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.backToLogin") }));
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "ログイン" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: i18n.t("auth.submitLogin") })).toBeTruthy();
     });
-    expect(screen.queryByText("確認メールを送信しました")).toBeNull();
+    expect(screen.queryByText(i18n.t("auth.signupSentTitle"))).toBeNull();
   });
 
   it("スクリーンリーダーに届く（ライブリージョンとフォーカス移動）", async () => {
@@ -150,11 +162,11 @@ describe("確認メール送信後の画面", () => {
     signUp.mockResolvedValue(newUnconfirmedUser());
     const { container } = renderAuth();
     await submitSignup();
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
 
     const live = container.querySelector('[role="status"][aria-live="polite"]');
     expect(live, "ライブリージョンが無い").toBeTruthy();
-    expect(live!.textContent).toContain("確認メールを送信しました");
+    expect(live!.textContent).toContain(i18n.t("auth.signupSentTitle"));
     // 操作（ボタン）はリージョンの外に出す。中に入れると読み上げ直してしまう。
     expect(live!.querySelector("button")).toBeNull();
 
@@ -172,19 +184,19 @@ describe("メール未確認のままログインを試したとき", () => {
       data: {}, error: Object.assign(new Error("Email not confirmed"), { code: "email_not_confirmed" }),
     });
     renderAuth();
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: EMAIL } });
-    fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
-    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelEmail")), { target: { value: EMAIL } });
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPassword")), { target: { value: "abcdef12" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.submitLogin") }));
 
     // 「未確認」は「送信しました」と同じではない — ここでは何も送っていないので、
     // 断定形のタイトルを使わない。
     await waitFor(() => {
-      expect(screen.getByText("メールアドレスの確認が済んでいません")).toBeTruthy();
+      expect(screen.getByText(i18n.t("auth.unconfirmedTitle"))).toBeTruthy();
     });
-    expect(screen.queryByText("確認メールを送信しました")).toBeNull();
+    expect(screen.queryByText(i18n.t("auth.signupSentTitle"))).toBeNull();
     expect(screen.getByText(EMAIL)).toBeTruthy();
     // 再送導線はある
-    expect(screen.getByRole("button", { name: /確認メールを再送する/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: new RegExp(esc(i18n.t("auth.resendButton"))) })).toBeTruthy();
   });
 
   it("message でしか code が取れない場合もフォールバックで拾う", async () => {
@@ -193,12 +205,12 @@ describe("メール未確認のままログインを試したとき", () => {
       data: {}, error: new Error("Email not confirmed"),
     });
     renderAuth();
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: EMAIL } });
-    fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
-    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelEmail")), { target: { value: EMAIL } });
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPassword")), { target: { value: "abcdef12" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.submitLogin") }));
 
     await waitFor(() => {
-      expect(screen.getByText("メールアドレスの確認が済んでいません")).toBeTruthy();
+      expect(screen.getByText(i18n.t("auth.unconfirmedTitle"))).toBeTruthy();
     });
   });
 });
@@ -210,13 +222,13 @@ describe("既に登録済みのメールアドレスで登録しようとした�
     await submitSignup();
 
     await waitFor(() => {
-      expect(screen.getByText("登録済みのメールアドレスです")).toBeTruthy();
+      expect(screen.getByText(i18n.t("auth.alreadyRegisteredTitle"))).toBeTruthy();
     });
-    expect(screen.queryByText("確認メールを送信しました")).toBeNull();
+    expect(screen.queryByText(i18n.t("auth.signupSentTitle"))).toBeNull();
     // resend しても何も届かない（存在確認にしかならない）ので再送導線は出さない
-    expect(screen.queryByRole("button", { name: /確認メールを再送する/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: new RegExp(esc(i18n.t("auth.resendButton"))) })).toBeNull();
     // ログイン以外にパスワード再設定へも行ける
-    expect(screen.getByRole("button", { name: "パスワードを再設定する" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: i18n.t("auth.toForgotFromSent") })).toBeTruthy();
   });
 
   it("signUp が user_already_exists で例外を投げる場合も同じ案内", async () => {
@@ -228,7 +240,7 @@ describe("既に登録済みのメールアドレスで登録しようとした�
     await submitSignup();
 
     await waitFor(() => {
-      expect(screen.getByText("登録済みのメールアドレスです")).toBeTruthy();
+      expect(screen.getByText(i18n.t("auth.alreadyRegisteredTitle"))).toBeTruthy();
     });
   });
 });
@@ -239,10 +251,10 @@ describe("確認メールの再送", () => {
     resend.mockResolvedValue({ data: {}, error: null });
     renderAuth();
     await submitSignup();
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
 
     // 直後は60秒クールダウンで押せない
-    const btn = screen.getByRole("button", { name: /確認メールを再送する|秒/ });
+    const btn = screen.getByRole("button", { name: new RegExp(`${esc(i18n.t("auth.resendButton"))}|${COOLDOWN_RE}`) });
     expect(btn).toHaveProperty("disabled", true);
   });
 
@@ -252,12 +264,12 @@ describe("確認メールの再送", () => {
     });
     resend.mockResolvedValue({ data: {}, error: null });
     renderAuth();
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: EMAIL } });
-    fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
-    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
-    await waitFor(() => expect(screen.getByText("メールアドレスの確認が済んでいません")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelEmail")), { target: { value: EMAIL } });
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPassword")), { target: { value: "abcdef12" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.submitLogin") }));
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.unconfirmedTitle"))).toBeTruthy());
 
-    const btn = screen.getByRole("button", { name: "確認メールを再送する" });
+    const btn = screen.getByRole("button", { name: i18n.t("auth.resendButton") });
     expect(btn).toHaveProperty("disabled", false);
 
     fireEvent.click(btn);
@@ -280,14 +292,14 @@ describe("確認メールの再送", () => {
       ),
     });
     renderAuth();
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: EMAIL } });
-    fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
-    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
-    await waitFor(() => expect(screen.getByText("メールアドレスの確認が済んでいません")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelEmail")), { target: { value: EMAIL } });
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPassword")), { target: { value: "abcdef12" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.submitLogin") }));
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.unconfirmedTitle"))).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("button", { name: "確認メールを再送する" }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.resendButton") }));
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /42秒/ })).toBeTruthy();
+      expect(screen.getByRole("button", { name: new RegExp(esc(i18n.t("auth.resendCooldown", { seconds: 42 }))) })).toBeTruthy();
     });
   });
 });
@@ -297,18 +309,18 @@ describe("別ロールで登録し直そうとしたとき（ロール固定バ�
     signUp.mockResolvedValue(newUnconfirmedUser());
     renderAuth();
     await submitSignup(); // お客様タブ・EMAIL で送信 → ローカルに記録される
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
     signUp.mockClear();
 
-    fireEvent.click(screen.getByRole("button", { name: "ログインへ戻る" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "ログイン" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.backToLogin") }));
+    await waitFor(() => expect(screen.getByRole("button", { name: i18n.t("auth.submitLogin") })).toBeTruthy());
 
     await submitTrainerSignup(EMAIL);
 
     await waitFor(() => {
-      expect(screen.getByText("別の種別で登録手続き中です")).toBeTruthy();
+      expect(screen.getByText(i18n.t("auth.roleMismatchTitle"))).toBeTruthy();
     });
-    expect(screen.getByText(/お客様として登録手続き中/)).toBeTruthy();
+    expect(screen.getByText(new RegExp(esc(i18n.t("auth.roleMismatchBody", { role: i18n.t("auth.tabCustomer") }))))).toBeTruthy();
     // gotrue は未確認ユーザーの再 signUp では metadata を更新しないので、
     // 無駄打ち（＝レート制限を消費するだけ）を避けるために呼ばないのが正しい。
     expect(signUp).not.toHaveBeenCalled();
@@ -318,12 +330,12 @@ describe("別ロールで登録し直そうとしたとき（ロール固定バ�
     signUp.mockResolvedValue(newUnconfirmedUser());
     renderAuth();
     await submitSignup();
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
     signUp.mockClear();
     signUp.mockResolvedValue(newUnconfirmedUser());
 
-    fireEvent.click(screen.getByRole("button", { name: "ログインへ戻る" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "ログイン" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.backToLogin") }));
+    await waitFor(() => expect(screen.getByRole("button", { name: i18n.t("auth.submitLogin") })).toBeTruthy());
     await submitSignup(EMAIL); // 同じお客様タブ
 
     await waitFor(() => expect(signUp).toHaveBeenCalledTimes(1));
@@ -333,15 +345,15 @@ describe("別ロールで登録し直そうとしたとき（ロール固定バ�
     signUp.mockResolvedValue(newUnconfirmedUser());
     renderAuth();
     await submitSignup();
-    await waitFor(() => expect(screen.getByText("確認メールを送信しました")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(i18n.t("auth.signupSentTitle"))).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("button", { name: "ログインへ戻る" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "ログイン" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.backToLogin") }));
+    await waitFor(() => expect(screen.getByRole("button", { name: i18n.t("auth.submitLogin") })).toBeTruthy());
 
     signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: EMAIL } });
-    fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "abcdef12" } });
-    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelEmail")), { target: { value: EMAIL } });
+    fireEvent.change(screen.getByLabelText(i18n.t("auth.labelPassword")), { target: { value: "abcdef12" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("auth.submitLogin") }));
 
     await waitFor(() => expect(signInWithPassword).toHaveBeenCalled());
     expect(localStorage.getItem("gymboard_pending_signup")).toBeNull();
@@ -353,7 +365,7 @@ describe("確認リンクの処理に失敗したとき（AuthCallback からの
     renderAuth("/auth?error=otp_expired");
     await waitFor(() => {
       expect(
-        screen.getByText("確認リンクの有効期限が切れているか、すでに使用済みです。下のフォームでログインをお試しください。"),
+        screen.getByText(i18n.t("auth.linkErrorExpired")),
       ).toBeTruthy();
     });
   });
@@ -361,7 +373,7 @@ describe("確認リンクの処理に失敗したとき（AuthCallback からの
   it("その他のコードは汎用の案内を出す（生のエラー文字列を描画しない）", async () => {
     renderAuth("/auth?error=weird_unknown_code");
     await waitFor(() => {
-      expect(screen.getByText("確認リンクを処理できませんでした。お手数ですが、もう一度お試しください。")).toBeTruthy();
+      expect(screen.getByText(i18n.t("auth.linkErrorGeneric"))).toBeTruthy();
     });
     expect(screen.queryByText("weird_unknown_code")).toBeNull();
   });
@@ -369,7 +381,7 @@ describe("確認リンクの処理に失敗したとき（AuthCallback からの
   it("閉じるボタンで消せる", async () => {
     renderAuth("/auth?error=otp_expired");
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
-    fireEvent.click(screen.getByLabelText("閉じる"));
+    fireEvent.click(screen.getByLabelText(i18n.t("common.close")));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });

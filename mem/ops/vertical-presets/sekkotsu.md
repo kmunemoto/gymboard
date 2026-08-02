@@ -141,3 +141,5 @@
 - [ ] アイコン・スプラッシュ・ロゴ
 - [ ] 法務3ページの事業者情報
 - [ ] Supabase の Additional Redirect URLs に `app.sekkotsuboard.mobile://auth/callback`
+
+> **トレーナー側**: 上記の顧客側フラグは `TrainerClientDetail`（カルテの記録/食事タブ・体重パネル・レーダー）と `CustomerMonthlyReport`（体重・記録・食事セクション）にも同じ値が効く。フォークでお客様側だけ OFF にしたとき、トレーナー画面が上流のまま残らない。

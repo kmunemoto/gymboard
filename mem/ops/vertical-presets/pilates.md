@@ -116,6 +116,9 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
 | `LANGUAGE_SWITCHER_ENABLED` | `false` | `ja.json` が上流とバイト一致でない（21項目追加・11項目変更）ため、他言語に切り替えるとジム向け語彙のまま出る箇所が生まれる。上流取り込み・オーバーレイ移行が終わるまでは日本語固定にする |
 | `TRIAL_BOOKING_ENABLED` | `false` | 体験予約はジム特有の集客手法。ジムボード以外の兄弟アプリは全て無くす方針（2026-08-02決定）。false でも `trial_bookings` のデータ・Edge Functionは削除しない。既存の `trialBooking`/`trialCancel` オーバーレイキー（`pilates.vertical.ja.json`）は不可用時の案内文以外は出なくなるが、害はないのでそのまま残してよい |
 
+
+> **トレーナー側**: 上記の顧客側フラグは `TrainerClientDetail`（カルテの記録/食事タブ・体重パネル・レーダー）と `CustomerMonthlyReport`（体重・記録・食事セクション）にも同じ値が効く。フォークでお客様側だけ OFF にしたとき、トレーナー画面が上流のまま残らない。
+
 ## `src/lib/brand.ts`（新規作成）
 
 監査で判明済みの値。未確認のものは「まだ決まっていない値」に残す。

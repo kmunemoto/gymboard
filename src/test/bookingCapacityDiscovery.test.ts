@@ -16,10 +16,17 @@ import i18n from "@/lib/i18n";
 // そこで「設定に気づく経路」を2つ入れた。ここはその回帰テスト。
 //   1. 開店時（オンボーディング step2）に必ず聞く … 新規店はこれで正しく入る
 //   2. 実際に詰まった瞬間に設定の場所を案内する … 既存店はこれで気づく
+//   3. 取りこぼした需要（キャンセル待ち）を店に見せる … お客様の自己予約で起きる分
+//
+// 3 が要る理由: 1・2 だけだと**トレーナーが代理予約を試したときしか気づけない**。
+// 予約の大半はお客様の自己予約で、その経路では満枠の枠がグレーアウトされるだけなので、
+// 店は取りこぼしに永久に気づけない。booking_waitlist には「入れなかった人」が
+// 溜まっているのに、これを読むトレーナー画面がどこにも無かった。
 
 const ONBOARDING = "src/pages/Onboarding.tsx";
 const SCHEDULE = "src/components/trainer/TrainerSchedule.tsx";
 const SETTINGS = "src/components/trainer/TrainerGymSettings.tsx";
+const DASHBOARD = "src/components/trainer/TrainerDashboard.tsx";
 
 const LANGS = ["ja", "en", "ko", "zh-CN", "zh-TW"] as const;
 // ロケールは入れ子の深さがキーによって違う（settings.trainer.* は3階層）ので、
@@ -111,6 +118,51 @@ describe("5言語そろい（fallbackLng が ja なので欠けると日本語�
     await i18n.changeLanguage("ja");
     for (const [ns, key] of KEYS) {
       expect(i18n.t(`${ns}.${key}`), `${ns}.${key} が生キーのまま`).not.toBe(`${ns}.${key}`);
+    }
+  });
+});
+
+describe("3. 取りこぼした需要を店に見せる（お客様の自己予約でも気づけるように）", () => {
+  const src = readFileSync(DASHBOARD, "utf8");
+
+  it("ダッシュボードが booking_waitlist を読んでいる", () => {
+    // ここが落ちる = お客様が満枠で入れなかったことを店が知る手段がゼロに戻っている
+    expect(src, "booking_waitlist を読んでいない").toMatch(/from\("booking_waitlist"\)/);
+  });
+
+  it("これから先の枠だけを見る（過ぎた待ちを蒸し返さない）", () => {
+    expect(src).toMatch(/\.gte\("booking_date"/);
+  });
+
+  it("同時1件までの設定のときだけ、設定変更の案内を添える", () => {
+    // 2以上に設定済みの店は本当に満席なので、案内は出さない（誤誘導になる）
+    expect(src).toMatch(/booking_capacity \?\? 1\) <= 1/);
+    expect(src).toMatch(/showCapacityHint && \(/);
+  });
+
+  it("キャンセル待ち機能がOFFのフォークでは何もしない", () => {
+    // WAITLIST_ENABLED=false のフォークでは booking_waitlist に行が入らないので、
+    // 問い合わせ自体を投げない（無駄なクエリと空バナーを避ける）
+    expect(src).toMatch(/if \(!WAITLIST_ENABLED \|\| !tenant\?\.id\) return;/);
+    expect(src).toMatch(/\{WAITLIST_ENABLED && waitingTotal > 0 && \(/);
+  });
+
+  it("案内文言に設定画面までの道順が入っている", () => {
+    const ja = localeOf("ja");
+    const hint = at(ja, "waitlistAlert.capacityHint");
+    expect(hint, "ja の文言が無い").toBeTruthy();
+    expect(hint).toContain(at(ja, "settings.trainer.businessHoursCapacity")!);
+  });
+
+  it("waitlistAlert の文言が5言語そろっている", () => {
+    for (const key of ["title", "slot", "more", "capacityHint"]) {
+      const jaVal = at(localeOf("ja"), `waitlistAlert.${key}`);
+      expect(jaVal, `ja.json に waitlistAlert.${key} が無い`).toBeTruthy();
+      for (const l of LANGS.filter((x) => x !== "ja")) {
+        const val = at(localeOf(l), `waitlistAlert.${key}`);
+        expect(val, `${l}.json に waitlistAlert.${key} が無い`).toBeTruthy();
+        expect(val, `${l}.json の waitlistAlert.${key} が未翻訳`).not.toBe(jaVal);
+      }
     }
   });
 });

@@ -3,12 +3,6 @@ name: Android Build & Upload
 on:
   workflow_dispatch:
     inputs:
-      versionName:
-        description: >-
-          Android の versionName（例: 1.0.6）。iOS の MARKETING_VERSION とは別系統で
-          採番している（mem/features/capacitor-8-upgrade.md）ので、iOS の値をそのまま
-          転記しないこと。android/app/build.gradle の現在値を確認してから決めること。
-        required: true
       track:
         description: "Google Play の公開トラック"
         required: true
@@ -86,16 +80,33 @@ jobs:
       - name: Set version + wire signing config
         env:
           ANDROID_VERSION_CODE: ${{ github.run_number }}
-          ANDROID_VERSION_NAME: ${{ inputs.versionName }}
+          # 手作業（Android Studio）時代に使い切った versionCode より確実に大きい値から
+          # 始めるための下駄。手で採番していた番号がこの値に達することは実質ありえないので、
+          # 初回CIリリースが `Version code N has already been used` で弾かれない。
+          # ⚠️ もし初回アップロードでそのエラーが出たら、Play Console に上がっている
+          # 最大の versionCode より大きくなるようこの値を上げること（下げるのは不可）。
+          ANDROID_VERSION_CODE_BASE: "10000"
+          # お客様に見えるバージョン表記。ワークフローの入力ではなくここに直書きして
+          # あるのは、「バージョンを上げた」がコミットとして履歴に残るようにするため
+          # （iOS が ios-build.yml に MARKETING_VERSION を直書きしているのと同じ理由）。
+          #
+          # ⚠️ 下げてはいけない。Play は versionName の順序を検査しないので下げても
+          # 弾かれないが、お客様の画面では「更新したらバージョンが戻った」に見える。
+          # iOS の MARKETING_VERSION（1.4.5 系）とは**別の線**である点に注意
+          # （Android の方が数字が大きい。揃えるなら 9.x 側に上げる形になる）。
+          # 経緯は mem/features/android-ci.md。
+          ANDROID_VERSION_NAME: "9.1"
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          # versionCode に github.run_number を使う（iOS の CURRENT_PROJECT_VERSION と同じ発想）。
+          # versionCode は BASE + github.run_number（iOS の CURRENT_PROJECT_VERSION と同じ発想）。
           # android/ は毎回 `cap add android` で作り直すため、テンプレート既定値からの
           # 相対更新ができない。run_number は実行のたびに単調増加するので、
           # 「android/ を作り直すと versionCode が1に戻る」という手作業時代の地雷が
           # 構造的に起きない（mem/features/capacitor-8-upgrade.md「やってはいけないこと」）。
+          # ただし run_number は 1 から始まるため、下駄なしだと初回だけ
+          # 同じエラーを別経路で踏む。それを BASE で塞いでいる。
           node scripts/prepare-android-release.mjs
 
       - name: Build signed AAB

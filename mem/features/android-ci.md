@@ -22,11 +22,52 @@ Play Consoleへのアップロードまで完結させる。** Windows + Android
 iOSと同じ `workflow_dispatch` 手動トリガー。`ubuntu-latest` で完結する
 （AndroidビルドはmacOS不要。iOSより安く速い）。
 
-トリガー時に2つ入力する:
-- `versionName` … 例 `1.0.6`。**iOSの `MARKETING_VERSION` とは別系統で採番している**
-  （`mem/features/capacitor-8-upgrade.md`）ので、iOSの値をそのまま転記しないこと。
-  現在値は Play Console の「リリース」タブか、直近の署名付きAABで確認する
+トリガー時の入力は `track` の1つだけ:
 - `track` … `internal` / `alpha` / `beta` / `production`。既定は `internal`
+
+### バージョン表記（`versionName`）はワークフローに直書きする（2026-08-02）
+
+**当初は `workflow_dispatch` の入力にしていたが、やめた。**
+`android/` は `.gitignore` 済みなので、入力にすると**現在のバージョンがリポジトリの
+どこからも読めない**。「Androidのバージョンを1つ上げて」と言われても、
+Play Console か Windows の `android/app/build.gradle` を見るまで**上げようがない**
+（実際にそうなって作業が止まった）。iOS は `ios-build.yml` に `MARKETING_VERSION` が
+直書きしてあるので「バージョンを上げた」がコミットとして履歴に残る。
+**Androidも同じ形に揃えた。**
+
+上げ方は `android-build.yml` の `ANDROID_VERSION_NAME` を書き換えるだけ。
+
+#### 手作業時代の実績（リポジトリに記録が無かったので残す）
+
+| 項目 | 2026-08-02 時点の Play Console 実績 |
+|---|---|
+| `versionCode` | **81** |
+| `versionName` | **9.0** |
+
+`ANDROID_VERSION_CODE_BASE` を 10000 にしてあるのは、この 81 を確実に上回るため
+（初回CIリリースは `10000 + 1 = 10001` になる）。
+
+#### ⚠️ iOS とは別の版数線。統一するなら 9.x 側に上げる形になる
+
+一度は「iOS と1本に統一する」方針にしかけたが、**実際の値を確認して取りやめた。**
+
+| | 現在 |
+|---|---|
+| iOS（`MARKETING_VERSION`） | `1.4.5` |
+| Android（`ANDROID_VERSION_NAME`） | **`9.1`**（9.0 の次） |
+
+**Android の方が数字が大きい。** iOS の 1.4.x に寄せると Android のお客様には
+`9.0` → `1.4.6` と**バージョンが戻って見える**。`versionName` は Play では単なる
+表示文字列で順序を検査されないため、**下げても弾かれずにそのまま出てしまう。**
+（App Store の `MARKETING_VERSION` は増加を要求されるので、iOS 側は事故が起きない。
+Android だけがノーガード＝テストで見張るしかない）
+
+将来どうしても揃えたいなら、**iOS を 9.x 側へ上げる**（`1.4.5` → `9.x` は増加なので
+App Store も通る）。ただし一度上げたら二度と下げられないので、必要になるまでやらない。
+
+`src/test/prepareAndroidRelease.test.ts` が見張るのは:
+- iOS・Android とも `versionName` が**直書きのまま**であること（入力に戻すと現在値が読めなくなる）
+- Android の `versionName` が**リリース実績（9.0）より下がっていない**こと
 
 ### `versionCode` は手作業時代の地雷を構造的に無くした
 
@@ -41,6 +82,31 @@ GitHub側のカウンタ）。
 設計上起こらなくなった。** 手作業のように「バージョンコードを忘れずに+1する」
 という注意事項そのものが要らない。
 
+#### ⚠️ `run_number` だけでは足りなかった（2026-08-02 修正）
+
+上の設計には穴があった。**`github.run_number` は「そのワークフローの実行回数」なので
+初回実行では 1 になる。** `android-build.yml` は新規追加のワークフローで実行回数0
+（`ios-build.yml` が115回まで積み上がっているのとは違う）。一方 Play Console には
+Android Studio で手作業アップロードしてきたAABが既に載っている。
+
+つまり**初回のCIリリースは、置き換えたはずの
+`Version code 1 has already been used` を経路を変えて踏み直す。**
+しかも落ちるのは「10分かけてビルドし終えた最後のアップロード段」で、
+CI（`ci.yml`）では絶対に検知できない。
+
+対策として `ANDROID_VERSION_CODE_BASE`（現在 `10000`）で下駄を履かせ、
+`versionCode = BASE + run_number` にした。手で +1 しながら運用してきた番号が
+10000 に達することは実質ないので、初回から確実に上回る。
+下駄を足しても `run_number` は単調増加のままなので、上の性質は失われない。
+
+**もし初回アップロードでこのエラーが出たら**、Play Console に上がっている最大の
+`versionCode` より大きくなるよう `android-build.yml` の `ANDROID_VERSION_CODE_BASE`
+を上げること（`versionCode` は一度上げたら下げられないので、上げる方向は常に安全）。
+
+回帰テストは `src/test/prepareAndroidRelease.test.ts`。スクリプト側の計算だけでなく、
+**`android-build.yml` が実際に `ANDROID_VERSION_CODE_BASE` を渡しているか**も
+YAMLを読んで検査している（配線が外れると上記のとおりCIでは検知できないため）。
+
 ### 署名: `scripts/prepare-android-release.mjs`（新規）
 
 `scripts/patch-android.mjs` とは別スクリプトにした。`patch-android.mjs` は
@@ -51,6 +117,8 @@ GitHub側のカウンタ）。
 - 環境変数が無ければ何もしない（ローカルで誤って実行しても無害）
 - `ANDROID_VERSION_CODE` / `ANDROID_VERSION_NAME` … `android/app/build.gradle` の
   該当行を書き換える
+- `ANDROID_VERSION_CODE_BASE`（省略可・既定0）… `ANDROID_VERSION_CODE` に足す下駄。
+  上の「`run_number` だけでは足りなかった」参照。上限 2100000000 を超えたら止める
 - `ANDROID_KEYSTORE_PATH` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
   `ANDROID_KEY_PASSWORD` … `signingConfigs.release` ブロックを配線し、
   `buildTypes.release` に適用する（Android Studioのウィザードが対話的にやることを
@@ -120,9 +188,13 @@ bundle ID / Firebase設定と並べて Android CI のセットアップを追記
 
 - YAML構文が正しいこと
 - `scripts/prepare-android-release.mjs` の文字列パッチ処理が期待どおり動くこと
-  （モックの `build.gradle` に対する単体テスト9件。冪等性の検証で実際に1件、
+  （モックの `build.gradle` に対する単体テスト16件。冪等性の検証で実際に1件、
   「再実行時に誤って失敗と判定するバグ」を発見・修正済み）
 - 既存の `patch-android.mjs` との責務分離・非干渉
+
+**その後、机上の再点検で実際にバグを1件見つけた**（上の「`run_number` だけでは
+足りなかった」）。`versionCode` が初回 1 になる問題で、走らせていたら初回で落ちていた。
+**「テストがグリーン」はこのワークフローが通ることを何も保証しない**という実例。
 
 **Secrets を登録したうえで、一度 `workflow_dispatch` で実際に走らせて
 グリーンになることを確認すること。** 初回は `track: internal` のまま実行し、

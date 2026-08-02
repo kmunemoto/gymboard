@@ -12,6 +12,7 @@
  *
  * 使い方（.github/workflows/android-build.yml から呼ぶ）:
  *   ANDROID_VERSION_CODE=123 \
+ *   ANDROID_VERSION_CODE_BASE=10000 \
  *   ANDROID_VERSION_NAME=1.2.0 \
  *   ANDROID_KEYSTORE_PATH=/path/to/release.keystore \
  *   ANDROID_KEYSTORE_PASSWORD=*** \
@@ -27,6 +28,7 @@ const APP_GRADLE = path.join(ROOT, "android/app/build.gradle");
 
 const {
   ANDROID_VERSION_CODE,
+  ANDROID_VERSION_CODE_BASE,
   ANDROID_VERSION_NAME,
   ANDROID_KEYSTORE_PATH,
   ANDROID_KEYSTORE_PASSWORD,
@@ -54,20 +56,42 @@ const before = src;
 // github.run_number（呼び出し側が渡す）を使う。実行のたびに単調増加するので、
 // 「android/ を作り直すと versionCode が1に戻る」という手作業時代の地雷が
 // 構造的に起きない（mem/features/capacitor-8-upgrade.md「やってはいけないこと」）。
+//
+// ⚠️ ただし run_number 単体では足りない。run_number は「そのワークフローの実行回数」で
+// **1から始まる**ので、Android Studio で手作業リリースしてきたアプリに対して初回CIを
+// 流すと versionCode 1 になり、Play Console が
+// `Version code 1 has already been used` で弾く（＝置き換えたはずの地雷を、
+// 経路を変えて踏み直す）。そこで ANDROID_VERSION_CODE_BASE で下駄を履かせ、
+// 「手作業時代に使い切った番号より確実に大きい」ところから始める。
+// 下駄を足しても run_number は単調増加のままなので、上の性質は失われない。
+//
 // 置換したかどうかは前後比較ではなく、パターンの有無で判定する。
 // （前後比較だと「置換後の値が偶然元の値と同じ文字列」＝冪等時の再実行で
 //   "見つからなかった" と誤判定する。実際にこの版で踏んだ）
+if (ANDROID_VERSION_CODE_BASE && !/^\d+$/.test(ANDROID_VERSION_CODE_BASE)) {
+  console.error(`[prepare-android-release] ANDROID_VERSION_CODE_BASE は整数である必要があります: ${ANDROID_VERSION_CODE_BASE}`);
+  process.exit(1);
+}
+
 if (ANDROID_VERSION_CODE) {
   if (!/^\d+$/.test(ANDROID_VERSION_CODE)) {
     console.error(`[prepare-android-release] ANDROID_VERSION_CODE は整数である必要があります: ${ANDROID_VERSION_CODE}`);
+    process.exit(1);
+  }
+  const base = Number(ANDROID_VERSION_CODE_BASE ?? 0);
+  const versionCode = base + Number(ANDROID_VERSION_CODE);
+  // Android の versionCode の上限（Google Play の制約）。超えると
+  // Play 側で弾かれるうえ二度と下げられないので、ここで止める。
+  if (versionCode > 2100000000) {
+    console.error(`[prepare-android-release] versionCode が上限(2100000000)を超えています: ${versionCode}`);
     process.exit(1);
   }
   if (!/versionCode\s+\d+/.test(src)) {
     console.error("[prepare-android-release] versionCode の置換箇所が見つかりませんでした（Capacitorのテンプレートが変わった可能性）");
     process.exit(1);
   }
-  src = src.replace(/versionCode\s+\d+/, `versionCode ${ANDROID_VERSION_CODE}`);
-  log(`versionCode -> ${ANDROID_VERSION_CODE}`);
+  src = src.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
+  log(base ? `versionCode -> ${versionCode}（base ${base} + ${ANDROID_VERSION_CODE}）` : `versionCode -> ${versionCode}`);
 }
 
 if (ANDROID_VERSION_NAME) {

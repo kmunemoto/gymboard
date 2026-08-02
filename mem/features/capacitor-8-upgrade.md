@@ -89,10 +89,16 @@ AGP 8.9.1 以上を要求する。Capacitor 8 が引く `androidx.core 1.17.0` �
 4. **SDK Manager で Android 16 (API 36) の SDK Platform** を入れる
    （`Failed to find target with hash string 'android-36'` が出たら）。
 5. `versionCode` を +1、`versionName` を更新（`android/app/build.gradle`）。
-   Android の versionName は iOS とは別系統で採番している。
 6. Android Studioでクリーンビルド → 実機/エミュレータで一通り確認
    （特にプッシュ通知・アプリバッジ・スプラッシュ・ステータスバー）
 7. 新しい署名付きAAB/APKを生成し、Play Consoleへアップロード
+
+> **⚠️ 2026-08-02 以降、5〜7 は公式リリースの経路ではない。**
+> Android も GitHub Actions（`.github/workflows/android-build.yml`）でビルド・署名・
+> Play Console へのアップロードまで行う（`mem/features/android-ci.md`）。
+> バージョンは `android-build.yml` の `ANDROID_VERSION_NAME` を書き換える
+> （手作業時代の実績は versionCode 81 / versionName 9.0）。
+> 1〜4・6 は実機での動作確認用途としては引き続き有効。
 
 ### やってはいけないこと
 - **`android/` を消して `npx cap add android` で作り直す。** `versionCode` が 1 に戻り
@@ -143,8 +149,12 @@ provisioning profiles` で失敗。原因は `CODE_SIGN_IDENTITY` / `PROVISIONIN
 
 **注意（今後の再実行時）**: このワークフローは **成功時のみ** App Store Connect へ
 アップロードする（失敗時はアップロードされないので、失敗の反復は副作用なし）。
-`MARKETING_VERSION` は 1.3.9 ハードコード、ビルド番号は `github.run_number`。
+`MARKETING_VERSION` はワークフローにハードコード（この文書を書いた時点は 1.3.9。
+現在値は `ios-build.yml` を見ること）、ビルド番号は `github.run_number`。
 新バージョンを出すときは ios-build.yml の `Set marketing version` の値を更新すること。
+**Android の `ANDROID_VERSION_NAME` は別の版数線**（iOS 1.4.x に対し Android 9.x）。
+揃えようとして iOS 側に寄せると Android のバージョンが戻って見えるので注意
+（`mem/features/android-ci.md`）。
 
 ## ピラボード（別アプリ）について
 このリポジトリの対象外。同じ手順（Capacitor 7→8、Gradle/AGP更新、Play Console再申請）を

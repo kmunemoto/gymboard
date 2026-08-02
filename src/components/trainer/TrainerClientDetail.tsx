@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { MONTHLY_REPORT_ENABLED, GAMIFICATION_ENABLED } from "@/lib/featureFlags";
+import {
+  MONTHLY_REPORT_ENABLED,
+  GAMIFICATION_ENABLED,
+  WORKOUT_LOG_ENABLED,
+  MEALS_ENABLED,
+  BODY_METRICS_ENABLED,
+  MUSCLE_RADAR_ENABLED,
+} from "@/lib/featureFlags";
 import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target, Timer, StickyNote } from "lucide-react";
 import { exerciseCategories } from "@/lib/dummyData";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1064,18 +1071,35 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               </div>
             </div>
 
-            {/* Diet goal (weight journey) */}
-            <TrainerWeightJourneyPanel clientId={clientId} />
+            {/* Diet goal (weight journey) — BODY_METRICS_ENABLED */}
+            {BODY_METRICS_ENABLED && <TrainerWeightJourneyPanel clientId={clientId} />}
           </CardContent>
         </Card>
       </section>
 
-      {/* Tabbed sections */}
-      <Tabs defaultValue="training" className="space-y-4">
-        <TabsList className="grid grid-cols-7 w-full">
+      {/* Tabbed sections
+          顧客側フィーチャーフラグをトレーナーカルテにも効かせる。
+          概要・予約・骨格・チャットは常時表示（店がカルテ操作不能にならないため）。
+          既定タブは記録タブが使えるときだけ training、でなければ overview。 */}
+      <Tabs defaultValue={WORKOUT_LOG_ENABLED ? "training" : "overview"} className="space-y-4">
+        <TabsList
+          className="grid w-full"
+          style={{
+            gridTemplateColumns: `repeat(${
+              4 // overview + bookings + skeletal + chat
+              + (WORKOUT_LOG_ENABLED ? 1 : 0)
+              + (MEALS_ENABLED ? 1 : 0)
+              + (MONTHLY_REPORT_ENABLED ? 1 : 0)
+            }, minmax(0, 1fr))`,
+          }}
+        >
           <TabsTrigger value="overview" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabOverview")}</TabsTrigger>
-          <TabsTrigger value="training" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabTraining")}</TabsTrigger>
-          <TabsTrigger value="meals" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabMeals")}</TabsTrigger>
+          {WORKOUT_LOG_ENABLED && (
+            <TabsTrigger value="training" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabTraining")}</TabsTrigger>
+          )}
+          {MEALS_ENABLED && (
+            <TabsTrigger value="meals" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabMeals")}</TabsTrigger>
+          )}
           <TabsTrigger value="bookings" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabBookings")}</TabsTrigger>
           <TabsTrigger value="skeletal" className="text-[10px] sm:text-xs px-1">{t("clientDetail.tabSkeletal")}</TabsTrigger>
           {MONTHLY_REPORT_ENABLED && (
@@ -1086,6 +1110,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
         {/* Overview */}
         <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+          {BODY_METRICS_ENABLED && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5" />
@@ -1123,10 +1148,15 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               </CardContent>
             </Card>
           </section>
+          )}
 
-          {/* Training Growth Chart */}
-          <TrainingGrowthChart workoutRecords={workoutRecords} loadingRecords={loadingRecords} />
+          {/* Training Growth Chart — WORKOUT_LOG_ENABLED */}
+          {WORKOUT_LOG_ENABLED && (
+            <TrainingGrowthChart workoutRecords={workoutRecords} loadingRecords={loadingRecords} />
+          )}
 
+          {BODY_METRICS_ENABLED && (
+          <>
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Weight className="w-3.5 h-3.5" />
@@ -1250,8 +1280,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          </>
+          )}
 
-
+          {WORKOUT_LOG_ENABLED && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Dumbbell className="w-3.5 h-3.5" />
@@ -1289,12 +1321,16 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">{t("clientDetail.noRecord")}</CardContent></Card>
             )}
           </section>
+          )}
         </TabsContent>
 
         {/* Training input */}
+        {WORKOUT_LOG_ENABLED && (
         <TabsContent value="training" className="space-y-4">
-          {/* Muscle Balance Radar */}
-          <MuscleBalanceRadar userId={clientId} cycleStartDate={cycleStartDate || null} />
+          {/* Muscle Balance Radar — MUSCLE_RADAR_ENABLED */}
+          {MUSCLE_RADAR_ENABLED && (
+            <MuscleBalanceRadar userId={clientId} cycleStartDate={cycleStartDate || null} />
+          )}
 
           <Card>
             <CardContent className="p-3 sm:p-4 space-y-4">
@@ -1518,8 +1554,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             </section>
           )}
         </TabsContent>
+        )}
 
         {/* Meals */}
+        {MEALS_ENABLED && (
         <TabsContent value="meals" className="space-y-4">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Utensils className="w-3.5 h-3.5" />
@@ -1571,6 +1609,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             <Card><CardContent className="p-4 text-sm text-muted-foreground text-center">{t("clientDetail.noMeals")}</CardContent></Card>
           )}
         </TabsContent>
+        )}
 
         {/* Bookings */}
         <TabsContent value="bookings">

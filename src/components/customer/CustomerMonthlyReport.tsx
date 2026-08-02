@@ -18,6 +18,11 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { getCycleWindow as getSharedCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
 import { useTranslation } from "react-i18next";
 import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
+import {
+  WORKOUT_LOG_ENABLED,
+  MEALS_ENABLED,
+  BODY_METRICS_ENABLED,
+} from "@/lib/featureFlags";
 
 const PIE_COLORS = ["hsl(174, 65%, 50%)", "hsl(210, 40%, 58%)", "hsl(150, 40%, 50%)"];
 
@@ -258,16 +263,20 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       parts.push(t("report.adviceNoVisit"));
     }
 
-    if (weightChange != null && weightChange < -0.5) {
-      parts.push(t("report.adviceWeightDown"));
-    } else if (weightChange != null && weightChange > 0.5) {
-      parts.push(t("report.adviceWeightUp"));
+    if (BODY_METRICS_ENABLED) {
+      if (weightChange != null && weightChange < -0.5) {
+        parts.push(t("report.adviceWeightDown"));
+      } else if (weightChange != null && weightChange > 0.5) {
+        parts.push(t("report.adviceWeightUp"));
+      }
     }
 
-    if (mealDays > cycleDays * 0.7) {
-      parts.push(t("report.adviceMealGood"));
-    } else if (mealDays > 0 && mealDays < cycleDays * 0.3) {
-      parts.push(t("report.adviceMealMore"));
+    if (MEALS_ENABLED) {
+      if (mealDays > cycleDays * 0.7) {
+        parts.push(t("report.adviceMealGood"));
+      } else if (mealDays > 0 && mealDays < cycleDays * 0.3) {
+        parts.push(t("report.adviceMealMore"));
+      }
     }
 
     if (parts.length === 0) {
@@ -373,8 +382,8 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         </section>
       )}
 
-      {/* ② Weight/Body Fat */}
-      {hasMeasurements && (
+      {/* ② Weight/Body Fat — BODY_METRICS_ENABLED */}
+      {BODY_METRICS_ENABLED && hasMeasurements && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <TrendingDown className="w-3.5 h-3.5" />
@@ -432,7 +441,8 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         </section>
       )}
 
-      {/* ②.5 Training Records */}
+      {/* ②.5 Training Records — WORKOUT_LOG_ENABLED */}
+      {WORKOUT_LOG_ENABLED && (
       <section>
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <Dumbbell className="w-3.5 h-3.5" />
@@ -521,9 +531,10 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
           </Card>
         )}
       </section>
+      )}
 
-      {/* ③ Meal Summary */}
-      {hasMeals && (
+      {/* ③ Meal Summary — MEALS_ENABLED */}
+      {MEALS_ENABLED && hasMeals && (
         <section>
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Utensils className="w-3.5 h-3.5" />
@@ -641,7 +652,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       </section>
 
       {/* Empty state */}
-      {!hasTraining && !hasMeasurements && !hasMeals && !hasDiagnosis && !hasWorkouts && (
+      {!hasTraining && !(BODY_METRICS_ENABLED && hasMeasurements) && !(MEALS_ENABLED && hasMeals) && !hasDiagnosis && !(WORKOUT_LOG_ENABLED && hasWorkouts) && (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
             {t("report.noData")}

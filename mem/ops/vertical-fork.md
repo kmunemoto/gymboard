@@ -566,3 +566,5 @@ Lovable で Publish して `<slug>.lovable.app` を得たら、
 - `mem/features/capacitor-8-upgrade.md` … Android/iOS ビルド手順
 - `mem/ops/schema-drift.md` … マイグレーション適用と types.ts
 - `mem/ops/vertical-presets/` … 業種ごとに流し込む値の束（語彙・機能ON/OFF・ブランド）
+- `mem/ops/ai-agent-sessions.md` … AIエージェントでこの作業を進めるときの取り決め
+  （トークン消費・セッションの切り方・引き継ぎ文書の型・複数AIの分担）

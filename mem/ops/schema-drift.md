@@ -35,19 +35,39 @@ from public.tenants where logo_url is not null group by 1;
 
 同じSQLをダッシュボードの SQL Editor に貼る。
 
-### C. 全件突き合わせ（推奨）
+### C. 全件突き合わせ（推奨）— `scripts/check-schema-applied.mjs`
 
-宣言と実DBを機械的に比較する。実DBのテーブルごとのカラム数を取り:
+**手で突き合わせる必要はない。** types.ts（＝コードが期待するスキーマ）から
+検査用の SQL を1本生成するスクリプトがある。
 
-```sql
-select table_name, count(*) as live_cols
-from information_schema.columns where table_schema='public'
-group by table_name order by table_name;
+```bash
+node scripts/check-schema-applied.mjs > /tmp/check.sql
+# /tmp/check.sql を Supabase ダッシュボード → SQL Editor に貼って実行
 ```
 
-migrations 側の宣言（`CREATE TABLE` の列＋`ADD COLUMN`）と突き合わせ、
-**実DBのカラム数が宣言より少ないテーブル**と**実DBに無いテーブル**を探す。
-migrations は追加しかしないので、`live < declared` なら確実に未適用がある。
+**結果が0行なら適用漏れ無し。** 行が返ったら、それが実DBに足りないもの。
+不足しているテーブル・カラム・関数を、影響の大きい順（アプリが実際に `.rpc()` で
+呼んでいる関数 → テーブルごと欠落 → カラム欠落 → その他の関数）に並べて返す。
+
+- **読み取り専用**（`information_schema` と `pg_proc` を見るだけ）。DBは一切変更しない
+- **エージェントに認証情報を渡さずに済む。** クラウドセッションからは `*.supabase.co` が
+  ネットワークポリシーで遮断されているので、そもそもエージェントは実DBを見に行けない。
+  「SQLを生成する側」と「実行する側」を分けてあるのはこのため
+- **フォークでもそのまま使える。** フォークは自分の types.ts を持っているので、
+  同じコマンドでよい。フォーク独自のテーブル・カラム・関数は誤検出しない
+  （期待 ⊆ 実DB を見るだけで、余分なものは無視する）
+
+検証: PostgreSQL 16 に「一部だけ適用済み」のDBを作って、欠落の検出・存在するものの
+非検出・フォーク独自オブジェクトの非検出・一致時0行、を確認済み（2026-08-02）。
+生成側の回帰は `src/test/checkSchemaApplied.test.ts`。
+
+> 手でやる場合は実DBのカラム数を取って突き合わせる:
+> ```sql
+> select table_name, count(*) as live_cols
+> from information_schema.columns where table_schema='public'
+> group by table_name order by table_name;
+> ```
+> migrations は追加しかしないので、`live < declared` なら確実に未適用がある。
 
 ### クラウドセッションから直接HTTPで叩くのは不可
 

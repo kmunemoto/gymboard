@@ -128,16 +128,16 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
 | `PRODUCTION_WEB_ORIGIN` | `https://active-app-studio.lovable.app` | 公開URL（本表冒頭）。独自ドメインへ切り替えたら要更新 |
 | `BRAND_FALLBACK_GYM_NAME` | `BRAND.ja` | 他プリセットと同じ方針 |
 | `POWERED_BY_LABEL` | `` `Powered by ${BRAND.en}` `` | 他プリセットと同じ方針 |
-| `SUPPORT_EMAIL` | 未確認 | ピラボード側の実際の問い合わせ先を確認すること |
+| `SUPPORT_EMAIL` | `k.munemoto@kyoto-salute.com` | ピラボード側セッションが確認（`Privacy.tsx` 等4ファイルで既に使われている実装値。2026-08-02） |
 
-## ⚠️ `STRIPE_LIVE_HOSTS` を入れ忘れると決済が sandbox 判定のまま（地雷2）
+## `STRIPE_LIVE_HOSTS` は対応不要と判明（当初「地雷2」として警告していたが撤回）
 
-`BILLING_ENABLED = true` で**すでに課金を有効化している**ため、この3兄弟アプリの中で
-最も差し迫ったリスク。`PRODUCTION_WEB_ORIGIN`（上表）に対応するホストを
-`STRIPE_LIVE_HOSTS` へ追加しないと、本番公開URL上でも Stripe が sandbox 扱いのままになり、
-**決済成功に見えてお客様に課金されない**状態になる
-（`personal-stretch.md` の同項目を参照。ストレッチボードはこれを未公開のため先送りできているが、
-ピラボードは既に公開URLがあるため先送りできない）。
+ピラボードは `src/lib/gymboardPlans.ts` に**上流の `STRIPE_LIVE_HOSTS` とは別の独自実装
+（`LIVE_HOSTNAMES`）を持っており**、`active-app-studio.lovable.app` は既にそこに登録済み
+（ピラボード側セッションが確認・2026-08-02）。監査時点では上流の仕組みが無いことしか
+見えておらず「未設定＝リスク」と判断していたが誤りだった。**merge 時は、上流の
+`STRIPE_LIVE_HOSTS` 方式とピラボード独自の `LIVE_HOSTNAMES` 方式のどちらに統一するかを
+決める作業になる**（値の穴埋めではなく、実装の突き合わせ）。
 
 ## まだ決まっていない値（出荷前・merge後に埋める）
 
@@ -145,14 +145,9 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
       コンポーネント改修。ピラボード側の既存実装（`training.editSpring` 等）を
       upstream の最新版の記録フォームに移植し直す必要がある
 - [ ] `onboarding` の業種ピッカーの扱い（ピラティス固定にするか、選択式のまま残すか）
-- [ ] `sanitizeAuthNext` 欠落の解消 — 「まだ決まっていない」というより
-      **最優先の既知バグ**。merge すれば自動的に付いてくる（詳細は
-      `mem/ops/vertical-fork.md` のピラボード状況欄）
 - [ ] `capacitor.config.ts` に `PushNotifications` プラグイン設定ブロックが無い
       （上流にはある）。iOS のプッシュ通知が正しく初期化されない可能性がある
-- [ ] `STRIPE_LIVE_HOSTS` の実際の設定（上記「地雷2」参照。値は
-      `PRODUCTION_WEB_ORIGIN` 確定後に埋める）
-- [ ] `SUPPORT_EMAIL` の実際の値
+- [ ] `STRIPE_LIVE_HOSTS` 方式と `LIVE_HOSTNAMES`（ピラボード独自実装）方式の統一（上記参照）
 - [ ] Firebase / プロビジョニングプロファイル / アイコン・スプラッシュ
 - [ ] 法務3ページの事業者情報
 - [ ] Supabase の Additional Redirect URLs に
@@ -169,3 +164,31 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
   実UUIDが流入する**ので、merge 後に `null` へ差し替えること
   （`isDropInAvailable` の null 比較は上流側で既にガード済み。
   `mem/ops/vertical-fork.md` 地雷1参照）
+- `SUPPORT_EMAIL` = `k.munemoto@kyoto-salute.com`（ピラボード側セッションが確認）
+- `STRIPE_LIVE_HOSTS` は対応不要と判明（独自 `LIVE_HOSTNAMES` 方式が既にある。上記参照）
+- `sanitizeAuthNext`（オープンリダイレクト対策）は commit `b14934e` で
+  **`AuthCallback.tsx`／`nativeBridge.ts` の該当ロジックのみ単体移植**して先行対応済み
+  （2026-08-02。テスト189件・build確認済み）。**ただし本来のフルmergeの代替ではない
+  応急処置**であることに注意。上流でこのロジックが入ったのは commit `574ecf7`
+  （2026-07-30「認証まわりの6件の不具合をまとめて直す」）と比較的最近のため、
+  フルmerge実施時に `AuthCallback.tsx`／`nativeBridge.ts` で**単体移植分と衝突する**。
+  上流側の実装（より完全な形）を正として突き合わせて解消すること。
+
+## 適用状況: 未着手（フルmergeが前提。段階的merge戦略を検討中）
+
+2026-08-02、ピラボード側セッションが実際に差分を計測: **137ファイル中107ファイルが相違・
+約22,300行**（予約・課金・テナント設定の中核ロジックを含む）。1セッションでの
+一括 `--allow-unrelated-histories` mergeはリスクが高いと判断し、まず最優先の
+`sanitizeAuthNext` のみ単体移植で先行対応（上記）。フルmergeは着手待ち。
+
+上流側で該当区間を計測したところ、fork時点（2026-05-31）から現在（`main` HEAD）までに
+**upstream/mainだけで418コミット（約2ヶ月分の日次開発）、`src`/`supabase` だけで
+327ファイル・38,134行の差分**があった。特定のコミット境界（例: Phase 0 開始前後）で
+2分割しても偏りが大きく（Phase 0 以前だけで314ファイル・36,756行）、素朴な2段階分割は
+あまり効果が無いことも確認済み。**現実的な対処は、upstream/main の実コミット履歴上に
+2〜3週間おきの中間チェックポイントを複数取り、各チェックポイントごとに
+`git merge --allow-unrelated-histories`（1回目のみ）→ 以降は通常の `git merge` を
+1回のセッションで完了・コミット・pushする**という反復。コンフリクト解消の順序は
+ピラボード側の提案どおり ロケール → lib/hooks → components → pages のボトムアップが
+妥当（ロケールは構造的なJSONマージで衝突が読みやすく、hooksが土台、componentsは
+hooksの上に乗り、pagesは最上位の組み立てのため）。

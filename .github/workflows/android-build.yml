@@ -20,6 +20,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 必要な Secrets を「最初に」まとめて検査する。
+      #
+      # 各ステップで個別にチェックすると、1つ登録するたびに次のステップで落ちるので、
+      # 揃うまで実行を何往復もすることになる（初回セットアップで実際にそうなった）。
+      # とくに GOOGLE_PLAY_SERVICE_ACCOUNT_JSON は最後のアップロード段でしか使われないため、
+      # 未登録だと10分かけてビルドし終えてから落ちる。ここで足りないものを全部並べて出す。
+      - name: Preflight - 必要な Secrets が揃っているか
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          missing=""
+          for name in GOOGLE_SERVICES_JSON_BASE64 ANDROID_KEYSTORE_BASE64 \
+                      ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD \
+                      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON; do
+            # 値そのものは絶対に出さない。空かどうかだけを見る
+            if [ -z "${!name}" ]; then
+              missing="${missing}  - ${name}
+          "
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "::error::次の GitHub Secrets が未設定です（Settings → Secrets and variables → Actions）:"
+            printf '%s' "$missing"
+            echo "取得方法は mem/features/android-ci.md の「必要な GitHub Secrets」を参照してください。"
+            echo "**全部登録してから再実行してください。** 1つずつだと毎回ここで止まります。"
+            exit 1
+          fi
+          echo "必要な Secrets は6つとも登録されています。"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

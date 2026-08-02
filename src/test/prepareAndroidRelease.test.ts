@@ -222,6 +222,51 @@ describe("android-build.yml の versionCode 配線", () => {
   });
 });
 
+// Secrets の検査は「最初にまとめて」でなければならない。
+//
+// 各ステップで個別にチェックすると、1つ登録するたびに次のステップで落ち、
+// 揃うまで実行を何往復もすることになる（初回セットアップで実際にそうなった）。
+// とくに GOOGLE_PLAY_SERVICE_ACCOUNT_JSON は最後のアップロード段でしか使われないので、
+// 未登録だと10分ビルドし終えてから落ちる。
+describe("android-build.yml の Secrets プリフライト", () => {
+  const yml = readFileSync(join(process.cwd(), ".github/workflows/android-build.yml"), "utf8");
+  const preflight = yml.slice(yml.indexOf("Preflight"), yml.indexOf("Setup Node.js"));
+
+  it("Preflight ステップが Setup Node.js より前にある（＝一番最初に落ちる）", () => {
+    const iPre = yml.indexOf("name: Preflight");
+    const iNode = yml.indexOf("name: Setup Node.js");
+    expect(iPre).toBeGreaterThan(-1);
+    expect(iPre).toBeLessThan(iNode);
+  });
+
+  // ワークフロー全体で参照されている secrets.*
+  const referenced = new Set(
+    Array.from(yml.matchAll(/secrets\.([A-Z0-9_]+)/g), (m) => m[1]),
+  );
+
+  it("Preflight の env: に全ての Secret が渡っている", () => {
+    // env: に無い名前は ${!name} が常に空になり、登録済みでも「未設定」と誤検知する
+    const env = preflight.slice(preflight.indexOf("env:"), preflight.indexOf("run:"));
+    const declared = new Set(Array.from(env.matchAll(/^\s+([A-Z0-9_]+):/gm), (m) => m[1]));
+    expect(referenced.size).toBeGreaterThan(0);
+    expect([...referenced].filter((n) => !declared.has(n))).toEqual([]);
+  });
+
+  it("Preflight の for ループが全ての Secret を検査している", () => {
+    // env: の記載だけ拾うと、ループから抜け落ちても検知できない（実際に取りこぼした）。
+    // `for name in … ; do` の列挙だけを見ること。
+    const m = preflight.match(/for name in([\s\S]*?);\s*do/);
+    expect(m).not.toBeNull();
+    const looped = new Set(m![1].match(/[A-Z0-9_]+/g) ?? []);
+    expect([...referenced].filter((n) => !looped.has(n))).toEqual([]);
+  });
+
+  it("Secret の値そのものをログに出していない", () => {
+    // echo "$SECRET" のような直接出力が無いこと（空判定は ${!name} 経由）
+    expect(preflight).not.toMatch(/echo\s+"?\$\{?(GOOGLE|ANDROID)/);
+  });
+});
+
 // お客様に見えるバージョン表記は、iOS・Android とも「ワークフローに直書き」で揃える。
 // 入力（workflow_dispatch inputs）に戻すと「バージョンを上げた」が履歴に残らず、
 // 現在値がリポジトリのどこからも読めなくなる（android/ も ios/ も .gitignore 済みなので、

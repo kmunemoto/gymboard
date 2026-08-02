@@ -90,6 +90,34 @@ describe("prepare-android-release.mjs", () => {
     expect(output).toMatch(/整数/);
   });
 
+  // ここから3件は「初回CIリリースが Version code N has already been used で弾かれる」
+  // 問題への回帰テスト。github.run_number は 1 から始まるので、手作業時代の
+  // versionCode を超えるための下駄が要る（mem/features/android-ci.md）。
+  it("ANDROID_VERSION_CODE_BASE の分だけ versionCode に下駄を履かせる", () => {
+    scaffold();
+    const { code, output } = run({ ANDROID_VERSION_CODE: "1", ANDROID_VERSION_CODE_BASE: "10000" });
+    expect(code).toBe(0);
+    // run_number=1（初回実行）でも 1 にはならない
+    expect(read()).toMatch(/versionCode 10001\b/);
+    expect(read()).not.toMatch(/versionCode 1\n/);
+    // 何を足した結果なのかログに出す（CIログだけで追えるように）
+    expect(output).toMatch(/10001（base 10000 \+ 1）/);
+  });
+
+  it("ANDROID_VERSION_CODE_BASE が数値でなければ失敗する", () => {
+    scaffold();
+    const { code, output } = run({ ANDROID_VERSION_CODE: "1", ANDROID_VERSION_CODE_BASE: "10,000" });
+    expect(code).toBe(1);
+    expect(output).toMatch(/ANDROID_VERSION_CODE_BASE は整数/);
+  });
+
+  it("versionCode が Google Play の上限を超えたら失敗する", () => {
+    scaffold();
+    const { code, output } = run({ ANDROID_VERSION_CODE: "1", ANDROID_VERSION_CODE_BASE: "2100000000" });
+    expect(code).toBe(1);
+    expect(output).toMatch(/上限\(2100000000\)/);
+  });
+
   it("署名設定一式を android ブロックへ配線し、release に signingConfig を足す", () => {
     scaffold();
     const { code } = run({
@@ -150,6 +178,14 @@ describe("prepare-android-release.mjs", () => {
     expect(output).toMatch(/versionCode の置換箇所/);
   });
 
+  it("versionCode の下駄が無ければ、初回実行の versionCode は 1 になってしまう（下駄が要る理由の実証）", () => {
+    scaffold();
+    // ANDROID_VERSION_CODE_BASE を渡さない＝下駄が無い状態。
+    // github.run_number は初回実行で 1 なので、これがそのまま versionCode 1 になる。
+    expect(run({ ANDROID_VERSION_CODE: "1" }).code).toBe(0);
+    expect(read()).toMatch(/versionCode 1\b/);
+  });
+
   it("buildTypes.release が無ければ署名配線に失敗する（テンプレートの形が変わったことを検知）", () => {
     scaffold(FRESH_APP_GRADLE.replace(/buildTypes[\s\S]*?\n\}\n\n/, ""));
     const { code, output } = run({
@@ -160,5 +196,28 @@ describe("prepare-android-release.mjs", () => {
     });
     expect(code).toBe(1);
     expect(output).toMatch(/buildTypes\.release/);
+  });
+});
+
+// ワークフロー側の配線を見張る。スクリプトが下駄に対応していても、
+// android-build.yml が ANDROID_VERSION_CODE_BASE を渡さなければ意味が無く、
+// しかもその失敗は「10分ビルドした最後のアップロード段で Play に弾かれる」
+// という一番痛い形でしか出ない（CIでは検知できない）。
+describe("android-build.yml の versionCode 配線", () => {
+  const yml = readFileSync(join(process.cwd(), ".github/workflows/android-build.yml"), "utf8");
+
+  it("ANDROID_VERSION_CODE_BASE を渡している", () => {
+    expect(yml).toMatch(/ANDROID_VERSION_CODE_BASE:\s*"?\d+"?/);
+  });
+
+  it("下駄は手作業時代の versionCode を確実に上回る大きさにしてある", () => {
+    const m = yml.match(/ANDROID_VERSION_CODE_BASE:\s*"?(\d+)"?/);
+    expect(m).not.toBeNull();
+    // 手で +1 しながら運用してきた番号がここに達することは実質ありえない。
+    expect(Number(m![1])).toBeGreaterThanOrEqual(1000);
+  });
+
+  it("versionCode の増分には github.run_number を使い続けている（単調増加の担保）", () => {
+    expect(yml).toMatch(/ANDROID_VERSION_CODE:\s*\$\{\{\s*github\.run_number\s*\}\}/);
   });
 });

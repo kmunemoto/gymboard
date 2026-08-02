@@ -86,16 +86,24 @@ jobs:
       - name: Set version + wire signing config
         env:
           ANDROID_VERSION_CODE: ${{ github.run_number }}
+          # 手作業（Android Studio）時代に使い切った versionCode より確実に大きい値から
+          # 始めるための下駄。手で採番していた番号がこの値に達することは実質ありえないので、
+          # 初回CIリリースが `Version code N has already been used` で弾かれない。
+          # ⚠️ もし初回アップロードでそのエラーが出たら、Play Console に上がっている
+          # 最大の versionCode より大きくなるようこの値を上げること（下げるのは不可）。
+          ANDROID_VERSION_CODE_BASE: "10000"
           ANDROID_VERSION_NAME: ${{ inputs.versionName }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          # versionCode に github.run_number を使う（iOS の CURRENT_PROJECT_VERSION と同じ発想）。
+          # versionCode は BASE + github.run_number（iOS の CURRENT_PROJECT_VERSION と同じ発想）。
           # android/ は毎回 `cap add android` で作り直すため、テンプレート既定値からの
           # 相対更新ができない。run_number は実行のたびに単調増加するので、
           # 「android/ を作り直すと versionCode が1に戻る」という手作業時代の地雷が
           # 構造的に起きない（mem/features/capacitor-8-upgrade.md「やってはいけないこと」）。
+          # ただし run_number は 1 から始まるため、下駄なしだと初回だけ
+          # 同じエラーを別経路で踏む。それを BASE で塞いでいる。
           node scripts/prepare-android-release.mjs
 
       - name: Build signed AAB

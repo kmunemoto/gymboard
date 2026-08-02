@@ -41,6 +41,31 @@ GitHub側のカウンタ）。
 設計上起こらなくなった。** 手作業のように「バージョンコードを忘れずに+1する」
 という注意事項そのものが要らない。
 
+#### ⚠️ `run_number` だけでは足りなかった（2026-08-02 修正）
+
+上の設計には穴があった。**`github.run_number` は「そのワークフローの実行回数」なので
+初回実行では 1 になる。** `android-build.yml` は新規追加のワークフローで実行回数0
+（`ios-build.yml` が115回まで積み上がっているのとは違う）。一方 Play Console には
+Android Studio で手作業アップロードしてきたAABが既に載っている。
+
+つまり**初回のCIリリースは、置き換えたはずの
+`Version code 1 has already been used` を経路を変えて踏み直す。**
+しかも落ちるのは「10分かけてビルドし終えた最後のアップロード段」で、
+CI（`ci.yml`）では絶対に検知できない。
+
+対策として `ANDROID_VERSION_CODE_BASE`（現在 `10000`）で下駄を履かせ、
+`versionCode = BASE + run_number` にした。手で +1 しながら運用してきた番号が
+10000 に達することは実質ないので、初回から確実に上回る。
+下駄を足しても `run_number` は単調増加のままなので、上の性質は失われない。
+
+**もし初回アップロードでこのエラーが出たら**、Play Console に上がっている最大の
+`versionCode` より大きくなるよう `android-build.yml` の `ANDROID_VERSION_CODE_BASE`
+を上げること（`versionCode` は一度上げたら下げられないので、上げる方向は常に安全）。
+
+回帰テストは `src/test/prepareAndroidRelease.test.ts`。スクリプト側の計算だけでなく、
+**`android-build.yml` が実際に `ANDROID_VERSION_CODE_BASE` を渡しているか**も
+YAMLを読んで検査している（配線が外れると上記のとおりCIでは検知できないため）。
+
 ### 署名: `scripts/prepare-android-release.mjs`（新規）
 
 `scripts/patch-android.mjs` とは別スクリプトにした。`patch-android.mjs` は
@@ -51,6 +76,8 @@ GitHub側のカウンタ）。
 - 環境変数が無ければ何もしない（ローカルで誤って実行しても無害）
 - `ANDROID_VERSION_CODE` / `ANDROID_VERSION_NAME` … `android/app/build.gradle` の
   該当行を書き換える
+- `ANDROID_VERSION_CODE_BASE`（省略可・既定0）… `ANDROID_VERSION_CODE` に足す下駄。
+  上の「`run_number` だけでは足りなかった」参照。上限 2100000000 を超えたら止める
 - `ANDROID_KEYSTORE_PATH` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
   `ANDROID_KEY_PASSWORD` … `signingConfigs.release` ブロックを配線し、
   `buildTypes.release` に適用する（Android Studioのウィザードが対話的にやることを
@@ -120,9 +147,13 @@ bundle ID / Firebase設定と並べて Android CI のセットアップを追記
 
 - YAML構文が正しいこと
 - `scripts/prepare-android-release.mjs` の文字列パッチ処理が期待どおり動くこと
-  （モックの `build.gradle` に対する単体テスト9件。冪等性の検証で実際に1件、
+  （モックの `build.gradle` に対する単体テスト16件。冪等性の検証で実際に1件、
   「再実行時に誤って失敗と判定するバグ」を発見・修正済み）
 - 既存の `patch-android.mjs` との責務分離・非干渉
+
+**その後、机上の再点検で実際にバグを1件見つけた**（上の「`run_number` だけでは
+足りなかった」）。`versionCode` が初回 1 になる問題で、走らせていたら初回で落ちていた。
+**「テストがグリーン」はこのワークフローが通ることを何も保証しない**という実例。
 
 **Secrets を登録したうえで、一度 `workflow_dispatch` で実際に走らせて
 グリーンになることを確認すること。** 初回は `track: internal` のまま実行し、

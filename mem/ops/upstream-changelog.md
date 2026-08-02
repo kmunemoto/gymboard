@@ -34,6 +34,20 @@
 
 ---
 
+### 2026-08-02 (#239) Android CI の初回リリースが Play に弾かれるバグを修正
+**要否**: **Android を GitHub Actions でリリースする全兄弟で必要**（#235 を取り込んだアプリ）
+
+`android-build.yml` の `versionCode` は `github.run_number` だった。これは
+**「そのワークフローの実行回数」なので初回は 1** になり、Android Studio で
+手作業リリースしてきたアプリでは Play Console が
+`Version code 1 has already been used` で弾く。しかも落ちるのは
+**10分ビルドし終えた最後のアップロード段**で、`ci.yml` では検知できない。
+
+`ANDROID_VERSION_CODE_BASE`（`10000`）で下駄を履かせて修正。
+そちらでも `android-build.yml` を取り込んでいるなら、**merge するだけで直る**
+（値の調整は不要。手で採番してきた `versionCode` が 10000 に達していれば別）。
+詳細は `mem/features/android-ci.md`。
+
 ### 2026-08-02 (#236, #237) 同時に複数の予約を受けられる設定に、店が気づけるようにした
 **要否**: **全兄弟で必要**
 

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 interface BookingSummary {
   guestName: string;
@@ -36,6 +37,7 @@ const TrialCancel = () => {
   const [rescheduling, setRescheduling] = useState(false);
 
   const loadInfo = useCallback(async () => {
+    if (!TRIAL_BOOKING_ENABLED) return;
     if (!token) {
       setPhase("error");
       setErrorMsg(t("trialCancel.errInvalidLink"));
@@ -152,6 +154,15 @@ const TrialCancel = () => {
       )}
     </div>
   );
+
+  if (!TRIAL_BOOKING_ENABLED) {
+    return (
+      <Shell>
+        <h1 className="text-xl font-bold">{t("trialBooking.notAvailableTitle")}</h1>
+        <p className="text-sm text-muted-foreground mt-2">{t("trialBooking.notAvailableBody")}</p>
+      </Shell>
+    );
+  }
 
   if (phase === "loading") {
     return (

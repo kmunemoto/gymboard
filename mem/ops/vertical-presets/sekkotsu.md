@@ -101,6 +101,7 @@
 | `MUSCLE_RADAR_ENABLED` | `false` | `WORKOUT_LOG_ENABLED` を切ると集計元が消えるので道連れ |
 | `WORKOUT_SHARE_ENABLED` | `false` | 記録が無いので共有するものが無い |
 | `MONTHLY_REPORT_ENABLED` | `false` | 中身が筋トレ/減量指標のため、記録系OFFなら道連れでOFF |
+| `TRIAL_BOOKING_ENABLED` | `false` | 体験予約はジム特有の集客手法。ジムボード以外の兄弟アプリは全て無くす方針（2026-08-02決定）。false でも `trial_bookings` のデータ・Edge Functionは削除しない |
 
 `ja.json` で `home.training` を「施術」に読み替えているが、記録タブ自体は今回は無くす。
 ちゃんとした施術記録UIは別の設計課題として保留し、当面は `bookings.trainer_note`（1件のフリーテキスト）で代替する。

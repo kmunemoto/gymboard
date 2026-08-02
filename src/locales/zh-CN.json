@@ -1597,6 +1597,8 @@
     "errInvalidEmail": "请输入正确的邮箱地址",
     "errInvalidLink": "预约链接无效。请联系健身房工作人员。",
     "errBookingFailed": "预约失败。请重试。",
+    "notAvailableTitle": "目前暂不接受体验预约",
+    "notAvailableBody": "目前未开放此方式的预约。详情请直接联系健身房。",
     "calendarTitleTrial": "【体验预约】{{gym}}",
     "calendarDescription": "体验（咨询 + 训练）。\n当天请穿着便于活动的服装前来。\n如有任何疑问，欢迎随时咨询。",
     "icsLocation": "（取决于健身房设置）",

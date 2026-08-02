@@ -24,7 +24,7 @@ import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
 import BackgroundImagePicker from "@/components/BackgroundImagePicker";
 import { resizeImageToJpeg } from "@/lib/imageResize";
 import { useTranslation } from "react-i18next";
-import { BILLING_ENABLED, GOOGLE_REVIEW_ENABLED, LANGUAGE_SWITCHER_ENABLED } from "@/lib/featureFlags";
+import { BILLING_ENABLED, GOOGLE_REVIEW_ENABLED, LANGUAGE_SWITCHER_ENABLED, TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import {
   DASHBOARD_STAT_TOGGLES,
   DASHBOARD_SECTION_TOGGLES,
@@ -422,50 +422,54 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         <InviteCodeCard />
       </section>
 
-      <Separator />
+      {TRIAL_BOOKING_ENABLED && (
+        <>
+          <Separator />
 
-      {/* === 体験予約リンク === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
-        <TrialLinkCard />
-      </section>
+          {/* === 体験予約リンク === */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
+            <TrialLinkCard />
+          </section>
 
-      <Separator />
+          <Separator />
 
-      {/* === 体験予約ページの案内文 === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPageSection")}</h3>
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">{t("settings.trainer.trialInfoDesc")}</p>
-            <div className="space-y-1.5">
-              <Label htmlFor="trial-info-title" className="text-xs font-bold">{t("settings.trainer.trialInfoTitleLabel")}</Label>
-              <Input
-                id="trial-info-title"
-                value={trialInfoTitle}
-                onChange={(e) => setTrialInfoTitle(e.target.value)}
-                placeholder={t("trialBooking.infoTitle")}
-                maxLength={40}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="trial-info-body" className="text-xs font-bold">{t("settings.trainer.trialInfoBodyLabel")}</Label>
-              <Textarea
-                id="trial-info-body"
-                value={trialInfoBody}
-                onChange={(e) => setTrialInfoBody(e.target.value)}
-                placeholder={t("trialBooking.infoBody")}
-                rows={3}
-                maxLength={300}
-              />
-            </div>
-            <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
-              <Save className="w-4 h-4 mr-1" />
-              {savingTrialInfo ? t("common.saving") : t("common.save")}
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
+          {/* === 体験予約ページの案内文 === */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPageSection")}</h3>
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.trialInfoDesc")}</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trial-info-title" className="text-xs font-bold">{t("settings.trainer.trialInfoTitleLabel")}</Label>
+                  <Input
+                    id="trial-info-title"
+                    value={trialInfoTitle}
+                    onChange={(e) => setTrialInfoTitle(e.target.value)}
+                    placeholder={t("trialBooking.infoTitle")}
+                    maxLength={40}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trial-info-body" className="text-xs font-bold">{t("settings.trainer.trialInfoBodyLabel")}</Label>
+                  <Textarea
+                    id="trial-info-body"
+                    value={trialInfoBody}
+                    onChange={(e) => setTrialInfoBody(e.target.value)}
+                    placeholder={t("trialBooking.infoBody")}
+                    rows={3}
+                    maxLength={300}
+                  />
+                </div>
+                <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
+                  <Save className="w-4 h-4 mr-1" />
+                  {savingTrialInfo ? t("common.saving") : t("common.save")}
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        </>
+      )}
 
       <Separator />
 
@@ -766,7 +770,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
               <h4 className="font-bold text-sm">{t("settings.trainer.displaySectionsGroup")}</h4>
               <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displaySectionsDesc")}</p>
             </div>
-            {DASHBOARD_SECTION_TOGGLES.map(({ column, labelKey }) => (
+            {DASHBOARD_SECTION_TOGGLES.filter(({ column }) => TRIAL_BOOKING_ENABLED || column !== "show_trial_followup_alert").map(({ column, labelKey }) => (
               <div key={column} className="flex items-center justify-between gap-3">
                 <span className="text-sm">{t(labelKey)}</span>
                 <Switch
@@ -786,7 +790,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
               <h4 className="font-bold text-sm">{t("settings.trainer.displayNavGroup")}</h4>
               <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.displayNavDesc")}</p>
             </div>
-            {NAV_TAB_TOGGLES.map(({ column, labelKey }) => (
+            {NAV_TAB_TOGGLES.filter(({ column }) => TRIAL_BOOKING_ENABLED || column !== "show_nav_trial_followups").map(({ column, labelKey }) => (
               <div key={column} className="flex items-center justify-between gap-3">
                 <span className="text-sm">{t(labelKey)}</span>
                 <Switch

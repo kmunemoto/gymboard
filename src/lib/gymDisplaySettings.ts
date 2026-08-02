@@ -1,5 +1,6 @@
 import type { Tenant } from "@/hooks/useTenant";
 import type { TrainerTab } from "@/components/trainer/TrainerView";
+import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 /**
  * ジム側（トレーナー画面）の表示ON/OFF設定の定義を1箇所に集約する。
@@ -159,8 +160,12 @@ export const isDisplayOn = (tenant: Tenant | null | undefined, column: GymDispla
 /**
  * そのタブをメニューに出すか。
  * NAV_TAB_TOGGLES に無いタブ（ホーム・顧客・予約・設定）は常に表示する。
+ *
+ * trial-followups だけはビルド時フラグ（TRIAL_BOOKING_ENABLED）とジムごとの
+ * トグルの AND で決まる（featureFlags.ts の「FLAG && tenant.show_xxx で合成する」方針）。
  */
 export const isNavTabVisible = (tenant: Tenant | null | undefined, tab: TrainerTab): boolean => {
+  if (tab === "trial-followups" && !TRIAL_BOOKING_ENABLED) return false;
   const entry = NAV_TAB_TOGGLES.find((n) => n.tab === tab);
   if (!entry) return true;
   return isDisplayOn(tenant, entry.column);

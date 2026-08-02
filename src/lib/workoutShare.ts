@@ -303,7 +303,7 @@ export async function renderShareCanvas(
 
   // Compute footer total width — single-color gym brand title
   ctx.font = `700 26px ${FONT_FAMILY}`;
-  const title = gymName || "ジムボード";
+  const title = gymName || BRAND_FALLBACK_GYM_NAME;
   const titleW = ctx.measureText(title).width;
 
   const logoSize = 48;
@@ -340,6 +340,7 @@ export async function renderShareCanvas(
  * sometimes fail to produce a usable image.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
 export async function generateSharePngBlob(
   session: WorkoutSession,

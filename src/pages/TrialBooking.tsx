@@ -267,6 +267,23 @@ const TrialBooking = () => {
     );
   }
 
+  // URL にテナントIDが無く、既定テナントも持たない（＝既定テナントを持たない兄弟アプリ）
+  // 場合は予約できない。送信時にもサーバー手前で弾いているが（fetchExistingSlots 等の
+  // effectiveTenantId ガード）、入力させてから失敗させるのは不親切なので最初から
+  // 「リンクが正しくありません」を出す。既定テナントを持つ製品（DEFAULT_TENANT_ID !== null）
+  // では発生しない。
+  if (!effectiveTenantId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <p className="text-sm text-muted-foreground">{t("trialBooking.errInvalidLink")}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (completed && completedInfo) {
     const calendarUrl = (() => {
       const dateClean = completedInfo.rawDate.replace(/-/g, "");

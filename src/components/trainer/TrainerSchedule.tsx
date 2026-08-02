@@ -129,7 +129,11 @@ const TrainerSchedule = () => {
       return;
     }
     if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity)) {
-      toast.error(t("schedule.errorSlotTaken"));
+      // 同時に受けられる予約数が既定の1のままだと、実際は2人同時に見られる店でも
+      // ここで弾かれる。設定があること自体を知らないまま「アプリが対応していない」と
+      // 諦められてしまうので、詰まったその場で設定の場所を案内する。
+      // 2以上に設定済みの店は本当に埋まっているだけなので、通常の文言のままにする。
+      toast.error(bookingCapacity <= 1 ? t("schedule.errorSlotTakenCapacityHint") : t("schedule.errorSlotTaken"));
       return;
     }
 

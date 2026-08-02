@@ -1035,7 +1035,8 @@
     "blockDialogTitle": "時間帯をブロック",
     "blockDialogDesc": "選択した時間帯に予約が入らないようにブロックします。",
     "blockBtn": "ブロックする",
-    "blockReason": "ブロック（{{start}}〜{{end}}）"
+    "blockReason": "ブロック（{{start}}〜{{end}}）",
+    "errorSlotTakenCapacityHint": "すでに予約が入っています。同時に複数の予約を受けられる場合は、ジム設定 → 営業時間 の「同時に受けられる予約数」を変更してください。"
   },
   "exercise": {
     "title": "種目管理",
@@ -1589,7 +1590,9 @@
     "toastLinkCopied": "招待リンクをコピーしました",
     "goDashboard": "管理画面へ進む →",
     "fieldDisplayPreset": "最初に表示する機能の量",
-    "displayPresetNote": "迷ったら「標準」。あとからジム設定でいつでも変えられます。"
+    "displayPresetNote": "迷ったら「標準」。あとからジム設定でいつでも変えられます。",
+    "fieldCapacity": "同時に受けられる予約数",
+    "fieldCapacityHint": "同じ時間帯に何件まで予約を受けられるかです。トレーナーが2人いる、ベッドが2台あるなど、同時に複数の対応ができる場合はその数にしてください。あとからジム設定でも変えられます。"
   },
   "trialBooking": {
     "defaultGymName": "{{brandJa}}",

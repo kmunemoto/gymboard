@@ -1035,7 +1035,8 @@
     "blockDialogTitle": "시간대 차단",
     "blockDialogDesc": "선택한 시간대에 예약이 들어오지 않도록 차단합니다.",
     "blockBtn": "차단하기",
-    "blockReason": "차단 ({{start}}~{{end}})"
+    "blockReason": "차단 ({{start}}~{{end}})",
+    "errorSlotTakenCapacityHint": "이미 예약이 있습니다. 동시에 여러 예약을 받을 수 있다면 짐 설정 → 영업시간의 '동시에 받을 수 있는 예약 수'를 변경해 주세요."
   },
   "exercise": {
     "title": "종목 관리",
@@ -1589,7 +1590,9 @@
     "toastLinkCopied": "초대 링크를 복사했습니다",
     "goDashboard": "관리 화면으로 →",
     "fieldDisplayPreset": "처음에 표시할 기능의 범위",
-    "displayPresetNote": "고민된다면 「표준」. 나중에 짐 설정에서 언제든 변경할 수 있습니다."
+    "displayPresetNote": "고민된다면 「표준」. 나중에 짐 설정에서 언제든 변경할 수 있습니다.",
+    "fieldCapacity": "동시에 받을 수 있는 예약 수",
+    "fieldCapacityHint": "같은 시간대에 몇 건까지 예약을 받을 수 있는지입니다. 트레이너가 2명, 베드가 2대 등 동시에 여러 건 대응할 수 있다면 그 수로 설정해 주세요. 나중에 짐 설정에서도 변경할 수 있습니다."
   },
   "trialBooking": {
     "defaultGymName": "{{brandEn}}",

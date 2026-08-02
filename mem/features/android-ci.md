@@ -1,0 +1,130 @@
+# Android を iOS と同じく GitHub 管理にする（2026-08-02）
+
+## 背景・方針
+
+これまで iOS は `.github/workflows/ios-build.yml`（`workflow_dispatch`）で
+GitHub Actions のmacOSランナー上でビルド・署名・App Store Connectへのアップロードまで
+完結している。Android は逆に、`scripts/build-android.bat` でWeb側のビルドと
+Gradle設定の同期まではWindows上で自動化してあるものの、そこから先
+（署名付きAABの生成・Play Consoleへのアップロード）は Android Studio の
+「Generate Signed App Bundle」ウィザードでの手作業だった。
+
+**方針転換: Android もiOSと同じくGitHub Actions（`workflow_dispatch`）でビルド・署名・
+Play Consoleへのアップロードまで完結させる。** Windows + Android Studio は
+実機での動作確認・デバッグ用途に残るが、**公式リリースの経路としては使わない**方向にする。
+
+下流の兄弟アプリ（セッコツボード・ストレッチボード・ピラボード）も同じ方針に揃えること
+（`mem/ops/vertical-fork.md` に追記済み）。特にピラボードは現時点でこの経路が
+無い状態の代表例。
+
+## 新しいワークフロー: `.github/workflows/android-build.yml`
+
+iOSと同じ `workflow_dispatch` 手動トリガー。`ubuntu-latest` で完結する
+（AndroidビルドはmacOS不要。iOSより安く速い）。
+
+トリガー時に2つ入力する:
+- `versionName` … 例 `1.0.6`。**iOSの `MARKETING_VERSION` とは別系統で採番している**
+  （`mem/features/capacitor-8-upgrade.md`）ので、iOSの値をそのまま転記しないこと。
+  現在値は Play Console の「リリース」タブか、直近の署名付きAABで確認する
+- `track` … `internal` / `alpha` / `beta` / `production`。既定は `internal`
+
+### `versionCode` は手作業時代の地雷を構造的に無くした
+
+`android/` は `.gitignore` 済みで、CIは毎回 `npx cap add android` から作り直す
+（＝前回の `versionCode` が見えない）。そこで **iOSの `CURRENT_PROJECT_VERSION` と
+同じ発想で `github.run_number` を使う**（ワークフロー実行のたびに単調増加する
+GitHub側のカウンタ）。
+
+これにより、`capacitor-8-upgrade.md` の「やってはいけないこと」にあった
+**「`android/` を作り直すと `versionCode` が1に戻り、Play Consoleに
+`Version code 1 has already been used` で弾かれる」という地雷が、
+設計上起こらなくなった。** 手作業のように「バージョンコードを忘れずに+1する」
+という注意事項そのものが要らない。
+
+### 署名: `scripts/prepare-android-release.mjs`（新規）
+
+`scripts/patch-android.mjs` とは別スクリプトにした。`patch-android.mjs` は
+「`versionCode`/`versionName` を書き換えない」ことを `src/test/patchAndroid.test.ts` が
+明示的に守っている（Windows側の手作業を壊さないための不変条件）。ここに
+バージョン更新と署名を混ぜると、その不変条件が読みにくくなるため分離した。
+
+- 環境変数が無ければ何もしない（ローカルで誤って実行しても無害）
+- `ANDROID_VERSION_CODE` / `ANDROID_VERSION_NAME` … `android/app/build.gradle` の
+  該当行を書き換える
+- `ANDROID_KEYSTORE_PATH` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
+  `ANDROID_KEY_PASSWORD` … `signingConfigs.release` ブロックを配線し、
+  `buildTypes.release` に適用する（Android Studioのウィザードが対話的にやることを
+  非対話のCI向けに `build.gradle` へ書き下したもの）
+- 冪等。`src/test/prepareAndroidRelease.test.ts` で検証済み
+
+### Play Consoleへのアップロードは「公開」しない
+
+`r0adkll/upload-google-play@v1`（サードパーティだがこの用途で広く使われている
+実績のあるアクション）で `status: draft` かつ既定トラック `internal` にしてある。
+**iOSの App Store Connect アップロードが自動で審査提出・公開まではしないのと
+同じ安全側の既定**で、Play Console側で人間が明示的に確認して公開するまで
+実際のユーザーには届かない。信頼できるようになったら `track` を `production` に
+変えて呼び出せばよい（ワークフローYAML自体の編集は不要）。
+
+## 必要な GitHub Secrets（このリポジトリで4種・新規追加）
+
+| Secret | 内容 | 取得方法 |
+|---|---|---|
+| `GOOGLE_SERVICES_JSON_BASE64` | `google-services.json` をbase64化したもの | Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("google-services.json")) \| Set-Clipboard` でクリップボードにコピーしてSecretへ貼り付け |
+| `ANDROID_KEYSTORE_BASE64` | リリース署名用キーストア（.jks/.keystore）をbase64化したもの | 同上のコマンドをキーストアファイルに対して実行。**Android Studioの署名ウィザードで今まさに使っているファイルと同じもの** |
+| `ANDROID_KEYSTORE_PASSWORD` | ストアのパスワード | 署名ウィザードで毎回入力している値と同じ |
+| `ANDROID_KEY_ALIAS` | キーのエイリアス名 | 同上 |
+| `ANDROID_KEY_PASSWORD` | キーのパスワード | 同上 |
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Play Console API用サービスアカウントのJSON鍵（**新規に作る**。生のJSON文字列をそのまま貼る、base64化しない） | 下記手順 |
+
+`GOOGLE_SERVICES_JSON_BASE64` 以外はiOS側の `APPLE_TEAM_ID` / `IOS_P12_BASE64` 等と
+同じ考え方（証明書・鍵の類）。**⚠️ これらはCLAUDE.mdの「秘密情報（サービスアカウントJSON、
+署名鍵など）はコミットしない」に該当する。リポジトリに直接書かず、必ずGitHub Secretsに登録すること。**
+
+### `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` の作り方（初回のみ）
+
+1. Play Console → 該当アプリ → 設定 → API アクセス
+2. 「新しいサービス アカウントを作成」→ Google Cloud Console に飛ぶのでそこで作成
+   （プロジェクトが未リンクなら先にリンクする）
+3. 作成したサービスアカウントの「鍵」タブ → 鍵を追加 → JSON → ダウンロード
+4. Play Console に戻り、そのサービスアカウントを「ユーザーを招待」から追加し、
+   `app.gymboard.mobile` に対して「リリースの管理」権限を付与
+5. ダウンロードしたJSONファイルの中身をそのまま `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+   Secretに貼る（base64化は不要。`r0adkll/upload-google-play` が生JSON文字列を期待する）
+
+## Windows + Android Studio の扱い
+
+**残す。** 実機での動作確認・デバッグ用途（プッシュ通知・バッジ・スプラッシュ等の
+実機検証）には引き続き必要。`scripts/build-android.bat` / `scripts/patch-android.mjs`
+もそのまま使える。**変わるのは「公式リリースの経路」だけ**で、
+署名付きAABを手で作ってPlay Consoleにアップロードする作業はこのワークフローに置き換わる。
+
+## 下流の兄弟アプリへの展開
+
+`mem/ops/vertical-fork.md`「ブランド差し替えチェックリスト」に、iOSの
+bundle ID / Firebase設定と並べて Android CI のセットアップを追記した。
+各アプリで必要なもの:
+
+- 独自の `google-services.json`（Firebaseプロジェクトを分ける。iOS側の地雷5-bと同じ注意）
+- 独自の署名キーストア（**アプリごとに新規生成する。GymBoardのキーストアを使い回さない**。
+  Play Storeの署名は原則変更不可なので、最初から各アプリ専用のものを用意すること）
+- 独自のPlay Console サービスアカウント（Play Consoleのアプリごとに権限が分かれるため）
+- `android-build.yml` 内の `packageName: app.gymboard.mobile` を各アプリの
+  `appId`（`capacitor.config.ts`）に合わせて書き換える
+
+## 検証状況（正直なところ）
+
+このクラウドセッションはネイティブビルドを実行できないため
+（CLAUDE.mdの前提）、**このワークフロー自体をこのセッションから実行して
+グリーンを確認することはできていない。** 検証できたのは:
+
+- YAML構文が正しいこと
+- `scripts/prepare-android-release.mjs` の文字列パッチ処理が期待どおり動くこと
+  （モックの `build.gradle` に対する単体テスト9件。冪等性の検証で実際に1件、
+  「再実行時に誤って失敗と判定するバグ」を発見・修正済み）
+- 既存の `patch-android.mjs` との責務分離・非干渉
+
+**Secrets を登録したうえで、一度 `workflow_dispatch` で実際に走らせて
+グリーンになることを確認すること。** 初回は `track: internal` のまま実行し、
+Play Console側で内部テストトラックにAABが上がることを確認してから
+本番トラックへの利用を検討する。

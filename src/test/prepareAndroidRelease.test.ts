@@ -221,3 +221,35 @@ describe("android-build.yml の versionCode 配線", () => {
     expect(yml).toMatch(/ANDROID_VERSION_CODE:\s*\$\{\{\s*github\.run_number\s*\}\}/);
   });
 });
+
+// お客様に見えるバージョン表記は、iOS・Android とも「ワークフローに直書き」で揃える。
+// 入力（workflow_dispatch inputs）に戻すと「バージョンを上げた」が履歴に残らず、
+// 現在値がリポジトリのどこからも読めなくなる（android/ も ios/ も .gitignore 済みなので、
+// ワークフロー以外に版数を書ける場所が無い）。
+describe("versionName / MARKETING_VERSION はリポジトリに直書きされている", () => {
+  const androidYml = readFileSync(join(process.cwd(), ".github/workflows/android-build.yml"), "utf8");
+  const iosYml = readFileSync(join(process.cwd(), ".github/workflows/ios-build.yml"), "utf8");
+
+  const ANDROID_VERSION = androidYml.match(/ANDROID_VERSION_NAME:\s*"([\d.]+)"/);
+  const IOS_VERSION = iosYml.match(/MARKETING_VERSION = ([\d.]+);/);
+
+  it("Android の versionName が直書きされている（入力ではない）", () => {
+    expect(ANDROID_VERSION).not.toBeNull();
+    expect(androidYml).not.toMatch(/ANDROID_VERSION_NAME:\s*\$\{\{\s*inputs\./);
+    // 入力そのものを消してあること（残っていると必須入力を求められて混乱する）
+    expect(androidYml).not.toMatch(/^\s+versionName:/m);
+  });
+
+  it("iOS の MARKETING_VERSION が直書きされている（入力ではない）", () => {
+    expect(IOS_VERSION).not.toBeNull();
+    expect(iosYml).not.toMatch(/MARKETING_VERSION = \$\{\{\s*inputs\./);
+  });
+
+  it("iOS と Android の版数は1本の線に乗っている（メジャー・マイナーが一致）", () => {
+    // 「統一する」と決めた運用（2026-08-02）。パッチ番号は移行期にずれるが、
+    // 1.4.x と 1.0.x のように系統が分かれたら、それは統一が崩れている。
+    const androidMinor = ANDROID_VERSION![1].split(".").slice(0, 2).join(".");
+    const iosMinor = IOS_VERSION![1].split(".").slice(0, 2).join(".");
+    expect(androidMinor).toBe(iosMinor);
+  });
+});

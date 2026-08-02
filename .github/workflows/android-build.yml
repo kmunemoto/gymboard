@@ -3,12 +3,6 @@ name: Android Build & Upload
 on:
   workflow_dispatch:
     inputs:
-      versionName:
-        description: >-
-          Android の versionName（例: 1.0.6）。iOS の MARKETING_VERSION とは別系統で
-          採番している（mem/features/capacitor-8-upgrade.md）ので、iOS の値をそのまま
-          転記しないこと。android/app/build.gradle の現在値を確認してから決めること。
-        required: true
       track:
         description: "Google Play の公開トラック"
         required: true
@@ -92,7 +86,13 @@ jobs:
           # ⚠️ もし初回アップロードでそのエラーが出たら、Play Console に上がっている
           # 最大の versionCode より大きくなるようこの値を上げること（下げるのは不可）。
           ANDROID_VERSION_CODE_BASE: "10000"
-          ANDROID_VERSION_NAME: ${{ inputs.versionName }}
+          # お客様に見えるバージョン表記。**iOS と1本の版数線で運用する**ので、
+          # ios-build.yml の MARKETING_VERSION と同じ番号にする。
+          # ワークフローの入力ではなくここに直書きしてあるのは、
+          # 「バージョンを上げた」がコミットとして履歴に残るようにするため
+          # （iOS が MARKETING_VERSION を直書きしているのと同じ理由）。
+          # 上げるときは ios-build.yml の MARKETING_VERSION と一緒に上げること。
+          ANDROID_VERSION_NAME: "1.4.6"
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}

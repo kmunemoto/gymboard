@@ -22,11 +22,38 @@ Play Consoleへのアップロードまで完結させる。** Windows + Android
 iOSと同じ `workflow_dispatch` 手動トリガー。`ubuntu-latest` で完結する
 （AndroidビルドはmacOS不要。iOSより安く速い）。
 
-トリガー時に2つ入力する:
-- `versionName` … 例 `1.0.6`。**iOSの `MARKETING_VERSION` とは別系統で採番している**
-  （`mem/features/capacitor-8-upgrade.md`）ので、iOSの値をそのまま転記しないこと。
-  現在値は Play Console の「リリース」タブか、直近の署名付きAABで確認する
+トリガー時の入力は `track` の1つだけ:
 - `track` … `internal` / `alpha` / `beta` / `production`。既定は `internal`
+
+### バージョン表記（`versionName`）は iOS と1本の線に統一した（2026-08-02）
+
+**当初は `workflow_dispatch` の入力にしていたが、やめた。**
+`android/` は `.gitignore` 済みなので、入力にすると**現在のバージョンがリポジトリの
+どこからも読めない**。「Androidのバージョンを1つ上げて」と言われても、
+Play Console か Windows の `android/app/build.gradle` を見るまで**上げようがない**
+（実際にそうなった）。iOS は `ios-build.yml` に `MARKETING_VERSION` が直書きしてあるので
+「バージョンを上げた」がコミットとして履歴に残る。**Androidも同じ形に揃えた。**
+
+あわせて、**iOSとAndroidで別系統だった採番を1本に統一した。**
+`versionName` は Play では単なる表示文字列で順序の制約が無いため、途中から揃えても弾かれない。
+
+| | 従来 | これから |
+|---|---|---|
+| iOS | `ios-build.yml` の `MARKETING_VERSION` 直書き | 同じ |
+| Android | `workflow_dispatch` 入力（毎回手入力・独自採番） | `android-build.yml` の `ANDROID_VERSION_NAME` 直書き |
+| 番号 | 別系統（iOS 1.4.x / Android 1.0.x） | **1本**。リリースのたびに1つ上げ、両OSを同じ番号で出す |
+
+移行の一度きりのズレ: iOS が `1.4.5`、Android が `1.4.6` から始まる
+（Android側は「1つ上げて」の指示で 1.4.6 にしたため）。
+**次のリリースからは両方 `1.4.7` に揃えること。**
+
+上げ方は2ファイルを同じ番号に書き換えるだけ:
+- `.github/workflows/ios-build.yml` … `MARKETING_VERSION = X.Y.Z;`
+- `.github/workflows/android-build.yml` … `ANDROID_VERSION_NAME: "X.Y.Z"`
+
+`src/test/prepareAndroidRelease.test.ts` が、**両方が直書きのままであること**と
+**メジャー・マイナーが一致していること**を見張る（片方だけ入力に戻す・系統が
+分かれる、を機械で防ぐ）。
 
 ### `versionCode` は手作業時代の地雷を構造的に無くした
 

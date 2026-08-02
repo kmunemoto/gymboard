@@ -2247,5 +2247,11 @@
       "joined": "已入會",
       "declined": "未成交"
     }
+  },
+  "waitlistAlert": {
+    "title": "有{{count}}位候補預約",
+    "slot": "{{date}} {{time}}（{{count}}人）",
+    "more": " 等{{count}}個時段",
+    "capacityHint": "如果可以在同一時間接待多位客戶，請在健身房設定→營業時間中調高「同一時間可接受的預約數」，這些時段就可以預約了。"
   }
 }

@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
+import { TRIAL_BOOKING_ENABLED, WAITLIST_ENABLED } from "@/lib/featureFlags";
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;
@@ -128,6 +128,48 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
     })();
     return () => { cancelled = true; };
   }, [tenant?.id]);
+
+  // これから先のキャンセル待ち＝「予約したかったのに満枠で入れなかった」需要。
+  //
+  // これまでこのテーブルはお客様が登録するだけで、**店側から見る画面がどこにも無かった**。
+  // 取りこぼしが起きても店は永久に気づけない。特に booking_capacity が既定の1のまま
+  // 複数人で回している店では、実際には空いているのに満枠と表示されているため、
+  // ここが唯一の手がかりになる（mem/features/booking-capacity.md）。
+  const [waitingSlots, setWaitingSlots] = useState<{ date: string; time: string; count: number }[]>([]);
+  useEffect(() => {
+    if (!WAITLIST_ENABLED || !tenant?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await (supabase
+        .from("booking_waitlist") as any)
+        .select("booking_date, start_time")
+        .eq("tenant_id", tenant.id)
+        .gte("booking_date", formatJST(new Date(), "yyyy-MM-dd"));
+      if (cancelled) return;
+      if (error) {
+        // テーブル未適用の環境では静かに0件扱い（バナー非表示）。
+        setWaitingSlots([]);
+        return;
+      }
+      // 同じ枠に複数人が待っていることがあるので、枠ごとにまとめる
+      const bySlot = new Map<string, { date: string; time: string; count: number }>();
+      for (const row of (data || []) as { booking_date: string; start_time: string }[]) {
+        const key = `${row.booking_date} ${row.start_time}`;
+        const hit = bySlot.get(key);
+        if (hit) hit.count += 1;
+        else bySlot.set(key, { date: row.booking_date, time: row.start_time, count: 1 });
+      }
+      setWaitingSlots(
+        [...bySlot.values()].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)),
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [tenant?.id]);
+
+  const waitingTotal = waitingSlots.reduce((sum, s) => sum + s.count, 0);
+  // 同時1件までの設定のまま待ちが出ている＝「本当に満席」か「設定が実態と違う」かの
+  // どちらか。店にしか判断できないので、決めつけず設定の場所だけ添える。
+  const showCapacityHint = (tenant?.booking_capacity ?? 1) <= 1;
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
   // 本日のスケジュールには体験予約（user_id === "trial-guest"）も含める。
@@ -397,6 +439,35 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
                 </CardContent>
               </Card>
             </button>
+          </section>
+        )}
+
+        {/* キャンセル待ち＝「予約したかったのに満枠で入れなかった」お客様。
+            取りこぼしなので、件数と枠を店に見せる。
+            同時1件までの設定のままなら、設定の場所も添える（実態と違うかもしれないため）。 */}
+        {WAITLIST_ENABLED && waitingTotal > 0 && (
+          <section>
+            <Card className="border-warning/30">
+              <CardContent className="p-3 sm:p-4 flex items-start gap-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-warning/15 flex items-center justify-center text-warning shrink-0">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm">{t("waitlistAlert.title", { count: waitingTotal })}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {waitingSlots.slice(0, 3).map((s) => t("waitlistAlert.slot", {
+                      date: formatJST(new Date(`${s.date}T00:00:00+09:00`), "M/d"),
+                      time: s.time.slice(0, 5),
+                      count: s.count,
+                    })).join("、")}
+                    {waitingSlots.length > 3 && t("waitlistAlert.more", { count: waitingSlots.length - 3 })}
+                  </p>
+                  {showCapacityHint && (
+                    <p className="text-xs text-warning mt-1.5">{t("waitlistAlert.capacityHint")}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </section>
         )}
 

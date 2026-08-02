@@ -2247,5 +2247,11 @@
       "joined": "Signed up",
       "declined": "Did not sign up"
     }
+  },
+  "waitlistAlert": {
+    "title": "{{count}} people are on the waitlist",
+    "slot": "{{date}} {{time}} ({{count}})",
+    "more": " and {{count}} more slots",
+    "capacityHint": "If you can take more than one customer at the same time, increase \"Bookings at the same time\" under Gym settings → Business hours so these slots become bookable."
   }
 }

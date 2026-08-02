@@ -2247,5 +2247,11 @@
       "joined": "등록함",
       "declined": "보류"
     }
+  },
+  "waitlistAlert": {
+    "title": "취소 대기가 {{count}}건 있습니다",
+    "slot": "{{date}} {{time}}({{count}}명)",
+    "more": " 외 {{count}}개 시간대",
+    "capacityHint": "같은 시간에 여러 고객을 받을 수 있다면, 짐 설정 → 영업시간의 '동시에 받을 수 있는 예약 수'를 늘리면 이 시간대도 예약할 수 있게 됩니다."
   }
 }

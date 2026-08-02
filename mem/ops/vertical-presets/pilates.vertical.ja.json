@@ -258,5 +258,8 @@
     "history": {
       "trainingRecommendation": "おすすめエクササイズ"
     }
+  },
+  "waitlistAlert": {
+    "capacityHint": "同じ時間に複数のお客様を受けられる場合は、スタジオ設定 → 営業時間 の「同時に受けられる予約数」を増やすと、この枠も予約できるようになります。"
   }
 }

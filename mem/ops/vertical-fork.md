@@ -431,6 +431,9 @@ git checkout -- src/lib/brand.ts src/lib/featureFlags.ts \
 - [ ] `ceda19b0-d5e0-4928-ab2e-996a0b823af4` がコードに残っていない
 - [ ] 「ジムボード」「GymBoard」が意図しない場所に残っていない（**Edge Function とメールを特に**）
 - [ ] `npx tsc --noEmit -p tsconfig.app.json` / `npm test` / `npm run build`
+- [ ] **実DBのスキーマが上流の `types.ts` に追いついている**（上記「スキーマ追従は必須」）。
+      **tsc もテストもビルドも全部緑のまま素通りする**ので、ここだけは実DBを見るしかない。
+      最低限、予約画面を実際に開いて `get_tenant_booked_slots` が 404 にならないこと
 - [ ] 実機で: プッシュ通知・メールの差出人名・体験予約リンク・課金導線（sandbox/live判定）
 
 ## 現状の限界（正直なところ）
@@ -443,6 +446,8 @@ git checkout -- src/lib/brand.ts src/lib/featureFlags.ts \
 | `capacitor.config.ts` / `index.html` / `public/manifest.json` | ビルド設定側なので `brand.ts` から読めていない。フォークごとに手で書き換える |
 | `.github/workflows/ios-build.yml` | 同上 |
 | `supabase/functions/**` のブランド文字列 | **Edge Function はフロントの設定を読まない**ため別管理。メール本文・件名がここ |
+| `CLAUDE.md` | project ref・テナントID・アプリ名が必ず食い違う。**フォーク所有**（下記） |
+| `supabase/migrations/**` | DBが別プロジェクトで履歴も別。**フォーク所有**（下記） |
 
 （業種語彙の i18n オーバーレイと顧客側アプリの機能ON/OFF は Phase 0-B / 0-C で実装済み。
 それぞれ `src/locales/vertical.ja.json` と `src/lib/featureFlags.ts` に集約されている）
@@ -450,6 +455,62 @@ git checkout -- src/lib/brand.ts src/lib/featureFlags.ts \
 **merge 時の解決方針**: 上の表のファイルで衝突したら「兄弟側を優先」でよい
 （＝ブランド設定は上流から降ろさない）。それ以外のファイルで衝突したら
 「業種差分をコードに書いてしまっている」サインなので、値に追い出せないか検討すること。
+
+### `CLAUDE.md` はフォーク所有にする
+
+「上流版を取り込んでから自分の値に書き換える」をやると、**次回以降の merge で毎回衝突する**
+（project ref・テナントID・アプリ名は永久に食い違うため）。最初からフォーク所有と線引きし、
+上流版は参考にするだけにすれば、以後は機械的に「フォーク側を残す」で済む。
+
+### ⚠️ `supabase/migrations/` は取り込まない。**ただしスキーマ追従は必須**
+
+ここは2つの別の問いが混ざりやすい。**分けて考えること。**
+
+| 問い | 答え |
+|---|---|
+| 上流の migration **ファイル**をリポジトリに取り込むか | **No**（フォーク所有） |
+| フォークの**DBにスキーマを適用**するか | **Yes・merge完了の必須条件** |
+
+**ファイルを取り込んではいけない理由**（実際に上流の migration に入っているもの）:
+
+- `ALTER COLUMN tenant_id SET DEFAULT 'ceda19b0-…'`（Salute の UUID を列既定値に焼き込む。
+  `20260625100000_security_counseling_and_booking_source.sql`。ストレッチボードが実際に踏んだ）
+- `IF NOT EXISTS` の無い裸の `CREATE TABLE`（フォークに同名テーブルがあると失敗する）
+- 撤去済みテーブルへの `ALTER`、Salute 限定の `UPDATE`／トリガー
+- 適用順序の問題（フォークが独自に進めた migration より古い日付で入ってくる）
+
+**しかし「取り込まない」だけで終わらせると、merge したコードが動かない。**
+上流のフロントは merge 後、これらのDBオブジェクトを実行時に必ず参照する:
+
+| 依存先 | 呼んでいる場所 | 由来 migration |
+|---|---|---|
+| `get_tenant_booked_slots`（RPC） | **CustomerBooking.tsx / TrialBooking.tsx（予約画面の中核）** | `20260704130000` |
+| `booking_waitlist`（テーブル） | CustomerBooking.tsx | `20260624120000` |
+| `tenant_muscle_groups`（テーブル） | MuscleBalanceRadar.tsx | `20260723080000` |
+| `tenants.booking_capacity` | CustomerBooking.tsx | `20260801000000` |
+| `tenants.booking_buffer_minutes` | CustomerBooking.tsx | `20260721000000` |
+| `tenants.same_day_cancel_penalty_enabled` | CustomerBooking.tsx | `20260712010000` |
+| `tenants.line_url` | CustomerView.tsx | `20260718000000` |
+| `tenants.google_review_url` | CustomerHome.tsx | `20260721050000` |
+| `tenants.daily_summary_enabled` | TrainerGymSettings.tsx | `20260721030000` |
+| `tenants.show_*`（表示ON/OFF群） | TrainerDashboard / TrainerSidebar | `20260721060000` / `20260723100000` |
+| `bookings.trainer_note` | TrainerClientDetail.tsx | `20260721040000` |
+| `profiles.milestone_goal` | CustomerHome.tsx | `20260708150000` |
+| `tenant_plans.slot_duration_minutes` | useBookings.ts | `20260730120000` |
+| `trial_bookings.follow_up_status` | TrainerTrialFollowUps.tsx | `20260721020000` |
+
+**やり方**: 上流の `src/integrations/supabase/types.ts` が上流DBの完全なスキーマ定義なので、
+**これを仕様書にしてフォーク用の追従 migration を1本手で書く**。
+
+- 既存テーブルへの追加は `ADD COLUMN IF NOT EXISTS`
+- 新規テーブルは `CREATE TABLE IF NOT EXISTS`
+- 関数・RPC は `CREATE OR REPLACE FUNCTION`
+- **Salute の UUID は一切含めない**（列 DEFAULT も、`WHERE tenant_id =` も）
+
+> **「migration を書いた＝適用済み」ではない。** `mem/ops/schema-drift.md` の教訓。
+> 上流でも一度「types.ts に有れば適用済み」という前提で検出テストを書いて誤り、
+> 実DBを直接照会したら未適用が6件見つかった（types.ts の方が本番DBより先行しうる）。
+> **適用の確認は実DBを見る以外に方法がない。**
 
 ## 兄弟アプリの現況（2026-08-01）
 

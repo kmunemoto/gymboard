@@ -142,6 +142,14 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
 
 ## まだ決まっていない値（出荷前・merge後に埋める）
 
+- [ ] **DBスキーマの追従（merge完了の必須条件・2026-08-02 追加）** — 上流の
+      migration ファイル自体は取り込まない方針で正しいが、merge したフロントは
+      `get_tenant_booked_slots`（お客様の予約画面の中核RPC）・`booking_waitlist`・
+      `tenant_muscle_groups`・`tenants.booking_capacity` など14個以上のDBオブジェクトを
+      実行時に参照する。**適用しないと予約画面が動かない。**
+      上流の `types.ts` を仕様書に、追従 migration を1本手で書くこと
+      （詳細は `mem/ops/vertical-fork.md` の「supabase/migrations/ は取り込まない。
+      ただしスキーマ追従は必須」）
 - [ ] スプリング記法の入力フォーム — 語彙オーバーレイでは再現できない
       コンポーネント改修。ピラボード側の既存実装（`training.editSpring` 等）を
       upstream の最新版の記録フォームに移植し直す必要がある

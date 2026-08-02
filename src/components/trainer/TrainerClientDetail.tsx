@@ -7,8 +7,10 @@ import {
   MEALS_ENABLED,
   BODY_METRICS_ENABLED,
   MUSCLE_RADAR_ENABLED,
+  CLIENT_PRECAUTIONS_ENABLED,
 } from "@/lib/featureFlags";
-import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target, Timer, StickyNote } from "lucide-react";
+import { ArrowLeft, Save, Dumbbell, Weight, Activity, Plus, Trash2, CalendarDays, CreditCard, MessageSquare, CheckCircle2, X, Utensils, Flame, Beef, Droplets, Wheat, Leaf, Pencil, Clock, RotateCcw, Send, AlertCircle, CalendarIcon, Target, Timer, StickyNote, TriangleAlert } from "lucide-react";
+import { useClientPrecautions } from "@/hooks/useCounselingResponses";
 import { exerciseCategories } from "@/lib/dummyData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +79,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const { t } = useTranslation();
   const { plans: tenantPlans, tenant } = useTenant();
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
+  const { data: precautions } = useClientPrecautions(CLIENT_PRECAUTIONS_ENABLED ? clientId : undefined);
   const [profile, setProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
@@ -731,6 +734,37 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           <p className="text-xs sm:text-sm text-muted-foreground truncate">{clientPlan}</p>
         </div>
       </div>
+
+      {/* 禁忌事項・注意部位。初回カウンセリング回答が紐付いている場合のみ表示（CounselingResponseList で紐付け）。 */}
+      {CLIENT_PRECAUTIONS_ENABLED && precautions && (precautions.pain_areas?.length || precautions.medical_history) && (
+        <section className="mb-4 sm:mb-6">
+          <Card className="bg-destructive/5 border-destructive/30">
+            <CardContent className="p-3 sm:p-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+                <TriangleAlert className="w-4 h-4 text-destructive" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {t("clientDetail.precautionsTitle")}
+                </p>
+                {precautions.pain_areas && precautions.pain_areas.length > 0 && (
+                  <p className="text-sm mt-1 whitespace-pre-wrap break-all leading-relaxed">
+                    {t("clientDetail.precautionsPain", { areas: precautions.pain_areas.join("、") })}
+                  </p>
+                )}
+                {precautions.medical_history && (
+                  <p className="text-sm mt-1 whitespace-pre-wrap break-all leading-relaxed">
+                    {t("clientDetail.precautionsMedical", { history: precautions.medical_history })}
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  {t("clientDetail.precautionsDate", { date: formatJST(precautions.created_at, "yyyy年M月d日", { locale: ja }) })}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* 前回のセッションメモ。次回対応時にすぐ見えるよう、直近の過去予約のメモをここに出す。 */}
       {(() => {

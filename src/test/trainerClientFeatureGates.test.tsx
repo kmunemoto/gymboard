@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/lib/i18n";
 import { upstreamOnly } from "./helpers/upstream";
 
@@ -15,7 +16,13 @@ afterEach(() => {
   vi.doUnmock("@/lib/featureFlags");
 });
 
-const setup = async () => {
+type PrecautionsFixture = { pain_areas: string[] | null; medical_history: string | null; created_at: string } | null;
+
+const setup = async (opts: { precautions?: PrecautionsFixture } = {}) => {
+  const precautions = opts.precautions ?? null;
+  vi.doMock("@/hooks/useCounselingResponses", () => ({
+    useClientPrecautions: () => ({ data: precautions }),
+  }));
   vi.doMock("@/hooks/useTenant", () => ({
     useTenant: () => ({
       tenant: { id: "t1", slot_duration_minutes: 60 },
@@ -53,7 +60,11 @@ const setup = async () => {
             maybeSingle: () => Promise.resolve({ data: { display_name: "テスト顧客", plan: "月4" }, error: null }),
             order: () => ({
               order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }),
-              limit: () => Promise.resolve({ data: [], error: null }),
+              limit: () => {
+                const result: any = Promise.resolve({ data: [], error: null });
+                result.maybeSingle = () => Promise.resolve({ data: null, error: null });
+                return result;
+              },
             }),
             limit: () => Promise.resolve({ data: [], error: null }),
             gte: () => ({ lt: () => Promise.resolve({ data: [], error: null }) }),
@@ -83,7 +94,12 @@ const setup = async () => {
   vi.doMock("@/lib/tenantHelper", () => ({ fetchMyTenantId: () => Promise.resolve("t1") }));
 
   const { default: TrainerClientDetail } = await import("@/components/trainer/TrainerClientDetail");
-  render(<TrainerClientDetail clientId="c1" onBack={() => {}} />);
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <TrainerClientDetail clientId="c1" onBack={() => {}} />
+    </QueryClientProvider>
+  );
   // プロフィール取得の useEffect を待つ
   await screen.findByText("テスト顧客", {}, { timeout: 3000 }).catch(() => null);
 };
@@ -193,6 +209,37 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
     }));
     await setup();
     expect(screen.getByTestId("weight-journey")).toBeTruthy();
+  });
+});
+
+describe("トレーナー顧客カルテの禁忌事項カード", () => {
+  it("紐付いたカウンセリング回答があれば禁忌事項カードが出る", async () => {
+    vi.doMock("@/lib/featureFlags", async (orig) => ({
+      ...(await orig<Record<string, unknown>>()),
+      CLIENT_PRECAUTIONS_ENABLED: true,
+    }));
+    await setup({ precautions: { pain_areas: ["肩", "腰"], medical_history: "腰椎椎間板ヘルニア", created_at: "2026-07-01T00:00:00Z" } });
+    expect(screen.getByText(i18n.t("clientDetail.precautionsTitle"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("clientDetail.precautionsPain", { areas: "肩、腰" }))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("clientDetail.precautionsMedical", { history: "腰椎椎間板ヘルニア" }))).toBeInTheDocument();
+  });
+
+  it("紐付けが無ければ禁忌事項カードは出ない", async () => {
+    vi.doMock("@/lib/featureFlags", async (orig) => ({
+      ...(await orig<Record<string, unknown>>()),
+      CLIENT_PRECAUTIONS_ENABLED: true,
+    }));
+    await setup({ precautions: null });
+    expect(screen.queryByText(i18n.t("clientDetail.precautionsTitle"))).toBeNull();
+  });
+
+  it("CLIENT_PRECAUTIONS_ENABLED=false ならデータがあってもカードは出ない", async () => {
+    vi.doMock("@/lib/featureFlags", async (orig) => ({
+      ...(await orig<Record<string, unknown>>()),
+      CLIENT_PRECAUTIONS_ENABLED: false,
+    }));
+    await setup({ precautions: { pain_areas: ["肩"], medical_history: null, created_at: "2026-07-01T00:00:00Z" } });
+    expect(screen.queryByText(i18n.t("clientDetail.precautionsTitle"))).toBeNull();
   });
 });
 

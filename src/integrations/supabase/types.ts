@@ -535,6 +535,7 @@ export type Database = {
           target_frequency: string | null
           tenant_id: string | null
           trainer_memo: string | null
+          user_id: string | null
           ward: string | null
         }
         Insert: {
@@ -560,6 +561,7 @@ export type Database = {
           target_frequency?: string | null
           tenant_id?: string | null
           trainer_memo?: string | null
+          user_id?: string | null
           ward?: string | null
         }
         Update: {
@@ -585,6 +587,7 @@ export type Database = {
           target_frequency?: string | null
           tenant_id?: string | null
           trainer_memo?: string | null
+          user_id?: string | null
           ward?: string | null
         }
         Relationships: []

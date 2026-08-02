@@ -1035,7 +1035,8 @@
     "blockDialogTitle": "Block a time slot",
     "blockDialogDesc": "Block the selected time slot so no bookings can be made.",
     "blockBtn": "Block",
-    "blockReason": "Block ({{start}}–{{end}})"
+    "blockReason": "Block ({{start}}–{{end}})",
+    "errorSlotTakenCapacityHint": "This slot is already booked. If you can take more than one booking at a time, change \"Bookings at the same time\" under Gym settings → Business hours."
   },
   "exercise": {
     "title": "Exercise Management",
@@ -1589,7 +1590,9 @@
     "toastLinkCopied": "Invite link copied",
     "goDashboard": "Go to dashboard →",
     "fieldDisplayPreset": "How much to show at first",
-    "displayPresetNote": "Not sure? Pick Standard. You can change this anytime in gym settings."
+    "displayPresetNote": "Not sure? Pick Standard. You can change this anytime in gym settings.",
+    "fieldCapacity": "Bookings at the same time",
+    "fieldCapacityHint": "How many bookings you can take in the same time slot. If you can handle more than one at once — two trainers, two beds — set that number. You can change this later in gym settings."
   },
   "trialBooking": {
     "defaultGymName": "{{brandEn}}",

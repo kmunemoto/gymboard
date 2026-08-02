@@ -33,6 +33,10 @@ const hourOption = (baseHour: number, i: number) => {
 const START_HOURS = Array.from({ length: 11 }, (_, i) => hourOption(7, i));
 const END_HOURS = Array.from({ length: 13 }, (_, i) => hourOption(17, i));
 const SLOT_OPTIONS = [30, 45, 60, 90, 120];
+// 同時に受けられる予約数（tenants.booking_capacity）。
+// 既定1のまま放置されると「2人同時に見ているのに満枠と出る」ので、開店時に必ず聞く。
+// 設定画面（ジム設定→営業時間）と同じ選択肢に揃えてある。
+const CAPACITY_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10];
 
 const Onboarding = () => {
   const { t } = useTranslation();
@@ -73,6 +77,7 @@ const Onboarding = () => {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("21:00");
   const [slotDuration, setSlotDuration] = useState(60);
+  const [bookingCapacity, setBookingCapacity] = useState(1);
   const [cutoffValue, setCutoffValue] = useState("prev_day");
   const [primaryColor, setPrimaryColor] = useState("#3FB6AC");
 
@@ -150,6 +155,7 @@ const Onboarding = () => {
           primary_color: primaryColor,
           operating_hours: { start: startTime, end: endTime },
           slot_duration_minutes: slotDuration,
+          booking_capacity: bookingCapacity,
           booking_cutoff_type: cutoff.type,
           booking_cutoff_hours: cutoff.hours ?? 24,
           owner_user_id: user.id,
@@ -368,6 +374,15 @@ const Onboarding = () => {
                 <Label>{t("onboarding.fieldSlotDuration")}</Label>
                 <select value={slotDuration} onChange={(e) => setSlotDuration(parseInt(e.target.value))} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
                   {SLOT_OPTIONS.map((m) => <option key={m} value={m}>{t("onboarding.slotMinutes", { n: m })}</option>)}
+                </select>
+              </div>
+              <div>
+                {/* 同時に受けられる予約数。ここで聞かないと既定1のまま放置され、
+                    2人同時に見ているジムで「空いているのに満枠」になる。 */}
+                <Label>{t("onboarding.fieldCapacity")}</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-1.5">{t("onboarding.fieldCapacityHint")}</p>
+                <select value={bookingCapacity} onChange={(e) => setBookingCapacity(parseInt(e.target.value))} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                  {CAPACITY_OPTIONS.map((n) => <option key={n} value={n}>{t("settings.trainer.businessHoursCapacityUnit", { count: n })}</option>)}
                 </select>
               </div>
               <div>

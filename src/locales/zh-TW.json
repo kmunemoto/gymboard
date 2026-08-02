@@ -1035,7 +1035,8 @@
     "blockDialogTitle": "封鎖時段",
     "blockDialogDesc": "封鎖所選時段，使其無法被預約。",
     "blockBtn": "封鎖",
-    "blockReason": "封鎖（{{start}}〜{{end}}）"
+    "blockReason": "封鎖（{{start}}〜{{end}}）",
+    "errorSlotTakenCapacityHint": "該時段已有預約。如果可以同時接受多筆預約，請在健身房設定→營業時間中修改「同一時間可接受的預約數」。"
   },
   "exercise": {
     "title": "動作管理",
@@ -1589,7 +1590,9 @@
     "toastLinkCopied": "已複製邀請連結",
     "goDashboard": "前往管理後台 →",
     "fieldDisplayPreset": "初始顯示的功能範圍",
-    "displayPresetNote": "拿不定主意就選「標準」。之後可隨時在健身房設定中變更。"
+    "displayPresetNote": "拿不定主意就選「標準」。之後可隨時在健身房設定中變更。",
+    "fieldCapacity": "同一時間可接受的預約數",
+    "fieldCapacityHint": "同一時段最多可接受多少筆預約。如果有2位教練、2張床等可同時接待多人的情況，請設定為相應數量。之後也可在健身房設定中修改。"
   },
   "trialBooking": {
     "defaultGymName": "{{brandEn}}",

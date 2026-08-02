@@ -1597,6 +1597,8 @@
     "errInvalidEmail": "請輸入正確的電子郵件地址",
     "errInvalidLink": "預約連結無效。請聯絡健身房工作人員。",
     "errBookingFailed": "預約失敗。請重試。",
+    "notAvailableTitle": "目前暫不接受體驗預約",
+    "notAvailableBody": "目前未開放此方式的預約。詳情請直接聯絡健身房。",
     "calendarTitleTrial": "【體驗預約】{{gym}}",
     "calendarDescription": "體驗（諮詢 + 訓練）。\n當天請穿著方便活動的服裝前來。\n如有任何疑問，歡迎隨時諮詢。",
     "icsLocation": "（取決於健身房設定）",

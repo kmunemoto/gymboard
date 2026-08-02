@@ -114,6 +114,7 @@ merge 時は「上流にしか無いフラグを追加する」形になり、�
 | `MEALS_ENABLED` | `false` | 食事指導を売りにしないスタジオが大半という想定。栄養指導も行う場合は個別に見直す |
 | `GOOGLE_REVIEW_ENABLED` | `true` | 柔道整復師法のような広告規制の対象業種ではない |
 | `LANGUAGE_SWITCHER_ENABLED` | `false` | `ja.json` が上流とバイト一致でない（21項目追加・11項目変更）ため、他言語に切り替えるとジム向け語彙のまま出る箇所が生まれる。上流取り込み・オーバーレイ移行が終わるまでは日本語固定にする |
+| `TRIAL_BOOKING_ENABLED` | `false` | 体験予約はジム特有の集客手法。ジムボード以外の兄弟アプリは全て無くす方針（2026-08-02決定）。false でも `trial_bookings` のデータ・Edge Functionは削除しない。既存の `trialBooking`/`trialCancel` オーバーレイキー（`pilates.vertical.ja.json`）は不可用時の案内文以外は出なくなるが、害はないのでそのまま残してよい |
 
 ## `src/lib/brand.ts`（新規作成）
 

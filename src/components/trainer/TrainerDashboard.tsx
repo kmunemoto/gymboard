@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { supabase } from "@/integrations/supabase/client";
+import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;
@@ -98,7 +99,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   const showStatMonthRevenue = tenant?.show_stat_month_revenue !== false;
   // ホーム画面の各セクション。同じくジムごとにON/OFF（既定は全て表示）。
   const showTodaySchedule = tenant?.show_today_schedule !== false;
-  const showTrialFollowUpAlert = tenant?.show_trial_followup_alert !== false;
+  const showTrialFollowUpAlert = TRIAL_BOOKING_ENABLED && tenant?.show_trial_followup_alert !== false;
   const showRenewalAlerts = tenant?.show_renewal_alerts !== false;
   const showCounselingResponses = tenant?.show_counseling_responses !== false;
   const showRevenueChart = tenant?.show_revenue_chart !== false;
@@ -108,7 +109,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   // 取得エラーになるため、その場合は静かに0件扱いにする（バナー非表示）。
   const [pendingFollowUps, setPendingFollowUps] = useState(0);
   useEffect(() => {
-    if (!tenant?.id) return;
+    if (!TRIAL_BOOKING_ENABLED || !tenant?.id) return;
     let cancelled = false;
     (async () => {
       const nowIso = new Date().toISOString();

@@ -11,6 +11,7 @@ import {
   presetToValues,
 } from "@/lib/gymDisplaySettings";
 import i18n from "@/lib/i18n";
+import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 // ジム設定画面の構造テスト。
 // gymDisplaySettings.test.ts は「定義」を、TrainerSidebar.test.tsx は「反映先」を見ている。
@@ -77,6 +78,12 @@ vi.mock("@/components/BackgroundImagePicker", () => stub("background-image-picke
 const TrainerGymSettings = (await import("@/components/trainer/TrainerGymSettings")).default;
 
 const ALL_TOGGLES = [...DASHBOARD_STAT_TOGGLES, ...DASHBOARD_SECTION_TOGGLES, ...NAV_TAB_TOGGLES];
+// TRIAL_BOOKING_ENABLED=false のフォークでは、体験フォロー関連の2行は
+// ジムのトグル値に関わらず設定画面ごと出ない（TrainerGymSettings.tsx側でフィルタ済み）。
+// 画面に「実際に出る」件数を見るテストはこちらを使う。
+const VISIBLE_TOGGLES = ALL_TOGGLES.filter(
+  ({ column }) => TRIAL_BOOKING_ENABLED || (column !== "show_trial_followup_alert" && column !== "show_nav_trial_followups"),
+);
 
 const makeTenant = (overrides: Record<string, unknown> = {}): Tenant =>
   normalizeTenantRow({
@@ -105,6 +112,11 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
     // お客様の招待に日常的に使うため、画面を開いてすぐ使えること（オーナー要望）
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
     const invite = screen.getByTestId("invite-code-card");
+    if (!TRIAL_BOOKING_ENABLED) {
+      // フォークでフラグがOFFなら体験予約リンクカード自体が無いので、比較対象を持たない
+      expect(screen.queryByTestId("trial-link-card")).toBeNull();
+      return;
+    }
     const trialLink = screen.getByTestId("trial-link-card");
     // DOM 上で招待コードが先 = 画面上でより上
     expect(invite.compareDocumentPosition(trialLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -115,19 +127,24 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
     // 表示設定のトグルが見えることを担保する。
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
     expect(screen.getByText(i18n.t("settings.trainer.displaySection"))).toBeTruthy();
-    expect(screen.getAllByRole("switch").length).toBeGreaterThanOrEqual(ALL_TOGGLES.length);
+    expect(screen.getAllByRole("switch").length).toBeGreaterThanOrEqual(VISIBLE_TOGGLES.length);
   });
 
-  it("定義済みの表示トグルが全て出る", () => {
+  it("定義済みの表示トグルが全て出る（体験予約関連はTRIAL_BOOKING_ENABLEDに従う）", () => {
     // ここが落ちる = gymDisplaySettings に足したのに設定画面へ出し忘れている
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
 
     expect(ALL_TOGGLES.length).toBe(17);
-    for (const { labelKey } of ALL_TOGGLES) {
+    for (const { column, labelKey } of ALL_TOGGLES) {
+      const isTrialRow = column === "show_trial_followup_alert" || column === "show_nav_trial_followups";
+      if (isTrialRow && !TRIAL_BOOKING_ENABLED) {
+        expect(screen.queryByText(i18n.t(labelKey)), `${i18n.t(labelKey)} が出ている（TRIAL_BOOKING_ENABLED=false のはず）`).toBeNull();
+        continue;
+      }
       // 同じ文言が画面の別の場所にも出ることがあるため getAllByText で「1つ以上ある」を見る
       expect(screen.getAllByText(i18n.t(labelKey)).length, `${i18n.t(labelKey)} のトグルが無い`).toBeGreaterThan(0);
     }
-    expect(screen.getAllByRole("switch").length).toBeGreaterThanOrEqual(ALL_TOGGLES.length);
+    expect(screen.getAllByRole("switch").length).toBeGreaterThanOrEqual(VISIBLE_TOGGLES.length);
   });
 
   it("トグルの初期状態がテナントの設定値どおりになる", () => {

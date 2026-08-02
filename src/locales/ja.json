@@ -1597,6 +1597,8 @@
     "errInvalidEmail": "正しいメールアドレスを入力してください",
     "errInvalidLink": "予約リンクが無効です。ジムの担当者にお問い合わせください。",
     "errBookingFailed": "予約に失敗しました。もう一度お試しください。",
+    "notAvailableTitle": "ただいま体験予約を受け付けておりません",
+    "notAvailableBody": "現在この方法でのご予約は行っておりません。詳しくはジムまでお問い合わせください。",
     "calendarTitleTrial": "【体験予約】{{gym}}",
     "calendarDescription": "体験（カウンセリング＋トレーニング）。\n当日は動きやすい服装でお越しください。\nご不明な点がございましたらお気軽にお問い合わせください。",
     "icsLocation": "（ジム設定に依存）",

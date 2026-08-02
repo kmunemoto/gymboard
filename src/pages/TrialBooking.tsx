@@ -17,6 +17,7 @@ import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
+import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 interface TrialSlotBooking {
   date: string;
@@ -72,6 +73,7 @@ const TrialBooking = () => {
 
   useEffect(() => {
     (async () => {
+      if (!TRIAL_BOOKING_ENABLED) return;
       // テナント指定なしの /trial は既定テナント（Salute御所南）にフォールバックする。
       // 既定テナントを持たない兄弟アプリでは null になるので、RPC自体を呼ばない。
       const resolveId = tenantId || DEFAULT_TENANT_ID;
@@ -99,7 +101,7 @@ const TrialBooking = () => {
 
   // テナント限定の埋まり枠を60日分まとめて1回で取得する (get_tenant_booked_slots)
   const fetchExistingSlots = useCallback(async () => {
-    if (!effectiveTenantId) return;
+    if (!TRIAL_BOOKING_ENABLED || !effectiveTenantId) return;
     const today = getJSTNow();
     const end = new Date(today);
     end.setDate(today.getDate() + 59);
@@ -251,6 +253,19 @@ const TrialBooking = () => {
     setCompleted(true);
     setSubmitting(false);
   };
+
+  if (!TRIAL_BOOKING_ENABLED) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center space-y-3">
+            <h1 className="text-lg font-bold">{t("trialBooking.notAvailableTitle")}</h1>
+            <p className="text-sm text-muted-foreground">{t("trialBooking.notAvailableBody")}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (completed && completedInfo) {
     const calendarUrl = (() => {

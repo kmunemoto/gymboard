@@ -4,6 +4,7 @@ import type { Tenant } from "@/hooks/useTenant";
 import { normalizeTenantRow } from "@/lib/tenantColumns";
 import TrainerSidebar from "@/components/trainer/TrainerSidebar";
 import i18n from "@/lib/i18n";
+import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 // ジム側の表示ON/OFFは gymDisplaySettings.test.ts で純粋関数として検証済みだが、
 // 「設定どおりに実際のメニューが描画されるか」は誰も検証していなかった。
@@ -72,7 +73,14 @@ describe("TrainerSidebar（メニューの表示ON/OFF）", () => {
       expect(labels, `${mobile} が出ていない`).toContain(mobile);
     }
     for (const tab of OPTIONAL_TABS) {
-      expect(labels, `${tab.desktop} が出ていない`).toContain(tab.desktop);
+      // trial-followups だけは TRIAL_BOOKING_ENABLED（ビルド時フラグ）とのANDなので、
+      // フラグがOFFのフォークではジムのトグルに関わらず最初から出ない。
+      const shouldShow = tab.column === "show_nav_trial_followups" ? TRIAL_BOOKING_ENABLED : true;
+      if (shouldShow) {
+        expect(labels, `${tab.desktop} が出ていない`).toContain(tab.desktop);
+      } else {
+        expect(labels, `${tab.desktop} が出ている（TRIAL_BOOKING_ENABLED=false のはず）`).not.toContain(tab.desktop);
+      }
     }
   });
 
@@ -102,7 +110,14 @@ describe("TrainerSidebar（メニューの表示ON/OFF）", () => {
       expect(labels, `${target.desktop} をOFFにしたのに残っている`).not.toContain(target.desktop);
       for (const other of OPTIONAL_TABS) {
         if (other.column === target.column) continue;
-        expect(labels, `${target.desktop} のOFFで ${other.desktop} まで消えた`).toContain(other.desktop);
+        // trial-followups は TRIAL_BOOKING_ENABLED が false のフォークでは、
+        // 他のトグルの状態に関わらずそもそも出ない（上と同じ理由）。
+        const otherShouldShow = other.column === "show_nav_trial_followups" ? TRIAL_BOOKING_ENABLED : true;
+        if (otherShouldShow) {
+          expect(labels, `${target.desktop} のOFFで ${other.desktop} まで消えた`).toContain(other.desktop);
+        } else {
+          expect(labels, `${other.desktop} が出ている（TRIAL_BOOKING_ENABLED=false のはず）`).not.toContain(other.desktop);
+        }
       }
     }
   });

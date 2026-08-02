@@ -38,6 +38,18 @@ export const MUSCLE_RADAR_ENABLED = true;
 export const BODY_METRICS_ENABLED = true;
 /** トレーニング内容のSNSシェアカード */
 export const WORKOUT_SHARE_ENABLED = true;
+/**
+ * 体験予約（公開の予約フォーム・確認/キャンセルページ・トレーナー側のリンク発行・
+ * 案内文編集・体験フォロー管理タブ）。ジム特有の集客手法で、他業種では意味を成さない。
+ *
+ * false でも `trial_bookings` のデータ・Edge Function（trial-book / trial-cancel /
+ * send-trial-reminders）・DBは一切削除しない。公開ページ（/trial, /trial/:tenantId,
+ * /trial-cancel/:token）は経路自体は残るが「現在受け付けていません」の案内に切り替わり、
+ * 予約RPCを一切呼ばなくなる。トレーナー側のリンクカード・案内文編集セクション・
+ * 体験フォロー管理タブ（ナビ・ダッシュボードのバナー・設定の表示トグル行）も非表示になる。
+ * 復活方法: この値を true に戻すだけ。
+ */
+export const TRIAL_BOOKING_ENABLED = true;
 
 // 外部連携の有効/無効フラグ。
 // App Store / Google OAuth 審査の都合で一時的に非表示にしているセクションを

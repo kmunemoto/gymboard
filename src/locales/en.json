@@ -1597,6 +1597,8 @@
     "errInvalidEmail": "Please enter a valid email address",
     "errInvalidLink": "The booking link is invalid. Please contact the gym staff.",
     "errBookingFailed": "Booking failed. Please try again.",
+    "notAvailableTitle": "Trial booking is not available right now",
+    "notAvailableBody": "We are not accepting bookings this way at the moment. Please contact the gym directly for details.",
     "calendarTitleTrial": "[Trial Session] {{gym}}",
     "calendarDescription": "Trial session (counseling + training).\nPlease come in comfortable clothing.\nIf you have any questions, feel free to contact us.",
     "icsLocation": "(Depends on gym settings)",

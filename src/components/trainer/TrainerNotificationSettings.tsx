@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
-import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_TRAINER_ENABLED } from "@/lib/featureFlags";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_TRAINER_ENABLED, TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 const TrainerNotificationSettings = () => {
   const { t } = useTranslation();
@@ -349,10 +349,12 @@ const TrainerNotificationSettings = () => {
                     <Check className="w-3.5 h-3.5 text-accent shrink-0" />
                     {t("settings.notification.receiveCancel")}
                   </li>
-                  <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Check className="w-3.5 h-3.5 text-accent shrink-0" />
-                    {t("settings.notification.receiveTrial")}
-                  </li>
+                  {TRIAL_BOOKING_ENABLED && (
+                    <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                      {t("settings.notification.receiveTrial")}
+                    </li>
+                  )}
                   <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Check className="w-3.5 h-3.5 text-accent shrink-0" />
                     {t("settings.notification.receiveMessage")}

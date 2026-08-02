@@ -293,6 +293,16 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 - [ ] `capacitor.config.ts` … `appId` / `appName` — **`brand.ts` の `NATIVE_APP_SCHEME` と必ず一致させる**
 - [ ] `.github/workflows/ios-build.yml` … bundle id・プロビジョニングプロファイル・`MARKETING_VERSION`
 - [ ] Firebase プロジェクト … `GoogleService-Info.plist` / `google-services.json` / Web VAPID鍵
+- [ ] `.github/workflows/android-build.yml` … `packageName`（`app.gymboard.mobile` の箇所）を
+      `appId` に合わせる。**Android のリリースも GitHub Actions で行う方針**
+      （2026-08-02〜。Windows + Android Studio は実機確認用に残すが公式リリース経路ではない。
+      詳細は `mem/features/android-ci.md`）。フォークごとに新規の GitHub Secrets が要る:
+  - [ ] `GOOGLE_SERVICES_JSON_BASE64` … そのアプリ専用の Firebase プロジェクトのもの
+  - [ ] `ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
+        `ANDROID_KEY_PASSWORD` … **必ずアプリごとに新規生成する。GymBoardのキーストアを
+        使い回さない**（Play Store の署名は原則変更不可）
+  - [ ] `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` … そのアプリの Play Console から発行した
+        サービスアカウント（手順は `mem/features/android-ci.md`）
 - [ ] Supabase プロジェクト（project ref）… **5箇所。1つでも漏れると別プロジェクトを向く**
   - [ ] `.env` の `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`
   - [ ] `supabase/config.toml` の `project_id`

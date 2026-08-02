@@ -1,0 +1,124 @@
+name: Android Build & Upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: >-
+          Android の versionName（例: 1.0.6）。iOS の MARKETING_VERSION とは別系統で
+          採番している（mem/features/capacitor-8-upgrade.md）ので、iOS の値をそのまま
+          転記しないこと。android/app/build.gradle の現在値を確認してから決めること。
+        required: true
+      track:
+        description: "Google Play の公開トラック"
+        required: true
+        default: "internal"
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Java (Capacitor 8 のネイティブモジュールは21でコンパイルされる)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install dependencies
+        run: |
+          npm install --legacy-peer-deps
+          npm install @mediapipe/pose @tensorflow/tfjs-backend-webgpu @tensorflow/tfjs-backend-webgl @tensorflow/tfjs-core @tensorflow/tfjs-converter --legacy-peer-deps
+
+      - name: Install Capacitor Android
+        run: npm install @capacitor/android@^8 --legacy-peer-deps
+
+      - name: Build web
+        run: npm run build
+
+      - name: Add Android platform
+        run: npx cap add android || true
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Decode google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "::error::secrets.GOOGLE_SERVICES_JSON_BASE64 が未設定です。Firebaseコンソールの" \
+                 "google-services.json を base64 して GitHub Secrets に登録してください" \
+                 "（mem/features/android-ci.md 参照）。"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/android-keys"
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > "$RUNNER_TEMP/android-keys/google-services.json"
+          echo "GOOGLE_SERVICES_JSON=$RUNNER_TEMP/android-keys/google-services.json" >> "$GITHUB_ENV"
+
+      - name: Patch Gradle config to Capacitor 8 baseline + wire Firebase
+        run: node scripts/patch-android.mjs
+
+      - name: Decode release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::secrets.ANDROID_KEYSTORE_BASE64 が未設定です（mem/features/android-ci.md 参照）。"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/android-keys"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/android-keys/release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/android-keys/release.keystore" >> "$GITHUB_ENV"
+
+      - name: Set version + wire signing config
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+          ANDROID_VERSION_NAME: ${{ inputs.versionName }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # versionCode に github.run_number を使う（iOS の CURRENT_PROJECT_VERSION と同じ発想）。
+          # android/ は毎回 `cap add android` で作り直すため、テンプレート既定値からの
+          # 相対更新ができない。run_number は実行のたびに単調増加するので、
+          # 「android/ を作り直すと versionCode が1に戻る」という手作業時代の地雷が
+          # 構造的に起きない（mem/features/capacitor-8-upgrade.md「やってはいけないこと」）。
+          node scripts/prepare-android-release.mjs
+
+      - name: Build signed AAB
+        env:
+          # ANDROID_KEYSTORE_PATH は前段の $GITHUB_ENV 経由で既に環境変数として渡っている。
+          # secrets.* は明示マップしないと引き継がれないので、ここで改めて渡す。
+          # build.gradle 側は System.getenv(...) でこれらを読む（prepare-android-release.mjs 参照）。
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew bundleRelease --no-daemon
+
+      - name: Upload to Google Play (${{ inputs.track }})
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: app.gymboard.mobile
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.track }}
+          status: draft
+          # status: draft にしてある。internal 以外のトラックへ上げても Play Console 側で
+          # 明示的に「確認して公開」を押すまで審査提出・公開はされない
+          # （iOS の App Store Connect アップロードが自動で審査提出しないのと同じ安全側の既定）。

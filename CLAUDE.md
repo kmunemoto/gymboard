@@ -17,8 +17,11 @@
 ## ビルド/リポジトリの前提
 - ios/ と GoogleService-Info.plist / google-services.json は .gitignore 済み。
   ネイティブ設定はビルド時に注入されるため、リポジトリ内に無くても正常。
-- iOS は GitHub Actions（.github/workflows/ios-build.yml）、Android は Windows + Android Studio。
-  クラウドセッションではネイティブビルドは実行できない。
+- リリースは iOS・Android とも GitHub Actions で行う
+  （.github/workflows/ios-build.yml / android-build.yml。ともに workflow_dispatch）。
+  Windows + Android Studio は実機での動作確認・デバッグ用途に残すが、公式リリースの
+  経路としては使わない（2026-08-02、詳細は mem/features/android-ci.md）。
+  クラウドセッションではネイティブビルドを実行・検証できない。
 - Lovable と GitHub 同期しているプロジェクト。変更はブランチで行い PR を作る（main を直接壊さない）。
 
 ## セキュリティ

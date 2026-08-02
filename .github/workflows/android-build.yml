@@ -86,13 +86,16 @@ jobs:
           # ⚠️ もし初回アップロードでそのエラーが出たら、Play Console に上がっている
           # 最大の versionCode より大きくなるようこの値を上げること（下げるのは不可）。
           ANDROID_VERSION_CODE_BASE: "10000"
-          # お客様に見えるバージョン表記。**iOS と1本の版数線で運用する**ので、
-          # ios-build.yml の MARKETING_VERSION と同じ番号にする。
-          # ワークフローの入力ではなくここに直書きしてあるのは、
-          # 「バージョンを上げた」がコミットとして履歴に残るようにするため
-          # （iOS が MARKETING_VERSION を直書きしているのと同じ理由）。
-          # 上げるときは ios-build.yml の MARKETING_VERSION と一緒に上げること。
-          ANDROID_VERSION_NAME: "1.4.6"
+          # お客様に見えるバージョン表記。ワークフローの入力ではなくここに直書きして
+          # あるのは、「バージョンを上げた」がコミットとして履歴に残るようにするため
+          # （iOS が ios-build.yml に MARKETING_VERSION を直書きしているのと同じ理由）。
+          #
+          # ⚠️ 下げてはいけない。Play は versionName の順序を検査しないので下げても
+          # 弾かれないが、お客様の画面では「更新したらバージョンが戻った」に見える。
+          # iOS の MARKETING_VERSION（1.4.5 系）とは**別の線**である点に注意
+          # （Android の方が数字が大きい。揃えるなら 9.x 側に上げる形になる）。
+          # 経緯は mem/features/android-ci.md。
+          ANDROID_VERSION_NAME: "9.1"
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}

@@ -245,11 +245,20 @@ describe("versionName / MARKETING_VERSION はリポジトリに直書きされ�
     expect(iosYml).not.toMatch(/MARKETING_VERSION = \$\{\{\s*inputs\./);
   });
 
-  it("iOS と Android の版数は1本の線に乗っている（メジャー・マイナーが一致）", () => {
-    // 「統一する」と決めた運用（2026-08-02）。パッチ番号は移行期にずれるが、
-    // 1.4.x と 1.0.x のように系統が分かれたら、それは統一が崩れている。
-    const androidMinor = ANDROID_VERSION![1].split(".").slice(0, 2).join(".");
-    const iosMinor = IOS_VERSION![1].split(".").slice(0, 2).join(".");
-    expect(androidMinor).toBe(iosMinor);
+  // iOS と Android は別の版数線に乗っている（Android 9.x / iOS 1.4.x）。
+  // 一度は「1本に統一する」方針にしかけたが、Android の実際の versionName が
+  // 9.0 だと分かって取りやめた。iOS の 1.4.x に寄せると Android のお客様には
+  // 9.0 → 1.4.6 と**バージョンが戻って見える**（Play は versionName の順序を
+  // 検査しないので弾かれず、そのまま出てしまう）。詳細は mem/features/android-ci.md。
+  //
+  // そこで「揃っていること」ではなく「**下がっていないこと**」を見張る。
+  // 下げてしまう事故はテストでしか止められない（CIもPlayも止めてくれない）。
+  it("Android の versionName は過去にリリースした番号より下がっていない", () => {
+    // Play Console 上の実績（2026-08-02 時点）。ここより下げたら退行。
+    const SHIPPED = [9, 0];
+    const current = ANDROID_VERSION![1].split(".").map(Number);
+    const cmp =
+      (current[0] ?? 0) - SHIPPED[0] || (current[1] ?? 0) - SHIPPED[1];
+    expect(cmp).toBeGreaterThan(0);
   });
 });

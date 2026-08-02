@@ -25,35 +25,49 @@ iOSと同じ `workflow_dispatch` 手動トリガー。`ubuntu-latest` で完結�
 トリガー時の入力は `track` の1つだけ:
 - `track` … `internal` / `alpha` / `beta` / `production`。既定は `internal`
 
-### バージョン表記（`versionName`）は iOS と1本の線に統一した（2026-08-02）
+### バージョン表記（`versionName`）はワークフローに直書きする（2026-08-02）
 
 **当初は `workflow_dispatch` の入力にしていたが、やめた。**
 `android/` は `.gitignore` 済みなので、入力にすると**現在のバージョンがリポジトリの
 どこからも読めない**。「Androidのバージョンを1つ上げて」と言われても、
 Play Console か Windows の `android/app/build.gradle` を見るまで**上げようがない**
-（実際にそうなった）。iOS は `ios-build.yml` に `MARKETING_VERSION` が直書きしてあるので
-「バージョンを上げた」がコミットとして履歴に残る。**Androidも同じ形に揃えた。**
+（実際にそうなって作業が止まった）。iOS は `ios-build.yml` に `MARKETING_VERSION` が
+直書きしてあるので「バージョンを上げた」がコミットとして履歴に残る。
+**Androidも同じ形に揃えた。**
 
-あわせて、**iOSとAndroidで別系統だった採番を1本に統一した。**
-`versionName` は Play では単なる表示文字列で順序の制約が無いため、途中から揃えても弾かれない。
+上げ方は `android-build.yml` の `ANDROID_VERSION_NAME` を書き換えるだけ。
 
-| | 従来 | これから |
-|---|---|---|
-| iOS | `ios-build.yml` の `MARKETING_VERSION` 直書き | 同じ |
-| Android | `workflow_dispatch` 入力（毎回手入力・独自採番） | `android-build.yml` の `ANDROID_VERSION_NAME` 直書き |
-| 番号 | 別系統（iOS 1.4.x / Android 1.0.x） | **1本**。リリースのたびに1つ上げ、両OSを同じ番号で出す |
+#### 手作業時代の実績（リポジトリに記録が無かったので残す）
 
-移行の一度きりのズレ: iOS が `1.4.5`、Android が `1.4.6` から始まる
-（Android側は「1つ上げて」の指示で 1.4.6 にしたため）。
-**次のリリースからは両方 `1.4.7` に揃えること。**
+| 項目 | 2026-08-02 時点の Play Console 実績 |
+|---|---|
+| `versionCode` | **81** |
+| `versionName` | **9.0** |
 
-上げ方は2ファイルを同じ番号に書き換えるだけ:
-- `.github/workflows/ios-build.yml` … `MARKETING_VERSION = X.Y.Z;`
-- `.github/workflows/android-build.yml` … `ANDROID_VERSION_NAME: "X.Y.Z"`
+`ANDROID_VERSION_CODE_BASE` を 10000 にしてあるのは、この 81 を確実に上回るため
+（初回CIリリースは `10000 + 1 = 10001` になる）。
 
-`src/test/prepareAndroidRelease.test.ts` が、**両方が直書きのままであること**と
-**メジャー・マイナーが一致していること**を見張る（片方だけ入力に戻す・系統が
-分かれる、を機械で防ぐ）。
+#### ⚠️ iOS とは別の版数線。統一するなら 9.x 側に上げる形になる
+
+一度は「iOS と1本に統一する」方針にしかけたが、**実際の値を確認して取りやめた。**
+
+| | 現在 |
+|---|---|
+| iOS（`MARKETING_VERSION`） | `1.4.5` |
+| Android（`ANDROID_VERSION_NAME`） | **`9.1`**（9.0 の次） |
+
+**Android の方が数字が大きい。** iOS の 1.4.x に寄せると Android のお客様には
+`9.0` → `1.4.6` と**バージョンが戻って見える**。`versionName` は Play では単なる
+表示文字列で順序を検査されないため、**下げても弾かれずにそのまま出てしまう。**
+（App Store の `MARKETING_VERSION` は増加を要求されるので、iOS 側は事故が起きない。
+Android だけがノーガード＝テストで見張るしかない）
+
+将来どうしても揃えたいなら、**iOS を 9.x 側へ上げる**（`1.4.5` → `9.x` は増加なので
+App Store も通る）。ただし一度上げたら二度と下げられないので、必要になるまでやらない。
+
+`src/test/prepareAndroidRelease.test.ts` が見張るのは:
+- iOS・Android とも `versionName` が**直書きのまま**であること（入力に戻すと現在値が読めなくなる）
+- Android の `versionName` が**リリース実績（9.0）より下がっていない**こと
 
 ### `versionCode` は手作業時代の地雷を構造的に無くした
 

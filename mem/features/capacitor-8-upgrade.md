@@ -96,8 +96,8 @@ AGP 8.9.1 以上を要求する。Capacitor 8 が引く `androidx.core 1.17.0` �
 > **⚠️ 2026-08-02 以降、5〜7 は公式リリースの経路ではない。**
 > Android も GitHub Actions（`.github/workflows/android-build.yml`）でビルド・署名・
 > Play Console へのアップロードまで行う（`mem/features/android-ci.md`）。
-> バージョンは `android-build.yml` の `ANDROID_VERSION_NAME` を書き換える。
-> **iOS の `MARKETING_VERSION` と1本の線に統一した**ので、両方を同じ番号で上げること。
+> バージョンは `android-build.yml` の `ANDROID_VERSION_NAME` を書き換える
+> （手作業時代の実績は versionCode 81 / versionName 9.0）。
 > 1〜4・6 は実機での動作確認用途としては引き続き有効。
 
 ### やってはいけないこと
@@ -152,7 +152,8 @@ provisioning profiles` で失敗。原因は `CODE_SIGN_IDENTITY` / `PROVISIONIN
 `MARKETING_VERSION` はワークフローにハードコード（この文書を書いた時点は 1.3.9。
 現在値は `ios-build.yml` を見ること）、ビルド番号は `github.run_number`。
 新バージョンを出すときは ios-build.yml の `Set marketing version` の値を更新すること。
-**2026-08-02 以降は Android の `ANDROID_VERSION_NAME` も同じ番号に揃える**
+**Android の `ANDROID_VERSION_NAME` は別の版数線**（iOS 1.4.x に対し Android 9.x）。
+揃えようとして iOS 側に寄せると Android のバージョンが戻って見えるので注意
 （`mem/features/android-ci.md`）。
 
 ## ピラボード（別アプリ）について

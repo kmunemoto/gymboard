@@ -512,6 +512,18 @@ git checkout -- src/lib/brand.ts src/lib/featureFlags.ts \
 > 実DBを直接照会したら未適用が6件見つかった（types.ts の方が本番DBより先行しうる）。
 > **適用の確認は実DBを見る以外に方法がない。**
 
+**確認は `scripts/check-schema-applied.mjs` で自動化してある**（フォークでもそのまま使える）:
+
+```bash
+node scripts/check-schema-applied.mjs > /tmp/check.sql
+# /tmp/check.sql を Supabase ダッシュボード → SQL Editor に貼って実行
+# 0行なら適用漏れ無し。行が返ったらそれが足りないもの（影響の大きい順）
+```
+
+読み取り専用。フォーク独自のテーブル・カラム・関数は誤検出しない。
+**クラウドセッションからは `*.supabase.co` が遮断されていてエージェントは実DBを見に行けない**ので、
+「SQLを生成する側」と「実行する側」を分けてある（＝認証情報をエージェントに渡さなくてよい）。
+
 ## 兄弟アプリの現況（2026-08-01）
 
 | | セッコツボード | ストレッチボード | ピラボード |

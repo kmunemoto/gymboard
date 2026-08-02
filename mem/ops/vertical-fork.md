@@ -113,6 +113,23 @@ git fetch upstream && git merge upstream/main
 すんなり通るなら手順書は守れている。毎回同じファイルで衝突するなら、
 そのファイルは「差分を値に追い出す」対象。
 
+### ⚠️ merge したら `mem/ops/upstream-changelog.md` を読む
+
+**コードは merge で降りてくるが、降りてきたことには気づけない。**
+機能フラグは既定値のまま、新しい設定は既定値のまま、必要な作業は誰も知らないまま埋もれる。
+
+実際にそうなった:
+
+- `TRIAL_BOOKING_ENABLED` … 上流に入れたが、伝えるまで兄弟は誰も `false` にしていなかった
+- `tenants.booking_capacity` … 入れた翌日に本番を見たら**14テナント全部が既定のまま**だった
+
+`mem/ops/upstream-changelog.md` に「兄弟が判断すべき変更」だけを新しい順で並べてある。
+**merge のたびに、前回以降の項目を上から読むこと。**
+
+**上流側で作業する人・エージェントへ**: 兄弟が判断すべき変更を入れたら、
+**PRと同じコミットで**その一覧に1件足すこと。判断が要らないもの（内部リファクタ・
+上流だけのバグ修正・ドキュメント整理）は書かない。全部書くと読まれなくなる。
+
 ### すでに `ja.json` を直接書き換えてしまったフォークの直し方
 
 セッコツボードがこの状態（`ja.json` の約1,569キーを接骨院の語彙に全面書き換え済み。
@@ -575,6 +592,7 @@ Lovable で Publish して `<slug>.lovable.app` を得たら、
 - `mem/features/app-icon-splash-assets.md` … アイコン・スプラッシュ生成
 - `mem/features/capacitor-8-upgrade.md` … Android/iOS ビルド手順
 - `mem/ops/schema-drift.md` … マイグレーション適用と types.ts
+- `mem/ops/upstream-changelog.md` … **兄弟が判断すべき上流の変更の一覧。merge のたびに読む**
 - `mem/ops/vertical-presets/` … 業種ごとに流し込む値の束（語彙・機能ON/OFF・ブランド）
 - `mem/ops/ai-agent-sessions.md` … AIエージェントでこの作業を進めるときの取り決め
   （トークン消費・セッションの切り方・引き継ぎ文書の型・複数AIの分担）

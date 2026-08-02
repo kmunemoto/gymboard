@@ -94,11 +94,34 @@ describe("実際の配線（このリポジトリの vertical.ja.json）", () =>
   it("オーバーレイに書いたキーは、実際に t() でその値になる", async () => {
     // 上流はオーバーレイが空なので空回りする。フォークでは全キーが検証対象になる。
     const i18n = (await import("@/lib/i18n")).default;
+    const { BRAND } = await import("@/lib/brand");
     await i18n.changeLanguage("ja");
+
+    // t() は補間を展開して返すので、生のJSON文字列とそのまま比べると
+    // 補間を含む値で必ず落ちる。ブランド3種は値が確定しているので展開してから比べ、
+    // それ以外の変数（{{count}} / {{gym}} 等）は呼び出し時の引数が無いと決まらないので対象外にする。
+    // （2026-08-02: この罠は下の「base の値がそのまま出る」テストでは回避していたのに、
+    //   こちらで踏んだまま残っていた。セッコツボードの help.subtitle で初めて表面化した）
+    const expand = (s: string) =>
+      s
+        .replace(/\{\{brandJa\}\}/g, BRAND.ja)
+        .replace(/\{\{brandEn\}\}/g, BRAND.en)
+        .replace(/\{\{brandApp\}\}/g, BRAND.app);
+
+    let checked = 0;
     for (const key of leaves(REAL_OVERLAY)) {
       const want = at(REAL_OVERLAY, key);
       if (typeof want !== "string") continue; // 配列は returnObjects 経由なので対象外
-      expect(i18n.t(key), `${key} がオーバーレイの値になっていない`).toBe(want);
+      const expected = expand(want);
+      if (expected.includes("{{")) continue; // ブランド以外の変数が残る値は評価できない
+      expect(i18n.t(key), `${key} がオーバーレイの値になっていない`).toBe(expected);
+      checked++;
+    }
+
+    // オーバーレイが空でない（＝フォーク）のに1件も検証できていないなら、
+    // 上の continue が効きすぎている。黙って素通りさせない。
+    if (leaves(REAL_OVERLAY).length > 0) {
+      expect(checked, "オーバーレイに値があるのに1件も検証できていない").toBeGreaterThan(0);
     }
   });
 

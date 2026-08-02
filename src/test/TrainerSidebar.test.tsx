@@ -126,7 +126,7 @@ describe("TrainerSidebar（メニューの表示ON/OFF）", () => {
     // 他画面から遷移してきた場合に、今いる場所がメニューから消えて迷子になるのを防ぐ
     tenantRef.current = makeTenant({ show_nav_messages: false });
     render(<TrainerSidebar activeTab="messages" onTabChange={vi.fn()} />);
-    expect(visibleTabLabels()).toContain("メッセージ");
+    expect(visibleTabLabels()).toContain(i18n.t("trainerNav.messages"));
   });
 
   it("タブを押すと onTabChange にそのタブIDが渡る", () => {
@@ -142,7 +142,9 @@ describe("TrainerSidebar（メニューの表示ON/OFF）", () => {
     render(
       <TrainerSidebar activeTab="dashboard" onTabChange={vi.fn()} unreadMessages={3} unreadCounseling={0} />,
     );
-    expect(screen.getByRole("button", { name: /メッセージ/ }).textContent).toContain("3");
-    expect(screen.getByRole("button", { name: /カウンセリング/ }).textContent).toBe("カウンセリング");
+    const messages = i18n.t("trainerNav.messages");
+    const counseling = i18n.t("trainerNav.counseling");
+    expect(screen.getByRole("button", { name: new RegExp(messages) }).textContent).toContain("3");
+    expect(screen.getByRole("button", { name: new RegExp(counseling) }).textContent).toBe(counseling);
   });
 });

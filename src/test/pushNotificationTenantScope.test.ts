@@ -102,6 +102,13 @@ describe("send-push-notification: 宛先はテナントで絞る", () => {
     expect(code).toMatch(/> MAX_PUSH_TARGETS/);
   });
 
+  it("プロトコル相対URL（//evil.example）を通す抜け道が無い", () => {
+    // "//evil.example" も "/" 始まりだが、ブラウザは**別オリジン**に解決する。
+    // 通知を開いた先が外部サイトになる（AuthCallback で sanitizeAuthNext が
+    // 塞いだのと同じ形の穴）。2026-08-03、ピラボードが先に直していた。
+    expect(code).toMatch(/u\.startsWith\("\/"\) && !u\.startsWith\("\/\/"\)/);
+  });
+
   it("service_role 以外は userId を必ず持つことを確認している", () => {
     // verifyCaller は service_role のとき { userId: null, isServiceRole: true } を返す。
     // `if (!caller)` だけの判定はこれを通してしまう（signup-trainer は `!caller?.userId`）。

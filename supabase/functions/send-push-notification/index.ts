@@ -14,7 +14,11 @@ const ALLOWED_URL_HOSTS = new Set([
 
 function isAllowedUrl(u: string | undefined): boolean {
   if (!u) return true;
-  if (u.startsWith("/")) return true;
+  // "//evil.example" も "/" 始まりだが、ブラウザはプロトコル相対URLとして
+  // **別オリジン**に解決する。ここを許すと、プッシュを開いた先が外部サイトになる
+  // （`sanitizeAuthNext` で認証コールバックに対して塞いだのと同じ形の穴）。
+  // 2026-08-03、ピラボードが先に直していたのを見て上流にも取り込んだ。
+  if (u.startsWith("/") && !u.startsWith("//")) return true;
   try {
     const parsed = new URL(u);
     return ALLOWED_URL_HOSTS.has(parsed.host);

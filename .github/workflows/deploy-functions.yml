@@ -35,6 +35,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # デプロイ先が、このリポジトリ自身の Supabase プロジェクトかを確認する。
+      #
+      # PROJECT_REF はワークフローに直書きしてあるので、フォーク（兄弟アプリ）が
+      # ここを直し忘れると **他人（ジムボード＝Salute御所南）の本番プロジェクトに
+      # Edge Function を5本上書きデプロイする**。.env や config.toml と違って
+      # Lovable の remix はここを直してくれない（ゴルフボードで実際に残っていた）。
+      #
+      # .env の VITE_SUPABASE_PROJECT_ID は各フォークが必ず自分の値に直しているので、
+      # それと突き合わせれば「直し忘れ」を機械的に検出できる。
+      - name: Preflight - デプロイ先がこのリポジトリのプロジェクトか
+        run: |
+          ENV_REF=$(grep -oE '^VITE_SUPABASE_PROJECT_ID="?([a-z0-9]+)"?' .env | sed -E 's/.*="?([a-z0-9]+)"?/\1/')
+          if [ -z "$ENV_REF" ]; then
+            echo "::error::.env から VITE_SUPABASE_PROJECT_ID を読み取れませんでした。"
+            exit 1
+          fi
+          if [ "$ENV_REF" != "$PROJECT_REF" ]; then
+            echo "::error::デプロイ先がこのリポジトリのプロジェクトと一致しません。"
+            echo "  .env の VITE_SUPABASE_PROJECT_ID : $ENV_REF"
+            echo "  このワークフローの PROJECT_REF   : $PROJECT_REF"
+            echo ""
+            echo "このまま実行すると **別プロジェクトの Edge Function を上書き** します。"
+            echo "フォーク（兄弟アプリ）の場合は、このファイルの PROJECT_REF を"
+            echo "自分のプロジェクトの ref に直してください（mem/ops/vertical-fork.md）。"
+            exit 1
+          fi
+          echo "デプロイ先を確認しました: $PROJECT_REF"
+
       # SUPABASE_ACCESS_TOKEN 未設定なら、失敗にせずスキップする（緑のまま）。
       - name: Check for access token
         id: guard

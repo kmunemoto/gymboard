@@ -1,7 +1,8 @@
 # 業種特化アプリ（兄弟アプリ）の作り方
 
 GymBoard を複製して別業種向けアプリを出すときの手順書。
-既存の兄弟: **ピラボード**（ピラティス）、**セッコツボード**（接骨院）、**パーソナルストレッチ版**（予定）。
+既存の兄弟: **セッコツボード**（接骨院）、**ストレッチボード**（パーソナルストレッチ）、
+**ピラボード**（ピラティス）、**ゴルフボード**（ゴルフレッスン。2026-08-02 に remix で作成）。
 
 ## 前提: フォークは避けられない
 
@@ -102,7 +103,47 @@ Lovable が自動生成し直したファイルから、手で足した設定が
   → この状態で deploy すると `trial-book`・LINEログイン・Stripe webhook が **401 で全滅**する
 - `src/integrations/supabase/client.ts` の dev fixtures 切り替え
 
+> **⚠️ ゴルフボードでは「一部が落ちる」ではなく `[functions]` ブロックが丸ごと消えていた**
+> （2026-08-03）。`project_id` の1行だけになり、`verify_jwt = false` の指定が
+> **14件すべて欠落**していた。remix 直後にこの状態なので、
+> **「消えた差分を探す」のではなく「上流の全ブロックがあるか」を数えて確認すること。**
+>
+> ```bash
+> # 上流と件数を突き合わせる（0 でなければ欠落している）
+> echo $(( $(git show upstream/main:supabase/config.toml | grep -c verify_jwt) - $(grep -c verify_jwt supabase/config.toml) ))
+> ```
+>
+> 復元するときは **`project_id` だけは自分の値のまま**にすること
+> （上流のものに戻すと別プロジェクトを向く）。
+
 取り込み後に `git diff upstream/main -- supabase/config.toml` で差分を確認すること。
+
+### ⚠️ `deploy-functions.yml` の `PROJECT_REF` — remix が直してくれない
+
+`.env` や `supabase/config.toml` の project ref は Lovable の remix が自分の値に直すが、
+**`.github/workflows/deploy-functions.yml` の `PROJECT_REF` は上流の値のまま残る**
+（ゴルフボードで実際に残っていた・2026-08-03）。
+
+気づかずにこのワークフローを回すと、**そのフォークの Edge Function 5本が
+ジムボード（Salute御所南）の本番プロジェクトに上書きデプロイされる。**
+「別ジムの本番DBを触る」と同じ重さの事故で、しかも他人の環境を壊す。
+
+**上流側で 2026-08-03 にプリフライトを入れた。** デプロイ手前で
+`.env` の `VITE_SUPABASE_PROJECT_ID` と `PROJECT_REF` を突き合わせ、
+食い違っていれば止める。merge すればフォークでも自動的に効く。
+
+### ⚠️ `supabase/functions/mcp/index.ts` はビルド成果物で、ref が焼き込まれる
+
+`src/lib/mcp/index.ts` は `import.meta.env.VITE_SUPABASE_PROJECT_ID` から読むが、
+**コミットされているビルド成果物には Vite がビルド時に ref を文字列として埋め込む。**
+フォークが `.env` を直しても、この1ファイルだけが上流のプロジェクトを向く
+（＝別プロジェクトの issuer で OAuth 認証を要求する）。
+**型もテストもビルドも全部通るので、実際に MCP を使うまで気づけない。**
+
+**上流側で 2026-08-03 に実行時導出（`Deno.env.get("SUPABASE_URL")`）へ直した。**
+`src/test/edgeFunctionProjectRef.test.ts` が `supabase/functions/**` 全体を走査して、
+project ref の直書きが復活したら落ちる。**MCP の成果物を再生成すると手直しが消える**ので、
+そのときはこのテストが教えてくれる。
 
 ### 追従が通ることの確認
 

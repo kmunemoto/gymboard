@@ -34,6 +34,47 @@
 
 ---
 
+### 2026-08-03 (#242) 別プロジェクトへのデプロイ・別プロジェクトの issuer を塞いだ
+**要否**: **全兄弟で必要。merge するだけで効く**
+
+ゴルフボードの棚卸しで見つかった上流の穴2件。どちらも**他人の本番環境を壊す**種類で、
+**型もテストもビルドも全部通るので気づけない。**
+
+1. **`.github/workflows/deploy-functions.yml` の `PROJECT_REF`**
+   `.env` や `config.toml` と違って **Lovable の remix が直してくれない**ため、
+   気づかずに回すと**そのフォークの Edge Function 5本がジムボードの本番プロジェクトに
+   上書きデプロイされる**。デプロイ手前で `.env` の `VITE_SUPABASE_PROJECT_ID` と
+   突き合わせて止めるプリフライトを入れた。**merge 後、自分の `PROJECT_REF` が
+   自分の ref になっているか確認すること**（なっていなければワークフローが止める）。
+
+2. **`supabase/functions/mcp/index.ts`（ビルド成果物）に project ref が焼き込まれていた**
+   `src/lib/mcp/index.ts` は env から読むのに、成果物には Vite がビルド時に
+   上流の ref を埋め込む。フォークが `.env` を直しても**この1ファイルだけが
+   上流のプロジェクトを向く**（別プロジェクトの issuer で認証を要求する）。
+   実行時に `SUPABASE_URL` から導出するよう直した。
+   `src/test/edgeFunctionProjectRef.test.ts` が `supabase/functions/**` 全体を走査する。
+
+あわせて `mem/ops/vertical-fork.md` に、**remix で `supabase/config.toml` の
+`[functions]` ブロックが丸ごと消える**件（ゴルフボードでは `verify_jwt = false` が
+14件すべて欠落）と、件数を数えて確認するコマンドを追記した。
+
+### 2026-08-03 (#241) Android CI は「任意」に格下げ。ジムボード本体は使わない
+**要否**: **判断が変わったので読むこと**（作業は不要）
+
+#235 で「Android のリリースも GitHub Actions で行う。全兄弟で必要」と伝えたが、
+**ジムボード本体はこれを見送り、Android Studio での手作業リリースを継続する**ことにした
+（2026-08-03）。必要な GitHub Secrets が6種あり、うち
+`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` は Play Console と Google Cloud をまたぐ
+画面操作が必要で、準備コストが移行のメリットに見合わなかった。
+
+**そちらでの扱い**: `android-build.yml` は merge で降りてくるが、
+`workflow_dispatch` のみなので**放置して問題ない**（手で実行しない限り動かない）。
+
+**ただし「上流がやめたから兄弟もやめる」ではない。**
+ピラボードのように **Android のリリース経路そのものが無いアプリには、それでも作る価値がある**。
+Secrets さえ揃えれば動く状態にはなっている（`scripts/setup-android-secrets.ps1` で5つは自動登録できる）。
+自分の状況で判断すること。
+
 ### 2026-08-02 (#239) Android CI の初回リリースが Play に弾かれるバグを修正
 **要否**: **`android-build.yml` を実際に使うアプリだけ**（ジムボード本体は #241 で使わないことにした）
 
@@ -80,23 +121,6 @@ App Store 側は増加を要求されるので事故が起きない＝**Android 
   （`personal-stretch` と `pilates` のプリセットには追加済み。セッコツボードは要対応）
 - **`booking_capacity` 列が本番DBに適用済みか確認すること**（`scripts/check-schema-applied.mjs`）
 - 詳細: `mem/features/booking-capacity.md`
-
-### 2026-08-03 (#241) Android CI は「任意」に格下げ。ジムボード本体は使わない
-**要否**: **判断が変わったので読むこと**（作業は不要）
-
-#235 で「Android のリリースも GitHub Actions で行う。全兄弟で必要」と伝えたが、
-**ジムボード本体はこれを見送り、Android Studio での手作業リリースを継続する**ことにした
-（2026-08-03）。必要な GitHub Secrets が6種あり、うち
-`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` は Play Console と Google Cloud をまたぐ
-画面操作が必要で、準備コストが移行のメリットに見合わなかった。
-
-**そちらでの扱い**: `android-build.yml` は merge で降りてくるが、
-`workflow_dispatch` のみなので**放置して問題ない**（手で実行しない限り動かない）。
-
-**ただし「上流がやめたから兄弟もやめる」ではない。**
-ピラボードのように **Android のリリース経路そのものが無いアプリには、それでも作る価値がある**。
-Secrets さえ揃えれば動く状態にはなっている（`scripts/setup-android-secrets.ps1` で5つは自動登録できる）。
-自分の状況で判断すること。
 
 ### 2026-08-02 (#235) Android のリリースも GitHub Actions で行う方針にした
 **要否**: ~~全兄弟で必要~~ → **任意**（上の #241 で方針変更）

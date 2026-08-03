@@ -12,11 +12,26 @@
 |---|---|---|
 | 3 | `send-push-notification` が trainer に対して宛先検証を全部スキップ | **修正済み（PR #246）** |
 | 1 | `tenant_members` に他人の `user_id` を INSERT できる | **修正済み（PR #247）** |
-| 2 | `signup-trainer` が自己サービスで、誰でも trainer になれる | 未対応 |
+| 2 | `signup-trainer` が自己サービスで、誰でも trainer になれる | **対処済み（PR #248）。ただし登録の自由は維持** |
 
 **1 が本丸。** ここが開いている限り、`shares_tenant_with_me()` に依存する
 テナント境界（`profiles` / `skeletal_diagnoses` など）は全部意味を失う。
 影響が小さく独立して直せる 3 から着手した。
+
+## 結論: 「trainer である」ことを権限の根拠にしない
+
+2 について、**トレーナー登録を自由なままにすることを 2026-08-03 に決めた**
+（新規ジムが自分で登録できることが product の前提。兄弟アプリも同じ）。
+
+つまり **「trainer ロールを持っている」は権限の根拠にならない。**
+インターネットの誰でも取れる属性だから。守り方は2つだけ:
+
+| 場所 | 書き方 |
+|---|---|
+| RLS の書き込みポリシー | 必ず `tenant_id = get_my_tenant_id()` か `auth.uid() = user_id` と **AND** する |
+| Edge Function | `hasRole` を宛先・対象の検証に使わない。`tenant_members` を直接引く |
+
+見張り: `src/test/globalTrainerRole.test.ts` / `src/test/pushNotificationTenantScope.test.ts`
 
 ---
 
@@ -185,3 +200,75 @@ supabase.from('tenant_members').insert({ tenant_id: '<自分の店>', user_id: '
 `FOR ALL` は INSERT/UPDATE/DELETE をまとめて開けるので、
 どのコマンドの検査にも含めている（`policiesFor`）。
 マイグレーションを外すとテスト9件中7件が落ちることを確認済み。
+
+---
+
+## 2. グローバルな trainer ロールで書けるテーブル（対処済み）
+
+### 方針
+
+**トレーナー登録は自由なまま。** `signup-trainer` は閉じない
+（`TRAINER_SIGNUP_CODE` の復活は見送った）。代わりに
+**「trainer になっただけで他テナントに手が届く先」を無くす**。
+
+### 何が開いていたか
+
+`has_role` が見る `public.user_roles` に `tenant_id` は無いので、
+
+```sql
+USING (has_role(auth.uid(), 'trainer'::app_role))
+```
+
+とだけ書かれた書き込みポリシーは「**誰でも書ける**」と同義だった。
+`tenant_id` を持たない全テナント共通のマスタ8つがこの状態:
+
+`raid_bosses` / `raid_reward_items` / `season_events` / `season_event_tasks` /
+`season_pass_config` / `season_pass_levels` / `avatar_customization_items` /
+`gym_settings`（旧・単一ジム時代の設定。アプリからは未使用）
+
+捨てアドレスで登録した誰かが「レイドを全部消す」「イベントを書き換える」ことができた。
+
+storage も1件。`avatars` バケットの `tenant-logos/` が
+`foldername[1] = 'tenant-logos' AND has_role(trainer)` だけで、任意のファイル名を置けた。
+
+### どう直したか
+
+`supabase/migrations/20260803140000_global_trainer_write_scope.sql`
+
+- 8テーブルの**書き込みポリシーを外して service_role 専用**にした。SELECT は据え置き。
+  **アプリからは1箇所も書いていない**（全走査で確認。読みは `CustomerBooking.tsx:97` の
+  `raid_bosses` と `useSeasonEvents.ts:54/66` だけで、どちらも `.select()`）
+- `apply_raid_damage()` は SECURITY DEFINER なので `raid_bosses` の
+  `current_damage` / `defeated` 更新は影響を受けない
+- storage は `name LIKE 'tenant-logos/' || auth.uid()::text || '-%'` を足した。
+  実際に書くのは `Onboarding.tsx:115` の `tenant-logos/{user.id}-{timestamp}.{ext}` 1箇所。
+  **オンボーディング時点ではテナントが未作成**なので `get_my_tenant_id()` は使えず、
+  user_id 前置で絞るのが正解
+
+### 対象外だったもの（既に AND で絞られていた）
+
+| テーブル | 絞り |
+|---|---|
+| `counseling_responses` | `AND tenant_id = get_my_tenant_id()` |
+| `tenant_muscle_groups` | `AND tenant_id = get_my_tenant_id()` |
+| `google_calendar_tokens` | `AND auth.uid() = user_id` |
+| `gym-assets` バケット | `AND foldername[1] = get_my_tenant_id()::text`（2026-05-30 に対処済み） |
+
+### 回帰テスト
+
+`src/test/globalTrainerRole.test.ts`。**テーブルを列挙しない**のが要点で、
+全ポリシーを走査して「`has_role(trainer)` を含む書き込みポリシーに、
+テナント絞りか本人限定が AND されているか」を見る。列挙式だと
+テーブルが増えたときに漏れる。
+
+`storage.objects` だけは対象外にしている（絞りの書き方が
+`bucket_id` / `storage.foldername(name)` / `auth.uid()::text` と public スキーマと
+まったく違い、共有パーサでは正しく評価できない）。代わりに名指しの断言を1つ置いた。
+
+マイグレーションを外すとテスト4件中3件が落ちることを確認済み。
+
+### 兄弟アプリへ
+
+**同じ穴が全兄弟アプリにある**（複製元が同じなので）。
+しかも Confirm email を OFF にすると `email_confirmed_at` の関門も消えるため、
+**ジムボードより条件が緩い**。このマイグレーションをそのまま持っていけばよい。

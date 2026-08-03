@@ -170,6 +170,26 @@ YAMLを読んで検査している（配線が外れると上記のとおりCI�
 登録場所: リポジトリ → Settings → Secrets and variables → Actions → New repository secret。
 **Name は大文字小文字も含めて完全一致**させること（1文字違うと「未設定」扱いになる）。
 
+### 手作業を減らす: `scripts/setup-android-secrets.ps1`
+
+Windows で実行すると、**6つのうち5つを自動で登録する**。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-android-secrets.ps1
+```
+
+やること:
+
+- `android\app\google-services.json` を自動で探し、**`app.gymboard.mobile` が入っているか確認**してから base64 化
+- キーストアのパスを聞き、**`keytool` でストアのパスワードとキーのパスワードが実際に通るか検証**
+  （間違っていればCIを回す前に分かる）
+- エイリアスを**キーストアから読み出して**自動で埋める（複数あれば選択させる）
+- GitHub CLI (`gh`) があれば `gh secret set` で直接登録。無ければクリップボード経由で1つずつ案内
+- **Secret の値は画面に出さない。** `gh` へはコマンドライン引数ではなく一時ファイル経由で渡す
+  （プロセス一覧に出さないため）。一時ファイルは直後に消す
+
+`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` だけは Play Console と Google Cloud の画面操作が要るので対象外。
+
 ### base64 化の共通手順（Windows PowerShell）
 
 ```powershell

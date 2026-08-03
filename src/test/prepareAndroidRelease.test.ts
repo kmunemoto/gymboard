@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { load } from "js-yaml";
 
 // scripts/prepare-android-release.mjs の回帰テスト。
 //
@@ -222,6 +223,32 @@ describe("android-build.yml の versionCode 配線", () => {
   });
 });
 
+// ワークフローYAMLが構文として正しいこと。
+//
+// これが無いと、正規表現ベースのテストは全部通るのに GitHub 側で
+// 「ワークフローが不正」で実行そのものが始まらない、という形で壊れる。
+// 実際に一度壊した: run: | のブロックスカラーの中で継続行のインデントを
+// 浅くしてしまい、そこでブロックが終端していた。
+describe("ワークフローYAMLの構文", () => {
+  const FILES = ["android-build.yml", "ios-build.yml", "ci.yml", "deploy-functions.yml"];
+
+  it.each(FILES)("%s がYAMLとして解析できる", (f) => {
+    const src = readFileSync(join(process.cwd(), ".github/workflows", f), "utf8");
+    const doc = load(src) as { jobs?: Record<string, unknown> };
+    expect(doc).toBeTruthy();
+    expect(doc.jobs).toBeTruthy();
+    expect(Object.keys(doc.jobs!).length).toBeGreaterThan(0);
+  });
+
+  it("android-build.yml の各ステップが name か uses を持つ", () => {
+    const src = readFileSync(join(process.cwd(), ".github/workflows/android-build.yml"), "utf8");
+    const doc = load(src) as { jobs: { build: { steps: { name?: string; uses?: string }[] } } };
+    const steps = doc.jobs.build.steps;
+    expect(steps.length).toBeGreaterThan(5);
+    for (const s of steps) expect(s.name ?? s.uses).toBeTruthy();
+  });
+});
+
 // Secrets の検査は「最初にまとめて」でなければならない。
 //
 // 各ステップで個別にチェックすると、1つ登録するたびに次のステップで落ち、
@@ -264,6 +291,24 @@ describe("android-build.yml の Secrets プリフライト", () => {
   it("Secret の値そのものをログに出していない", () => {
     // echo "$SECRET" のような直接出力が無いこと（空判定は ${!name} 経由）
     expect(preflight).not.toMatch(/echo\s+"?\$\{?(GOOGLE|ANDROID)/);
+  });
+
+  it("空判定だけでなく中身の形も検査している", () => {
+    // 「登録されている」と「正しいものが登録されている」は別。
+    // 貼り間違いは10分ビルド後や Play 側でしか分からないので、ここで止める。
+    expect(preflight).toMatch(/base64 --decode/);          // base64 として読めるか
+    expect(preflight).toMatch(/package_name/);             // 別アプリの json でないか
+    expect(preflight).toMatch(/feedfeed/);                 // キーストアの magic
+    expect(preflight).toMatch(/service_account/);          // SA を base64 化していないか
+  });
+
+  it("Preflight が期待するパッケージ名が、アップロード先と一致している", () => {
+    // ずれると「検査は通るのに Play が別アプリ扱いで拒否する」になる
+    const expected = preflight.match(/"package_name"[^"]*"([\w.]+)"/);
+    const uploaded = yml.match(/packageName:\s*([\w.]+)/);
+    expect(expected).not.toBeNull();
+    expect(uploaded).not.toBeNull();
+    expect(expected![1]).toBe(uploaded![1]);
   });
 });
 

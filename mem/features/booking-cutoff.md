@@ -18,6 +18,22 @@ return Date.now() >= bookingDayStart;   // = 当日以降は問答無用で締�
 **気づけなかった理由**: 列は存在し、保存も成功し、型もテストもビルドも全部通る。
 「設定したのに効かない」は例外もログも出さない。実際に当日予約を試すまで分からない。
 
+## 本番への適用（2026-08-03 実施済み）
+
+Lovable 経由で GymBoard の本番DB（project `69ac2641-…` / Supabase `rrbfwitprzuevzytykrq`）に適用済み。
+`get_tenant_public` の差し替えと `booking_capacity_confirmed_at` の追加を1トランザクションで実行した
+（`DROP` と `CREATE` の間に関数が存在しない瞬間を作らないため）。
+
+**実害を受けていた店が1件あった。** 適用前に全15テナントの設定を調べたところ:
+
+| `booking_cutoff_type` | 件数 |
+|---|---|
+| `prev_day`（既定） | 14 |
+| **`hours_before` / 1時間** | **1（`mania`）** |
+
+`mania` は開店時に「1時間前まで受け付ける」と答えていたのに、**当日予約が一切取れない状態**だった。
+残り14店は既定のままなので、挙動は変わらない（設定を変えて初めて当日予約が開く）。
+
 ## 仕様
 
 | `booking_cutoff_type` | 意味 |

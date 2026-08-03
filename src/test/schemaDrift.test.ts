@@ -28,16 +28,13 @@ const TYPES_PATH = "src/integrations/supabase/types.ts";
  * types.ts に載っていないと分かっている既知のズレ。**新しいズレを増やさないための番人**。
  * 解消したらエントリごと削除する（残したままだと逆に「載っているのに未掲載扱い」で落ちる）。
  *
- * 2026-08-01 現在は空だった。tenant_plans.slot_duration_minutes と tenants.booking_capacity は
+ * 2026-08-03 現在も空。tenants.booking_capacity_confirmed_at は同日に本番へ適用し、
+ * types.ts も追従させたため解消済み。
+ * 2026-08-01 の時点も空だった。tenant_plans.slot_duration_minutes と tenants.booking_capacity は
  * 本番DBに適用したうえで types.ts を実スキーマに合わせて更新し、一時的に入れていた
  * `as any` / `as unknown as` のキャストも外したため、migrations と types.ts は一致している。
  */
-const KNOWN_STALE: Record<string, string> = {
-  // 2026-08-03 追加。本番DBへの適用待ち。
-  // 適用して types.ts を再生成したら、この行を消すこと。
-  "tenants.booking_capacity_confirmed_at":
-    "20260803000000_booking_cutoff_and_capacity_prompt.sql（本番適用待ち）",
-};
+const KNOWN_STALE: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------
 // types.ts（＝クライアント側が知っているスキーマ）を読む

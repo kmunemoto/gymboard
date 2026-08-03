@@ -20,6 +20,90 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 必要な Secrets を「最初に」まとめて検査する。
+      #
+      # 各ステップで個別にチェックすると、1つ登録するたびに次のステップで落ちるので、
+      # 揃うまで実行を何往復もすることになる（初回セットアップで実際にそうなった）。
+      # とくに GOOGLE_PLAY_SERVICE_ACCOUNT_JSON は最後のアップロード段でしか使われないため、
+      # 未登録だと10分かけてビルドし終えてから落ちる。ここで足りないものを全部並べて出す。
+      - name: Preflight - 必要な Secrets が揃っているか
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          missing=""
+          for name in GOOGLE_SERVICES_JSON_BASE64 ANDROID_KEYSTORE_BASE64 \
+                      ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD \
+                      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON; do
+            # 値そのものは絶対に出さない。空かどうかだけを見る
+            if [ -z "${!name}" ]; then
+              missing="${missing}  - ${name}
+          "
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "::error::次の GitHub Secrets が未設定です（Settings → Secrets and variables → Actions）:"
+            printf '%s' "$missing"
+            echo "取得方法は mem/features/android-ci.md の「必要な GitHub Secrets」を参照してください。"
+            echo "**全部登録してから再実行してください。** 1つずつだと毎回ここで止まります。"
+            echo "scripts/setup-android-secrets.ps1 を Windows で流すと5つは自動で登録できます。"
+            exit 1
+          fi
+          echo "6つとも登録されています。次に中身の形を確認します。"
+
+          # --- 中身の検査 -------------------------------------------------
+          # 「登録されている」と「正しいものが登録されている」は別。
+          # 貼り間違い（別アプリの json、base64 し忘れ、certutil のヘッダ付き）は
+          # ここで止めないと、10分ビルドした後のアップロード段や
+          # 「署名は通るのに Play が受け取らない」形でしか分からない。
+          # 値そのものは絶対に出力しない。
+          tmp="$RUNNER_TEMP/preflight"; mkdir -p "$tmp"
+          bad=""
+          # 追記は必ず1行で書くこと。YAML のブロックスカラー（run: |）の中で
+          # 途中の行をこのインデントより浅くすると、そこでブロックが終端して
+          # ワークフロー全体が構文エラーになる（実際に一度壊した）。
+          add_bad() { bad="${bad}  - $1"$'\n'; }
+
+          if ! printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > "$tmp/gs.json" 2>/dev/null; then
+            add_bad "GOOGLE_SERVICES_JSON_BASE64: base64 として読めません。certutil -encode は BEGIN/END ヘッダが付くので不可。PowerShell の [Convert]::ToBase64String(...) を使ってください。"
+          elif ! grep -q '"package_name"[[:space:]]*:[[:space:]]*"app.gymboard.mobile"' "$tmp/gs.json"; then
+            add_bad "GOOGLE_SERVICES_JSON_BASE64: app.gymboard.mobile の設定が入っていません（別アプリのものかもしれません）。"
+          fi
+
+          if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$tmp/ks" 2>/dev/null; then
+            add_bad "ANDROID_KEYSTORE_BASE64: base64 として読めません（同上）。"
+          else
+            # キーストアの先頭4バイトで種別を判定する（Java 不要）。
+            # JKS=feedfeed / JCEKS=cececece / PKCS12=DER の SEQUENCE(3082)
+            magic=$(head -c 4 "$tmp/ks" | od -An -tx1 | tr -d ' \n')
+            case "$magic" in
+              feedfeed|cececece|3082*) : ;;
+              *) add_bad "ANDROID_KEYSTORE_BASE64: キーストアではないファイルのようです（.jks / .keystore を指定してください）。" ;;
+            esac
+          fi
+
+          # このSecretだけ base64 化しない。取り違えが多いので明示的に見る。
+          if ! printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | grep -q '"type"[[:space:]]*:[[:space:]]*"service_account"'; then
+            add_bad "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: サービスアカウントのJSONに見えません。この Secret だけ base64 化しません。ダウンロードしたJSONの中身をそのまま貼ってください。"
+          elif ! printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | grep -q '"private_key"'; then
+            add_bad "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: private_key がありません（鍵ファイルではない可能性）。"
+          fi
+
+          rm -rf "$tmp"
+
+          if [ -n "$bad" ]; then
+            echo "::error::Secrets の中身に問題があります:"
+            printf '%s' "$bad"
+            echo "詳細は mem/features/android-ci.md を参照してください。"
+            exit 1
+          fi
+          echo "Secrets の形も問題ありません。"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

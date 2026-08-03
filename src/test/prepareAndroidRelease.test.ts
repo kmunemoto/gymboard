@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { load } from "js-yaml";
 
 // scripts/prepare-android-release.mjs の回帰テスト。
 //
@@ -219,6 +220,95 @@ describe("android-build.yml の versionCode 配線", () => {
 
   it("versionCode の増分には github.run_number を使い続けている（単調増加の担保）", () => {
     expect(yml).toMatch(/ANDROID_VERSION_CODE:\s*\$\{\{\s*github\.run_number\s*\}\}/);
+  });
+});
+
+// ワークフローYAMLが構文として正しいこと。
+//
+// これが無いと、正規表現ベースのテストは全部通るのに GitHub 側で
+// 「ワークフローが不正」で実行そのものが始まらない、という形で壊れる。
+// 実際に一度壊した: run: | のブロックスカラーの中で継続行のインデントを
+// 浅くしてしまい、そこでブロックが終端していた。
+describe("ワークフローYAMLの構文", () => {
+  const FILES = ["android-build.yml", "ios-build.yml", "ci.yml", "deploy-functions.yml"];
+
+  it.each(FILES)("%s がYAMLとして解析できる", (f) => {
+    const src = readFileSync(join(process.cwd(), ".github/workflows", f), "utf8");
+    const doc = load(src) as { jobs?: Record<string, unknown> };
+    expect(doc).toBeTruthy();
+    expect(doc.jobs).toBeTruthy();
+    expect(Object.keys(doc.jobs!).length).toBeGreaterThan(0);
+  });
+
+  it("android-build.yml の各ステップが name か uses を持つ", () => {
+    const src = readFileSync(join(process.cwd(), ".github/workflows/android-build.yml"), "utf8");
+    const doc = load(src) as { jobs: { build: { steps: { name?: string; uses?: string }[] } } };
+    const steps = doc.jobs.build.steps;
+    expect(steps.length).toBeGreaterThan(5);
+    for (const s of steps) expect(s.name ?? s.uses).toBeTruthy();
+  });
+});
+
+// Secrets の検査は「最初にまとめて」でなければならない。
+//
+// 各ステップで個別にチェックすると、1つ登録するたびに次のステップで落ち、
+// 揃うまで実行を何往復もすることになる（初回セットアップで実際にそうなった）。
+// とくに GOOGLE_PLAY_SERVICE_ACCOUNT_JSON は最後のアップロード段でしか使われないので、
+// 未登録だと10分ビルドし終えてから落ちる。
+describe("android-build.yml の Secrets プリフライト", () => {
+  const yml = readFileSync(join(process.cwd(), ".github/workflows/android-build.yml"), "utf8");
+  const preflight = yml.slice(yml.indexOf("Preflight"), yml.indexOf("Setup Node.js"));
+
+  it("Preflight ステップが Setup Node.js より前にある（＝一番最初に落ちる）", () => {
+    const iPre = yml.indexOf("name: Preflight");
+    const iNode = yml.indexOf("name: Setup Node.js");
+    expect(iPre).toBeGreaterThan(-1);
+    expect(iPre).toBeLessThan(iNode);
+  });
+
+  // ワークフロー全体で参照されている secrets.*
+  const referenced = new Set(
+    Array.from(yml.matchAll(/secrets\.([A-Z0-9_]+)/g), (m) => m[1]),
+  );
+
+  it("Preflight の env: に全ての Secret が渡っている", () => {
+    // env: に無い名前は ${!name} が常に空になり、登録済みでも「未設定」と誤検知する
+    const env = preflight.slice(preflight.indexOf("env:"), preflight.indexOf("run:"));
+    const declared = new Set(Array.from(env.matchAll(/^\s+([A-Z0-9_]+):/gm), (m) => m[1]));
+    expect(referenced.size).toBeGreaterThan(0);
+    expect([...referenced].filter((n) => !declared.has(n))).toEqual([]);
+  });
+
+  it("Preflight の for ループが全ての Secret を検査している", () => {
+    // env: の記載だけ拾うと、ループから抜け落ちても検知できない（実際に取りこぼした）。
+    // `for name in … ; do` の列挙だけを見ること。
+    const m = preflight.match(/for name in([\s\S]*?);\s*do/);
+    expect(m).not.toBeNull();
+    const looped = new Set(m![1].match(/[A-Z0-9_]+/g) ?? []);
+    expect([...referenced].filter((n) => !looped.has(n))).toEqual([]);
+  });
+
+  it("Secret の値そのものをログに出していない", () => {
+    // echo "$SECRET" のような直接出力が無いこと（空判定は ${!name} 経由）
+    expect(preflight).not.toMatch(/echo\s+"?\$\{?(GOOGLE|ANDROID)/);
+  });
+
+  it("空判定だけでなく中身の形も検査している", () => {
+    // 「登録されている」と「正しいものが登録されている」は別。
+    // 貼り間違いは10分ビルド後や Play 側でしか分からないので、ここで止める。
+    expect(preflight).toMatch(/base64 --decode/);          // base64 として読めるか
+    expect(preflight).toMatch(/package_name/);             // 別アプリの json でないか
+    expect(preflight).toMatch(/feedfeed/);                 // キーストアの magic
+    expect(preflight).toMatch(/service_account/);          // SA を base64 化していないか
+  });
+
+  it("Preflight が期待するパッケージ名が、アップロード先と一致している", () => {
+    // ずれると「検査は通るのに Play が別アプリ扱いで拒否する」になる
+    const expected = preflight.match(/"package_name"[^"]*"([\w.]+)"/);
+    const uploaded = yml.match(/packageName:\s*([\w.]+)/);
+    expect(expected).not.toBeNull();
+    expect(uploaded).not.toBeNull();
+    expect(expected![1]).toBe(uploaded![1]);
   });
 });
 

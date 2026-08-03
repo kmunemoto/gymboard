@@ -35,7 +35,7 @@
 ---
 
 ### 2026-08-02 (#239) Android CI の初回リリースが Play に弾かれるバグを修正
-**要否**: **Android を GitHub Actions でリリースする全兄弟で必要**（#235 を取り込んだアプリ）
+**要否**: **`android-build.yml` を実際に使うアプリだけ**（ジムボード本体は #241 で使わないことにした）
 
 `android-build.yml` の `versionCode` は `github.run_number` だった。これは
 **「そのワークフローの実行回数」なので初回は 1** になり、Android Studio で
@@ -81,10 +81,27 @@ App Store 側は増加を要求されるので事故が起きない＝**Android 
 - **`booking_capacity` 列が本番DBに適用済みか確認すること**（`scripts/check-schema-applied.mjs`）
 - 詳細: `mem/features/booking-capacity.md`
 
-### 2026-08-02 (#235) Android のリリースも GitHub Actions で行う方針にした
-**要否**: **全兄弟で必要**（ただし急ぎではない）
+### 2026-08-03 (#241) Android CI は「任意」に格下げ。ジムボード本体は使わない
+**要否**: **判断が変わったので読むこと**（作業は不要）
 
-`.github/workflows/android-build.yml` が merge で降りてくる。各アプリで:
+#235 で「Android のリリースも GitHub Actions で行う。全兄弟で必要」と伝えたが、
+**ジムボード本体はこれを見送り、Android Studio での手作業リリースを継続する**ことにした
+（2026-08-03）。必要な GitHub Secrets が6種あり、うち
+`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` は Play Console と Google Cloud をまたぐ
+画面操作が必要で、準備コストが移行のメリットに見合わなかった。
+
+**そちらでの扱い**: `android-build.yml` は merge で降りてくるが、
+`workflow_dispatch` のみなので**放置して問題ない**（手で実行しない限り動かない）。
+
+**ただし「上流がやめたから兄弟もやめる」ではない。**
+ピラボードのように **Android のリリース経路そのものが無いアプリには、それでも作る価値がある**。
+Secrets さえ揃えれば動く状態にはなっている（`scripts/setup-android-secrets.ps1` で5つは自動登録できる）。
+自分の状況で判断すること。
+
+### 2026-08-02 (#235) Android のリリースも GitHub Actions で行う方針にした
+**要否**: ~~全兄弟で必要~~ → **任意**（上の #241 で方針変更）
+
+`.github/workflows/android-build.yml` が merge で降りてくる。使う場合は各アプリで:
 `packageName` を自分の `appId` に書き換え、**アプリ専用の**署名キーストア・Firebase・
 Play Console サービスアカウントを GitHub Secrets に登録する。
 **GymBoard のキーストアを使い回さないこと**（Play Store の署名は原則変更不可）。

@@ -310,10 +310,14 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 - [ ] `capacitor.config.ts` … `appId` / `appName` — **`brand.ts` の `NATIVE_APP_SCHEME` と必ず一致させる**
 - [ ] `.github/workflows/ios-build.yml` … bundle id・プロビジョニングプロファイル・`MARKETING_VERSION`
 - [ ] Firebase プロジェクト … `GoogleService-Info.plist` / `google-services.json` / Web VAPID鍵
-- [ ] `.github/workflows/android-build.yml` … `packageName`（`app.gymboard.mobile` の箇所）を
-      `appId` に合わせる。**Android のリリースも GitHub Actions で行う方針**
-      （2026-08-02〜。Windows + Android Studio は実機確認用に残すが公式リリース経路ではない。
-      詳細は `mem/features/android-ci.md`）。フォークごとに新規の GitHub Secrets が要る:
+- [ ] `.github/workflows/android-build.yml` … **使うかどうかは各アプリが判断する（任意）**。
+      使わないなら `workflow_dispatch` のみなので放置してよい。使うなら
+      `packageName`（`app.gymboard.mobile` の箇所）を `appId` に合わせる
+      - **ジムボード本体は使っていない**（2026-08-03。Secrets 6種の準備コストが
+        見合わず、Android Studio での手作業リリースを継続。`mem/features/android-ci.md`）
+      - ただし**ピラボードのように Android のリリース経路自体が無いアプリには作る価値がある**。
+        「上流がやめたから兄弟もやめる」ではなく、自分の状況で決めること
+      - 使う場合、フォークごとに新規の GitHub Secrets が6種要る:
   - [ ] `GOOGLE_SERVICES_JSON_BASE64` … そのアプリ専用の Firebase プロジェクトのもの
   - [ ] `ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
         `ANDROID_KEY_PASSWORD` … **必ずアプリごとに新規生成する。GymBoardのキーストアを

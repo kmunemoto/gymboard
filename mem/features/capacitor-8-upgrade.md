@@ -93,12 +93,13 @@ AGP 8.9.1 以上を要求する。Capacitor 8 が引く `androidx.core 1.17.0` �
    （特にプッシュ通知・アプリバッジ・スプラッシュ・ステータスバー）
 7. 新しい署名付きAAB/APKを生成し、Play Consoleへアップロード
 
-> **⚠️ 2026-08-02 以降、5〜7 は公式リリースの経路ではない。**
-> Android も GitHub Actions（`.github/workflows/android-build.yml`）でビルド・署名・
-> Play Console へのアップロードまで行う（`mem/features/android-ci.md`）。
-> バージョンは `android-build.yml` の `ANDROID_VERSION_NAME` を書き換える
-> （手作業時代の実績は versionCode 81 / versionName 9.0）。
-> 1〜4・6 は実機での動作確認用途としては引き続き有効。
+> **この手順が現行のリリース経路。**（2026-08-03 に現状維持と再確認）
+> GitHub Actions への移行を検討したが、Secrets の準備コストが見合わず保留にした
+> （`mem/features/android-ci.md`）。
+> **リリースしたら `mem/features/android-ci.md` の「リリース実績」に
+> versionCode / versionName を記録すること。** `android/` は `.gitignore` 済みで、
+> 書いておかないとリポジトリから現在の版数が読めない
+> （2026-08-02 時点の実績は versionCode 81 / versionName 9.0）。
 
 ### やってはいけないこと
 - **`android/` を消して `npx cap add android` で作り直す。** `versionCode` が 1 に戻り

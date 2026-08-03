@@ -1,21 +1,61 @@
-# Android を iOS と同じく GitHub 管理にする（2026-08-02）
+# Android のリリース（現状: Android Studio で手作業）
 
-## 背景・方針
+## ⚠️ 現状（2026-08-03）: このワークフローは**使っていない**
 
-これまで iOS は `.github/workflows/ios-build.yml`（`workflow_dispatch`）で
-GitHub Actions のmacOSランナー上でビルド・署名・App Store Connectへのアップロードまで
-完結している。Android は逆に、`scripts/build-android.bat` でWeb側のビルドと
-Gradle設定の同期まではWindows上で自動化してあるものの、そこから先
-（署名付きAABの生成・Play Consoleへのアップロード）は Android Studio の
-「Generate Signed App Bundle」ウィザードでの手作業だった。
+`.github/workflows/android-build.yml` は作って動く状態にしてあるが、
+**ジムボードの Android リリースは従来どおり Windows + Android Studio で行う。**
 
-**方針転換: Android もiOSと同じくGitHub Actions（`workflow_dispatch`）でビルド・署名・
-Play Consoleへのアップロードまで完結させる。** Windows + Android Studio は
-実機での動作確認・デバッグ用途に残るが、**公式リリースの経路としては使わない**方向にする。
+**見送った理由**: 必要な GitHub Secrets が6種あり、うち
+`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` は Play Console と Google Cloud をまたぐ
+画面操作が必要で、準備コストが移行のメリットに見合わないと判断した（2026-08-03）。
 
-下流の兄弟アプリ（セッコツボード・ストレッチボード・ピラボード）も同じ方針に揃えること
-（`mem/ops/vertical-fork.md` に追記済み）。特にピラボードは現時点でこの経路が
-無い状態の代表例。
+**放置して問題ない。** `workflow_dispatch` のみなので、手で実行しない限り動かない。
+下の記述はすべて「再開するときのための記録」として読むこと。
+
+- **iOS は GitHub Actions のまま**（`ios-build.yml`）。ここは変わらない
+- **兄弟アプリに強制しない。** 以前このファイルは「下流も同じ方針に揃えること」と
+  書いていたが撤回した。各アプリが自分で判断する
+  （ピラボードのように Android のリリース経路自体が無いアプリには、
+  それでも作る価値がある）
+
+## いま実際にやっているリリース手順（Android）
+
+1. `scripts\build-android.bat`（git pull → npm install → build → `cap sync` → `patch-android.mjs`）
+2. **`android/app/build.gradle` の `versionCode` を +1、`versionName` を更新**
+3. Android Studio でクリーンビルド → 実機で確認
+4. 「Generate Signed App Bundle」で署名付きAABを生成
+5. Play Console へアップロード
+6. **下の「リリース実績」に記録する**（下記）
+
+`scripts/patch-android.mjs` は `versionCode` / `versionName` を**書き換えない**
+（`src/test/patchAndroid.test.ts` がその不変条件を守っている）。手順2の手作業を壊さないため。
+
+## リリース実績（手で更新すること）
+
+`android/` は `.gitignore` 済みなので、**この2つの値はリポジトリのどこからも読めない。**
+ここに書いておかないと、次に「バージョンを1つ上げて」と言われたときに
+Play Console か Windows の `build.gradle` を見るまで**上げようがない**（実際にそうなった）。
+
+| 日付 | versionCode | versionName | 備考 |
+|---|---|---|---|
+| 2026-08-02 時点 | **81** | **9.0** | Play Console で確認した実績。CI移行を検討した際に判明 |
+
+> **正直な注意**: 手で更新する記録は必ず古くなる。ここが実態と合っているか怪しいときは、
+> Play Console → リリース → 製品版、または Windows の `android\app\build.gradle` を見ること。
+> **この記録を信じて版数を決めない。** 上げる前に必ず現物を確認する。
+
+---
+
+# 以下は「再開するとき」のための記録
+
+## もともとの方針（2026-08-02、いったん保留）
+
+iOS は `ios-build.yml` でビルド・署名・App Store Connect へのアップロードまで完結している。
+Android も同じくGitHub Actions で完結させ、Windows + Android Studio は実機確認用に残す、
+という方針だった。**Secrets の準備コストで保留にした**（上記）。
+
+再開するときは、下の「必要な GitHub Secrets」を揃えて
+`scripts/setup-android-secrets.ps1` を流すところから始める。
 
 ## 新しいワークフロー: `.github/workflows/android-build.yml`
 

@@ -17,10 +17,16 @@
 ## ビルド/リポジトリの前提
 - ios/ と GoogleService-Info.plist / google-services.json は .gitignore 済み。
   ネイティブ設定はビルド時に注入されるため、リポジトリ内に無くても正常。
-- リリースは iOS・Android とも GitHub Actions で行う
-  （.github/workflows/ios-build.yml / android-build.yml。ともに workflow_dispatch）。
-  Windows + Android Studio は実機での動作確認・デバッグ用途に残すが、公式リリースの
-  経路としては使わない（2026-08-02、詳細は mem/features/android-ci.md）。
+- **iOS のリリースは GitHub Actions**（.github/workflows/ios-build.yml、workflow_dispatch）。
+  バージョンは同ファイルの MARKETING_VERSION を書き換える。
+- **Android のリリースは Windows + Android Studio で手作業**（2026-08-03 に現状維持と決定）。
+  `scripts\build-android.bat` → Android Studio で署名付きAAB → Play Console へアップロード。
+  versionCode / versionName は `android/app/build.gradle` を手で更新する。
+  **android/ は .gitignore 済みなので、この2つの値はリポジトリから読めない。**
+  リリースしたら `mem/features/android-ci.md` の「リリース実績」に記録すること。
+- `.github/workflows/android-build.yml` は作ってあるが**使っていない**
+  （Secrets 6種の準備コストが見合わないため見送り。workflow_dispatch なので放置しても動かない）。
+  再開するときの手順は mem/features/android-ci.md。
   クラウドセッションではネイティブビルドを実行・検証できない。
 - Lovable と GitHub 同期しているプロジェクト。変更はブランチで行い PR を作る（main を直接壊さない）。
 

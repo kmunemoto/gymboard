@@ -1,5 +1,19 @@
 name: Android Build & Upload
 
+# ⚠️ 2026-08-03 現在、ジムボードではこのワークフローを**使っていない。**
+#
+# Android のリリースは従来どおり Windows + Android Studio で手作業で行う。
+# 必要な GitHub Secrets が6種あり、うち GOOGLE_PLAY_SERVICE_ACCOUNT_JSON は
+# Play Console と Google Cloud をまたぐ画面操作が要るため、準備コストが
+# 移行のメリットに見合わないと判断した。
+#
+# workflow_dispatch のみなので、手で実行しない限り動かない。**放置して問題ない。**
+# 消していないのは、Secrets さえ揃えれば動く状態にしてあり、
+# Android のリリース経路そのものが無い兄弟アプリ（ピラボード等）には価値があるため。
+#
+# 再開する手順・必要な Secrets の取り方: mem/features/android-ci.md
+# 5つは scripts/setup-android-secrets.ps1（Windows）で自動登録できる。
+
 on:
   workflow_dispatch:
     inputs:

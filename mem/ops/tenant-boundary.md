@@ -272,3 +272,44 @@ storage も1件。`avatars` バケットの `tenant-logos/` が
 **同じ穴が全兄弟アプリにある**（複製元が同じなので）。
 しかも Confirm email を OFF にすると `email_confirmed_at` の関門も消えるため、
 **ジムボードより条件が緩い**。このマイグレーションをそのまま持っていけばよい。
+
+---
+
+## 本番への適用（2026-08-03 実施済み）
+
+Lovable 経由で GymBoard 本番（project `69ac2641-…` / Supabase `rrbfwitprzuevzytykrq`）に
+#247 / #248 のマイグレーションを適用した。#246 は Edge Function なので
+`deploy-functions.yml` が main へのマージで自動デプロイした（成功を確認済み）。
+
+### 実際に攻撃してみて確認した（本番DB・ROLLBACK 付き）
+
+`set_config('request.jwt.claims', ...)` ＋ `set_config('role','authenticated')` で
+実在のオーナーになりすまし、1つの DO ブロックの中で試して最後に例外で巻き戻した。
+
+| 試したこと | 結果 |
+|---|---|
+| 他テナントの顧客を自分の店に INSERT | **拒否**（`new row violates row-level security policy`） |
+| 自分の所属行の `user_id` を差し替え | **拒否**（`所属の user_id は変更できません`） |
+| 自分の `role` を変更 | **拒否**（`所属の role は変更できません`） |
+| 自分の `tenant_id` を付け替え | **拒否**（`所属の tenant_id は変更できません`） |
+| 他テナントの所属を DELETE | 0行 |
+| `raid_bosses` を全削除 | 0行 |
+| `season_events` を書き換え | 0行 |
+| **正常系**: 自テナントの会員を UPDATE | **1行**（アプリは動く） |
+
+> **一度 false alarm を出した。** `role = 'owner'` の人に `SET role = 'owner'` を
+> 試すと `IS DISTINCT FROM` が偽になりトリガーが発火せず、`ROW_COUNT` だけ 1 になる。
+> **値が実際に変わる方向で試すこと**（owner → trainer）。
+
+### 踏んだ罠: `DROP POLICY IF EXISTS` はテーブルが無いと落ちる
+
+`IF EXISTS` が掛かるのは**ポリシー**であって**テーブル**ではない。
+`season_pass_config` / `season_pass_levels` は**リポジトリにマイグレーションはあるが
+本番には存在しない**ため、`20260803140000` をそのまま流すと
+
+```
+ERROR: 42P01: relation "public.season_pass_config" does not exist
+```
+
+で止まる。`to_regclass(...) IS NOT NULL` で囲んである。
+**兄弟アプリでも同じ状態がありえるので、この形のまま持っていくこと。**

@@ -407,3 +407,29 @@ if (u.startsWith("/")) return true;   // ← "//evil.example" も通る
 **フォークの知見が上流に返る経路は、いまのところ人が中継するしかない。**
 `security/` は上流→フォークの一方向で、逆方向は無い。
 兄弟の報告を読むときは「上流にも同じ穴が無いか」を毎回見ること。
+
+### 取り込み: 鍼灸ボードの検査（PostgrestFilterBuilder に .catch は無い）
+
+フォークが先に作った検査を上流に入れた例。**逆方向が動いた最初のケース。**
+
+```ts
+await admin.rpc("purge_login_codes").catch(() => {});   // ← 実行時 TypeError で 500
+```
+
+`rpc()` / `from()` が返すのは Promise ではなく `PostgrestFilterBuilder`。
+thenable だが **`.catch` を持たない**。しかも向こうでは**後始末の行**だったので、
+本体の処理は終わっているのにレスポンスだけ 500 になった。
+**Deno のコードは tsc にもユニットテストにも載らないので、本番に HTTP を投げるまで
+誰も気づけない。**
+
+ジムボードは取り込み時点で該当0件。検査だけ入れた
+（`src/test/pushNotificationTenantScope.test.ts`）。
+
+**正規表現は向こうより絞った。** 向こうは `\.(?:rpc|from)\(` だけだったが、
+`Array.from(bytes)` を含む文に `.catch` が来ると誤検知する（実際に再現させて確認）。
+`(?<!Array)` ＋「引数が文字列リテラル」で絞った。
+supabase-js の `.from()` / `.rpc()` は必ず名前の文字列を取るので、これで漏れない。
+
+**ファイル名は push 用だが、この describe はリポジトリ全体を見る。**
+配布単位を増やさないため、既存の全走査 describe と同じ場所に置いた
+（兄弟が既にこのファイルをコピーしているので、新ファイルを作ると向こうで重複する）。

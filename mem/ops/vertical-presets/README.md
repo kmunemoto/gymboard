@@ -24,6 +24,7 @@ Phase 0 で、業種差分は**数個のファイルの値**に追い出して�
 | `personal-stretch` | パーソナルストレッチ専門店 | ストレッチボード | **適用済み**（PR #1）。残タスクは `personal-stretch.md` |
 | `sekkotsu` | 接骨院・整骨院 | セッコツボード | **語彙は適用済み**（ただし `ja.json` を直接書き換えた形）。移行と残タスクは `sekkotsu.md` |
 | `pilates` | パーソナルピラティス | ピラボード | プリセット用意済み・**未適用**（上流未取り込みのため適用不可。まず merge が先。`pilates.md` 参照） |
+| `golf` | ゴルフレッスン | ゴルフボード | プリセット用意済み・**未適用**。語彙は `ja.json` から機械生成（120葉）。`golf.md` 参照 |
 
 `sekkotsu` にオーバーレイの JSON が無いのは、セッコツボードが `ja.json` を
 **直接書き換えてしまっている**ため。まず `scripts/extract-vertical-overlay.mjs` で

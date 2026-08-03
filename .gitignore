@@ -30,3 +30,6 @@ ios/
 # Firebase / Google Services config (keep local only)
 google-services.json
 GoogleService-Info.plist
+
+# tsc -b の増分ビルド情報（tsc 実行のたびに未追跡ファイルとして現れる）
+*.tsbuildinfo

@@ -43,6 +43,10 @@ interface PublicTenant {
   slot_duration_minutes: number | null;
   /** 同時に受けられる予約数（ベッド数・施術者数）。null/未設定は既定1。 */
   booking_capacity: number | null;
+  /** 予約の締切種別（'prev_day' / 'hours_before'）。null/未設定は prev_day。 */
+  booking_cutoff_type: string | null;
+  /** hours_before のときの時間数。null/未設定は 24。 */
+  booking_cutoff_hours: number | null;
 }
 
 // テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、

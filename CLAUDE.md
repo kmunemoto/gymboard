@@ -30,6 +30,29 @@
   クラウドセッションではネイティブビルドを実行・検証できない。
 - Lovable と GitHub 同期しているプロジェクト。変更はブランチで行い PR を作る（main を直接壊さない）。
 
+## 検証は CI と同じコマンドで行う
+push する前に、`.github/workflows/ci.yml` と**同じコマンド**を回すこと。
+
+```bash
+npx tsc --noEmit -p tsconfig.app.json   # ← -p を付けないと別設定になり、型エラーを見逃す
+npm test
+npm run build
+```
+
+**`npx tsc --noEmit`（`-p` 無し）で代用しない。** 2026-08-03 に実際に踏んだ:
+手元では0件だったのに CI で TS2339 が5件出た。ゲートはこの3つで、
+`npx eslint .` は `continue-on-error: true` の参考表示（既存の指摘が多数あり、
+新規の指摘だけ見ればよい）。
+
+`npm run build` は **`supabase/functions/mcp/index.ts` を再生成する**。
+この成果物を手で直しても build で巻き戻るので、直すなら生成元の `src/lib/mcp/`。
+
+## PR の運用
+- CI がグリーンになったら**そのままマージし、ブランチを main に再同期する**まで行う
+  （毎回の指示を待たない）。落ちたら直してグリーンにしてからマージする。
+- squash-merge 運用なので、マージ後はブランチが main と乖離する。
+  `git fetch origin main && git reset --hard origin/main` で揃えてから次の作業に入る。
+
 ## セキュリティ
 - 秘密情報（サービスアカウントJSON、署名鍵など）はコミットしない。
 

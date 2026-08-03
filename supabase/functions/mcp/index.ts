@@ -117,13 +117,25 @@ var list_recent_measurements_default = defineTool3({
   }
 });
 
+// src/lib/brand.ts
+var BRAND = {
+  /** 日本語表記。日本語UI・法務ページで使う */
+  ja: "\u30B8\u30E0\u30DC\u30FC\u30C9",
+  /** 英字表記。他言語UI・ロゴ的な文脈で使う */
+  en: "GymBoard",
+  /** 小文字の識別子。法務ページの「〜アプリ」表記で使う */
+  app: "gymboard"
+};
+var POWERED_BY_LABEL = `Powered by ${BRAND.en}`;
+var BRAND_FALLBACK_GYM_NAME = BRAND.ja;
+
 // src/lib/mcp/index.ts
 var projectRef = "rrbfwitprzuevzytykrq";
 var mcp_default = defineMcp({
-  name: "gymboard-mcp",
-  title: "\u30B8\u30E0\u30DC\u30FC\u30C9 MCP",
+  name: `${BRAND.app}-mcp`,
+  title: `${BRAND.ja} MCP`,
   version: "0.1.0",
-  instructions: "Tools for the GymBoard gym-management app. Use `get_profile` to read the signed-in customer's profile, `list_upcoming_bookings` for upcoming reservations, and `list_recent_measurements` for recent body measurements.",
+  instructions: `Tools for the ${BRAND.en} management app. Use \`get_profile\` to read the signed-in customer's profile, \`list_upcoming_bookings\` for upcoming reservations, and \`list_recent_measurements\` for recent body measurements.`,
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"

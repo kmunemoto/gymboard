@@ -1,3 +1,5 @@
+import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
+
 /** Build a side-by-side comparison image as a Blob (PNG). */
 export async function buildCompareImage(
   beforeUrl: string,
@@ -5,7 +7,7 @@ export async function buildCompareImage(
   beforeDate: string,
   afterDate: string,
   daysBetween: number,
-  watermark = "ジムボード",
+  watermark = BRAND_FALLBACK_GYM_NAME,
 ): Promise<Blob> {
   const [beforeImg, afterImg] = await Promise.all([loadImage(beforeUrl), loadImage(afterUrl)]);
 

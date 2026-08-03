@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { sendLineMessage } from "@/lib/lineNotify";
+import { BRAND } from "@/lib/brand";
 
 export interface Message {
   id: string;
@@ -97,7 +98,7 @@ export const useMessages = (otherUserId: string | null) => {
 
         const senderName = senderProfile?.display_name || "不明";
         const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
-        const lineMessage = `【ジムボード】新着メッセージが届きました！\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
+        const lineMessage = `【${BRAND.ja}】新着メッセージが届きました！\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
 
         await sendLineMessage({ user_id: receiverId, message: lineMessage }, "メッセージ通知");
       } catch (e) {

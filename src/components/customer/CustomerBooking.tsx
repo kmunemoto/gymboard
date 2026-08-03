@@ -30,6 +30,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
+import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
 // セッション長・バッファはどちらもジムごとに変更可能（tenants.slot_duration_minutes /
 // tenants.booking_buffer_minutes）。未設定/未ロード時のみこの既定値を使う。
@@ -344,7 +345,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     if (NOTIFY_CUSTOMER_LINE_ON_BOOKING) {
       void sendLineMessage({
         user_id: user.id,
-        message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\n${tenant?.gym_name || "ジムボード"}`,
+        message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\n${tenant?.gym_name || BRAND_FALLBACK_GYM_NAME}`,
       }, "顧客へ予約確定通知");
     }
 

@@ -13,6 +13,23 @@
 //
 // The legacy TRAINER_SIGNUP_CODE secret is no longer required. It is kept
 // unused so that we can re-introduce gating in the future without a migration.
+//
+// ⚠️ 2026-08-03: **自由登録は意図した仕様です。ここを閉じないでください。**
+//
+// trainer は `public.user_roles` に載るテナント横断のグローバル権限で、
+// この関数は自己サービス（誰でも取れる）。唯一の関門である email_confirmed_at は、
+// Confirm email を OFF にした環境（兄弟アプリ）では常に真になります。
+//
+// つまり **「trainer である」ことを権限判定の根拠に使ってはいけません。**
+// 対処はここを閉じることではなく、trainer ロールで届く先を無くすことです:
+//
+//   - RLS の書き込みポリシーは必ずテナント絞り（get_my_tenant_id 等）か
+//     本人限定（auth.uid() = user_id）と AND する
+//     → 見張り: src/test/globalTrainerRole.test.ts
+//   - Edge Function の宛先・対象の検証に hasRole を使わない
+//     → 見張り: src/test/pushNotificationTenantScope.test.ts
+//
+// 経緯は mem/ops/tenant-boundary.md。
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyCaller } from "../_shared/auth.ts";
 

@@ -1,7 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
-import { verifyCaller, hasRole } from "../_shared/auth.ts";
+// hasRole（user_roles ベース）はここでは使わない。テナント横断のグローバルロールなので
+// 宛先制限の役に立たない。所属は tenant_members で見る（loadTenantMemberships）。
+import { verifyCaller } from "../_shared/auth.ts";
 
 // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
 // 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
@@ -230,6 +232,70 @@ async function sendFcm(
 }
 
 // ============================================================
+// 宛先のテナント検証
+// ============================================================
+//
+// 認証済み経路で「誰に送ってよいか」を決める。2026-08-03 まで、trainer ロールを
+// 持つ呼び出し元は宛先の検証を**丸ごとスキップ**していた（`if (!isTrainer) { ...全部... }`）。
+// has_role が見る user_roles に tenant_id は無いので trainer はテナント横断の
+// グローバル権限であり、結果として「どのジムのトレーナーでも、他ジムの顧客に
+// 任意の title/body のプッシュを無制限に送れる」状態だった。
+// 「店舗からのお知らせ」を騙るフィッシングや、他の通知を押し流す洪水に使える。
+//
+// 同じファイルの waitlist 経路（下の purpose === "waitlist_slot_freed"）は
+// tenant_id を確認していたので、同一ファイル内で不整合でもあった。
+//
+// 以後、service_role 以外は **自分自身 or 同じテナントに active で所属している人**
+// にしか送れない。trainer に特例は無い。
+const MAX_PUSH_TARGETS = 100;
+
+interface TenantMembership { tenantId: string; active: boolean }
+
+/**
+ * 指定ユーザーの tenant_members 所属を引く。
+ *
+ * `get_my_tenant_id()` / `shares_tenant_with_me()` は中身が `auth.uid()` 依存なので、
+ * service_role クライアントから呼ぶと**常に NULL / false**（エラーは出ない）。
+ * ここでは tenant_members を直接引く。
+ *
+ * status も返すのは、**送る側と送られる側で必要な条件が違う**ため:
+ *   - 呼び出し元は `active` を要求する（退会者に送信権を残さない）
+ *   - 宛先は status を問わない。退会（`status = 'cancelled'`）した会員に残っていた
+ *     予約をトレーナーがキャンセルする、といった場面で通知が黙って消えるのを防ぐ。
+ *     テナント境界の内側であることは変わらない。
+ */
+async function loadTenantMemberships(
+  admin: ReturnType<typeof createClient>,
+  userIds: string[],
+): Promise<Map<string, TenantMembership[]>> {
+  const map = new Map<string, TenantMembership[]>();
+  if (userIds.length === 0) return map;
+  const { data, error } = await admin
+    .from("tenant_members")
+    .select("user_id, tenant_id, status")
+    .in("user_id", userIds);
+  if (error) throw error;
+  for (const row of (data ?? []) as { user_id: string; tenant_id: string | null; status: string | null }[]) {
+    // tenant_id が NULL の行は捨てる。拾うと「NULL 同士が一致」する経路ができる。
+    if (!row.tenant_id) continue;
+    const list = map.get(row.user_id) ?? [];
+    list.push({ tenantId: row.tenant_id, active: row.status === "active" });
+    map.set(row.user_id, list);
+  }
+  return map;
+}
+
+/** そのユーザーが active に所属しているテナントID */
+function activeTenantIds(
+  memberships: Map<string, TenantMembership[]>,
+  userId: string,
+): Set<string> {
+  return new Set(
+    (memberships.get(userId) ?? []).filter((m) => m.active).map((m) => m.tenantId),
+  );
+}
+
+// ============================================================
 // Main handler
 // ============================================================
 Deno.serve(async (req) => {
@@ -361,20 +427,32 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // 呼び出し元がそのテナントの所属（顧客 or トレーナー）であること
+      // 呼び出し元がそのテナントの所属（顧客 or トレーナー）であること。
+      // trainer だからテナント検証を飛ばす、はしない（2026-08-03）。trainer は
+      // user_roles に載るテナント横断のグローバルロールなので、以前は他ジムの
+      // 待機者へ「空きが出ました」を撃てた。
       if (!caller.isServiceRole) {
-        const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
-        if (!isTrainer) {
+        if (!caller.userId) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const memberships = await loadTenantMemberships(adminClient, [caller.userId]);
+        let allowed = activeTenantIds(memberships, caller.userId).has(tenant_id);
+        if (!allowed) {
+          // tenant_members に行が無い顧客のための従来経路（挙動を変えないため残す）
           const { data: prof } = await adminClient
             .from("profiles")
             .select("tenant_id")
-            .eq("user_id", caller.userId!)
+            .eq("user_id", caller.userId)
             .maybeSingle();
-          if (!prof || prof.tenant_id !== tenant_id) {
-            return new Response(JSON.stringify({ error: "Forbidden" }), {
-              status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
+          const profTenantId = (prof as { tenant_id: string | null } | null)?.tenant_id;
+          allowed = !!profTenantId && profTenantId === tenant_id;
+        }
+        if (!allowed) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
       }
 
@@ -462,21 +540,43 @@ Deno.serve(async (req) => {
         });
       }
       if (!caller.isServiceRole) {
-        const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
-        if (!isTrainer) {
-          const callerId = caller.userId!;
-          // Customers may push to themselves or to verified trainers (single-tenant gym).
-          // Trainer users are tracked in user_roles, NOT necessarily in tenant_members,
-          // so we authoritatively check has_role per target.
-          const otherIds: string[] = (user_ids as string[]).filter((id) => id !== callerId);
-          if (otherIds.length > 0) {
-            const checks = await Promise.all(otherIds.map((id) => hasRole(id, "trainer")));
-            const denied = otherIds.filter((_, i) => !checks[i]);
-            if (denied.length > 0) {
-              return new Response(JSON.stringify({ error: "Forbidden", denied }), {
-                status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
+        // service_role 以外は必ず userId を持つ。`!caller` だけの判定だと
+        // { userId: null, isServiceRole: true } がすり抜けるので、ここで念のため塞ぐ。
+        if (!caller.userId) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if ((user_ids as string[]).length > MAX_PUSH_TARGETS) {
+          return new Response(JSON.stringify({ error: "too many user_ids" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const callerId = caller.userId;
+        // 自分宛は常に許可。それ以外は「同じテナントに active で所属しているか」で判定する。
+        // trainer だから素通し、はしない（上の MAX_PUSH_TARGETS のコメント参照）。
+        const otherIds: string[] = [...new Set(user_ids as string[])].filter((id) => id !== callerId);
+        if (otherIds.length > 0) {
+          const memberships = await loadTenantMemberships(adminClient, [callerId, ...otherIds]);
+          const callerTenants = activeTenantIds(memberships, callerId);
+          if (callerTenants.size === 0) {
+            // どのテナントにも active で所属していない呼び出し元は、他人に送れない（fail-close）
+            return new Response(JSON.stringify({ error: "Forbidden", denied: otherIds }), {
+              status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          const denied = otherIds.filter((id) => {
+            const targetMemberships = memberships.get(id);
+            if (!targetMemberships || targetMemberships.length === 0) return true;
+            for (const m of targetMemberships) {
+              if (callerTenants.has(m.tenantId)) return false;
             }
+            return true;
+          });
+          if (denied.length > 0) {
+            return new Response(JSON.stringify({ error: "Forbidden", denied }), {
+              status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           }
         }
       }

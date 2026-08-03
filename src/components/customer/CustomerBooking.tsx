@@ -30,6 +30,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
+import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
 import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
 // セッション長・バッファはどちらもジムごとに変更可能（tenants.slot_duration_minutes /
@@ -200,17 +201,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     return overlapping.length >= bookingCapacity;
   };
 
-  const isBookingDayClosed = (date: string): boolean => {
-    // 予約日の0:00 JST を過ぎていたら締切
-    const bookingDayStart = new Date(`${date}T00:00:00+09:00`).getTime();
-    return Date.now() >= bookingDayStart;
-  };
+  // 締切はジム設定（tenants.booking_cutoff_*）に従う。読めなければ prev_day（従来の挙動）。
+  const cutoff = { type: tenant?.booking_cutoff_type, hours: tenant?.booking_cutoff_hours };
 
   // 過去日（今日より前）か。カレンダーで選択不可にする対象。
   const isPastDay = (date: string): boolean => !!date && date < getJSTToday();
-  // 今日(JST)か。予約は不可だが「空き状況の閲覧のみ」可能にする対象。
-  // 予約自体は generateSlots の tooSoon(=isBookingDayClosed) が引き続きブロックする。
-  const isViewOnlyDay = (date: string): boolean => !!date && date === getJSTToday();
+  // 今日(JST)で、かつ締切を過ぎていて1枠も取れない日か。「空き状況の閲覧のみ」の案内を出す対象。
+  // hours_before の店では当日でも取れる枠が残るので、その場合は案内を出さない。
+  const isViewOnlyDay = (date: string): boolean =>
+    !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), closeHour * 60 - slotMinutes);
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
@@ -222,7 +221,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       const m = totalMin % 60;
       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
       const blocked = isSlotBlocked(dateKey, time);
-      const tooSoon = isBookingDayClosed(dateKey);
+      const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
       slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon, blocked, tooSoon });
     }
     return slots;
@@ -248,7 +247,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     const slot = slots.find((s) => s.id === selectedSlot);
     if (!slot) return;
 
-    if (isBookingDayClosed(dateKey)) {
+    if (isSlotPastCutoff(dateKey, slot.time, cutoff)) {
       toast.error(t("booking.errorAdvance"));
       setSelectedSlot(null);
       return;
@@ -397,7 +396,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     if (!selectedDate || !selectedSlot) return;
     const slot = slots.find((s) => s.id === selectedSlot);
     if (!slot) return;
-    if (isBookingDayClosed(dateKey)) {
+    if (isSlotPastCutoff(dateKey, slot.time, cutoff)) {
       toast.error(t("booking.errorAdvance"));
       setSelectedSlot(null);
       return;
@@ -700,9 +699,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   toDate={addMonths(startOfDay(getJSTNow()), 1)}
                   disabled={(date) => {
                     const yyyyMMdd = format(date, "yyyy-MM-dd");
-                    // 当日は「空き状況の閲覧のみ」できるよう選択可能にする。予約可否は
-                    // スロット側の tooSoon 判定（isBookingDayClosed）が引き続き当日を
-                    // 予約不可にするため、ここで塞ぐのは過去日だけでよい。
+                    // 当日は選択可能にする。締切の判定は枠ごとに isSlotPastCutoff が行う
+                    // （prev_day の店なら全枠が不可＝従来どおり「閲覧のみ」、
+                    //  hours_before の店なら締切前の枠だけ予約できる）ので、
+                    // ここで塞ぐのは過去日だけでよい。
                     return isPastDay(yyyyMMdd);
                   }}
                   className="pointer-events-auto"

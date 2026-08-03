@@ -156,6 +156,8 @@ const Onboarding = () => {
           operating_hours: { start: startTime, end: endTime },
           slot_duration_minutes: slotDuration,
           booking_capacity: bookingCapacity,
+          // ここで明示的に聞いているので「確認済み」。ダッシュボードで二度は聞かない。
+          booking_capacity_confirmed_at: new Date().toISOString(),
           booking_cutoff_type: cutoff.type,
           booking_cutoff_hours: cutoff.hours ?? 24,
           owner_user_id: user.id,

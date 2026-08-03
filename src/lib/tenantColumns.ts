@@ -45,6 +45,10 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   DASHBOARD_STAT_COLS,
   GYM_DISPLAY_COLS,
   "booking_capacity",
+  // 「同時に受けられる予約数を店に確認したか」。値そのものではなく確認の有無。
+  // ⚠️ TENANT_VALUE_DEFAULTS には**入れない**。列が読めない環境では undefined のままにして、
+  //    「未確認(null)」と区別できるようにする（保存できない環境で聞き続けないため）。
+  "booking_capacity_confirmed_at",
 ];
 
 /**

@@ -24,6 +24,8 @@ export interface Tenant {
    */
   booking_capacity: number;
   booking_cutoff_type: string;
+  /** 同時受入数を店が確認済みか。null=未確認 / undefined=列が読めない */
+  booking_capacity_confirmed_at?: string | null;
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;
   /** トレーナーのホーム画面に「フォローが必要な顧客」を表示するか。既定true */

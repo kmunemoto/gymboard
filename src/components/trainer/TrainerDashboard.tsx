@@ -19,7 +19,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { TRIAL_BOOKING_ENABLED, WAITLIST_ENABLED } from "@/lib/featureFlags";
+
+// 同時受入数の選択肢。設定画面（BUSINESS_CAPACITY_OPTIONS）・
+// オンボーディング（CAPACITY_OPTIONS）と必ず同じ並びにする。
+const CONFIRM_CAPACITY_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10];
+
 
 interface TrainerDashboardProps {
   onSelectClient: (clientId: string) => void;
@@ -88,7 +94,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   const { bookings, loading: bookingsLoading } = useAllBookings();
   const { unreadCount: counselingUnread, responses: counselingResponses, isLoading: counselingLoading } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
-  const { plans: tenantPlans, tenant } = useTenant();
+  const { plans: tenantPlans, tenant, refetch: refetchTenant } = useTenant();
   const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
   // ジム設定で「フォローが必要な顧客」の表示をオフにできる（既定は表示）。
   const showRetentionAlerts = tenant?.show_retention_alerts !== false;
@@ -170,6 +176,31 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   // 同時1件までの設定のまま待ちが出ている＝「本当に満席」か「設定が実態と違う」かの
   // どちらか。店にしか判断できないので、決めつけず設定の場所だけ添える。
   const showCapacityHint = (tenant?.booking_capacity ?? 1) <= 1;
+
+  // 「同時に受けられる予約数」を店に一度だけ確認する導線（未確認のときだけ表示）。
+  const [capacityAnswer, setCapacityAnswer] = useState(1);
+  const [capacitySaving, setCapacitySaving] = useState(false);
+  useEffect(() => {
+    // 現在値を初期選択にする（既定1のままなら1が選ばれる）
+    setCapacityAnswer(Math.max(tenant?.booking_capacity ?? 1, 1));
+  }, [tenant?.booking_capacity]);
+
+  const saveCapacityAnswer = async () => {
+    if (!tenant?.id || capacitySaving) return;
+    setCapacitySaving(true);
+    // 値と「確認した」を同時に書く。1のままでも確認済みとして記録し、二度は聞かない。
+    const { error } = await supabase
+      .from("tenants")
+      .update({
+        booking_capacity: capacityAnswer,
+        booking_capacity_confirmed_at: new Date().toISOString(),
+      } as never)
+      .eq("id", tenant.id);
+    setCapacitySaving(false);
+    if (error) { toast.error(t("common.errorGeneric")); return; }
+    toast.success(t("capacityConfirm.saved"));
+    refetchTenant();
+  };
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
   // 本日のスケジュールには体験予約（user_id === "trial-guest"）も含める。
@@ -465,6 +496,50 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
                   {showCapacityHint && (
                     <p className="text-xs text-warning mt-1.5">{t("waitlistAlert.capacityHint")}</p>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* 同時に受けられる予約数を、まだ一度も店に聞けていない場合だけ確認する。
+            既定は1で、実態が2人以上の店では**空いている枠が「満枠」と出て予約を取りこぼす**。
+            2026-08-02 に本番を見たら14テナント全部が既定のままだった。
+
+            値は推測しない（本当に1対1の店で二重予約を通すと、お客様が来たのに
+            対応者がいないという、より重い実害になる。mem/features/booking-capacity.md）。
+            「1で正しい」も答えとして記録し、二度は聞かない。
+
+            オンボーディングを通った新規店は既に答えているのでここには出ない。
+            列が読めない環境（migration 未適用）は undefined になり、やはり出ない
+            （保存できないのに聞き続けないため）。 */}
+        {tenant?.booking_capacity_confirmed_at === null && (
+          <section>
+            <Card className="border-primary/30">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm">{t("capacityConfirm.title")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("capacityConfirm.body")}</p>
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <select
+                        value={capacityAnswer}
+                        onChange={(e) => setCapacityAnswer(Number(e.target.value))}
+                        className="h-9 px-2 rounded-md border border-input bg-background text-sm"
+                        aria-label={t("capacityConfirm.title")}
+                      >
+                        {CONFIRM_CAPACITY_OPTIONS.map((n) => (
+                          <option key={n} value={n}>{t("settings.trainer.businessHoursCapacityUnit", { count: n })}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" onClick={saveCapacityAnswer} disabled={capacitySaving}>
+                        {t("capacityConfirm.save")}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

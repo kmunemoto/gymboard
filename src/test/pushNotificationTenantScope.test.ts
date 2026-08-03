@@ -116,6 +116,37 @@ describe("send-push-notification: 宛先はテナントで絞る", () => {
   });
 });
 
+describe("通知を開く側もプロトコル相対URLを弾く", () => {
+  // **送る側（isAllowedUrl）を直しても、開く側は塞がらない。**
+  // 通知の payload は send-push-notification を通らない経路でも届く
+  // （別の送信元、端末に残っていた古い通知）。両方に同じガードが要る。
+  //
+  // 2026-08-03、上流が送る側だけ直した直後に、ゴルフボード（フォーク）が
+  // 開く側の取り残しを見つけた。逆方向の3件目。
+  const NAV = "src/lib/pushNotifications.ts";
+  const navSource = readFileSync(NAV, "utf8");
+
+  it("navigateFromData が // を弾いている", () => {
+    expect(navSource).toMatch(
+      /url\.startsWith\("\/"\)\s*&&\s*!url\.startsWith\("\/\/"\)/,
+    );
+  });
+
+  it("素の startsWith(\"/\") だけの遷移が残っていない", () => {
+    // `if (url && url.startsWith("/")) window.location.assign(url)` の形が
+    // どこかに復活していないか。行単位で見る。
+    const offenders = navSource
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("//"))
+      .filter((line) => /location\.(assign|href)/.test(line))
+      .filter((line) => !/!\w+\.startsWith\("\/\/"\)/.test(line));
+    expect(
+      offenders.map((l) => l.trim().slice(0, 90)),
+      "遷移の直前に // ガードが無い行があります",
+    ).toEqual([]);
+  });
+});
+
 describe("Edge Function で supabase-js のビルダーに .catch を生やさない", () => {
   // **鍼灸ボード（フォーク）が先に作った検査を取り込んだもの。**
   // 向こうが 2026-08-03 の本番検証で実際に踏んだ:

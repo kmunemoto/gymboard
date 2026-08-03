@@ -156,6 +156,11 @@ const Onboarding = () => {
           operating_hours: { start: startTime, end: endTime },
           slot_duration_minutes: slotDuration,
           booking_capacity: bookingCapacity,
+          // ここで明示的に聞いているので「確認済み」。ダッシュボードで二度は聞かない。
+          // ⚠️ 本番DBに 20260803000000 の migration を適用して types.ts を再生成するまで、
+          //    この列は生成型に無いので insert 全体の型が never になる。
+          //    適用後にこのキャストを外すこと（schemaDrift.test.ts の KNOWN_STALE と対）。
+          booking_capacity_confirmed_at: new Date().toISOString() as never,
           booking_cutoff_type: cutoff.type,
           booking_cutoff_hours: cutoff.hours ?? 24,
           owner_user_id: user.id,

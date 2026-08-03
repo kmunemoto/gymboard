@@ -130,14 +130,7 @@ var POWERED_BY_LABEL = `Powered by ${BRAND.en}`;
 var BRAND_FALLBACK_GYM_NAME = BRAND.ja;
 
 // src/lib/mcp/index.ts
-// ⚠️ ビルド成果物だが、この1行だけは手で書き換えてある。
-// 元は Vite が VITE_SUPABASE_PROJECT_ID をビルド時に埋め込むため、
-// 上流（ジムボード）の project ref が文字列リテラルとして焼き込まれていた。
-// そのままだと、フォークが .env を直しても**この成果物だけが上流のプロジェクトを向き**、
-// 別プロジェクトの issuer で認証を要求する（型もテストも通るので気づけない）。
-// Edge Function には SUPABASE_URL が自動注入されるので、実行時に導出する。
-// 再生成したらこの書き換えが消える。src/test/edgeFunctionProjectRef.test.ts が番人。
-var projectRef = (Deno.env.get("SUPABASE_URL") ?? "").replace(/^https?:\/\//, "").split(".")[0] || "project-ref-unset";
+var projectRef = (process.env.SUPABASE_URL ?? "").replace(/^https?:\/\//, "").split(".")[0] || "project-ref-unset";
 var mcp_default = defineMcp({
   name: `${BRAND.app}-mcp`,
   title: `${BRAND.ja} MCP`,

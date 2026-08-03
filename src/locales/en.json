@@ -2253,5 +2253,11 @@
     "slot": "{{date}} {{time}} ({{count}})",
     "more": " and {{count}} more slots",
     "capacityHint": "If you can take more than one customer at the same time, increase \"Bookings at the same time\" under Gym settings → Business hours so these slots become bookable."
+  },
+  "capacityConfirm": {
+    "title": "How many bookings can you take at the same time?",
+    "body": "If you can handle more than one customer at once - two trainers, two beds - set that number. If it stays at 1, slots that are actually free show as full and you lose bookings.",
+    "save": "Save",
+    "saved": "Saved"
   }
 }

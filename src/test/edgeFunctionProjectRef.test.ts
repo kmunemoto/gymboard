@@ -52,9 +52,18 @@ describe("Edge Function に project ref が焼き込まれていない", () => {
 
   it("mcp の issuer は実行時に SUPABASE_URL から導出している", () => {
     const src = readFileSync(join(FUNCTIONS_DIR, "mcp/index.ts"), "utf8");
-    expect(src).toMatch(/Deno\.env\.get\("SUPABASE_URL"\)/);
-    // 導出に失敗しても、上流の ref に落ちるフォールバックを持たせないこと
+    expect(src).toMatch(/process\.env\.SUPABASE_URL/);
+    // 導出に失敗しても、特定プロジェクトの ref に落ちるフォールバックを持たせないこと
     expect(src).not.toMatch(new RegExp(`\\?\\?\\s*"${UPSTREAM_PROJECT_REF}"`));
+  });
+
+  // ⚠️ ここが本丸。成果物を手で直しても `npm run build` で巻き戻る（実際に踏んだ）。
+  // 直すべきは生成元で、Vite が値を埋め込む `import.meta.env.VITE_*` を
+  // issuer に使わないこと。各ツールと同じ `process.env` を使えば成果物は汎用のままになる。
+  it("生成元が import.meta.env で project ref を埋め込んでいない", () => {
+    const src = readFileSync(join(process.cwd(), "src/lib/mcp/index.ts"), "utf8");
+    expect(src).not.toMatch(/import\.meta\.env\.VITE_SUPABASE_PROJECT_ID/);
+    expect(src).toMatch(/process\.env\.SUPABASE_URL/);
   });
 });
 

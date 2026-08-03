@@ -4,9 +4,18 @@ import getProfile from "./tools/get-profile";
 import listRecentMeasurements from "./tools/list-recent-measurements";
 import { BRAND } from "../brand";
 
-// The OAuth issuer must be the direct supabase.co host, built from the project ref
-// (Vite inlines VITE_SUPABASE_PROJECT_ID at build time — keeps this file import-safe).
-const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
+// OAuth の issuer は supabase.co の直ホスト。project ref から組み立てる。
+//
+// ⚠️ ここで Vite の `VITE_` 系ビルド時変数（import.meta.env 経由）を使ってはいけない。
+// Vite はビルド時に値を**文字列として埋め込む**ので、コミットされる成果物
+// （supabase/functions/mcp/index.ts）に ref が焼き付く。フォークが .env を
+// 直しても、その成果物だけが元のプロジェクトの issuer を要求し続ける
+// （型もテストもビルドも通るので、実際に MCP を使うまで気づけない）。
+//
+// 各ツールが `process.env.SUPABASE_URL` を使っているのと同じにする。
+// これは Vite が埋め込まず、Edge Function の実行時に Supabase が注入する。
+const projectRef =
+  (process.env.SUPABASE_URL ?? "").replace(/^https?:\/\//, "").split(".")[0] || "project-ref-unset";
 
 // MCPサーバーの名前・説明はビルド時に決まる静的な定義で、テナントごとには変えられない。
 // 以前は特定ジム名（Salute御所南）だったが、どのお客様にもそのまま見えてしまうため

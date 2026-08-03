@@ -49,7 +49,15 @@ describe("tenants の取得カラム定義", () => {
       ...TENANT_DEFAULT_FALSE_COLS,
       ...Object.keys(TENANT_VALUE_DEFAULTS),
     ]);
-    const missing = tenantOptionalColumnNames().filter((c) => !covered.has(c));
+    // 例外: 「列が読めない(undefined)」と「未設定(null)」を区別する必要がある列。
+    // 既定値を与えると両者が潰れてしまうため、あえて定義しない。
+    const INTENTIONALLY_NO_DEFAULT: Record<string, string> = {
+      booking_capacity_confirmed_at:
+        "undefined=列が読めない / null=店にまだ聞いていない、を区別する。既定値を入れると保存できない環境で聞き続けてしまう",
+    };
+    const missing = tenantOptionalColumnNames()
+      .filter((c) => !covered.has(c))
+      .filter((c) => !(c in INTENTIONALLY_NO_DEFAULT));
     expect(missing, `既定値が未定義: ${missing.join(", ")}`).toEqual([]);
   });
 

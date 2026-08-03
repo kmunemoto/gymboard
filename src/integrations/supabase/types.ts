@@ -2494,6 +2494,7 @@ export type Database = {
           address: string | null
           booking_buffer_minutes: number
           booking_capacity: number
+          booking_capacity_confirmed_at: string | null
           booking_cutoff_hours: number | null
           booking_cutoff_type: string | null
           business_type: string
@@ -2550,6 +2551,7 @@ export type Database = {
           address?: string | null
           booking_buffer_minutes?: number
           booking_capacity?: number
+          booking_capacity_confirmed_at?: string | null
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           business_type?: string
@@ -2606,6 +2608,7 @@ export type Database = {
           address?: string | null
           booking_buffer_minutes?: number
           booking_capacity?: number
+          booking_capacity_confirmed_at?: string | null
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           business_type?: string
@@ -3653,6 +3656,8 @@ export type Database = {
           address: string
           booking_buffer_minutes: number
           booking_capacity: number
+          booking_cutoff_hours: number
+          booking_cutoff_type: string
           gym_name: string
           gym_name_short: string
           id: string

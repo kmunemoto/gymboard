@@ -65,8 +65,19 @@ DROP POLICY IF EXISTS "Trainers manage tasks delete" ON public.season_event_task
 -- ============================================================
 -- シーズンパス（FOR ALL だった。SELECT は別ポリシーで残る）
 -- ============================================================
-DROP POLICY IF EXISTS "Trainers manage season config" ON public.season_pass_config;
-DROP POLICY IF EXISTS "Trainers manage season levels" ON public.season_pass_levels;
+-- ⚠️ `DROP POLICY IF EXISTS` は**テーブルが無いと落ちる**（IF EXISTS はポリシーに
+-- かかるのであってテーブルにはかからない）。season_pass_config / season_pass_levels は
+-- **ジムボード本番に存在しない**（マイグレーションはあるが適用されていない）。
+-- 兄弟アプリでも同じ状態がありえるので、テーブルの有無を見てから実行する。
+DO $$
+BEGIN
+  IF to_regclass('public.season_pass_config') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "Trainers manage season config" ON public.season_pass_config';
+  END IF;
+  IF to_regclass('public.season_pass_levels') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "Trainers manage season levels" ON public.season_pass_levels';
+  END IF;
+END $$;
 
 -- ============================================================
 -- アバターのカスタマイズアイテム

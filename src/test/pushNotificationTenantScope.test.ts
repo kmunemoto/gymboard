@@ -116,6 +116,59 @@ describe("send-push-notification: 宛先はテナントで絞る", () => {
   });
 });
 
+describe("Edge Function で supabase-js のビルダーに .catch を生やさない", () => {
+  // **鍼灸ボード（フォーク）が先に作った検査を取り込んだもの。**
+  // 向こうが 2026-08-03 の本番検証で実際に踏んだ:
+  //
+  //   await admin.rpc("purge_login_codes").catch(() => {});
+  //
+  // `rpc()` / `from()` が返すのは Promise ではなく PostgrestFilterBuilder。
+  // thenable ではあるが **`.catch` を持たない**ので、これは実行時に
+  // `admin.rpc(...).catch is not a function` の TypeError になり 500 で落ちる。
+  //
+  // 悪いのは壊れ方。向こうでは Edge Function の**後始末の行**だったので、
+  // 本体の処理は終わっているのにレスポンスだけ 500 になった。
+  // Deno のコードは tsc にもユニットテストにも載らないので、
+  // **本番に HTTP を投げるまで誰も気づけない。** try/catch で囲むこと。
+  //
+  // ジムボードは取り込み時点で該当0件（全 Edge Function を走査して確認）。
+  //
+  // ⚠️ このファイル名は push 用だが、この describe は**リポジトリ全体**を見る。
+  //    配布単位を増やさないため、既存の全走査 describe（下）と同じ場所に置いている。
+  const entries = readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name !== "_shared")
+    .map((e) => `${FUNCTIONS_DIR}/${e.name}/index.ts`);
+
+  // `(?<!Array)` と「引数が文字列リテラル」の2つで Array.from(bytes) を除く。
+  // supabase-js の .from() / .rpc() は必ずテーブル名・関数名の文字列を取る。
+  // （鍼灸ボード版は `\.(?:rpc|from)\(` だけだったので、Array.from を含む行が
+  //   将来 .catch と同じ文に来ると誤検知する。こちらで絞った）
+  const BUILDER_CATCH = /(?<!Array)\.(?:rpc|from)\(\s*["'`][\s\S]{0,400}?\.catch\(/;
+
+  it("対象の Edge Function を1つ以上見つけられている", () => {
+    expect(entries.length).toBeGreaterThan(5);
+  });
+
+  for (const file of entries) {
+    it(`${file} が rpc()/from() に .catch を付けていない`, () => {
+      let text: string;
+      try {
+        text = readFileSync(file, "utf8");
+      } catch {
+        return; // index.ts を持たない関数はスキップ
+      }
+      // 1文ずつ見る。ファイル全体を1つの正規表現に掛けると、
+      // 無関係な `.catch`（req.json().catch など）まで巻き込む。
+      const statements = stripComments(text).split(";");
+      const offenders = statements.filter((st) => BUILDER_CATCH.test(st));
+      expect(
+        offenders.map((o) => o.trim().slice(0, 100)),
+        "PostgrestFilterBuilder に .catch は無い。try/catch で囲むこと",
+      ).toEqual([]);
+    });
+  }
+});
+
 describe("Edge Function から auth.uid() 依存の RPC を呼ばない", () => {
   // `get_my_tenant_id()` / `shares_tenant_with_me()` は中身が `auth.uid()` 依存。
   // Edge Function の service_role クライアントから呼ぶと **常に NULL / false**

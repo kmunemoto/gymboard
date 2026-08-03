@@ -66,6 +66,33 @@ export const STRIPE_LIVE_HOSTS: readonly string[] = [
 /** マーケティングサイト（LP）のURL */
 export const MARKETING_SITE_URL = "https://gymboard-app.lovable.app";
 
+/**
+ * **この製品自身のホスト名の集合。**
+ *
+ * Edge Function（Deno）は `src/lib/brand.ts` を import できないので、ドメインは
+ * 各ファイルに手で直書きするしかない（現在10ファイル）。そのため
+ * **フォークが brand.ts だけ差し替えると、Edge Function 側に上流のドメインが残る。**
+ *
+ * 2026-08-03、セッコツボードとゴルフボードが実際にこの状態だった:
+ * `send-push-notification` の `ALLOWED_URL_HOSTS` がジムボードのままで、
+ * (1) 自分の絶対URLを渡すとプッシュが 400 で弾かれる
+ * (2) 他社のドメインを許可し続ける
+ * の2つが同時に起きていた。**エラーにならないので気づけない。**
+ *
+ * ここを唯一の宣言にして、`src/test/edgeFunctionOrigin.test.ts` が
+ * Edge Function 側の直書きと突き合わせる。**フォークはここを直せば CI が
+ * 直すべきファイルを全部並べてくれる。**
+ *
+ * （この仕組みはストレッチボードの `edgeFunctionOrigin.test.ts` が先行実装していた。
+ *   2026-08-03 に上流へ取り込み、対象を全 Edge Function に広げた）
+ */
+export const OWN_WEB_HOSTS: readonly string[] = [
+  "app.kyoto-salute.com",     // PRODUCTION_WEB_ORIGIN。アプリ本体
+  "gymboard.lovable.app",     // Lovable の公開URL
+  "gymboard-app.lovable.app", // MARKETING_SITE_URL（LP）
+  "gymboard.app",             // メールフッターの製品サイト（2026-07 に生存確認済み）
+];
+
 /** SNSシェア画像・公開ページに出す控えめなブランド表記 */
 export const POWERED_BY_LABEL = `Powered by ${BRAND.en}`;
 

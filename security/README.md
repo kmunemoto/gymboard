@@ -86,9 +86,28 @@ src/test/helpers/rlsPolicies.ts               ← マイグレーションのポ
 src/test/tenantMembershipWrites.test.ts       ← 穴1
 src/test/globalTrainerRole.test.ts            ← 穴2
 src/test/pushNotificationTenantScope.test.ts  ← 穴3
+src/test/edgeFunctionOrigin.test.ts           ← 上流のドメインが残っていないか
 ```
 
-この4ファイルを自分のリポジトリの同じパスにコピーして、`npm test` を通してください。
+この5ファイルを自分のリポジトリの同じパスにコピーして、`npm test` を通してください。
+
+> ### `edgeFunctionOrigin.test.ts` だけ `brand.ts` に1行必要です
+> このテストは `src/lib/brand.ts` の **`OWN_WEB_HOSTS`** を唯一の宣言として使います。
+> フォーク側の `brand.ts` に無ければ足してください（値は**自分のドメイン**）。
+>
+> ```ts
+> export const OWN_WEB_HOSTS: readonly string[] = [
+>   "<自分の本番ドメイン>",
+>   "<自分の lovable.app>",
+> ];
+> ```
+>
+> **Edge Function（Deno）は `brand.ts` を import できません。** だからドメインは
+> 各ファイルに手で書くしかなく、**フォークが `brand.ts` だけ直すと Edge Function に
+> 上流のドメインが残ります。** 2026-08-03 にセッコツボードとゴルフボードが実際に
+> この状態で、`send-push-notification` の `ALLOWED_URL_HOSTS` がジムボードのままでした
+> （自分の絶対URLでプッシュが 400 になり、かつ他社ドメインを許可し続ける）。
+> **相対パス `"/"` は通るのでエラーにならず、実機で試すまで気づけません。**
 
 > **`globalTrainerRole.test.ts` はテーブルを列挙しません。**
 > 全ポリシーを走査するので、**そのアプリで今後増えるテーブルも自動で見張ります。**

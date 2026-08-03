@@ -16,9 +16,47 @@
 
 
 -- ----------------------------------------------------------------------------
+-- 検査0: 自分のアプリの「実物のポリシー名」を見る（★最初にこれを見ること）
+-- ----------------------------------------------------------------------------
+-- **ポリシー名はアプリごとに違います。** 複製元と同じとは限りません。
+--
+-- 2026-08-03、ピラボードで実際にこうなっていました:
+--
+--   ジムボード : "Trainers/owners can manage members"
+--   ピラボード : "Owner can manage members"
+--                USING (EXISTS (SELECT 1 FROM tenants t
+--                                WHERE t.id = tenant_members.tenant_id
+--                                  AND t.owner_user_id = auth.uid()))
+--
+-- 穴としては同じですが、**名前が違うと配布された修正SQLが効きません。**
+-- `DROP POLICY IF EXISTS "<違う名前>"` は**何も消さずに成功します。エラーも出ません。**
+-- 「適用したのに直っていない」が起きます。
+--
+-- **DROP する前に、必ずここで実物の名前を確認してください。**
+
+SELECT policyname, cmd, permissive, qual, with_check
+FROM pg_policies
+WHERE schemaname = 'public' AND tablename = 'tenant_members'
+ORDER BY cmd, policyname;
+
+-- 全テナント共通マスタ側も同じ。名前で DROP するので実物を見ること。
+SELECT tablename, cmd, policyname
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename IN ('raid_bosses','raid_reward_items','season_events','season_event_tasks',
+                    'season_pass_config','season_pass_levels','avatar_customization_items',
+                    'gym_settings')
+  AND cmd <> 'SELECT'
+ORDER BY tablename, cmd, policyname;
+
+
+-- ----------------------------------------------------------------------------
 -- 検査1: 既知の3つの穴が塞がっているか
 -- ----------------------------------------------------------------------------
 -- verdict が 1つでも「★要対応」なら、README の手順で塞ぐこと。
+--
+-- ⚠️ 穴1-a は「FOR ALL のポリシーが**何かある**」ことしか見ません。
+--    名前は見ていないので、**塞ぐときは検査0 の実物を使ってください。**
 
 WITH checks(sort_order, item, found, expected, note) AS (
   SELECT 1,

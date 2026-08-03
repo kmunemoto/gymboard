@@ -33,6 +33,13 @@
 ## セキュリティ
 - 秘密情報（サービスアカウントJSON、署名鍵など）はコミットしない。
 
+## 業種特化の兄弟アプリ（セッコツボード等）について
+**2026-08-03 に、上流・下流の運用（兄弟が `git merge upstream/main` で追従する仕組み）は
+終了しました。** 以後、各アプリはそれぞれ独立して進みます。
+このリポジトリを「上流」として扱う必要はなく、`upstream-changelog.md` への追記も不要です。
+コード（`featureFlags.ts` / `brand.ts` / `vertical.ja.json` / `test/helpers/upstream.ts`）は
+そのまま残してあります。経緯は `mem/ops/vertical-fork.md` の冒頭。
+
 ## 参照
 - 機能・実装メモ: `mem/`（例: `mem/auth/session-management.md`, `mem/features/workout-share.md`）
 - セットアップ・スクリプト・環境変数: `README.md`

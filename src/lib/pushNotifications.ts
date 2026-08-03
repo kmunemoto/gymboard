@@ -107,7 +107,16 @@ function showForegroundToast(title?: string | null, body?: string | null): void 
 
 function navigateFromData(data: Record<string, unknown> | undefined): void {
   const url = data && typeof data.url === "string" ? data.url : undefined;
-  if (url && url.startsWith("/")) window.location.assign(url);
+  // "//evil.example" も "/" 始まりだが、ブラウザは**プロトコル相対URL**として
+  // 別オリジンに解決する。通知をタップした先が外部サイトになる。
+  //
+  // ⚠️ 送る側（send-push-notification の isAllowedUrl）を直しても、ここは塞がらない。
+  // 通知の payload はその Edge Function を通らない経路でも届く
+  // （別の送信元、端末に残っていた古い通知）。**送る側と開く側の両方が要る。**
+  //
+  // 同じ形の穴は `sanitizeAuthNext`（nativeBridge.ts）が認証コールバックに対して
+  // 既に塞いでいる。2026-08-03、ゴルフボード（フォーク）がこちらの取り残しを見つけた。
+  if (url && url.startsWith("/") && !url.startsWith("//")) window.location.assign(url);
 }
 
 // 同一ユーザーに対してリスナーを二重登録しないためのガード。

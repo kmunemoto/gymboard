@@ -28,6 +28,7 @@ const DISTRIBUTED_FILES = [
   "src/test/tenantMembershipWrites.test.ts",
   "src/test/globalTrainerRole.test.ts",
   "src/test/pushNotificationTenantScope.test.ts",
+  "src/test/edgeFunctionOrigin.test.ts",
 ];
 
 describe("security/ の配布キット", () => {

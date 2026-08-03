@@ -33,6 +33,21 @@
 
 見張り: `src/test/globalTrainerRole.test.ts` / `src/test/pushNotificationTenantScope.test.ts`
 
+## 兄弟アプリへの配布
+
+**`security/` を見ること。** 3件の修正を兄弟アプリへ届けるための置き場で、
+
+- `security/check.sql` … 自分のDBに同じ穴があるかを調べる**読み取り専用**の診断SQL
+- `security/README.md` … 手順・踏んだ罠・本番での攻撃検証の手順
+
+が入っている。**修正の実体はコピーしていない**（`supabase/migrations/` と `src/test/` が正）。
+複製するとずれるため。README が指すパスが実在することは
+`src/test/securityKit.test.ts` が CI で見張っている
+（README が黙って嘘になると、受け取った側は気づけないため）。
+
+**次に新しい穴を見つけたときは、`check.sql` に検査を1つ、`src/test/` に走査型テストを
+1本足す。** 修正内容を全員に理解させる必要はなく、各アプリが自分の赤を見て直せる。
+
 ---
 
 ## 3. `send-push-notification` の宛先検証（修正済み）

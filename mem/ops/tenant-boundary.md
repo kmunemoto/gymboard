@@ -610,17 +610,31 @@ if (!caller.isServiceRole && !callerIsTrainer) {
   固定する節も入れてあり、**現在の送信が1通も止まらない**ことを形で担保している
 - `security/` の配布キットに穴4として追加（兄弟5アプリも同じ穴）
 
-### ⚠️ デプロイは手動
+### デプロイは Lovable の Publish
 
-`deploy-functions.yml` の対象5本に**入っていない**（`config.toml` 未記載のため）。
-マージしても本番には反映されない。
+`deploy-functions.yml` の対象5本には**入っていない**（`config.toml` 未記載のため）。
+足さないのは意図的で、ワークフローのコメントにこう書いてある:
 
-```bash
-supabase functions deploy send-transactional-email --project-ref rrbfwitprzuevzytykrq
-```
+> config.toml に無い関数を deploy すると verify_jwt がデフォルトの true に戻り、
+> line-login-callback のような「JWT不要で叩かれる関数」が壊れるため。
+> このため send-transactional-email 等 config.toml 未記載の関数はここに足さず、
+> **Lovable の Publish に任せる。**
 
-デプロイ後、**実機で予約確認メールが1通届くことを必ず確認する。**
-メール送信は fire-and-forget なので、**塞ぎすぎても画面にエラーが出ない。**
+つまり `supabase functions deploy` を手で叩く必要は無い。**Publish で反映される。**
+（一度「手動デプロイが必要」と案内したが誤り。2026-08-04 に訂正した。）
+
+### 本番での動作確認（2026-08-04・完了）
+
+Publish 後、**実機で予約確認メールが1通届くことを確認済み。**
+
+これは省略できない手順。メール送信は fire-and-forget なので、
+**塞ぎすぎても画面にエラーが出ず、「いつのまにか届かない」形で数日気づけない。**
+今回の修正は宛先の条件を狭めているので、ここを踏まないと
+「直したつもりで、実は正規のメールまで止めていた」に気づけなかった。
+
+なお `_resolve_user_` を「自分宛だけ」に絞らなかったのが効いている。
+絞っていたら**ジム側の代理予約の確認メールだけが静かに止まっていた**
+（代理予約では resolveUserId が呼び出し元ではなくお客様になるため）。
 
 ---
 

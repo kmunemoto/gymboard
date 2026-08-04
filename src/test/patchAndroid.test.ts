@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  copyFileSync,
+  existsSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -75,9 +83,14 @@ dependencies {
 apply plugin: 'com.google.gms.google-services'
 `;
 
+// 通知アイコンの素材。スクリプトは「あるものをコピーする」だけなので、
+// モックにも本物を置く（無いと process.exit(1) で止まる ＝ それも検証対象）。
+const NOTIF_DENSITIES = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"] as const;
+const NOTIF_SRC_DIR = join(process.cwd(), "assets/notification-icon");
+
 let dir: string;
 
-function scaffold(overrides: Record<string, string> = {}) {
+function scaffold(overrides: Record<string, string> = {}, opts: { icons?: boolean } = {}) {
   const files: Record<string, string> = {
     "android/variables.gradle": CAP7_VARIABLES,
     "android/build.gradle": CAP7_ROOT_GRADLE,
@@ -91,6 +104,14 @@ function scaffold(overrides: Record<string, string> = {}) {
     const full = join(dir, rel);
     mkdirSync(join(full, ".."), { recursive: true });
     writeFileSync(full, body);
+  }
+  if (opts.icons !== false) {
+    const dest = join(dir, "assets/notification-icon");
+    mkdirSync(dest, { recursive: true });
+    for (const d of NOTIF_DENSITIES) {
+      const name = `ic_stat_notification-${d}.png`;
+      copyFileSync(join(NOTIF_SRC_DIR, name), join(dest, name));
+    }
   }
 }
 
@@ -208,5 +229,54 @@ describe("patch-android.mjs（Capacitor 8 への引き上げ）", () => {
     const { code, output } = run();
     expect(code).toBe(1);
     expect(output).toMatch(/Android Gradle Plugin/);
+  });
+});
+
+describe("patch-android.mjs（通知アイコン）", () => {
+  // 指定が無いと、通知にはランチャーアイコン（全面不透明）が使われ、
+  // Android 5.0 以降は RGB が捨てられて「白い塊」になる。
+  // 詳細は src/test/pushConfigGuards.test.ts の冒頭。
+
+  it("5密度ぶんを mipmap-* に配置する", () => {
+    scaffold();
+    expect(run().code, "パッチが失敗した").toBe(0);
+    for (const d of NOTIF_DENSITIES) {
+      const dest = join(dir, `android/app/src/main/res/mipmap-${d}/ic_stat_notification.png`);
+      expect(existsSync(dest), `${dest} が作られていません`).toBe(true);
+      // 中身が入れ替わっていないこと（空ファイルを置いても通らないように）。
+      expect(readFileSync(dest)).toEqual(
+        readFileSync(join(NOTIF_SRC_DIR, `ic_stat_notification-${d}.png`)),
+      );
+    }
+  });
+
+  it("AndroidManifest.xml の <application> 内に既定アイコンを指定する", () => {
+    scaffold();
+    expect(run().code).toBe(0);
+    const manifest = read("android/app/src/main/AndroidManifest.xml");
+    expect(manifest).toMatch(/com\.google\.firebase\.messaging\.default_notification_icon/);
+    expect(manifest).toMatch(/android:resource="@mipmap\/ic_stat_notification"/);
+    // <application> の外に置くと FirebaseMessaging から読まれない。
+    const app = manifest.match(/<application[\s\S]*?<\/application>/)?.[0] ?? "";
+    expect(app, "meta-data が <application> の外にあります").toMatch(
+      /default_notification_icon/,
+    );
+  });
+
+  it("2回流しても meta-data が重複しない", () => {
+    scaffold();
+    expect(run().code).toBe(0);
+    expect(run().code).toBe(0);
+    const manifest = read("android/app/src/main/AndroidManifest.xml");
+    expect(manifest.match(/default_notification_icon/g)?.length).toBe(1);
+  });
+
+  it("素材が無ければ止まる（白い塊のまま出荷しない）", () => {
+    scaffold({}, { icons: false });
+    const { code, output } = run();
+    expect(code, "素材が無いのに成功扱いになっている").toBe(1);
+    expect(output).toMatch(/通知アイコン/);
+    // google-services.json のコピーまで進んでいたら、順序が違う。
+    expect(output).not.toMatch(/copied google-services\.json/);
   });
 });

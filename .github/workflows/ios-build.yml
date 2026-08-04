@@ -93,7 +93,24 @@ jobs:
           echo "--- validate as a property list ---"
           plutil -lint "$DEST"
           /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" "$DEST" || true
-          /usr/libexec/PlistBuddy -c "Print :PROJECT_ID" "$DEST" || true
+
+          # ⚠️ アプリに焼く plist の PROJECT_ID と、サーバ側の送信鍵
+          # （Supabase Secrets の FIREBASE_SERVICE_ACCOUNT_JSON）の project_id が
+          # 違うと、端末にトークンは保存されるのに配信だけ 403 SENDER_ID_MISMATCH で
+          # 無言で失敗する。ピラボードが実際に踏んだ（2026-08-04 報告）。
+          # `send-push-notification` の isInvalid は 403 を無効トークン扱いしないので、
+          # トークンも消えず、ただ永久に届かない。
+          echo "--- Firebase プロジェクトの突き合わせ ---"
+          EXPECTED_PROJECT="$(cat .github/expected-firebase-project-id)"
+          ACTUAL_PROJECT="$(/usr/libexec/PlistBuddy -c 'Print :PROJECT_ID' "$DEST")"
+          if [ "$ACTUAL_PROJECT" != "$EXPECTED_PROJECT" ]; then
+            echo "::error::GoogleService-Info.plist の PROJECT_ID ($ACTUAL_PROJECT) が" \
+                 ".github/expected-firebase-project-id ($EXPECTED_PROJECT) と一致しません。" \
+                 "別プロジェクトの設定です。このままビルドすると、端末にトークンは保存されるのに" \
+                 "プッシュだけが無言で届かなくなります。"
+            exit 1
+          fi
+          echo "Firebase project = $ACTUAL_PROJECT"
 
       - name: Enable Push Notifications capability (aps-environment)
         run: |

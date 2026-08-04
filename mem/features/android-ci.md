@@ -18,6 +18,53 @@
   （ピラボードのように Android のリリース経路自体が無いアプリには、
   それでも作る価値がある）
 
+## ⚠️ 通知アイコン（2026-08-04 に修正）
+
+`com.google.firebase.messaging.default_notification_icon` を指定しないと、
+通知には**ランチャーアイコン（フルカラー）がそのまま使われる**。
+Android 5.0 (API 21) 以降、ステータスバーのアイコンは
+**OS が RGB を無視しアルファチャンネルだけを使って白く塗りつぶして描画する**ため、
+全面不透明のランチャーアイコンは**「白い四角の塊」**になって判読できない。
+
+ジムボードの `assets/icon-only.png` は全面不透明なので、
+**それまでの Android の通知は全部この白い塊だった**（ピラボードの報告で発覚）。
+
+### 直し方
+
+- 素材は `assets/notification-icon/ic_stat_notification-<density>.png`（5密度）に
+  **事前生成してコミット**してある
+- `scripts/patch-android.mjs` が `android/app/src/main/res/mipmap-*/` へコピーし、
+  `AndroidManifest.xml` の `<application>` 内に meta-data を入れる
+
+**patch 時に画像を生成しない**のが要点。Android のリリースは Windows + Android Studio の
+手作業なので、ImageMagick 等が入っている保証が無い。**ファイルコピーだけで完結させる。**
+
+> ピラボードは CI 側で ffmpeg を使って生成しようとして **8連続で失敗**している。
+> しかも「失敗したら ImageMagick を入れる」というフォールバックを書いていたが、
+> **ステップが `bash -e` なので ffmpeg の exit 127 でシェルごと死に、
+> `if` に到達しなかった**。`bash -e` のステップに保険は書けない。
+
+素材を差し替えるときは、**白＋透過**であること（アルファが無いと白い塊に戻る）。
+`src/test/pushConfigGuards.test.ts` が PNG ヘッダを読んでサイズとアルファの有無を検査する。
+
+---
+
+## ⚠️ Firebase プロジェクトの突き合わせ（2026-08-04 に追加）
+
+アプリに焼く `google-services.json` / `GoogleService-Info.plist` の project_id と、
+サーバ側の送信鍵（Supabase Secrets の `FIREBASE_SERVICE_ACCOUNT_JSON`）の project_id が
+違うと、**端末にトークンは保存されるのに配信だけ 403 SENDER_ID_MISMATCH で失敗する。**
+`send-push-notification` の `isInvalid` は 403 を無効トークン扱いしないので、
+**トークンは消えず、ただ永久に届かない。**
+
+ピラボードが実際に踏んだ（`gymboard-59570` の設定が混入。
+**ログには出ていたが、突き合わせが人間任せで誰も見ていなかった**）。
+
+期待値は `.github/expected-firebase-project-id` に1箇所で持ち、
+**iOS・Android 両方のビルドが不一致で落ちる**。
+
+---
+
 ## いま実際にやっているリリース手順（Android）
 
 1. `scripts\build-android.bat`（git pull → npm install → build → `cap sync` → `patch-android.mjs`）

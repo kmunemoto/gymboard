@@ -373,6 +373,7 @@ export type Database = {
           google_event_id: string | null
           id: string
           source: string | null
+          staff_user_id: string | null
           status: string
           tenant_id: string | null
           trainer_note: string | null
@@ -385,6 +386,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           source?: string | null
+          staff_user_id?: string | null
           status?: string
           tenant_id?: string | null
           trainer_note?: string | null
@@ -397,6 +399,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           source?: string | null
+          staff_user_id?: string | null
           status?: string
           tenant_id?: string | null
           trainer_note?: string | null
@@ -2537,6 +2540,7 @@ export type Database = {
           show_trial_followup_alert: boolean
           show_utilization_heatmap: boolean
           slot_duration_minutes: number | null
+          staff_invite_code: string | null
           status: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -2594,6 +2598,7 @@ export type Database = {
           show_trial_followup_alert?: boolean
           show_utilization_heatmap?: boolean
           slot_duration_minutes?: number | null
+          staff_invite_code?: string | null
           status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -2651,6 +2656,7 @@ export type Database = {
           show_trial_followup_alert?: boolean
           show_utilization_heatmap?: boolean
           slot_duration_minutes?: number | null
+          staff_invite_code?: string | null
           status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -3637,6 +3643,7 @@ export type Database = {
       }
       get_login_bonus_status: { Args: { p_user_id: string }; Returns: Json }
       get_my_tenant_id: { Args: never; Returns: string }
+      get_my_staff_invite_code: { Args: never; Returns: string }
       get_my_tenant_invite_code: { Args: never; Returns: string }
       get_player_combat_stats: { Args: { p_user_id: string }; Returns: Json }
       get_quest_progress: { Args: { p_user_id: string }; Returns: Json }
@@ -3646,6 +3653,7 @@ export type Database = {
         Returns: {
           booking_date: string
           end_booking_date: string
+          staff_user_id: string | null
           status: string
         }[]
       }
@@ -3713,7 +3721,21 @@ export type Database = {
         Returns: boolean
       }
       is_tenant_over_limit: { Args: { p_tenant_id: string }; Returns: boolean }
+      join_tenant_as_staff_with_invite_code: {
+        Args: { p_code: string; p_display_name: string }
+        Returns: string
+      }
       lookup_tenant_by_invite_code: {
+        Args: { p_code: string }
+        Returns: {
+          address: string
+          gym_name: string
+          id: string
+          logo_url: string
+          primary_color: string
+        }[]
+      }
+      lookup_tenant_by_staff_invite_code: {
         Args: { p_code: string }
         Returns: {
           address: string
@@ -3753,6 +3775,8 @@ export type Database = {
         Returns: Json
       }
       recover_stamina: { Args: { p_user_id: string }; Returns: Json }
+      regenerate_staff_invite_code: { Args: never; Returns: string }
+      remove_staff_member: { Args: { p_user_id: string }; Returns: undefined }
       run_rival_matching: { Args: { p_week_start: string }; Returns: Json }
       set_active_companion: {
         Args: { p_companion_key: string; p_user_id: string }

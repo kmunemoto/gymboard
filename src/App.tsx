@@ -22,6 +22,7 @@ const Terms = lazy(() => import("./pages/Terms.tsx"));
 const Tokushoho = lazy(() => import("./pages/Tokushoho.tsx"));
 const Onboarding = lazy(() => import("./pages/Onboarding.tsx"));
 const JoinGym = lazy(() => import("./pages/JoinGym.tsx"));
+const JoinGymStaff = lazy(() => import("./pages/JoinGymStaff.tsx"));
 const DeleteAccount = lazy(() => import("./pages/DeleteAccount.tsx"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword.tsx"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent.tsx"));
@@ -58,6 +59,9 @@ const App = () => (
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/join" element={<JoinGym />} />
               <Route path="/join/:code" element={<JoinGym />} />
+              {/* スタッフ用の参加ページ。お客様用（/join）とは別コード・別導線 */}
+              <Route path="/join-staff" element={<JoinGymStaff />} />
+              <Route path="/join-staff/:code" element={<JoinGymStaff />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />

@@ -96,6 +96,7 @@ describe("Google口コミ依頼セクション（TrainerGymSettings）", () => {
     const stub = (name: string) => ({ default: () => <div data-testid={name} /> });
     vi.doMock("@/components/trainer/InviteCodeCard", () => stub("invite-code-card"));
     vi.doMock("@/components/trainer/TrialLinkCard", () => stub("trial-link-card"));
+    vi.doMock("@/components/trainer/TrainerStaffManager", () => stub("staff-manager"));
     vi.doMock("@/components/trainer/TrainerPlanManager", () => stub("plan-manager"));
     vi.doMock("@/components/trainer/TrainerBilling", () => stub("billing"));
     vi.doMock("@/components/trainer/TrainerHelpGuide", () => stub("help-guide"));

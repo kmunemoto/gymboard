@@ -51,6 +51,7 @@
 | `src/test/nativeAppIdentity.test.ts` | **この手順書の表を見張る本体** | **必須。** 依存なし（`vitest` と `node:fs` のみ）なので、そのままコピーすれば動く |
 | `src/test/edgeFunctionProjectRef.test.ts` | Supabase の project ref が上流のまま残っていないか | **どの配布キットにも入っていない。** 無ければ一緒にコピーする |
 | `src/test/edgeFunctionOrigin.test.ts` | Edge Function に上流のドメインが残っていないか | `security/` の配布キット経由で配られている。既にあれば不要 |
+| `src/test/pushConfigGuards.test.ts` + `src/test/patchAndroid.test.ts` | 通知アイコンと Firebase プロジェクトの突き合わせ | **入れると最初は赤くなる。** 下の「通知アイコン」を先に用意すること |
 
 **`nativeAppIdentity.test.ts` を入れないと、この手順書はただの読み物になる。**
 「差し替えたつもり」を機械的に検出できるのがこの手順書の value なので、
@@ -74,6 +75,8 @@
 | 4 | `.github/workflows/android-build.yml` | `packageName`、プリフライトが期待する `package_name` |
 | 5 | `.github/workflows/deploy-functions.yml` | `PROJECT_REF`（`edgeFunctionProjectRef.test.ts` が見張り済み） |
 | 6 | `src/lib/brand.ts` | `OWN_WEB_HOSTS`（`edgeFunctionOrigin.test.ts` が見張り済み） |
+| 7 | `.github/expected-firebase-project-id` | 自分が使う Firebase プロジェクト ID を1行だけ書く（下の「Firebase」参照） |
+| 8 | `assets/notification-icon/*.png` | 自分のロゴから作った**白＋透過**の通知アイコン5枚（下の「通知アイコン」参照） |
 
 `appId` は**アプリごとに一意**であること。逆ドメイン形式（例 `app.sekkotsuboard.mobile`）。
 **一度ストアに出したら変えられない。** 最初に決め切ること。
@@ -101,6 +104,36 @@ Firebase は「1プロジェクト × 複数アプリ」が正規の構成で、
 > 共用して困るのは**設定ファイルを使い回したとき**で、プロジェクトの共用ではない。
 > `nativeAppIdentity.test.ts` も当初これを取り違えて、
 > 正しく設定した兄弟アプリを誤って赤にしていた（修正済み）。
+
+**プロジェクトを共用するなら、`.github/expected-firebase-project-id` は全アプリで同じ値**。
+分けるなら自分の値を書く。iOS / Android 両方のワークフローが、ビルド前に
+設定ファイルの `PROJECT_ID` / `project_id` をこのファイルと突き合わせて、
+違えば**そこで落とす**。
+
+> ⚠️ **アプリ側の Firebase プロジェクトと、サーバ側の送信鍵
+> （Supabase Secrets の `FIREBASE_SERVICE_ACCOUNT_JSON`）のプロジェクトがズレると、
+> 端末にトークンは保存されるのに配信だけ 403 `SENDER_ID_MISMATCH` で無言で失敗する。**
+> `send-push-notification` の `isInvalid` は 403 を無効トークン扱いしないので、
+> トークンも消えず、ただ永久に届かない。ピラボードが実際に踏んだ（2026-08-04）。
+> ログには出ていたが、突き合わせが人間任せで誰も見ていなかった。だから機械で見る。
+
+### 通知アイコン（Android）
+
+**`assets/notification-icon/ic_stat_notification-<density>.png` を5枚用意する**
+（`mdpi` 24px / `hdpi` 36px / `xhdpi` 48px / `xxhdpi` 72px / `xxxhdpi` 96px）。
+
+> ⚠️ **Android 5.0 (API 21) 以降、ステータスバーの通知アイコンは
+> OS が RGB を捨ててアルファチャンネルだけを白く塗って描画する。**
+> 既定アイコンを指定しないとランチャーアイコン（全面不透明）が使われるので、
+> 通知は**判読できない白い塊**になる。ジムボードも 2026-08-04 まで全部この状態だった。
+
+作り方は「ロゴのシルエットを**白一色で塗り、背景を透過**にして、上下左右に少し余白を取る」。
+`scripts/patch-android.mjs` が `mipmap-*` へコピーし、`AndroidManifest.xml` に
+`com.google.firebase.messaging.default_notification_icon` を注入する。
+**素材が1枚でも無ければスクリプトが `exit 1` で止まる**（黙って白い塊に戻さないため）。
+
+画像生成は**ビルド時に行わない**。Android のリリースは Windows + Android Studio の
+手作業経路があり、ImageMagick 等が入っている保証が無いため、**PNG はコミットしておく**。
 
 ### GitHub Secrets
 
@@ -137,32 +170,52 @@ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 ## Android のビルド経路をどうするか
 
 ジムボード本体は **Windows + Android Studio の手作業**（`mem/features/android-ci.md`）。
-これは「既に回っている経路があるから」という理由で現状維持にしただけで、
-**GitHub Actions が使えないからではない。**
 
-**ピラボードは GitHub Actions で毎回リリースしており、成功している**（2026-08-04 に確認）。
-つまりこの経路は**実運用で検証済み**。兄弟アプリはこちらを使う。
+### ⚠️ 「ビルド」と「Play へのアップロード」は別の話（2026-08-04 にピラボードへ確認）
 
-手順は GitHub の Actions タブ →「Android Build & Upload」→ Run workflow →
-公開トラックを選ぶだけ。**Windows も Android Studio も要らない。**
+一度「ピラボードが GitHub Actions で毎回リリースしており、実運用で検証済み」と書いたが、
+**半分は誤りだった。** 正確には:
 
-初めて使うアプリは、念のため `track: internal` で1回通してから本番トラックへ。
+| | ピラボードの実態 |
+|---|---|
+| Actions でビルド・署名 | **やっている**（実行22回・成功13回） |
+| Actions から Play へアップロード | **一度もやっていない** |
 
-> **実際の手順や詰まりどころは、ピラボードのセッションが一番よく知っている。**
-> Secrets の取り方（とくに `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`）は
-> そちらに聞くのが早い。
+ピラボードのワークフローは **署名済み AAB を artifact として出すところで終わり**で、
+そこから先は**毎回 Play Console へ手でアップロード**している。
+
+理由は `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` が用意できなかったため。
+**Play Console の API アクセス画面に辿り着けず**、この1点のために自動化を諦めている。
+
+### したがって
+
+```
+ビルド・署名の自動化   → 実績あり。安心して使える
+Play への自動アップロード → 誰も通していない。未知の道
+```
+
+**兄弟アプリを立ち上げるなら、まず「Actions でビルド → AAB を手でアップロード」で始める。**
+これならサービスアカウント鍵が要らず、ピラボードが22回踏み固めた経路に乗れる。
+自動アップロードは、必要になってから別途取り組む。
+
+上流の `android-build.yml` は `r0adkll/upload-google-play` で自動アップロードする形だが、
+**この部分は誰も動かしたことがない。** 使うなら `track: internal` で必ず先に試すこと。
+
+> `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` の取り方・Play Console 側の権限付与・
+> 初回リリースが API から作れるかどうかは、**ピラボードも未経験**。
+> 聞いても答えは出ない（2026-08-04 に確認済み）。
 
 ---
 
 ## 確認の順番
 
 ```
-0. テスト3本を上流からコピーする（「取り込むファイル」の節）
+0. テストを上流からコピーする（「取り込むファイル」の節）
 1. appId を決める（一度出したら変えられない）
-2. 上の表 1〜6 を全部差し替える
-3. npm test  →  nativeAppIdentity.test.ts が緑になること
+2. 上の表 1〜8 を全部差し替える（通知アイコン5枚を含む）
+3. npm test  →  nativeAppIdentity / pushConfigGuards が緑になること
 4. Firebase を作り、APNs キーを上げ、Secrets を入れる
-5. ビルドして **実機でプッシュが1通届くことを確認**
+5. ビルドして **実機でプッシュが1通届くことを確認**（アイコンが白い塊でないことも見る）
 6. ここまで終わってから、メール全廃（別紙）に進む
 ```
 

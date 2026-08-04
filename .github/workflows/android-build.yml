@@ -87,6 +87,14 @@ jobs:
             add_bad "GOOGLE_SERVICES_JSON_BASE64: base64 として読めません。certutil -encode は BEGIN/END ヘッダが付くので不可。PowerShell の [Convert]::ToBase64String(...) を使ってください。"
           elif ! grep -q '"package_name"[[:space:]]*:[[:space:]]*"app.gymboard.mobile"' "$tmp/gs.json"; then
             add_bad "GOOGLE_SERVICES_JSON_BASE64: app.gymboard.mobile の設定が入っていません（別アプリのものかもしれません）。"
+          elif ! grep -q "\"project_id\"[[:space:]]*:[[:space:]]*\"$(cat .github/expected-firebase-project-id)\"" "$tmp/gs.json"; then
+            # ⚠️ アプリに焼く google-services.json の project_id と、サーバ側の送信鍵
+            # （Supabase Secrets の FIREBASE_SERVICE_ACCOUNT_JSON）の project_id が
+            # 違うと、**端末にトークンは保存されるのに配信だけ 403 SENDER_ID_MISMATCH で
+            # 無言で失敗する**。ピラボードが実際に踏んだ（gymboard-59570 の設定が
+            # 混入していた。ログには出ていたが人間が見ていなかった）。
+            # 期待値は .github/expected-firebase-project-id で1箇所に持つ。
+            add_bad "GOOGLE_SERVICES_JSON_BASE64: Firebase の project_id が .github/expected-firebase-project-id と違います（別プロジェクトの設定です。プッシュが無言で届かなくなります）。"
           fi
 
           if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$tmp/ks" 2>/dev/null; then

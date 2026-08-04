@@ -18,6 +18,53 @@
   （ピラボードのように Android のリリース経路自体が無いアプリには、
   それでも作る価値がある）
 
+## ⚠️ 通知アイコン（2026-08-04 に修正）
+
+`com.google.firebase.messaging.default_notification_icon` を指定しないと、
+通知には**ランチャーアイコン（フルカラー）がそのまま使われる**。
+Android 5.0 (API 21) 以降、ステータスバーのアイコンは
+**OS が RGB を無視しアルファチャンネルだけを使って白く塗りつぶして描画する**ため、
+全面不透明のランチャーアイコンは**「白い四角の塊」**になって判読できない。
+
+ジムボードの `assets/icon-only.png` は全面不透明なので、
+**それまでの Android の通知は全部この白い塊だった**（ピラボードの報告で発覚）。
+
+### 直し方
+
+- 素材は `assets/notification-icon/ic_stat_notification-<density>.png`（5密度）に
+  **事前生成してコミット**してある
+- `scripts/patch-android.mjs` が `android/app/src/main/res/mipmap-*/` へコピーし、
+  `AndroidManifest.xml` の `<application>` 内に meta-data を入れる
+
+**patch 時に画像を生成しない**のが要点。Android のリリースは Windows + Android Studio の
+手作業なので、ImageMagick 等が入っている保証が無い。**ファイルコピーだけで完結させる。**
+
+> ピラボードは CI 側で ffmpeg を使って生成しようとして **8連続で失敗**している。
+> しかも「失敗したら ImageMagick を入れる」というフォールバックを書いていたが、
+> **ステップが `bash -e` なので ffmpeg の exit 127 でシェルごと死に、
+> `if` に到達しなかった**。`bash -e` のステップに保険は書けない。
+
+素材を差し替えるときは、**白＋透過**であること（アルファが無いと白い塊に戻る）。
+`src/test/pushConfigGuards.test.ts` が PNG ヘッダを読んでサイズとアルファの有無を検査する。
+
+---
+
+## ⚠️ Firebase プロジェクトの突き合わせ（2026-08-04 に追加）
+
+アプリに焼く `google-services.json` / `GoogleService-Info.plist` の project_id と、
+サーバ側の送信鍵（Supabase Secrets の `FIREBASE_SERVICE_ACCOUNT_JSON`）の project_id が
+違うと、**端末にトークンは保存されるのに配信だけ 403 SENDER_ID_MISMATCH で失敗する。**
+`send-push-notification` の `isInvalid` は 403 を無効トークン扱いしないので、
+**トークンは消えず、ただ永久に届かない。**
+
+ピラボードが実際に踏んだ（`gymboard-59570` の設定が混入。
+**ログには出ていたが、突き合わせが人間任せで誰も見ていなかった**）。
+
+期待値は `.github/expected-firebase-project-id` に1箇所で持ち、
+**iOS・Android 両方のビルドが不一致で落ちる**。
+
+---
+
 ## いま実際にやっているリリース手順（Android）
 
 1. `scripts\build-android.bat`（git pull → npm install → build → `cap sync` → `patch-android.mjs`）
@@ -358,19 +405,39 @@ bundle ID / Firebase設定と並べて Android CI のセットアップを追記
 
 ## 検証状況
 
-### ✅ 2026-08-04 追記: ピラボードが実運用で成功している
+### 2026-08-04 追記: ピラボードに確認した結果（重要な訂正あり）
 
-**ピラボードはこの経路（GitHub Actions）で毎回 Android をリリースしており、
-成功している。** 下に書いた「一度も走らせていない」は
-**ジムボードのこのセッションから確認できていない**という意味であって、
-**ワークフローが動かないという意味ではない。**
+一度「ピラボードが実運用で成功している」と書いたが、**半分は誤りだった。**
 
-したがって:
-- 兄弟アプリは GitHub Actions を使う方針でよい（`mem/ops/native-release-checklist.md`）
-- ジムボード本体が手作業なのは「既に回っている経路があるから」であって、
-  CI が使えないからではない
-- **実際の手順・詰まりどころはピラボードのセッションが持っている。**
-  Secrets の取り方（とくに `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`）はそちらに聞く
+| | ピラボードの実態 |
+|---|---|
+| Actions でビルド・署名 | **やっている**（実行22回・成功13回） |
+| Actions から Play へアップロード | **一度もやっていない** |
+
+ピラボードのワークフローは **署名済み AAB を artifact として出して終わり**で、
+Play Console へは**毎回手でアップロード**している。
+`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` が用意できず
+（**Play Console の API アクセス画面に辿り着けなかった**）、
+2026-08-03 に自動アップロードを外している。
+
+**したがって、このファイルの `r0adkll/upload-google-play` を使う部分は
+依然として「誰も動かしたことがない」。** 以下も**誰も未経験**:
+
+- Google Cloud でのサービスアカウント作成手順
+- Play Console 側の権限付与・反映待ち時間
+- Play Console の初回リリースが API から作れるかどうか
+- `Version code N has already been used` の実績（この経路を通っていないため）
+
+**ピラボードに聞いても答えは出ない。** 自動アップロードを実現するなら、
+誰かが最初に通す必要がある。
+
+### 検証されている範囲
+
+**ビルドと署名は実績がある。** ピラボードは `versionCode = 10000 + run_number` の
+採番も含めて上流と同じ形で動かしている（ただし Play に上げていないので、
+下駄が「効いた」実績ではない）。
+
+**兄弟アプリは「Actions でビルド → AAB を手でアップロード」から始めるのが安全。**
 
 ### 上流（ジムボード）側で確認できている範囲（当初の記録）
 

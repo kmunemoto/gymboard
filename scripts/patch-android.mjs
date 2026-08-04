@@ -184,6 +184,63 @@ patchFile(path.join(APP, "src/main/AndroidManifest.xml"), (src) => {
   );
 });
 
+// 3b) 通知アイコン（白＋透過）を配置し、AndroidManifest.xml で既定に指定する
+//
+// ⚠️ 指定しないと、通知にはランチャーアイコン（フルカラー）がそのまま使われる。
+// Android 5.0 (API 21) 以降、ステータスバーのアイコンは **OS が RGB を無視し
+// アルファチャンネルだけを使って白く塗りつぶして描画する**ため、
+// 全面不透明のランチャーアイコンは「白い四角の塊」になって判読できなくなる。
+//
+// ジムボードの assets/icon-only.png は全面不透明なので、この指定が無い間は
+// **Android の通知が全部この白い塊だった**（2026-08-04 にピラボードの報告で発覚）。
+//
+// PNG は事前生成して assets/notification-icon/ にコミットしてある。
+// ここで画像を生成しないのは、Android のリリースが Windows + Android Studio の
+// 手作業（mem/features/android-ci.md）で、ImageMagick 等が入っている保証が無いため。
+// **ファイルコピーだけで完結させる。**
+//
+// 置き場所が mipmap-* なのは `npx @capacitor/assets generate --android` が
+// ic_launcher* という決まった名前にしか書き込まないため、ic_stat_notification が
+// 上書きされる心配が無いから。
+const NOTIF_ICON_NAME = "ic_stat_notification";
+const NOTIF_ICON_SRC = path.join(ROOT, "assets/notification-icon");
+const NOTIF_DENSITIES = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"];
+
+const missingIcons = NOTIF_DENSITIES.filter(
+  (d) => !fs.existsSync(path.join(NOTIF_ICON_SRC, `${NOTIF_ICON_NAME}-${d}.png`)),
+);
+if (missingIcons.length) {
+  console.error(
+    `[patch-android] 通知アイコンが足りません: ${missingIcons.join(", ")}\n` +
+      `  ${path.relative(ROOT, NOTIF_ICON_SRC)}/${NOTIF_ICON_NAME}-<density>.png を用意してください。\n` +
+      `  無いまま進めると、Android の通知アイコンが白い塊になります。`,
+  );
+  process.exit(1);
+}
+for (const d of NOTIF_DENSITIES) {
+  const destDir = path.join(APP, "src/main/res", `mipmap-${d}`);
+  fs.mkdirSync(destDir, { recursive: true });
+  fs.copyFileSync(
+    path.join(NOTIF_ICON_SRC, `${NOTIF_ICON_NAME}-${d}.png`),
+    path.join(destDir, `${NOTIF_ICON_NAME}.png`),
+  );
+}
+log(`copied notification icons (${NOTIF_DENSITIES.length} densities)`);
+
+patchFile(path.join(APP, "src/main/AndroidManifest.xml"), (src) => {
+  if (src.includes("com.google.firebase.messaging.default_notification_icon")) return src;
+  // meta-data は **<application> の中**に置く必要がある（外に置くと効かない）。
+  // インデントだけを捕まえる（`\s*` だと改行まで拾って空行が入る）。
+  return src.replace(
+    /^([ \t]*)<\/application>/m,
+    (_m, indent) =>
+      `${indent}    <meta-data\n` +
+      `${indent}        android:name="com.google.firebase.messaging.default_notification_icon"\n` +
+      `${indent}        android:resource="@mipmap/${NOTIF_ICON_NAME}" />\n` +
+      `${indent}</application>`,
+  );
+});
+
 // 4) Copy google-services.json
 const gsSrc =
   process.env.GOOGLE_SERVICES_JSON ||

@@ -20,12 +20,16 @@
 差し替え忘れると:
 
 ```
-1. フォークの iOS アプリが「ジムボードの Firebase プロジェクト」に登録される
-2. 発行トークンはジムボードの sender のもの
-3. フォーク自身の FIREBASE_SERVICE_ACCOUNT_JSON で送ると SENDER_ID_MISMATCH（403）
+1. フォークの iOS アプリが「ジムボードのアプリ登録」として Firebase に入る
+   （BUNDLE_ID / GOOGLE_APP_ID が上流のまま）
+2. APNs の設定も証明書もそのアプリ登録に紐づくので、自分のアプリには届かない
+3. 別プロジェクトのサービスアカウントで送っていれば SENDER_ID_MISMATCH（403）
 4. send-push-notification の isInvalid はこれを無効トークン扱いしない
    → **トークンは消えず、ただ永久に届かない**
 ```
+
+**プロジェクトを共用しているかどうかは関係ない。** 問題は
+「アプリ登録の設定ファイルを差し替えていない」こと。
 
 **エラーは表に出ない。** 兄弟アプリはメールを全廃する方針なので、
 これがそのまま**連絡手段ゼロ**になる。
@@ -44,7 +48,7 @@
 |---|---|---|
 | 1 | `capacitor.config.ts` | `appId`（**これが唯一の正**）、`appName` |
 | 2 | `src/lib/brand.ts` | `NATIVE_APP_SCHEME` = `<appId>:` |
-| 3 | `.github/workflows/ios-build.yml` | inline された GoogleService-Info.plist **ごと**（API_KEY / GCM_SENDER_ID / BUNDLE_ID / PROJECT_ID / STORAGE_BUCKET / GOOGLE_APP_ID）、`PRODUCT_BUNDLE_IDENTIFIER`、entitlements のキー、`MARKETING_VERSION` |
+| 3 | `.github/workflows/ios-build.yml` | inline された GoogleService-Info.plist を**自分のアプリ登録のもので丸ごと**置き換え、`PRODUCT_BUNDLE_IDENTIFIER`、entitlements のキー、`MARKETING_VERSION`（プロジェクトを共用するなら `PROJECT_ID` / `GCM_SENDER_ID` は同じ値のままでよい。**アプリごとに必ず変わるのは `BUNDLE_ID` と `GOOGLE_APP_ID`**） |
 | 4 | `.github/workflows/android-build.yml` | `packageName`、プリフライトが期待する `package_name` |
 | 5 | `.github/workflows/deploy-functions.yml` | `PROJECT_REF`（`edgeFunctionProjectRef.test.ts` が見張り済み） |
 | 6 | `src/lib/brand.ts` | `OWN_WEB_HOSTS`（`edgeFunctionOrigin.test.ts` が見張り済み） |
@@ -57,10 +61,24 @@
 ## 用意するもの（アプリごとに独立）
 
 ### Firebase
-- **アプリ専用の Firebase プロジェクトを作る。** ジムボードのものを共用しない
-- iOS アプリと Android アプリを登録 → `GoogleService-Info.plist` / `google-services.json`
+
+**1つの Firebase プロジェクトに全アプリを登録してよい**（2026-08-04 に確認）。
+Firebase は「1プロジェクト × 複数アプリ」が正規の構成で、実際にそう運用している。
+プロジェクトを分ける必要は無い。
+
+- プロジェクトに **iOS アプリと Android アプリを1つずつ登録**する
+  （bundle ID / package name はアプリごとに一意）
+- ダウンロードした `GoogleService-Info.plist` / `google-services.json` は
+  **そのアプリ登録専用**。使い回してはいけない
 - **iOS は APNs キーを Firebase にアップロードする**（これが無いと iOS だけ届かない）
-- サービスアカウント JSON を発行 → Supabase Secrets の `FIREBASE_SERVICE_ACCOUNT_JSON`
+- サービスアカウント JSON → Supabase Secrets の `FIREBASE_SERVICE_ACCOUNT_JSON`。
+  **同じプロジェクトなら1つのサービスアカウントで全アプリに送れる**
+
+> ⚠️ **分けるのは「プロジェクト」ではなく「アプリ登録」。**
+> 一度「アプリごとに新規プロジェクトを作れ」と書いたが誤り。
+> 共用して困るのは**設定ファイルを使い回したとき**で、プロジェクトの共用ではない。
+> `nativeAppIdentity.test.ts` も当初これを取り違えて、
+> 正しく設定した兄弟アプリを誤って赤にしていた（修正済み）。
 
 ### GitHub Secrets
 
@@ -97,18 +115,20 @@ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 ## Android のビルド経路をどうするか
 
 ジムボード本体は **Windows + Android Studio の手作業**（`mem/features/android-ci.md`）。
-6アプリ分を手作業で回すのは現実的でないので、**兄弟アプリは `android-build.yml` を
-使うほうが合う**。
+これは「既に回っている経路があるから」という理由で現状維持にしただけで、
+**GitHub Actions が使えないからではない。**
 
-ただし **このワークフローは一度も実際に走らせていない**（`mem/features/android-ci.md`
-の「検証状況（正直なところ）」）。最初に使うアプリは:
+**ピラボードは GitHub Actions で毎回リリースしており、成功している**（2026-08-04 に確認）。
+つまりこの経路は**実運用で検証済み**。兄弟アプリはこちらを使う。
 
-1. Secrets 6種を登録
-2. **`track: internal` のまま** `workflow_dispatch` で1回走らせる
-3. Play Console の内部テストトラックに AAB が上がることを確認
-4. そこで初めて本番トラックを検討
+手順は GitHub の Actions タブ →「Android Build & Upload」→ Run workflow →
+公開トラックを選ぶだけ。**Windows も Android Studio も要らない。**
 
-**いきなり production で回さない。**
+初めて使うアプリは、念のため `track: internal` で1回通してから本番トラックへ。
+
+> **実際の手順や詰まりどころは、ピラボードのセッションが一番よく知っている。**
+> Secrets の取り方（とくに `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`）は
+> そちらに聞くのが早い。
 
 ---
 
@@ -139,7 +159,10 @@ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 
 変異テストで、以下がすべて赤くなることを確認済み:
 - appId だけ変更（ワークフロー直し忘れ）← **本命**
-- iOS の Firebase PROJECT_ID が appId と無関係
-- inline plist の BUNDLE_ID だけ別物
+- inline plist の `BUNDLE_ID` だけ別物
+- inline plist を一部だけ貼り替え（`GOOGLE_APP_ID` の sender が `GCM_SENDER_ID` と不一致）
 - Play のアップロード先が別アプリ
 - `brand.ts` のスキームだけズレる
+
+**誤検出しないことも確認済み**: appId とワークフローを正しく差し替え、
+Firebase プロジェクトは共用のまま、という**正しい兄弟アプリの状態で緑**になる。

@@ -72,23 +72,37 @@ describe("ネイティブ識別子は capacitor.config.ts の appId に揃える
     ).toEqual([]);
   });
 
-  it("ios-build.yml の Firebase プロジェクトが appId と辻褄が合っている", () => {
-    // inline plist を差し替え忘れると、フォークのアプリが**上流の Firebase**に登録される。
-    // PROJECT_ID の素性を機械的に断定はできないので、
-    // 「appId のベンダー部分と PROJECT_ID が全く無関係」なときだけ疑う。
+  it("ios-build.yml の inline plist が中で辻褄の合った1組になっている", () => {
+    // ⚠️ ここで PROJECT_ID を appId と突き合わせては**いけない**。
+    // Firebase は「1プロジェクトに複数アプリ」が正規の構成で、
+    // 兄弟アプリを同じプロジェクトに登録するのは**正しい運用**（2026-08-04 に確認）。
+    // その場合 PROJECT_ID は全アプリで同じになるので、appId と一致するはずがない。
+    // 実際に一度そう書いてしまい、正しく設定した兄弟アプリを誤って赤にしていた。
+    //
+    // アプリごとに違わなければならないのは **プロジェクト**ではなく **アプリ登録**:
+    //   BUNDLE_ID     … 上の「上流の bundle id が残っていない」で見ている
+    //   GOOGLE_APP_ID … `1:<GCM_SENDER_ID>:ios:<hash>` の形。アプリごとに hash が違う
+    //
+    // ここでは「plist の一部だけ貼り替えた」を捕まえる。
+    // GOOGLE_APP_ID に埋まっている sender と GCM_SENDER_ID が食い違っていたら、
+    // 別プロジェクトの値が混ざっている。
     const yml = readFileSync(IOS_YML, "utf8");
-    const proj = yml.match(/<key>PROJECT_ID<\/key>\s*\n\s*<string>([^<]+)<\/string>/);
-    expect(proj, `${IOS_YML} の inline plist から PROJECT_ID を読めません`).toBeTruthy();
-    // appId "app.gymboard.mobile" → vendor "gymboard"
-    const vendor = APP_ID.split(".").filter((p) => p !== "app" && p !== "mobile")[0] ?? "";
-    expect(vendor.length, "appId からベンダー名を取り出せません").toBeGreaterThan(0);
+    const val = (key: string) =>
+      yml.match(new RegExp(`<key>${key}</key>\\s*\\n\\s*<string>([^<]+)</string>`))?.[1];
+
+    const sender = val("GCM_SENDER_ID");
+    const appIdField = val("GOOGLE_APP_ID");
+    const bundle = val("BUNDLE_ID");
+    expect(sender, `${IOS_YML} の inline plist から GCM_SENDER_ID を読めません`).toBeTruthy();
+    expect(appIdField, `${IOS_YML} の inline plist から GOOGLE_APP_ID を読めません`).toBeTruthy();
+
+    expect(bundle, `inline plist の BUNDLE_ID が appId と違います`).toBe(APP_ID);
     expect(
-      proj![1],
-      `${IOS_YML} の Firebase PROJECT_ID (${proj![1]}) が appId (${APP_ID}) と無関係です。` +
-        `上流の GoogleService-Info.plist が残っている可能性があります。` +
-        `残っていると、このアプリのiOS版が**他社の Firebase に登録され**、` +
-        `プッシュが SENDER_ID_MISMATCH で永久に届きません（エラーは表に出ません）。`,
-    ).toContain(vendor);
+      appIdField,
+      `GOOGLE_APP_ID (${appIdField}) の sender が GCM_SENDER_ID (${sender}) と一致しません。` +
+        `plist を一部だけ貼り替えた可能性があります。GoogleService-Info.plist は**丸ごと**` +
+        `自分のアプリ登録のものに差し替えてください。`,
+    ).toMatch(new RegExp(`^1:${esc(sender!)}:ios:`));
   });
 
   it("android-build.yml のアップロード先 packageName が appId と一致する", () => {

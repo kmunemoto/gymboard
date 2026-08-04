@@ -55,6 +55,23 @@ describe("Edge Function に project ref が焼き込まれていない", () => {
     expect(src).toMatch(/process\.env\.SUPABASE_URL/);
     // 導出に失敗しても、特定プロジェクトの ref に落ちるフォールバックを持たせないこと
     expect(src).not.toMatch(new RegExp(`\\?\\?\\s*"${UPSTREAM_PROJECT_REF}"`));
+
+    // ⚠️ 上の2つだけでは足りない（2026-08-04、ストレッチボードで実際に取りこぼした）。
+    // ファイルのどこかに process.env.SUPABASE_URL があれば通ってしまうので、
+    // **各ツールが使っている分**で条件が満たされ、issuer 用の projectRef が
+    //   var projectRef = "<自分の project ref>";
+    // と焼き付いたままでも緑になっていた。ref が上流のものではなく
+    // 「自分のもの」だったため、上の直書き検査にも引っかからない。
+    // フォークの remix 元になると、その ref がそのまま次のアプリへ運ばれる。
+    //
+    // 見るべきは projectRef の**代入そのもの**。文字列リテラルなら落とす。
+    const assign = src.match(/(?:var|const|let)\s+projectRef\s*=\s*([^;]+);/);
+    expect(assign, "成果物から projectRef の代入を読み取れませんでした").not.toBeNull();
+    expect(
+      assign![1],
+      `projectRef に project ref が焼き付いています: ${assign?.[1]}\n` +
+        "生成元（src/lib/mcp/index.ts）を実行時導出に直してから npm run build し直してください。",
+    ).toMatch(/process\.env\.SUPABASE_URL/);
   });
 
   // ⚠️ ここが本丸。成果物を手で直しても `npm run build` で巻き戻る（実際に踏んだ）。

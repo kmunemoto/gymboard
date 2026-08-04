@@ -547,3 +547,118 @@ if (url && url.startsWith("/")) window.location.assign(url);
 4. **変異テストの手順が書かれていなかった。**「変異テスト済み」とだけ書いていた。
    ソース正規表現テストは壊して確かめない限り、緑のまま何も見ていない状態になりえる。
    README に7パターンの表を入れた
+
+---
+
+## 穴4: 送信メールのトレーナーバイパス（2026-08-04 修正・PR は #257）
+
+**穴3（プッシュ）とまったく同じ形が、`send-transactional-email` にも残っていた。**
+穴3を直したときに気づいていたが、直すかどうかを保留にしていたもの。
+
+```ts
+// 修正前
+const callerIsTrainer = caller.userId ? await hasRole(caller.userId, 'trainer') : false
+if (!caller.isServiceRole && !callerIsTrainer) {
+  ...テンプレート制限も宛先制限も、すべてこの中...
+}
+```
+
+`trainer` はテナントの概念を持たない全社共通のロールで、しかも
+**新規登録画面の「トレーナー」タブから誰でも自分で取れる**（`signup-trainer` は
+意図的に開けてある）。つまり「トレーナーとして登録する」だけで:
+
+- 宛先が自由（`recipientEmail` に任意のアドレス）
+- テンプレート8種すべて（お客様は3種に制限されていた）
+- `_resolve_trainer_` / `_resolve_user_` で他人のアドレスに解決させられる
+
+### なぜプッシュより厄介か
+
+差出人が **SPF/DKIM を通した正規ドメイン**（`noreply@notify.kyoto-salute.com`）。
+受信側で弾かれない「本物に見える偽メール」を作れる。悪用されると
+**ドメインの評判が落ちて、正規の予約確認メールまで迷惑メール送りになる。**
+プッシュは端末に届いて終わりだが、これは復旧に時間がかかる。
+
+### 直し方
+
+「トレーナーかどうか」ではなく「**呼び出し元と宛先が同じジムに属しているか**」で判断する。
+
+| 宛先の形 | 許す条件 |
+|---|---|
+| `_resolve_trainer_` | `trainerUserId` が、呼び出し元と同じジムの現役スタッフ |
+| `_resolve_user_` | 自分自身、または「自分がスタッフをしているジムの在籍者」 |
+| 生のメールアドレス | 自分のアドレスと一致するときだけ |
+
+`_resolve_user_` を「自分宛だけ」に絞れない理由: **ジム側の代理予約**がこの経路で、
+`resolveUserId` は呼び出し元ではなく**お客様**になる。絞ると代理予約の確認メールが止まる。
+
+テンプレートはクライアントから3種のみ（`booking-confirmation` /
+`booking-cancellation` / `new-booking-notification`）。残り5種は service_role 専用で、
+実際に呼んでいるのも Edge Function だけであることを全走査で確認した。
+
+### 副産物: 既存のバグも直った
+
+修正前は宛先スタッフの検証が `hasRole(trainerUserId, 'trainer')` だった。
+`fetchMyTenantTrainerId()` は **owner も返す**ので、
+**オーナーしかいないジム（＝ほとんどの店）でオーナーがグローバル trainer ロールを
+持っていない場合、お客様からのトレーナー宛メールが 403 で落ちていた。**
+`tenant_members` ベースにしたことで owner も正しく宛先になる。
+
+### 検証
+
+- 変異テスト12パターンで全て赤くなることを確認（**修正前のコードに戻す変異**を含む）
+- `src/test/transactionalEmailTenantScope.test.ts`。実際に飛んでいる4本の呼び出しを
+  固定する節も入れてあり、**現在の送信が1通も止まらない**ことを形で担保している
+- `security/` の配布キットに穴4として追加（兄弟5アプリも同じ穴）
+
+### ⚠️ デプロイは手動
+
+`deploy-functions.yml` の対象5本に**入っていない**（`config.toml` 未記載のため）。
+マージしても本番には反映されない。
+
+```bash
+supabase functions deploy send-transactional-email --project-ref rrbfwitprzuevzytykrq
+```
+
+デプロイ後、**実機で予約確認メールが1通届くことを必ず確認する。**
+メール送信は fire-and-forget なので、**塞ぎすぎても画面にエラーが出ない。**
+
+---
+
+## 穴5（未修正・2026-08-04 発見）: `send-line-message` の同じバイパス
+
+穴4を直す過程で、**同じ形が3件目**として見つかった。**まだ直していない。**
+
+```ts
+// supabase/functions/send-line-message/index.ts:44
+const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
+if (!isTrainer) {
+  if (to === "trainer" || line_user_id) { 403 }
+  if (user_id && user_id !== caller.userId) { ...targetIsTrainer チェック... }
+}
+```
+
+trainer なら:
+- **生の `line_user_id` 指定**（＝任意のLINEユーザー宛）が通る
+- `to: "trainer"` の一斉送信が通る。しかもその宛先を作る `get_trainer_ids()` は
+  **`user_roles` をテナント横断で引く**（`tenantHelper.ts` に既出の問題）ので、
+  **他ジムのトレーナー全員に飛ぶ**
+
+### なぜ今回直さなかったか
+
+1. **機能自体が停止中**。`LINE_INTEGRATION_ENABLED = false` で
+   クライアントからは呼ばれない（`mem/features/line-integration-disabled.md`）。
+   ただし **Edge Function は生きているので HTTP で直接叩けば動く**
+   （クライアントのフラグはエンドポイントを守らない）。
+   実際に送れるかは `LINE_CHANNEL_ACCESS_TOKEN` が残っているか次第で、
+   クラウドセッションからは確認できない。
+2. **被害はメールより小さい**。差出人は全テナント共有の公式アカウントで、
+   SPF/DKIM のドメイン評判のような後を引く損害にはならない。
+3. **機械的な修正で済まない**。`to: "trainer"` の一斉送信を
+   マルチテナントでどう定義するか（自ジムだけにするのか、廃止するのか）は
+   設計判断で、LINE を再開するときに一緒に決めるのが筋。
+
+### 再開するときに必ずやること
+
+LINE を再開する判断をしたら、**コードを動かす前にここを直す。**
+`send-transactional-email`（穴4）と同じく `tenant_members` ベースにし、
+`get_trainer_ids()` は使わない（テナント横断のため）。

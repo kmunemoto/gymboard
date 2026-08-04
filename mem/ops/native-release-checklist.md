@@ -39,6 +39,28 @@
 
 ---
 
+## ⚠️ 先に: 取り込むファイル
+
+**上流からの `git merge` 運用は 2026-08-03 に終了している**（`mem/ops/vertical-fork.md`）。
+つまり**このファイルを読んでいるだけでは、下のテストは自分のリポジトリに入らない。**
+
+以下を**上流（ジムボード）から自分のリポジトリの同じパスにコピーしてから**進めること。
+
+| ファイル | 役割 | 備考 |
+|---|---|---|
+| `src/test/nativeAppIdentity.test.ts` | **この手順書の表を見張る本体** | **必須。** 依存なし（`vitest` と `node:fs` のみ）なので、そのままコピーすれば動く |
+| `src/test/edgeFunctionProjectRef.test.ts` | Supabase の project ref が上流のまま残っていないか | **どの配布キットにも入っていない。** 無ければ一緒にコピーする |
+| `src/test/edgeFunctionOrigin.test.ts` | Edge Function に上流のドメインが残っていないか | `security/` の配布キット経由で配られている。既にあれば不要 |
+
+**`nativeAppIdentity.test.ts` を入れないと、この手順書はただの読み物になる。**
+「差し替えたつもり」を機械的に検出できるのがこの手順書の value なので、
+**必ず一緒に取り込むこと。**
+
+コピーしたら `npm test` を回す。上流の値がまだ残っていれば、その時点で赤くなり、
+**どこが残っているか名指しで出る**（それがそのまま作業リストになる）。
+
+---
+
 ## 差し替える箇所
 
 `src/test/nativeAppIdentity.test.ts` が**この表の整合性を見張っている**。
@@ -135,6 +157,7 @@ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 ## 確認の順番
 
 ```
+0. テスト3本を上流からコピーする（「取り込むファイル」の節）
 1. appId を決める（一度出したら変えられない）
 2. 上の表 1〜6 を全部差し替える
 3. npm test  →  nativeAppIdentity.test.ts が緑になること

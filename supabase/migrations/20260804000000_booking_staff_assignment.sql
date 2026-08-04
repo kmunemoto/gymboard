@@ -56,11 +56,29 @@ SET search_path = public
 AS $function$
 DECLARE
   v_staff uuid;
+  v_old_staff uuid;
 BEGIN
   v_staff := (to_jsonb(NEW) ->> 'staff_user_id')::uuid;
 
   IF v_staff IS NULL THEN
     RETURN NEW;
+  END IF;
+
+  -- ⚠️ 担当が**変わっていない** UPDATE は検証しない。ここを素通しにしないと、
+  -- 「スタッフが辞めた後、その人が担当だった予約を一切さわれなくなる」。
+  --   - tenant_members.status は owner/trainer が UPDATE できる（退会処理）。
+  --     行の同一性トリガーが止めるのは user_id/tenant_id/role だけで status は変えられる。
+  --   - tenant_members の行はオーナーが DELETE ポリシーで直接消せる
+  --     （remove_staff_member を通さない経路。20260803120000）。
+  -- どちらの場合も EXISTS が false になり、キャンセルもメモ追記も
+  -- 「選択された担当者はこのジムのスタッフではありません」で落ちるようになる。
+  -- このガードの目的は**不正な書き込みを止めること**であって、
+  -- 過去の行を後から無効化することではない。
+  IF TG_OP = 'UPDATE' THEN
+    v_old_staff := (to_jsonb(OLD) ->> 'staff_user_id')::uuid;
+    IF v_staff IS NOT DISTINCT FROM v_old_staff THEN
+      RETURN NEW;
+    END IF;
   END IF;
 
   IF NEW.tenant_id IS NULL THEN

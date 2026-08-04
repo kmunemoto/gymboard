@@ -46,6 +46,7 @@
   **bookings に列単位の GRANT が無く、クライアントから任意の uuid を書けるため必須。**
   他店のトレーナーや存在しないユーザーが担当に入ると、予定表・通知・重複判定が
   エラーを出さずに壊れる。
+  **担当が変わっていない UPDATE は検証しない**（後述の罠）。
 - `guard_booking_staff_reassign()` … BEFORE UPDATE。担当を差し替える UPDATE のときだけ、
   差し替え先が同じ時間帯に別の予約を持っていないか確認する。
   既存の `prevent_booking_overlap` は **INSERT のみ**（予約変更は「作ってから消す」方式のため）
@@ -60,6 +61,22 @@
 **体験予約の登録だけが実行時に落ちる**。既存の `source` と同じく
 `to_jsonb(NEW) ->> 'staff_user_id'` で読む。
 `src/test/staffAssignment.test.ts` がこれを見張っている。
+
+### ⚠️ 「担当が変わっていない UPDATE」を検証してはいけない
+`guard_booking_staff_assignment` が UPDATE のたびに担当の在籍を確認すると、
+**スタッフが辞めた瞬間に、その人が担当だった予約を一切さわれなくなる**
+（キャンセルもメモ追記も「選択された担当者はこのジムのスタッフではありません」で落ちる）。
+在籍が外れる経路は2つあり、どちらも普通の運用で起きる:
+
+- `tenant_members.status` は owner/trainer が UPDATE できる（退会処理）。
+  行の同一性トリガー（`20260803120000`）が止めるのは `user_id` / `tenant_id` / `role` だけで、
+  **`status` は変えられる。**
+- `tenant_members` の行はオーナーが DELETE ポリシーで直接消せる
+  （`remove_staff_member` を通さない経路）。
+
+このガードの目的は**不正な書き込みを止めること**であって、過去の行を後から
+無効化することではない。`TG_OP = 'UPDATE'` かつ担当が
+`IS NOT DISTINCT FROM` なら素通しする。テストで見張っている。
 
 ### SQLSTATE 'GB001'
 「担当者が埋まっている」専用のエラーコード。
@@ -141,9 +158,22 @@ DB が拒否して変更自体が失敗する＝旧枠が復元されるので�
 2. `node scripts/check-schema-applied.mjs > /tmp/check.sql` の中身を貼って実行。
    **0行なら適用漏れ無し。**
 
-適用前でもアプリは落ちない（担当セレクタが出ないだけ）が、
-`get_tenant_booked_slots` は古い定義のままだと `staff_user_id` を返さないので、
-担当を選んでも空き枠が担当基準にならない。**適用は必須。**
+### 適用前でも従来どおり動くようにしてある
+コミット済み＝本番DBに適用済み、ではない（`mem/ops/schema-drift.md`）。
+**PostgREST は存在しない列を名指しした瞬間にリクエストごと拒否する**ので、
+新しい列を無条件に payload / select へ入れると、適用までの間
+「担当を使っていない店の、ごく普通の予約」まで全部落ちる。
+
+- `createBooking` … `staff_user_id` は**担当を指名したときだけ** payload に入れる。
+  無条件に入れると `PGRST204` で**すべての予約作成**が拒否される。
+- `rescheduleBooking` … 列を明示列挙せず `select("*")` を使う。
+  列挙に混ぜると `42703` で**すべての予約変更**が失敗する。
+- `get_my_staff_invite_code` が無い状態では null が返り、スタッフ管理カードごと出ない。
+
+どちらも `src/test/staffAssignment.test.ts` が見張っている（変異テスト済み）。
+
+残る差分は「`get_tenant_booked_slots` が `staff_user_id` を返さないので、
+担当を選んでも空き枠が担当基準にならない」ことだけ。**適用は必須。**
 
 ---
 

@@ -167,6 +167,18 @@ describe("マイグレーション: 予約の担当スタッフ", () => {
     expect(guard).toMatch(/BEFORE INSERT OR UPDATE ON public\.bookings/);
   });
 
+  it("担当が変わっていない UPDATE は検証しない（辞めたスタッフの予約が触れなくなるのを防ぐ）", () => {
+    // tenant_members.status は owner/trainer が変更でき、行そのものもオーナーが
+    // DELETE できる。担当が変わらない UPDATE まで検証すると、スタッフが辞けた瞬間に
+    // その人が担当だった予約が**キャンセルすらできなくなる**。
+    const guard = ASSIGN_SQL.slice(
+      ASSIGN_SQL.indexOf("FUNCTION public.guard_booking_staff_assignment"),
+      ASSIGN_SQL.indexOf("guard_booking_staff_reassign"),
+    );
+    expect(guard).toMatch(/TG_OP = 'UPDATE'/);
+    expect(guard).toMatch(/v_staff IS NOT DISTINCT FROM v_old_staff[\s\S]{0,80}RETURN NEW;/);
+  });
+
   it("担当だけを差し替える UPDATE でも二重予約を作らせない", () => {
     expect(ASSIGN_SQL).toMatch(/guard_booking_staff_reassign/);
     expect(ASSIGN_SQL).toMatch(/BEFORE UPDATE ON public\.bookings\s*\n\s*FOR EACH ROW\s*\n\s*EXECUTE FUNCTION public\.guard_booking_staff_reassign/);
@@ -215,6 +227,37 @@ describe("マイグレーション: スタッフ招待", () => {
     expect(rm).toMatch(/v_target_role <> 'trainer'/);
     // 予約は消さず「担当なし」に戻す
     expect(rm).toMatch(/UPDATE public\.bookings\s*\n\s*SET staff_user_id = NULL/);
+  });
+});
+
+describe("マイグレーション適用前のDBでも従来どおり動くこと", () => {
+  // リポジトリにコミット済み＝本番DBに適用済み、ではない（mem/ops/schema-drift.md）。
+  // PostgREST は**存在しない列を名指しした瞬間にリクエストごと拒否する**ので、
+  // 新しい列を無条件に payload / select へ入れると、適用までの間
+  // 「担当を使っていない店の、ごく普通の予約」まで全部落ちる。
+  const hooks = readFileSync("src/hooks/useBookings.ts", "utf8");
+
+  it("担当を指名しないときは insert の payload に staff_user_id を入れない", () => {
+    // 無条件に入れると PGRST204 で **すべての予約作成** が拒否される。
+    expect(hooks).toMatch(/\.\.\.\(staffUserId \? \{ staff_user_id: staffUserId \} : \{\}\)/);
+    expect(hooks).not.toMatch(/^\s*staff_user_id: (opts\.)?staffUserId( \?\? null)?,\s*$/m);
+  });
+
+  it("列を明示列挙する select に staff_user_id を混ぜない", () => {
+    // 列挙に混ぜると 42703 で **すべての予約変更** が失敗する。`*` なら
+    // その時点でDBにある列がそのまま返る（無ければ undefined になるだけ）。
+    const files = [
+      "src/hooks/useBookings.ts",
+      "src/components/customer/CustomerBooking.tsx",
+      "src/components/trainer/TrainerSchedule.tsx",
+      "src/lib/tenantStaff.ts",
+    ];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(/\.select\(\s*"([^"]*)"/g)) {
+        expect(m[1], `${f}: select("${m[1]}") が staff_user_id を名指ししている`).not.toMatch(/staff_user_id/);
+      }
+    }
   });
 });
 

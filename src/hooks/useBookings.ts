@@ -406,6 +406,12 @@ export const createBooking = async (
   const bookingDate = `${date}T${startTime}:00+09:00`;
   const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
   const tenantId = await fetchMyTenantId();
+  // staff_user_id は「担当を指名したときだけ」payload に入れる。
+  // 常に入れると、マイグレーション適用前のDBでは PostgREST が
+  // 「そんな列は無い（PGRST204）」で **すべての予約作成を拒否する**。
+  // リポジトリにコミット済み＝本番DBに適用済み、ではない（mem/ops/schema-drift.md）ので、
+  // 適用までの間も従来どおり予約できる形にしておく。
+  const staffUserId = opts.staffUserId ?? null;
   const { data, error } = await supabase
     .from("bookings")
     .insert(withTenant({
@@ -413,7 +419,7 @@ export const createBooking = async (
       booking_date: bookingDate,
       booking_type: bookingType,
       source: "gymboard",
-      staff_user_id: opts.staffUserId ?? null,
+      ...(staffUserId ? { staff_user_id: staffUserId } : {}),
     }, tenantId) as any)
     .select()
     .single();
@@ -534,7 +540,10 @@ export const rescheduleBooking = async (
 ): Promise<{ data: { id: string } | null; error: unknown }> => {
   const { data: old, error: fetchError } = await supabase
     .from("bookings")
-    .select("id, user_id, booking_date, booking_type, tenant_id, source, trainer_note, staff_user_id")
+    // 列を明示列挙すると、マイグレーション適用前のDBでは staff_user_id が
+    // 「そんな列は無い（42703）」になり **すべての予約変更が失敗する**。
+    // `*` なら、その時点でDBにある列がそのまま返る（担当が無ければ undefined）。
+    .select("*")
     .eq("id", bookingId)
     .maybeSingle();
   if (fetchError || !old) return { data: null, error: fetchError ?? new Error("booking not found") };

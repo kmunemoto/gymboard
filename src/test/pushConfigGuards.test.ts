@@ -113,25 +113,57 @@ describe("Firebase プロジェクトの突き合わせ", () => {
   });
 
   it("iOS のビルドが plist の PROJECT_ID を期待値と突き合わせる", () => {
+    // この検査は plist が inline でも Secrets 経由でも効く。
+    // **書き出したあとのファイル**を PlistBuddy で読むため。
     const yml = readFileSync(IOS_YML, "utf8");
-    expect(yml).toMatch(/expected-firebase-project-id/);
+    expect(yml, `${IOS_YML} が ${EXPECTED_FILE} を読んでいません`).toMatch(
+      /expected-firebase-project-id/,
+    );
     // 比較式そのものを固定する。`ACTUAL_PROJECT … exit 1` だけを見ると、
     // 条件を `if false; then` に潰されても緑のままになる（実際にすり抜けた）。
-    expect(yml).toMatch(
-      /\[\s*"\$ACTUAL_PROJECT"\s*!=\s*"\$EXPECTED_PROJECT"\s*\][\s\S]{0,800}exit 1/,
-    );
+    expect(
+      yml,
+      `${IOS_YML} に PROJECT_ID の突き合わせがありません。上流の ios-build.yml から` +
+        ` [ "$ACTUAL_PROJECT" != "$EXPECTED_PROJECT" ] … exit 1 のブロックを取り込んでください。`,
+    ).toMatch(/\[\s*"\$ACTUAL_PROJECT"\s*!=\s*"\$EXPECTED_PROJECT"\s*\][\s\S]{0,800}exit 1/);
   });
 
   it("Android のビルドが google-services.json の project_id を期待値と突き合わせる", () => {
     const yml = readFileSync(ANDROID_YML, "utf8");
-    expect(yml).toMatch(/expected-firebase-project-id/);
-    expect(yml).toMatch(/project_id[\s\S]{0,400}add_bad/);
+    expect(yml, `${ANDROID_YML} が ${EXPECTED_FILE} を読んでいません`).toMatch(
+      /expected-firebase-project-id/,
+    );
+    expect(
+      yml,
+      `${ANDROID_YML} のプリフライトに project_id の突き合わせがありません。` +
+        `上流の android-build.yml から add_bad の分岐を取り込んでください。`,
+    ).toMatch(/project_id[\s\S]{0,400}add_bad/);
   });
 
-  it("iOS の inline plist が期待値と一致している", () => {
+  it("iOS の inline plist が期待値と一致している（inline のときだけ）", () => {
     // 上流自身がズレていたら意味が無いので、ここでも突き合わせる。
-    const expected = readFileSync(EXPECTED_FILE, "utf8").trim();
+    //
+    // ただし plist を **GitHub Secrets から流し込む**方式（ストレッチボードが移行済み）だと
+    // plist はリポジトリに存在しないので、この検査は空振りする。
+    // **空振りを「不合格」にしてはいけない。** Secrets 方式のほうが安全な構成であり、
+    // ここで落とすと「正しくやったほうが赤くなる」誤検出になる
+    // （nativeAppIdentity.test.ts が一度これをやった。PR #262 / #264）。
+    //
+    // Secrets 方式でも、上の「ビルドが plist の PROJECT_ID を期待値と突き合わせる」検査は
+    // **書き出したあとのファイル**を PlistBuddy で読むので、そのまま効く。
+    // つまり実行時の照合はどちらの方式でも失われない。
     const yml = readFileSync(IOS_YML, "utf8");
+    const hasInlinePlist = /<key>GCM_SENDER_ID<\/key>/.test(yml);
+    if (!hasInlinePlist) {
+      // 代わりに「Secrets から入れている」ことだけ確かめる。
+      // どちらの方式でもないなら plist が消えているので、それは落とす。
+      expect(
+        yml,
+        `${IOS_YML} に inline plist も Secrets からの流し込みもありません`,
+      ).toMatch(/GOOGLE_SERVICE_INFO_PLIST_BASE64/);
+      return;
+    }
+    const expected = readFileSync(EXPECTED_FILE, "utf8").trim();
     const actual = yml.match(/<key>PROJECT_ID<\/key>\s*\n\s*<string>([^<]+)<\/string>/)?.[1];
     expect(actual, `${IOS_YML} から PROJECT_ID を読めません`).toBeTruthy();
     expect(

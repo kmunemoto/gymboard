@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Repeat } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Repeat, UserRound } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
@@ -25,6 +25,8 @@ import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTenantStaff } from "@/hooks/useTenantStaff";
+import { canSelectStaff, isStaffConflictError, staffNameMap } from "@/lib/tenantStaff";
 
 const TrainerSchedule = () => {
   const { t } = useTranslation();
@@ -36,6 +38,11 @@ const TrainerSchedule = () => {
   const [proxyTime, setProxyTime] = useState<string>("");
   const [proxyClient, setProxyClient] = useState<string>("");
   const [proxyBookingType, setProxyBookingType] = useState<string>("");
+  // 代理予約の担当スタッフ（""＝指名なし）。スタッフが2人以上のジムでだけ選択欄を出す。
+  const [proxyStaffId, setProxyStaffId] = useState<string>("");
+  // 既存予約の担当変更ダイアログ（null＝閉じている）
+  const [assignTarget, setAssignTarget] = useState<{ id: string; clientName: string; date: string; startTime: string; staffUserId: string | null } | null>(null);
+  const [assignSaving, setAssignSaving] = useState(false);
   // 定期予約: 毎週同じ曜日・時間で何回分まとめて予約するか（1=この回のみ）
   const [proxyRepeatWeeks, setProxyRepeatWeeks] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +59,9 @@ const TrainerSchedule = () => {
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
   const { tenant, plans } = useTenant();
+  const { staff } = useTenantStaff();
+  const staffSelectable = canSelectStaff(staff);
+  const staffNames = staffNameMap(staff);
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   // 代理予約する候補（proxyBookingType）の占有時間。プランごとの設定があればそちらを使う。
@@ -128,7 +138,7 @@ const TrainerSchedule = () => {
       toast.error(t("schedule.errorSelectAll"));
       return;
     }
-    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity)) {
+    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null)) {
       // 同時に受けられる予約数が既定の1のままだと、実際は2人同時に見られる店でも
       // ここで弾かれる。設定があること自体を知らないまま「アプリが対応していない」と
       // 諦められてしまうので、詰まったその場で設定の場所を案内する。
@@ -147,7 +157,7 @@ const TrainerSchedule = () => {
     const client = profiles.find((p) => p.user_id === proxyClient);
     if (proxyRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
-        proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true,
+        proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true, proxyStaffId || null,
       );
       if (booked.length === 0) {
         toast.error(t("schedule.errorAddFailed"));
@@ -163,9 +173,12 @@ const TrainerSchedule = () => {
         toast.info(t("booking.repeatSkipped", { count: skipped.length, dates }));
       }
     } else {
-      const { data: bookingData, error } = await createBooking(proxyClient, proxyDateKey, proxyTime, proxyBookingType, true);
+      const { data: bookingData, error } = await createBooking(
+        proxyClient, proxyDateKey, proxyTime, proxyBookingType, true, { staffUserId: proxyStaffId || null },
+      );
       if (error) {
-        toast.error(t("schedule.errorAddFailed"));
+        // 店に空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
+        toast.error(isStaffConflictError(error) ? t("staff.errorStaffBusy") : t("schedule.errorAddFailed"));
         setSubmitting(false);
         return;
       }
@@ -182,12 +195,33 @@ const TrainerSchedule = () => {
     setProxyTime("");
     setProxyClient("");
     setProxyBookingType("");
+    setProxyStaffId("");
     setProxyRepeatWeeks(1);
     setSubmitting(false);
     void refetch();
 
     // 定期予約では作成できた全件を渡す（1件目だけ渡すと2回目以降にメールが届かない）。
     sendBookingNotifications(createdBookings, client?.display_name || t("schedule.clientFallback"), proxyTime, proxyEndTime, proxyBookingType, proxyClient);
+  };
+
+  // 既存予約の担当を差し替える。空欄なら「指名なし」に戻す。
+  // 差し替え先の担当がその時間帯に別の予約を持っていれば、DB のトリガー
+  // guard_booking_staff_reassign が SQLSTATE 'GB001' で拒否する。
+  const handleAssignStaff = async (nextStaffId: string) => {
+    if (!assignTarget) return;
+    setAssignSaving(true);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ staff_user_id: nextStaffId || null })
+      .eq("id", assignTarget.id);
+    setAssignSaving(false);
+    if (error) {
+      toast.error(isStaffConflictError(error) ? t("staff.errorStaffBusy") : t("staff.errorAssignFailed"));
+      return;
+    }
+    toast.success(t("staff.assignedToast"));
+    setAssignTarget(null);
+    void refetch();
   };
 
   // このテナントで同日キャンセルのペナルティが有効、かつ対象が今日(JST)の
@@ -484,6 +518,9 @@ const TrainerSchedule = () => {
                                   <p className="font-bold truncate">{session.isBlocked ? t("schedule.blockedLabel") : session.clientName}</p>
                                   <p className="opacity-75 truncate">{session.startTime}〜{session.endTime}</p>
                                   {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{session.booking_type}</p>}
+                                  {!session.isBlocked && staffSelectable && session.staff_user_id && (
+                                    <p className="opacity-60 truncate text-[9px]">{staffNames[session.staff_user_id] ?? ""}</p>
+                                  )}
                                   {!session.isBlocked && (() => {
                                     const p = getProgress(session);
                                     if (!p) return null;
@@ -545,6 +582,12 @@ const TrainerSchedule = () => {
                               <p className="text-sm font-bold truncate">{booking.isBlocked ? t("schedule.blockedLabel") : booking.clientName}</p>
                               <p className="text-xs text-muted-foreground">{booking.startTime}〜{booking.endTime}</p>
                               {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{booking.booking_type}</p>}
+                              {!booking.isBlocked && staffSelectable && (
+                                <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
+                                  <UserRound className="w-3 h-3 shrink-0" />
+                                  {booking.staff_user_id ? (staffNames[booking.staff_user_id] ?? t("common.unknown")) : t("staff.unassigned")}
+                                </p>
+                              )}
                               {!booking.isBlocked && (() => {
                                 const p = getProgress(booking);
                                 if (!p) return null;
@@ -562,7 +605,26 @@ const TrainerSchedule = () => {
                               })()}
                             </div>
                           </div>
-                          <div className="mt-3 flex justify-end">
+                          <div className="mt-3 flex justify-end gap-2">
+                            {/* 体験予約（user_id が trial-guest）は担当を持たないので変更ボタンを出さない */}
+                            {!booking.isBlocked && staffSelectable && booking.user_id !== "trial-guest" && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setAssignTarget({
+                                  id: booking.id,
+                                  clientName: booking.clientName,
+                                  date: booking.date,
+                                  startTime: booking.startTime,
+                                  staffUserId: booking.staff_user_id ?? null,
+                                })}
+                                className="min-w-[112px]"
+                              >
+                                <UserRound className="w-4 h-4" />
+                                {t("staff.changeAssignee")}
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               variant="destructive"
@@ -646,6 +708,23 @@ const TrainerSchedule = () => {
                 ))}
               </select>
             </div>
+            {/* 担当スタッフ。1人しか居ないジムには出さない（選ぶ意味が無い）。
+                選び直すと空き枠の見え方が変わるので、選択中の時刻は解除する。 */}
+            {staffSelectable && (
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("staff.selectLabel")}</label>
+                <select
+                  value={proxyStaffId}
+                  onChange={(e) => { setProxyStaffId(e.target.value); setProxyTime(""); }}
+                  className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <option value="">{t("staff.anyone")}</option>
+                  {staff.map((sm) => (
+                    <option key={sm.user_id} value={sm.user_id}>{sm.display_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelDate")}</label>
               <Calendar
@@ -674,7 +753,7 @@ const TrainerSchedule = () => {
                       const h = Math.floor(totalMin / 60);
                       const m = totalMin % 60;
                       const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity);
+                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null);
                       slots.push({ time, blocked });
                     }
                     return slots.map((slot) => (
@@ -736,6 +815,59 @@ const TrainerSchedule = () => {
             <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               {proxyRepeatWeeks > 1 ? t("booking.confirmRepeatBooking", { count: proxyRepeatWeeks }) : t("schedule.bookNow")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!assignTarget} onOpenChange={(open) => { if (!open && !assignSaving) setAssignTarget(null); }}>
+        <DialogContent className="max-w-[90vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("staff.changeAssignee")}</DialogTitle>
+          </DialogHeader>
+          {assignTarget && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {t("staff.changeAssigneeDesc", {
+                  name: assignTarget.clientName,
+                  date: formatJST(`${assignTarget.date}T00:00:00+09:00`, "M/d"),
+                  time: assignTarget.startTime,
+                })}
+              </p>
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  disabled={assignSaving}
+                  onClick={() => handleAssignStaff("")}
+                  className={`w-full text-left px-3 py-3 rounded-lg text-sm font-semibold transition-all min-h-[44px] ${
+                    assignTarget.staffUserId === null
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-secondary text-foreground hover:bg-secondary/70"
+                  }`}
+                >
+                  {t("staff.unassigned")}
+                </button>
+                {staff.map((sm) => (
+                  <button
+                    key={sm.user_id}
+                    type="button"
+                    disabled={assignSaving}
+                    onClick={() => handleAssignStaff(sm.user_id)}
+                    className={`w-full text-left px-3 py-3 rounded-lg text-sm font-semibold transition-all min-h-[44px] ${
+                      assignTarget.staffUserId === sm.user_id
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-secondary text-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    {sm.display_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignTarget(null)} disabled={assignSaving} className="w-full sm:w-auto">
+              {t("common.cancel")}
             </Button>
           </DialogFooter>
         </DialogContent>

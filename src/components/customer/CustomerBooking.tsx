@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle, MessageSquare } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
@@ -31,6 +31,8 @@ import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
+import { useTenantStaff } from "@/hooks/useTenantStaff";
+import { canSelectStaff, isStaffConflictError } from "@/lib/tenantStaff";
 import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
 // セッション長・バッファはどちらもジムごとに変更可能（tenants.slot_duration_minutes /
@@ -43,6 +45,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();
   const { tenant, plans: tenantPlans } = useTenant();
+  // 担当スタッフ。2人以上いるジムでだけ選択UIを出す（一人ジムには無用な一手になる）。
+  const { staff } = useTenantStaff();
+  const staffSelectable = canSelectStaff(staff);
 
   // Build plan name → label / max sessions maps from tenant_plans
   const planLabelMap = useMemo(() => {
@@ -67,6 +72,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  // 担当スタッフの指名。null＝指名なし（誰でもよい）。既定は指名なし。
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<BookingWithTime | null>(null);
   const [cancelling, setCancelling] = useState(false);
   // 同日キャンセルのペナルティが有効な対象を「キャンセルする」で即キャンセルせず、
@@ -87,7 +94,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const [waitlistSaving, setWaitlistSaving] = useState(false);
 
   // Booked slots fetched via SECURITY DEFINER RPC — sees ALL bookings regardless of RLS
-  const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean }[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean; staffUserId: string | null }[]>([]);
 
   // Active raid boss periods (not defeated). Map of yyyy-MM-dd → { isStart, isEnd }
   const [raidDates, setRaidDates] = useState<Map<string, { isStart: boolean; isEnd: boolean }>>(new Map());
@@ -148,7 +155,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     // ここは意図的に SAME_DAY_FORFEIT_STATUS を除外しない: 同日キャンセル消化の枠は
     // 再販できない前提のため、カレンダー上は引き続き「埋まっている」枠として表示する
     // （checkSlotBlocked 等と同じ扱い。mem/features/booking-cancellation.md 参照）。
-    const slots = (data as { booking_date: string; end_booking_date: string; status: string }[])
+    const slots = (data as { booking_date: string; end_booking_date: string; status: string; staff_user_id: string | null }[])
       .filter((r) => r.status !== "キャンセル済み")
       .map((r) => {
         const dt = toJSTDate(r.booking_date);
@@ -158,6 +165,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
           startTime: `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
           endTime: `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`,
           isBlock: r.status === "ブロック済み",
+          staffUserId: r.staff_user_id ?? null,
         };
       });
     setBookedSlots(slots);
@@ -198,7 +206,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     });
     // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定する。
     if (overlapping.some((b) => b.isBlock)) return true;
-    return overlapping.length >= bookingCapacity;
+    if (overlapping.length >= bookingCapacity) return true;
+    // 店に空きがあっても、指名した担当がその時間帯に別の予約を持っていれば取れない。
+    // 指名なし（selectedStaffId === null）のときはこの判定を通らない＝従来どおり。
+    // DB 側 check_booking_overlap も同じ二段構えで最終判定する。
+    return !!selectedStaffId && overlapping.some((b) => b.staffUserId === selectedStaffId);
   };
 
   // 締切はジム設定（tenants.booking_cutoff_*）に従う。読めなければ prev_day（従来の挙動）。
@@ -271,7 +283,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     let createdBookings: { id: string; date: string }[];
     if (effectiveRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
-        user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks,
+        user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks, false, selectedStaffId,
       );
       if (booked.length === 0) {
         toast.error(t("booking.errorBookingFailed"));
@@ -287,9 +299,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         toast.info(t("booking.repeatSkipped", { count: skipped.length, dates }));
       }
     } else {
-      const { data, error } = await createBooking(user.id, dateKey, slot.time, selectedPlan);
+      const { data, error } = await createBooking(
+        user.id, dateKey, slot.time, selectedPlan, false, { staffUserId: selectedStaffId },
+      );
       if (error) {
-        toast.error(t("booking.errorBookingFailed"));
+        // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
+        toast.error(isStaffConflictError(error) ? t("staff.errorStaffBusy") : t("booking.errorBookingFailed"));
         setSubmitting(false);
         return;
       }
@@ -372,6 +387,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     setRescheduleTarget(b);
     setSelectedDate(undefined);
     setSelectedSlot(null);
+    // 変更しても担当は引き継がれる（rescheduleBooking が元の担当を渡す）。
+    // 空き枠の表示もその担当基準にしないと、実際には取れない枠を「空き」と見せてしまう。
+    setSelectedStaffId(b.staff_user_id ?? null);
     setRepeatWeeks(1);
     setTimeout(() => document.getElementById("calendar-section")?.scrollIntoView({ behavior: "smooth" }), 50);
   };
@@ -663,6 +681,47 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 {planLabel(selectedPlan)}
               </Badge>
             </div>
+
+            {/* 担当の指名。スタッフが2人以上いるジムでだけ出す。
+                選び直すと空き枠の見え方が変わるので、選択中の枠は解除する。 */}
+            {staffSelectable && (
+              <div className="mb-3">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <UserRound className="w-3.5 h-3.5" />
+                  {t("staff.selectLabel")}
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedStaffId(null); setSelectedSlot(null); }}
+                    aria-pressed={selectedStaffId === null}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all min-h-[44px] ${
+                      selectedStaffId === null
+                        ? "bg-accent text-accent-foreground shadow-sm"
+                        : "bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t("staff.anyone")}
+                  </button>
+                  {staff.map((s) => (
+                    <button
+                      key={s.user_id}
+                      type="button"
+                      onClick={() => { setSelectedStaffId(s.user_id); setSelectedSlot(null); }}
+                      aria-pressed={selectedStaffId === s.user_id}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition-all min-h-[44px] ${
+                        selectedStaffId === s.user_id
+                          ? "bg-accent text-accent-foreground shadow-sm"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {s.display_name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">{t("staff.selectHint")}</p>
+              </div>
+            )}
 
             <Card>
               <CardContent className="p-3 flex justify-center">

@@ -67,6 +67,7 @@ vi.mock("@/components/trainer/InviteCodeCard", () => ({
 }));
 const stub = (name: string) => ({ default: () => <div data-testid={name} /> });
 vi.mock("@/components/trainer/TrialLinkCard", () => stub("trial-link-card"));
+vi.mock("@/components/trainer/TrainerStaffManager", () => stub("staff-manager"));
 vi.mock("@/components/trainer/TrainerPlanManager", () => stub("plan-manager"));
 vi.mock("@/components/trainer/TrainerBilling", () => stub("billing"));
 vi.mock("@/components/trainer/TrainerHelpGuide", () => stub("help-guide"));

@@ -22,6 +22,8 @@ export interface BookingRow {
   booking_type: string;
   created_at: string;
   display_name?: string;
+  /** 担当スタッフ。null＝指名なし／未割当（src/lib/tenantStaff.ts 参照） */
+  staff_user_id?: string | null;
 }
 
 // Feature flag: customer-side LINE notifications for booking creation/cancellation.
@@ -62,6 +64,8 @@ export interface BookingWithTime {
   status: string;
   booking_type: string;
   isBlocked?: boolean;
+  /** 担当スタッフ。null＝指名なし／未割当 */
+  staff_user_id?: string | null;
 }
 
 // tenantDefaultMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
@@ -91,6 +95,7 @@ function parseBooking(
     clientName: row.display_name || "不明",
     status: row.status,
     booking_type: row.booking_type,
+    staff_user_id: row.staff_user_id ?? null,
   };
 }
 
@@ -293,6 +298,10 @@ export const checkSlotBlocked = (
   sessionMinutes: number = 60,
   // 同時に受けられる予約数（tenants.booking_capacity）。既定1＝従来どおり「1件でも重なれば満枠」。
   capacity: number = 1,
+  // 担当スタッフを指名して予約するときの相手（null/未指定＝指名なし）。
+  // 店に空きがあっても、その担当が埋まっていればその人では取れない。
+  // DB 側 check_booking_overlap も店全体→担当者の二段構えで判定する。
+  staffUserId: string | null = null,
 ): boolean => {
   const BUFFER_MINUTES = bufferMinutes;
   const timeToMin = (t: string) => {
@@ -317,7 +326,9 @@ export const checkSlotBlocked = (
   // それ以外は「重なっている件数が上限に達しているか」で判定する。
   // DB側の check_booking_overlap も同じ規則で最終判定する。
   if (overlapping.some((b) => b.isBlocked)) return true;
-  return overlapping.length >= Math.max(capacity, 1);
+  if (overlapping.length >= Math.max(capacity, 1)) return true;
+  // 店には空きがあっても、指名された担当が同じ時間帯に別の予約を持っていれば取れない。
+  return !!staffUserId && overlapping.some((b) => b.staff_user_id === staffUserId);
 };
 
 /**
@@ -388,14 +399,28 @@ export const createBooking = async (
   startTime: string,
   bookingType: string = "通常",
   isProxyBooking = false,
-  opts: { silent?: boolean } = {},
+  // staffUserId: 担当スタッフ（null/未指定＝指名なし）。DB 側のトリガーが
+  // 「そのジムの現役スタッフか」を検証するので、不正な値は insert が落ちる。
+  opts: { silent?: boolean; staffUserId?: string | null } = {},
 ) => {
   const bookingDate = `${date}T${startTime}:00+09:00`;
   const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
   const tenantId = await fetchMyTenantId();
+  // staff_user_id は「担当を指名したときだけ」payload に入れる。
+  // 常に入れると、マイグレーション適用前のDBでは PostgREST が
+  // 「そんな列は無い（PGRST204）」で **すべての予約作成を拒否する**。
+  // リポジトリにコミット済み＝本番DBに適用済み、ではない（mem/ops/schema-drift.md）ので、
+  // 適用までの間も従来どおり予約できる形にしておく。
+  const staffUserId = opts.staffUserId ?? null;
   const { data, error } = await supabase
     .from("bookings")
-    .insert(withTenant({ user_id: userId, booking_date: bookingDate, booking_type: bookingType, source: "gymboard" }, tenantId) as any)
+    .insert(withTenant({
+      user_id: userId,
+      booking_date: bookingDate,
+      booking_type: bookingType,
+      source: "gymboard",
+      ...(staffUserId ? { staff_user_id: staffUserId } : {}),
+    }, tenantId) as any)
     .select()
     .single();
 
@@ -449,6 +474,9 @@ export const createRecurringBookings = async (
   bookingType: string,
   weeks: number,
   isProxyBooking = false,
+  // 全回に同じ担当を割り当てる。担当が埋まっている週は skipped に入る
+  // （DB の check_booking_overlap が担当者単位でも拒否するため）。
+  staffUserId: string | null = null,
 ): Promise<{ booked: { id: string; date: string }[]; skipped: string[] }> => {
   const booked: { id: string; date: string }[] = [];
   const skipped: string[] = [];
@@ -457,7 +485,7 @@ export const createRecurringBookings = async (
     // ローカル日付で +7日ずつ（時刻を持たない日付演算のためTZずれ無し）
     const d = new Date(y, mo - 1, da + i * 7);
     const dateKey = format(d, "yyyy-MM-dd");
-    const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking);
+    const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, { staffUserId });
     if (error || !data) {
       skipped.push(dateKey);
     } else {
@@ -512,10 +540,17 @@ export const rescheduleBooking = async (
 ): Promise<{ data: { id: string } | null; error: unknown }> => {
   const { data: old, error: fetchError } = await supabase
     .from("bookings")
-    .select("id, user_id, booking_date, booking_type, tenant_id, source, trainer_note")
+    // 列を明示列挙すると、マイグレーション適用前のDBでは staff_user_id が
+    // 「そんな列は無い（42703）」になり **すべての予約変更が失敗する**。
+    // `*` なら、その時点でDBにある列がそのまま返る（担当が無ければ undefined）。
+    .select("*")
     .eq("id", bookingId)
     .maybeSingle();
   if (fetchError || !old) return { data: null, error: fetchError ?? new Error("booking not found") };
+  // 日時を変えても担当は引き継ぐ（変更のたびに指名が外れると使い物にならない）。
+  // 新しい日時でその担当が埋まっていれば、DB のトリガーが拒否して変更自体が失敗する
+  // ＝旧枠が復元されるので、担当だけ静かに外れることは起きない。
+  const oldStaffUserId = ((old as { staff_user_id?: string | null }).staff_user_id) ?? null;
 
   const newBookingDate = `${newDate}T${newStartTime}:00+09:00`;
   // booking_date は timestamptz（SELECT時はUTC表記）なので瞬時(getTime)で同一判定する
@@ -537,7 +572,7 @@ export const rescheduleBooking = async (
     if (fErr) return { data: null, error: fErr };
     // 2) 新枠で作成（別日なら重複判定は日付違いで対象外。満枠等は作成側が拒否）
     const { data: created, error: createError } = await createBooking(
-      old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true },
+      old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true, staffUserId: oldStaffUserId },
     );
     if (createError || !created) {
       // 失敗 → 旧枠の消化を取り消して元の予約に戻す（予約消失を防ぐ）
@@ -563,7 +598,7 @@ export const rescheduleBooking = async (
 
   // 2) 新枠で作成（重複防止トリガーで満枠を検証。通知は出さない）
   const { data: created, error: createError } = await createBooking(
-    old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true },
+    old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true, staffUserId: oldStaffUserId },
   );
 
   if (createError || !created) {

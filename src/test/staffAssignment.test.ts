@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { checkSlotBlocked, type BookingWithTime } from "@/hooks/useBookings";
 import {
   canSelectStaff,
@@ -258,6 +258,58 @@ describe("マイグレーション適用前のDBでも従来どおり動くこ�
         expect(m[1], `${f}: select("${m[1]}") が staff_user_id を名指ししている`).not.toMatch(/staff_user_id/);
       }
     }
+  });
+});
+
+describe("search_path を固定した関数から拡張機能を呼ぶとき", () => {
+  // 2026-08-04、本番適用でこれを踏んだ:
+  //   ERROR 42883: function gen_random_bytes(integer) does not exist
+  //
+  // gen_random_bytes は pgcrypto の関数で、Supabase では **public ではなく
+  // extensions スキーマ**にある。SECURITY DEFINER 対策で
+  // `SET search_path = public` を付けると、そのままでは見つけられない。
+  //
+  // 既存の tenants.invite_code は列 DEFAULT で gen_random_bytes を使っていて動くため
+  // （search_path を固定していない）、「使えるはず」と思い込んで踏んだ。
+  //
+  // マイグレーションは適用して初めて落ちる。tsc もテストもビルドも緑のまま素通りする
+  // （mem/ops/schema-drift.md）ので、ここで形を見張る。
+  const EXTENSION_FUNCS = ["gen_random_bytes", "digest", "crypt", "hmac"];
+
+  const migrationFiles = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql"));
+
+  it("search_path を固定した関数が拡張機能を呼ぶなら extensions を含める", () => {
+    const offenders: string[] = [];
+    for (const file of migrationFiles) {
+      const sql = readFileSync(`supabase/migrations/${file}`, "utf8");
+      // CREATE FUNCTION 〜 本体終わりの $$; までを1つの塊として取り出す
+      const blocks = sql.match(/CREATE(?: OR REPLACE)? FUNCTION[\s\S]*?\$(?:\w*)\$;/gi) ?? [];
+      for (const block of blocks) {
+        const body = block.replace(/^\s*--.*$/gm, "");
+        const usesExt = EXTENSION_FUNCS.some((fn) =>
+          new RegExp(`(?<!\\.)\\b${fn}\\s*\\(`).test(body),
+        );
+        if (!usesExt) continue;
+        const sp = body.match(/SET\s+search_path\s*(?:=|TO)\s*([^\n;]+)/i);
+        if (!sp) continue; // search_path を固定していない関数は対象外（従来どおり解決される）
+        if (!/extensions/.test(sp[1])) {
+          const name = block.match(/FUNCTION\s+([\w.]+)/i)?.[1] ?? "?";
+          offenders.push(`${file}: ${name} … search_path = ${sp[1].trim()}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      "search_path を固定した関数から pgcrypto を呼んでいます。" +
+        "適用時に 42883 で落ちます。search_path に extensions を足してください:\n" +
+        offenders.join("\n"),
+    ).toEqual([]);
+  });
+
+  it("この検査が空振りしていない（実際に対象を1件以上見ている）", () => {
+    // 対象0件でも上のテストは緑になる。検査していることを確かめる。
+    const target = readFileSync("supabase/migrations/20260804010000_staff_invite_code.sql", "utf8");
+    expect(target).toMatch(/SET search_path = public, extensions[\s\S]{0,120}gen_random_bytes/);
   });
 });
 

@@ -30,6 +30,34 @@
 `scripts/patch-android.mjs` は `versionCode` / `versionName` を**書き換えない**
 （`src/test/patchAndroid.test.ts` がその不変条件を守っている）。手順2の手作業を壊さないため。
 
+### ⚠️ 2回目以降の `git pull` が止まる問題（2026-08-04 に修正）
+
+`build-android.bat` の1回目は通るのに、2回目から必ずここで止まっていた:
+
+```
+error: Your local changes to the following files would be overwritten by merge:
+        supabase/functions/mcp/index.ts
+Please commit your changes or stash them before you merge.
+```
+
+`supabase/functions/mcp/index.ts` は `npm run build`（`vite.config.ts` の
+`mcpPlugin()`）が**毎回生成し直す**成果物で、しかも git 追跡下にある。つまり
+
+```
+1回目: [3/5] npm run build が書き換える → 作業ツリーが汚れる
+2回目: [1/5] git pull が中断
+```
+
+という形で**必ず**詰まる。`package-lock.json` は同じ理由で最初から
+`git checkout --` してあったが、こちらが漏れていた。1行足して解消。
+
+**手で直すなら生成元の `src/lib/mcp/`。** `supabase/functions/mcp/index.ts` を
+直接いじっても次の build で巻き戻る。
+
+`src/test/buildAndroidScript.test.ts` が「ビルドが作り直す成果物を pull の前に捨てる」
+という不変条件を見張っている（変異テスト5パターンで確認済み）。
+**`.bat` は CI でも vitest でも実行されないので、Windows で人が叩くまで誰も気づけない。**
+
 ## リリース実績（手で更新すること）
 
 `android/` は `.gitignore` 済みなので、**この2つの値はリポジトリのどこからも読めない。**

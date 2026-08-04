@@ -6,9 +6,20 @@ REM ============================================================
 setlocal
 
 echo [1/5] git pull
-REM npm install が書き換える package-lock.json のローカル変更で pull が中断するのを防ぐ。
-REM （このファイルは npm install で再生成されるため破棄して問題ない）
+REM 「ビルドが作り直す成果物」のローカル変更で pull が中断するのを防ぐ。
+REM どちらも下の手順で再生成されるため、ここで捨てて問題ない。
+REM
+REM  - package-lock.json          … [2/5] の npm install が書き換える
+REM  - supabase/functions/mcp/index.ts … [3/5] の npm run build が書き換える
+REM    （vite.config.ts の mcpPlugin() が生成する。手で直しても build で巻き戻るので、
+REM      直したいときは生成元の src/lib/mcp/ を触ること）
+REM
+REM mcp/index.ts を入れ忘れていて、2回目以降のビルドが必ず
+REM   error: Your local changes to the following files would be overwritten by merge:
+REM           supabase/functions/mcp/index.ts
+REM で止まっていた（2026-08-04 に発覚）。
 git checkout -- package-lock.json 2>nul
+git checkout -- supabase/functions/mcp/index.ts 2>nul
 git pull || goto :err
 
 echo [2/5] npm install (iOS ビルドと同じ依存。--legacy-peer-deps 必須)

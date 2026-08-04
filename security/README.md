@@ -99,6 +99,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 1 | `tenant_members` への書き込みを絞る | `supabase/migrations/20260803120000_tenant_members_write_scope.sql` |
 | 2 | グローバル trainer で書けるテーブルを塞ぐ | `supabase/migrations/20260803140000_global_trainer_write_scope.sql` |
 | 3 | プッシュ通知の宛先をテナントで絞る | `supabase/functions/send-push-notification/index.ts` |
+| 4 | 送信メールの宛先をテナントで絞る | `supabase/functions/send-transactional-email/index.ts` |
 
 SQL は2本とも `to_regclass` ガードが入っているので、テーブルが無い環境でも止まりません。
 
@@ -116,10 +117,11 @@ src/test/helpers/rlsPolicies.ts               ← マイグレーションのポ
 src/test/tenantMembershipWrites.test.ts       ← 穴1
 src/test/globalTrainerRole.test.ts            ← 穴2
 src/test/pushNotificationTenantScope.test.ts  ← 穴3
+src/test/transactionalEmailTenantScope.test.ts ← 穴4
 src/test/edgeFunctionOrigin.test.ts           ← 上流のドメインが残っていないか
 ```
 
-この5ファイルを自分のリポジトリの同じパスにコピーして、`npm test` を通してください。
+この6ファイルを自分のリポジトリの同じパスにコピーして、`npm test` を通してください。
 
 > ### `edgeFunctionOrigin.test.ts` だけ `brand.ts` に1行必要です
 > このテストは `src/lib/brand.ts` の **`OWN_WEB_HOSTS`** を唯一の宣言として使います。
@@ -147,7 +149,7 @@ src/test/edgeFunctionOrigin.test.ts           ← 上流のドメインが残っ
 
 ---
 
-## 穴3 だけは SQL で見えません
+## 穴3・穴4 は SQL で見えません
 
 Edge Function はコードなので、DBからは診断できません。**grep してください。**
 **Step 0 のとおり、どのブランチで実行したかを必ず添えてください。**
@@ -155,12 +157,31 @@ Edge Function はコードなので、DBからは診断できません。**grep 
 ```bash
 git rev-parse --abbrev-ref HEAD     # ← どのブランチか
 
-# どちらも 0件 になること
+# 4つとも 0件 になること
 grep -n "isTrainer" supabase/functions/send-push-notification/index.ts
 grep -n "hasRole"   supabase/functions/send-push-notification/index.ts
+grep -n "callerIsTrainer" supabase/functions/send-transactional-email/index.ts
+grep -n "hasRole"        supabase/functions/send-transactional-email/index.ts
 ```
 
 1件でも出たら、trainer が宛先検証を素通りできる状態です。
+
+### 穴4（メール）が穴3（プッシュ）より厄介な理由
+
+形はまったく同じですが、**被害の残り方が違います。**
+
+プッシュは端末に届いて終わりですが、メールは
+**SPF/DKIM を通した自分の正規ドメイン**（`noreply@notify.<自分のドメイン>`）から出ます。
+受信側で弾かれない「本物に見える偽メール」を作れるので、悪用されると
+**ドメインの評判が落ちて、正規の予約確認メールまで迷惑メール送りになります。**
+復旧に時間がかかる種類の損害です。
+
+しかも `trainer` ロールは**新規登録画面の「トレーナー」タブから誰でも自分で取れます**
+（`signup-trainer` は意図的に開けてあります）。
+「トレーナーだから信用する」は、**このアプリでは認可の根拠になりません。**
+
+**直したあと、必ず実機で予約確認メールが1通届くことを確認してください。**
+メール送信は fire-and-forget なので、**塞ぎすぎても画面にエラーが出ません。**
 
 ## ⚠️ プロトコル相対URL（`//`）は **2箇所** あります
 

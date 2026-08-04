@@ -24,10 +24,12 @@ const DISTRIBUTED_FILES = [
   "supabase/migrations/20260803120000_tenant_members_write_scope.sql",
   "supabase/migrations/20260803140000_global_trainer_write_scope.sql",
   "supabase/functions/send-push-notification/index.ts",
+  "supabase/functions/send-transactional-email/index.ts",
   "src/test/helpers/rlsPolicies.ts",
   "src/test/tenantMembershipWrites.test.ts",
   "src/test/globalTrainerRole.test.ts",
   "src/test/pushNotificationTenantScope.test.ts",
+  "src/test/transactionalEmailTenantScope.test.ts",
   "src/test/edgeFunctionOrigin.test.ts",
 ];
 

@@ -47,7 +47,105 @@ function generateToken(): string {
 // Supabase gateway only validates that *some* JWT is present (anon key passes),
 // so we re-verify in code to prevent unauthenticated visitors from triggering
 // template emails to arbitrary recipients (spam / phishing vector).
-import { verifyCaller, hasRole } from '../_shared/auth.ts'
+//
+// hasRole（user_roles ベース）はここでは使わない。`trainer` は
+// **テナントの概念を持たない全社共通のロール**で、しかも新規登録画面の
+// 「トレーナー」タブから誰でも自分で取れる（signup-trainer）。
+// 「トレーナーだから信用する」は認可の根拠にならない。所属は tenant_members で見る。
+// 同じ形の穴を send-push-notification でも塞いだ（PR #246）。
+import { verifyCaller } from '../_shared/auth.ts'
+
+/** クライアント（お客様・ジムのスタッフの両方）が呼べるテンプレート。 */
+// 残り5種（trial-booking-confirmation / drop-in-booking-confirmation /
+// new-account-notification / trial-booking-reminder / booking-reminder）は
+// service_role 専用。実際に呼んでいるのも Edge Function だけであることを
+// 2026-08-04 に全走査して確認済み（src/ と supabase/functions/ の両方）。
+const CLIENT_ALLOWED_TEMPLATES = new Set([
+  'booking-confirmation',
+  'booking-cancellation',
+  'new-booking-notification',
+])
+
+interface Membership { tenantId: string; isStaff: boolean }
+
+/**
+ * そのユーザーが在籍しているテナント（active のみ）。
+ *
+ * ⚠️ get_my_tenant_id() / shares_tenant_with_me() は auth.uid() に依存するため、
+ * service_role のクライアントから呼ぶと**エラー無しで NULL / false** を返す。
+ * Edge Function からは tenant_members を直接引くこと。
+ */
+async function loadMemberships(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<Membership[]> {
+  const { data, error } = await admin
+    .from('tenant_members')
+    .select('tenant_id, role, status')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+  if (error) throw error
+  const out: Membership[] = []
+  for (const row of (data ?? []) as { tenant_id: string | null; role: string }[]) {
+    // tenant_id が NULL の行を混ぜると「NULL 同士が一致した」判定を作ってしまう
+    if (!row.tenant_id) continue
+    out.push({ tenantId: row.tenant_id, isStaff: row.role === 'owner' || row.role === 'trainer' })
+  }
+  return out
+}
+
+/**
+ * 認証済みユーザー（＝service_role ではない呼び出し）が、この送信を行ってよいか。
+ *
+ * 判断の軸は「呼び出し元と宛先が**同じジムに属しているか**」だけ。
+ * ロールでゲートを丸ごと開けない（それが今回塞いだ穴）。
+ */
+async function authorizeClientCall(
+  admin: ReturnType<typeof createClient>,
+  caller: { userId: string; email?: string | null },
+  body: {
+    templateName: string
+    recipientEmail: string
+    templateData: { trainerUserId?: unknown; resolveUserId?: unknown }
+  },
+): Promise<boolean> {
+  if (!CLIENT_ALLOWED_TEMPLATES.has(body.templateName)) return false
+
+  const mine = await loadMemberships(admin, caller.userId)
+  if (mine.length === 0) return false // どのジムにも属していない＝送る相手がいない
+  const myTenants = new Set(mine.map((m) => m.tenantId))
+  const myStaffTenants = new Set(mine.filter((m) => m.isStaff).map((m) => m.tenantId))
+
+  // (1) ジムのスタッフ宛（お客様→自分のジム、スタッフ→自分のジム）。
+  //     宛先は「呼び出し元と同じジムの、現役スタッフ」でなければならない。
+  if (body.recipientEmail === '_resolve_trainer_') {
+    const target = body.templateData.trainerUserId
+    if (typeof target !== 'string') return false
+    const theirs = await loadMemberships(admin, target)
+    return theirs.some((m) => m.isStaff && myTenants.has(m.tenantId))
+  }
+
+  // (2) 個人宛（メールアドレスは Edge Function 側で解決する）。
+  //     自分自身か、「自分がスタッフをしているジムの在籍者」なら送ってよい
+  //     （ジム側の代理予約・代理キャンセルがこの経路）。
+  if (body.recipientEmail === '_resolve_user_') {
+    const target = body.templateData.resolveUserId
+    if (typeof target !== 'string') return false
+    if (target === caller.userId) return true
+    if (myStaffTenants.size === 0) return false
+    const theirs = await loadMemberships(admin, target)
+    return theirs.some((m) => myStaffTenants.has(m.tenantId))
+  }
+
+  // (3) 生のメールアドレス指定。**自分宛だけ**に限る。
+  //     ここを緩めると、正規ドメイン（SPF/DKIM 済み）から任意の宛先へ
+  //     それらしいメールを送れる＝フィッシングの踏み台になる。
+  //     ジム側が他人に送りたい場合は (2) の _resolve_user_ を使う。
+  const callerEmail = caller.email
+  return typeof body.recipientEmail === 'string'
+    && !!callerEmail
+    && body.recipientEmail.toLowerCase() === callerEmail.toLowerCase()
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -63,48 +161,6 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Trainers and service role may invoke any template. Authenticated customers
-  // may only invoke booking-related templates, and only when the target is
-  // either themselves or a verified trainer (prevents spam/phishing via
-  // arbitrary recipient or _resolve_*_ placeholders).
-  const callerIsTrainer = caller.userId ? await hasRole(caller.userId, 'trainer') : false
-  const CUSTOMER_ALLOWED_TEMPLATES = new Set([
-    'booking-confirmation',
-    'booking-cancellation',
-    'new-booking-notification',
-  ])
-  let peekedBody: any = null
-  if (!caller.isServiceRole && !callerIsTrainer) {
-    try { peekedBody = await req.clone().json() } catch { /* ignore */ }
-    const tn: string = peekedBody?.templateName || peekedBody?.template_name || ''
-    const td: any = peekedBody?.templateData || {}
-    const recip: string = peekedBody?.recipientEmail || peekedBody?.recipient_email || ''
-    let ok = false
-    if (CUSTOMER_ALLOWED_TEMPLATES.has(tn)) {
-      if (tn === 'new-booking-notification') {
-        ok = recip === '_resolve_trainer_'
-          && typeof td.trainerUserId === 'string'
-          && await hasRole(td.trainerUserId, 'trainer')
-      } else if (recip === '_resolve_trainer_') {
-        // Customers may notify a verified trainer on booking-confirmation /
-        // booking-cancellation (e.g. customer-initiated cancellation).
-        ok = typeof td.trainerUserId === 'string'
-          && await hasRole(td.trainerUserId, 'trainer')
-      } else {
-        const callerEmail = (caller as any).email as string | undefined
-        ok = (typeof td.resolveUserId === 'string' && td.resolveUserId === caller.userId)
-          || (typeof recip === 'string' && !!callerEmail && recip.toLowerCase() === callerEmail.toLowerCase())
-      }
-    }
-    if (!ok) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-  }
-
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -117,6 +173,38 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )
+  }
+
+  // service_role（Edge Function 同士の呼び出し）は従来どおり全テンプレートを送れる。
+  // 認証済みユーザーからの呼び出しは「同じジムに属しているか」で判断する。
+  if (!caller.isServiceRole) {
+    // 本体は下で改めて req.json() で読む。ここは判定のための覗き見なので clone する
+    // （Request の body は一度しか読めない）。同じバッファなので内容は必ず一致する。
+    let peekedBody: any = null
+    try { peekedBody = await req.clone().json() } catch { /* ignore */ }
+    let ok = false
+    try {
+      ok = await authorizeClientCall(
+        createClient(supabaseUrl, supabaseServiceKey),
+        { userId: caller.userId!, email: caller.email },
+        {
+          templateName: peekedBody?.templateName || peekedBody?.template_name || '',
+          recipientEmail: peekedBody?.recipientEmail || peekedBody?.recipient_email || '',
+          templateData: peekedBody?.templateData || {},
+        },
+      )
+    } catch (e) {
+      // 所属が引けなかったときは**送らない**。ここで握りつぶして通すと、
+      // DB が一時的に落ちている間だけ誰でも送れる関数になる。
+      console.error('authorizeClientCall failed', e)
+      ok = false
+    }
+    if (!ok) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
   }
 
   // Parse request body

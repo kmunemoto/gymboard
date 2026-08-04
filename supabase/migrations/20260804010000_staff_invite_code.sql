@@ -39,11 +39,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS tenants_staff_invite_code_key
 REVOKE SELECT (staff_invite_code) ON public.tenants FROM authenticated;
 REVOKE SELECT (staff_invite_code) ON public.tenants FROM anon;
 
+-- ⚠️ search_path に extensions を含めること。
+-- gen_random_bytes は pgcrypto の関数で、Supabase では **public ではなく
+-- extensions スキーマ**に入っている。`SET search_path = public` だけだと
+--   ERROR 42883: function gen_random_bytes(integer) does not exist
+-- でマイグレーションごと落ちる（2026-08-04 に本番適用で実際に踏んだ）。
+--
+-- 既存の tenants.invite_code は列 DEFAULT で gen_random_bytes を使っていて動くが、
+-- あちらは search_path を固定していないため気づけなかった。
+--
+-- extensions を足す形にしているのは、フォークによって pgcrypto の置き場所が
+-- public のこともあるため（どちらでも解決できる）。存在しないスキーマが
+-- search_path にあっても Postgres は黙って無視するので安全。
 CREATE OR REPLACE FUNCTION public._gen_staff_invite_code()
 RETURNS text
 LANGUAGE sql
 VOLATILE
-SET search_path = public
+SET search_path = public, extensions
 AS $$
   SELECT encode(gen_random_bytes(8), 'hex');
 $$;

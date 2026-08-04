@@ -158,6 +158,37 @@ DB が拒否して変更自体が失敗する＝旧枠が復元されるので�
 2. `node scripts/check-schema-applied.mjs > /tmp/check.sql` の中身を貼って実行。
    **0行なら適用漏れ無し。**
 
+### 2026-08-04 の適用実績（本番 rrbfwitprzuevzytykrq）
+
+**Lovable の Publish はマイグレーションを流さなかった。** Publish 済みの状態で確認して、
+`bookings.staff_user_id` も `tenants.staff_invite_code` も関数8本もトリガー2本も
+1つも入っていなかった。Lovable MCP の `query_database` から手で適用した。
+
+- 接続先の確認は `tenants` に Salute御所南（`ceda19b0-…`）が居ることで行う
+- 1本ずつ `BEGIN; … COMMIT;` で囲む。2本目は上記の 42883 で落ちたが、
+  **トランザクションのおかげで中途半端に残らずロールバックされた**
+- 適用後: 87 テーブル / 801 カラム = types.ts の期待値と完全一致。**他の取り残しは無かった**
+
+**Publish に任せきりにしない。** 適用したつもりで入っていない状態が、いちばん危ない。
+
+### ⚠️ search_path を固定した関数から pgcrypto を呼ぶときは extensions を足す
+
+2026-08-04 の本番適用で実際に踏んだ:
+
+```
+ERROR 42883: function gen_random_bytes(integer) does not exist
+```
+
+`gen_random_bytes` は pgcrypto の関数で、Supabase では **public ではなく
+`extensions` スキーマ**にある。SECURITY DEFINER 対策で `SET search_path = public`
+を付けると、そのままでは解決できない。`SET search_path = public, extensions` にする。
+
+既存の `tenants.invite_code` は列 DEFAULT で `gen_random_bytes` を使っていて動くため
+（search_path を固定していない）、「使えるはず」と思い込んで踏んだ。
+
+**マイグレーションは適用して初めて落ちる。** tsc もテストもビルドも緑のまま素通りする。
+`src/test/staffAssignment.test.ts` が全マイグレーションを走査して見張るようにした。
+
 ### 適用前でも従来どおり動くようにしてある
 コミット済み＝本番DBに適用済み、ではない（`mem/ops/schema-drift.md`）。
 **PostgREST は存在しない列を名指しした瞬間にリクエストごと拒否する**ので、

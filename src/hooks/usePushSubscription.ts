@@ -16,18 +16,50 @@ import {
   type NotificationPermission,
 } from "@/lib/pushNotifications";
 
-// VAPID public key (Web Push only)
-const VAPID_PUBLIC_KEY = "BKxLbT912uBVUI_0010w-QQWaic5ITY-_SZS1wo9BZdTq6mTyfbBPlmftYG_CKB4cdJYPTSLhiEGADA3Uv_R5_s";
+// VAPID 公開鍵は brand.ts が唯一の宣言（Edge Function 側の直書きとは
+// src/test/pushVapidConfig.test.ts が突き合わせる）。
+import { VAPID_PUBLIC_KEY } from "@/lib/brand";
+import { isSameVapidKey, urlBase64ToUint8Array } from "@/lib/webPushKey";
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+/**
+ * 現在の公開鍵でブラウザに購読を作る（DB保存はしない）。
+ *
+ * ⚠️ **別の公開鍵の購読が残っていると `subscribe()` は `InvalidStateError` で失敗する。**
+ * 残ったままだと利用者は二度と購読できない（ONに戻す操作も失敗し続ける）ので、
+ * そのときは解除して**1回だけ**やり直す。
+ */
+async function createWebSubscription(
+  registration: ServiceWorkerRegistration,
+): Promise<PushSubscription> {
+  const subscribe = () =>
+    registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
+    });
+  try {
+    return await subscribe();
+  } catch (err) {
+    const existing = await registration.pushManager.getSubscription();
+    // 残骸が原因でないなら、元のエラーをそのまま返す（握りつぶさない）。
+    if (!existing) throw err;
+    await existing.unsubscribe();
+    return await subscribe();
   }
-  return outputArray;
+}
+
+/** 購読を push_subscriptions に保存する */
+async function saveWebSubscription(userId: string, subscription: PushSubscription): Promise<void> {
+  const json = subscription.toJSON();
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    {
+      user_id: userId,
+      endpoint: json.endpoint!,
+      p256dh: json.keys!.p256dh,
+      auth: json.keys!.auth,
+    },
+    { onConflict: "user_id,endpoint" }
+  );
+  if (error) throw error;
 }
 
 // 後方互換のため型はフックからも再エクスポート（既存の import を壊さない）。
@@ -53,17 +85,62 @@ export function usePushSubscription() {
   }, [user]);
 
   // ===== Web =====
+  //
+  // ⚠️ 「購読が存在するか」だけでは足りない。
+  //
+  // VAPID 公開鍵を変えると、**古い購読はブラウザ側に残ったまま二度と届かなくなる**。
+  // `getSubscription()` は古い購読をそのまま返すので、画面は「通知ON」に見える。
+  // サーバは新しい鍵で署名して送り、プッシュサービスは 401/403 を返すが、
+  // 購読が消えるのは 404/410 のときだけなので**永久に直らない**。
+  // FCM の SENDER_ID_MISMATCH とまったく同じ、無言の失敗。
+  //
+  // そこで**鍵が変わっていたら購読を作り直す**。これが無いと鍵を変更できない
+  // （＝万一漏れても安全に交換する手段が無い）状態になる。
   const checkWebSubscription = useCallback(async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
-    } catch {
+      if (!subscription) {
+        setIsSubscribed(false);
+        return;
+      }
+      if (isSameVapidKey(subscription.options?.applicationServerKey, VAPID_PUBLIC_KEY)) {
+        setIsSubscribed(true);
+        return;
+      }
+
+      // ---- 自己修復 ----
+      console.warn("[Push] VAPID 公開鍵が変わっています。購読を作り直します。");
+      const staleEndpoint = subscription.endpoint;
+      try {
+        await subscription.unsubscribe();
+      } catch (unsubErr) {
+        // 解除に失敗しても、古い購読はどのみち届かない。作り直しを試みる。
+        console.warn("[Push] 旧購読の解除に失敗:", unsubErr);
+      }
+      // 届かない endpoint を残すと、サーバが毎回 401/403 を叩き続ける。
+      await supabase.from("push_subscriptions").delete().eq("endpoint", staleEndpoint);
+
+      // 権限が granted でないときに subscribe() すると**許可ダイアログが突然出る**。
+      // 画面を開いただけで出すのは筋が悪いので、そのときは OFF として扱う。
+      if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+        setIsSubscribed(false);
+        return;
+      }
+      if (!user) {
+        setIsSubscribed(false);
+        return;
+      }
+      const renewed = await createWebSubscription(registration);
+      await saveWebSubscription(user.id, renewed);
+      setIsSubscribed(true);
+    } catch (err) {
+      console.error("[Push] 購読の確認に失敗:", err);
       setIsSubscribed(false);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   // ===== Initial detection =====
   useEffect(() => {
@@ -105,11 +182,7 @@ export function usePushSubscription() {
 
       let subscription: PushSubscription;
       try {
-        const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: applicationServerKey as unknown as BufferSource,
-        });
+        subscription = await createWebSubscription(registration);
       } catch (subErr) {
         console.error("[Push] pushManager.subscribe failed:", subErr);
         toast.error(`プッシュ登録に失敗: ${subErr instanceof Error ? subErr.message : subErr}`);
@@ -117,17 +190,7 @@ export function usePushSubscription() {
       }
 
       try {
-        const json = subscription.toJSON();
-        const { error } = await supabase.from("push_subscriptions").upsert(
-          {
-            user_id: user.id,
-            endpoint: json.endpoint!,
-            p256dh: json.keys!.p256dh,
-            auth: json.keys!.auth,
-          },
-          { onConflict: "user_id,endpoint" }
-        );
-        if (error) throw error;
+        await saveWebSubscription(user.id, subscription);
       } catch (dbErr) {
         console.error("[Push] DB save failed:", dbErr);
         toast.error(`DB保存に失敗: ${dbErr instanceof Error ? dbErr.message : dbErr}`);

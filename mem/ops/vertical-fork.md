@@ -378,7 +378,12 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 **アプリ識別**（brand.ts の外に残るもの）
 - [ ] `capacitor.config.ts` … `appId` / `appName` — **`brand.ts` の `NATIVE_APP_SCHEME` と必ず一致させる**
 - [ ] `.github/workflows/ios-build.yml` … bundle id・プロビジョニングプロファイル・`MARKETING_VERSION`
-- [ ] Firebase プロジェクト … `GoogleService-Info.plist` / `google-services.json` / Web VAPID鍵
+- [ ] Firebase プロジェクト … `GoogleService-Info.plist` / `google-services.json`
+- [ ] Web Push の VAPID鍵 … `brand.ts` の `VAPID_PUBLIC_KEY` / `VAPID_CONTACT_EMAIL`、
+      `send-push-notification/index.ts` の写し、Supabase Secrets の `VAPID_PRIVATE_KEY` の**3点セット**。
+      **1つでもズレると 401/403 で無言で止まる。** 手順と判断の経緯は `mem/features/web-push-vapid.md`
+      （`src/test/pushVapidConfig.test.ts` が brand.ts と Edge Function の一致を見張るが、
+      **Secrets は見られない**ので実機で1通受け取るまで確認できない）
 - [ ] `.github/workflows/android-build.yml` … **使うかどうかは各アプリが判断する（任意）**。
       使わないなら `workflow_dispatch` のみなので放置してよい。使うなら
       `packageName`（`app.gymboard.mobile` の箇所）を `appId` に合わせる

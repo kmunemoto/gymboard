@@ -145,6 +145,12 @@ Please commit your changes or stash them before you merge.
 **次に出す版数は `android-version.json` を見ること**（2026-08-05 から、そこが唯一の記録）。
 この表は「実際に Play へ上がったもの」の履歴として残す。
 
+> **いつ更新するか**: 宗本さんから `リリースノート書いて` と言われたとき。
+> **それがリリース完了を知る唯一の信号**で、別途の報告は来ない
+> （`mem/ops/release-signal.md`）。言われたらこの表に実績を書き、
+> `android-version.json` を1つ進めてから、新しい版のノートを書く。
+> **「リリースしましたか？」と聞き返さないこと。**
+
 | 日付 | versionCode | versionName | 備考 |
 |---|---|---|---|
 | 2026-08-02 時点 | **81** | **9.0** | Play Console で確認した実績。CI移行を検討した際に判明 |

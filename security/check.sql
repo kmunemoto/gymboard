@@ -167,3 +167,90 @@ WHERE schemaname = 'public'
   AND (coalesce(qual, '') || ' ' || coalesce(with_check, ''))
       ~ '(get_my_tenant_id|has_tenant_role|is_tenant_member|shares_tenant_with_me)'
 ORDER BY tablename;
+
+
+-- ----------------------------------------------------------------------------
+-- 検査4: anon / authenticated から叩ける SECURITY DEFINER 関数（★穴6）
+-- ----------------------------------------------------------------------------
+-- 2026-08-05、相談ボードが `pg_proc.proacl` を実際に見て発見した。
+--
+-- メールキューのRPCは、マイグレーション上はこう保護されている:
+--
+--   REVOKE EXECUTE ON FUNCTION public.enqueue_email(TEXT, JSONB) FROM PUBLIC;
+--   GRANT  EXECUTE ON FUNCTION public.enqueue_email(TEXT, JSONB) TO service_role;
+--
+-- **これでは塞がっていない。**
+-- Supabase は `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON FUNCTIONS TO anon, authenticated`
+-- を入れているので、public スキーマに関数を作った瞬間、両ロールに**明示の** EXECUTE が付く。
+-- そして **`REVOKE ... FROM PUBLIC` は名前付きロールへの明示 GRANT を消さない**
+-- （ACL 上 `=X/postgres`（PUBLIC）と `anon=X/postgres` は別のエントリ）。
+--
+-- 4関数はすべて SECURITY DEFINER で**関数内に認可チェックが無い**（GRANT だけが防御）。
+-- anon キーは全クライアントに埋め込まれているので、**ログインすら要らない。**
+--
+--   enqueue_email    … 任意の宛先へ任意の本文を、SPF/DKIM を通した自分の正規ドメインから送れる
+--   read_email_batch … 配送前のキューが読める。**パスワード再設定リンクが含まれる**
+--   delete_email     … 配送前のメールを消せる
+--   move_to_dlq      … 同上
+
+SELECT
+  p.proname,
+  p.prosecdef AS security_definer,
+  coalesce(p.proacl::text, '(既定＝PUBLIC に EXECUTE)') AS acl,
+  CASE
+    WHEN p.proacl IS NULL THEN '★要対応（既定のまま＝誰でも叩ける）'
+    WHEN p.proacl::text LIKE '%anon=%' OR p.proacl::text LIKE '%authenticated=%'
+      THEN '★要対応'
+    ELSE 'OK'
+  END AS verdict
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('enqueue_email','read_email_batch','delete_email','move_to_dlq')
+ORDER BY p.proname;
+
+-- 塞ぎ方（★要対応 が出たときだけ実行。これは書き込みです）:
+--
+--   REVOKE EXECUTE ON FUNCTION public.enqueue_email(TEXT, JSONB)             FROM PUBLIC, anon, authenticated;
+--   REVOKE EXECUTE ON FUNCTION public.read_email_batch(TEXT, INT, INT)       FROM PUBLIC, anon, authenticated;
+--   REVOKE EXECUTE ON FUNCTION public.delete_email(TEXT, BIGINT)             FROM PUBLIC, anon, authenticated;
+--   REVOKE EXECUTE ON FUNCTION public.move_to_dlq(TEXT, TEXT, BIGINT, JSONB) FROM PUBLIC, anon, authenticated;
+--
+-- ⚠️ **引数の型は自分のDBの実物に合わせること。** シグネチャが違うと
+--    「そんな関数は無い」で落ちるか、別のオーバーロードだけ剥がして安心してしまう。
+--    上の検査の `proname` と `pg_get_function_identity_arguments(p.oid)` で確認できる。
+--
+-- 流したあと、**もう一度この検査を実行して `OK` になったことを見ること。**
+-- 「流した」ではなく「消えた」まで確認する。
+--
+-- マイグレーションにも入れること:
+--   supabase/migrations/20260805000000_email_queue_revoke_roles.sql
+-- CI での再発防止:
+--   src/test/emailQueueGrants.test.ts
+
+
+-- ----------------------------------------------------------------------------
+-- 検査5: 同じ形が他に無いかの棚卸し（SECURITY DEFINER 全件）
+-- ----------------------------------------------------------------------------
+-- **検査4 が OK でも、これは別途実行すること。**
+-- 検査4 はメールキューの4関数を名指しで見るだけ。こちらは全件を洗う。
+--
+-- 危険なのは「**関数の中で auth.uid() を見ておらず**、かつ anon から叩ける」もの。
+-- 内部で auth.uid() を見る関数（join_tenant_as_staff_with_invite_code 等）は
+-- anon から呼んでも成立しないので、ここに出ても問題ありません。
+--
+-- ⚠️ 安全側に倒してある（見逃すより多めに出す）。出た行は1件ずつ目で確認すること。
+
+SELECT
+  p.proname,
+  coalesce(p.proacl::text, '(既定＝PUBLIC に EXECUTE)') AS acl,
+  (p.prosrc ~ 'auth\.uid\(\)') AS checks_caller
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.prosecdef
+  AND (p.proacl IS NULL
+       OR p.proacl::text LIKE '%anon=%'
+       OR p.proacl::text LIKE '%authenticated=%')
+  AND NOT (p.prosrc ~ 'auth\.uid\(\)')
+ORDER BY p.proname;

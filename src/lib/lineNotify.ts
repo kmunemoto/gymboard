@@ -30,9 +30,18 @@ import { devLog } from "@/lib/devLog";
  */
 
 interface LineMessageBody {
-  /** 送信先。多くの呼び出しは user_id、一部は LINE の userId を直接渡す */
-  user_id?: string;
-  userId?: string;
+  /**
+   * 送信先の**Supabase の user_id**。
+   *
+   * ⚠️ かつて `userId`（LINE の userId を直接渡す）も受け付ける型になっていたが、
+   * **Edge Function 側は `userId` を読んでいなかった**ので、そのまま渡しても
+   * 宛先なし＝skip になるだけだった（`CustomerHome` の連続来店通知が該当。
+   * エラーも出ないので誰も気づいていなかった）。
+   *
+   * 生の LINE ID 指定（`line_user_id`）は service_role 専用にしたため、
+   * クライアントからは指定できない。**宛先は user_id で渡すこと。**
+   */
+  user_id: string;
   message: string;
 }
 

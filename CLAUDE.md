@@ -20,9 +20,12 @@
 - **iOS のリリースは GitHub Actions**（.github/workflows/ios-build.yml、workflow_dispatch）。
   バージョンは同ファイルの MARKETING_VERSION を書き換える。
 - **Android のリリースは Windows + Android Studio で手作業**（2026-08-03 に現状維持と決定）。
+  `android-version.json` の versionCode を +1 / versionName を更新してコミット →
   `scripts\build-android.bat` → Android Studio で署名付きAAB → Play Console へアップロード。
-  versionCode / versionName は `android/app/build.gradle` を手で更新する。
-  **android/ は .gitignore 済みなので、この2つの値はリポジトリから読めない。**
+  **版数は `android-version.json`（リポジトリ管理）が唯一の記録**。
+  `scripts/set-android-version.mjs` が `android/app/build.gradle` に書き込む
+  （android/ は .gitignore 済みなので、以前は現在値がどこからも読めなかった）。
+  **ただし Play の実態とは自動同期しない。** アップロード前に Play Console を確認すること。
   リリースしたら `mem/features/android-ci.md` の「リリース実績」に記録すること。
 - `.github/workflows/android-build.yml` は作ってあるが**使っていない**
   （Secrets 6種の準備コストが見合わないため見送り。workflow_dispatch なので放置しても動かない）。

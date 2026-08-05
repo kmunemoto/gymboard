@@ -67,15 +67,50 @@ Android 5.0 (API 21) 以降、ステータスバーのアイコンは
 
 ## いま実際にやっているリリース手順（Android）
 
-1. `scripts\build-android.bat`（git pull → npm install → build → `cap sync` → `patch-android.mjs`）
-2. **`android/app/build.gradle` の `versionCode` を +1、`versionName` を更新**
+1. **`android-version.json` の `versionCode` を +1、`versionName` を更新してコミット**
+2. `scripts\build-android.bat`
+   （git pull → npm install → build → `cap sync` → `patch-android.mjs` → `set-android-version.mjs`）
 3. Android Studio でクリーンビルド → 実機で確認
 4. 「Generate Signed App Bundle」で署名付きAABを生成
 5. Play Console へアップロード
 6. **下の「リリース実績」に記録する**（下記）
 
-`scripts/patch-android.mjs` は `versionCode` / `versionName` を**書き換えない**
-（`src/test/patchAndroid.test.ts` がその不変条件を守っている）。手順2の手作業を壊さないため。
+### 版数は `android-version.json`（リポジトリ管理）が唯一の記録（2026-08-05 から）
+
+以前は手順2で **`android/app/build.gradle` を手で書き換えていた**。
+`android/` は `.gitignore` 済みなので、**現在値がリポジトリのどこからも読めなかった。**
+
+そのせいで:
+
+- 「バージョンを1つ上げて」と言われても**上げようがない**
+  （Play Console か Windows の `build.gradle` を見るまで分からない。実際にそうなった）
+- `npx cap add android` で作り直すと Capacitor 既定値（`versionCode 1` / `"1.0"`）に戻る
+- 上げ忘れも上げたつもりも、**Play にアップロードするまで気づけない**
+
+いまは `android-version.json` に持ち、`scripts/set-android-version.mjs` が
+`build.gradle` へ書き込む。**上げるときはこのファイルを編集してコミットする。**
+「バージョンを上げた」がコミットとして履歴に残る
+（iOS が `ios-build.yml` に `MARKETING_VERSION` を直書きしているのと同じ発想）。
+
+`src/test/androidVersion.test.ts` が、実際にスクリプトを走らせて検証している
+（置換・冪等性・不正値で止まること・`.bat` が呼んでいること。変異8種で確認済み）。
+
+> ⚠️ **`android-version.json` は Play Console の実態とは自動では同期しない。**
+> アップロード前に Play Console の最新 `versionCode` を確認すること。
+> 既存の `build.gradle` より下げようとした場合はスクリプトが警告を出すが、
+> **Play に上がっている値までは見に行けない。**
+
+3つのスクリプトの棲み分け:
+
+| スクリプト | 役割 |
+|---|---|
+| `patch-android.mjs` | Gradle / Manifest / google-services.json / 通知アイコン。**版数は触らない**（`src/test/patchAndroid.test.ts` が固定） |
+| `set-android-version.mjs` | **手作業経路専用。** `android-version.json` を `build.gradle` に書く |
+| `prepare-android-release.mjs` | **CI専用。** 環境変数から版数と署名設定を書く（`BASE(10000) + run_number`） |
+
+手作業側は 82 から1ずつ、CI 側は 10000 以上。**ぶつからない**ので、
+将来 CI に移行しても `versionCode` は単調増加のまま
+（`androidVersion.test.ts` がこの関係を見張っている）。
 
 ### ⚠️ 2回目以降の `git pull` が止まる問題（2026-08-04 に修正）
 
@@ -107,17 +142,21 @@ Please commit your changes or stash them before you merge.
 
 ## リリース実績（手で更新すること）
 
-`android/` は `.gitignore` 済みなので、**この2つの値はリポジトリのどこからも読めない。**
-ここに書いておかないと、次に「バージョンを1つ上げて」と言われたときに
-Play Console か Windows の `build.gradle` を見るまで**上げようがない**（実際にそうなった）。
+**次に出す版数は `android-version.json` を見ること**（2026-08-05 から、そこが唯一の記録）。
+この表は「実際に Play へ上がったもの」の履歴として残す。
 
 | 日付 | versionCode | versionName | 備考 |
 |---|---|---|---|
 | 2026-08-02 時点 | **81** | **9.0** | Play Console で確認した実績。CI移行を検討した際に判明 |
+| （未リリース） | 82 | 9.1 | `android-version.json` の現在値。担当スタッフ機能・通知アイコン修正 |
 
 > **正直な注意**: 手で更新する記録は必ず古くなる。ここが実態と合っているか怪しいときは、
-> Play Console → リリース → 製品版、または Windows の `android\app\build.gradle` を見ること。
+> Play Console → リリース → 製品版を見ること。
 > **この記録を信じて版数を決めない。** 上げる前に必ず現物を確認する。
+>
+> `android-version.json` も同じで、**Play の実態とは自動では同期しない。**
+> 82 は「2026-08-02 の実績 81 の次」として置いた値なので、
+> **それ以降にリリースしていたら足りない。** アップロード前に確認すること。
 
 ---
 

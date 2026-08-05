@@ -211,7 +211,9 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       if (message && currentStreak > lastNotified) {
         streakNotifiedRef.current = true;
         try {
-          await sendLineMessage({ userId: prof.line_user_id, message }, "連続来店の記録通知");
+          // 自分自身への通知。`userId`（LINE の ID）を渡していたが Edge Function 側は
+          // そのキーを読んでおらず、**宛先なしで skip され続けていた**（誰も気づいていない）。
+          await sendLineMessage({ user_id: user.id, message }, "連続来店の記録通知");
           await supabase
             .from("profiles")
             .update({ last_streak_notified: currentStreak } as any)

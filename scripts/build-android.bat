@@ -35,16 +35,23 @@ call npm run build || goto :err
 echo [4/5] npx cap sync android
 call npx cap sync android || goto :err
 
-echo [5/5] patch android/ (Gradle + Manifest + google-services.json)
+echo [5/6] patch android/ (Gradle + Manifest + google-services.json)
 node scripts/patch-android.mjs || goto :err
+
+echo [6/6] set version from android-version.json
+REM versionCode / versionName は android-version.json（リポジトリ管理）が唯一の記録。
+REM android\ は .gitignore 済みなので、ここに持たないと現在値がどこからも読めない。
+REM 上げるときは android-version.json を編集してコミットすること。
+node scripts/set-android-version.mjs || goto :err
 
 echo.
 echo ============================================================
 echo  DONE. Next manual steps:
-echo   - Bump versionCode / versionName in android\app\build.gradle
+echo   - Verify versionCode in Play Console (must be higher than the last release)
 echo   - npx cap open android
 echo   - Android Studio: Build ^> Generate Signed App Bundle
 echo   - Upload AAB to Google Play Console
+echo   - Record the release in mem/features/android-ci.md
 echo ============================================================
 exit /b 0
 

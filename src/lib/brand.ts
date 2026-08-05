@@ -93,6 +93,43 @@ export const OWN_WEB_HOSTS: readonly string[] = [
   "gymboard.app",             // メールフッターの製品サイト（2026-07 に生存確認済み）
 ];
 
+/**
+ * **Web Push（VAPID）の公開鍵。**
+ *
+ * 対になる秘密鍵は Supabase Secrets の `VAPID_PRIVATE_KEY`。
+ * **この2つは必ず同じ鍵ペアでなければならない。** 片方だけ変えると、
+ * `send-push-notification` が署名した JWT が `k=` の公開鍵と一致せず、
+ * プッシュサービスが 401/403 を返す。
+ *
+ * ⚠️ **この値を変えると、既存の Web 購読が全部無効になる。**
+ * 購読はブラウザ側で公開鍵に紐づいており、鍵が変われば古い購読には二度と届かない。
+ * `usePushSubscription` に**自己修復**（鍵が変わっていたら購読を作り直す）を
+ * 入れてあるので、利用者が再操作しなくても次回アプリを開いたときに復帰する。
+ * **自己修復を消すと、鍵の変更＝全 Web 購読者の無言の停止**になる。
+ *
+ * Edge Function（Deno）は `src/lib/brand.ts` を import できないので、
+ * `send-push-notification/index.ts` にも同じ値が直書きされている。
+ * `src/test/pushVapidConfig.test.ts` が両者を突き合わせる。
+ *
+ * **兄弟アプリ（remix）はこの値を引き継いでいる。** 分離するときは
+ * 鍵ペアを作り直し、ここと Edge Function と Supabase Secrets の3つを揃えること。
+ * 詳細と判断の経緯は `mem/features/web-push-vapid.md`。
+ */
+export const VAPID_PUBLIC_KEY =
+  "BKxLbT912uBVUI_0010w-QQWaic5ITY-_SZS1wo9BZdTq6mTyfbBPlmftYG_CKB4cdJYPTSLhiEGADA3Uv_R5_s";
+
+/**
+ * VAPID の `sub` クレームに入れる連絡先。
+ *
+ * プッシュサービス（Google / Mozilla / Apple）が**送信元に連絡するための宛先**で、
+ * 濫用の疑いや配信停止の連絡はここに来る。**製品の運営者の連絡先**であるべきで、
+ * 特定の店舗の連絡先ではない。
+ *
+ * **兄弟アプリはこの値も引き継いでいる**（remix 時に上流のまま残る）。
+ * つまり全アプリがプッシュサービスに対して同じ運営者を名乗っている。
+ */
+export const VAPID_CONTACT_EMAIL = "info@salute-gosyominami.com";
+
 /** SNSシェア画像・公開ページに出す控えめなブランド表記 */
 export const POWERED_BY_LABEL = `Powered by ${BRAND.en}`;
 

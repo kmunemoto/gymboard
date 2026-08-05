@@ -30,7 +30,16 @@ function isAllowedUrl(u: string | undefined): boolean {
 // ============================================================
 // Web Push (VAPID) helpers — unchanged behavior
 // ============================================================
+// ⚠️ **唯一の宣言は `src/lib/brand.ts` の VAPID_PUBLIC_KEY。**
+// Edge Function（Deno）は brand.ts を import できないので、ここに写しを置いている。
+// 両者が一致しているかは `src/test/pushVapidConfig.test.ts` が見張る。
+// 対になる秘密鍵は Supabase Secrets の `VAPID_PRIVATE_KEY`。
+// **この2つが対でないと、署名は通っても k= と一致せず 401/403 になる。**
 const VAPID_PUBLIC_KEY = "BKxLbT912uBVUI_0010w-QQWaic5ITY-_SZS1wo9BZdTq6mTyfbBPlmftYG_CKB4cdJYPTSLhiEGADA3Uv_R5_s";
+
+// VAPID の `sub`。プッシュサービスが送信元に連絡するための宛先。
+// 唯一の宣言は `src/lib/brand.ts` の VAPID_CONTACT_EMAIL（同じテストが突き合わせる）。
+const VAPID_CONTACT_EMAIL = "info@salute-gosyominami.com";
 
 function base64UrlDecode(str: string): Uint8Array {
   const padding = "=".repeat((4 - (str.length % 4)) % 4);
@@ -67,7 +76,7 @@ async function createVapidAuthHeader(endpoint: string, privateKey: string): Prom
   const now = Math.floor(Date.now() / 1000);
   const expiry = now + 12 * 3600;
   const header = { typ: "JWT", alg: "ES256" };
-  const payload = { aud: audience, exp: expiry, sub: "mailto:info@salute-gosyominami.com" };
+  const payload = { aud: audience, exp: expiry, sub: `mailto:${VAPID_CONTACT_EMAIL}` };
   const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
   const payloadB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const unsignedToken = `${headerB64}.${payloadB64}`;
@@ -653,6 +662,7 @@ Deno.serve(async (req) => {
 
     // ---- Tally Web Push ----
     let webSent = 0;
+    let webVapidRejected = 0;
     const expiredEndpoints: string[] = [];
     webResults.forEach((r) => {
       if (r.status !== "fulfilled") return;
@@ -664,6 +674,24 @@ Deno.serve(async (req) => {
       } else if (response.status === 404 || response.status === 410) {
         expiredEndpoints.push(sub.endpoint);
         console.log(`web push expired (${response.status}) endpoint=${sub.endpoint}`);
+      } else if (response.status === 401 || response.status === 403) {
+        // ⚠️ VAPID の不一致。**購読は消さないこと。**
+        //
+        // これは「購読が無効」ではなく「こちらの鍵が違う」という設定の問題。
+        // 消すと、鍵を直したときに戻ってくるはずの購読者まで失う。
+        //
+        // 原因は次のどれか:
+        //   - VAPID_PRIVATE_KEY と直書きの VAPID_PUBLIC_KEY が対になっていない
+        //   - 購読が別の公開鍵で作られている（鍵を変えた直後。クライアント側の
+        //     自己修復が走れば次回アプリを開いたときに解消する）
+        //
+        // 404/410 と違って**放っておいても永久に直らない**ので、warn ではなく error で出す。
+        webVapidRejected++;
+        console.error(
+          `[push] VAPID rejected (${response.status}) endpoint=${sub.endpoint} — ` +
+            `VAPID_PRIVATE_KEY と VAPID_PUBLIC_KEY が対になっているか確認してください。` +
+            `購読は消していません（設定の問題であって購読は有効なため）。`,
+        );
       } else {
         console.warn(`web push failed status=${response.status}`);
       }
@@ -671,6 +699,7 @@ Deno.serve(async (req) => {
 
     // ---- Tally FCM ----
     let fcmSent = 0;
+    let fcmConfigRejected = 0;
     const invalidDeviceIds: string[] = [];
     fcmResults.forEach((r) => {
       if (r.status !== "fulfilled") return;
@@ -686,7 +715,21 @@ Deno.serve(async (req) => {
           code === "UNREGISTERED" ||
           code === "INVALID_ARGUMENT" ||
           code === "NOT_FOUND";
-        console.warn(`fcm failed device=${device.id} status=${result.status} code=${code} body=${result.errorBody?.slice(0, 300)}`);
+        // ⚠️ 403 / SENDER_ID_MISMATCH は**トークンが無効なのではなく、送信側の設定が違う**。
+        // アプリに焼いた Firebase プロジェクトと FIREBASE_SERVICE_ACCOUNT_JSON が別物。
+        // トークンは正しいので消してはいけない（消すと直したあと誰も戻ってこない）。
+        // 放置すると永久に届かないので、warn ではなく error で出す。
+        const isConfigError = result.status === 403 || code === "SENDER_ID_MISMATCH";
+        if (isConfigError) {
+          fcmConfigRejected++;
+          console.error(
+            `[push] FCM rejected (status=${result.status} code=${code}) device=${device.id} — ` +
+              `アプリの Firebase プロジェクトと FIREBASE_SERVICE_ACCOUNT_JSON が別プロジェクトです。` +
+              `トークンは消していません（設定の問題であってトークンは有効なため）。`,
+          );
+        } else {
+          console.warn(`fcm failed device=${device.id} status=${result.status} code=${code} body=${result.errorBody?.slice(0, 300)}`);
+        }
         if (isInvalid) invalidDeviceIds.push(device.id);
       }
     });
@@ -713,8 +756,19 @@ Deno.serve(async (req) => {
       JSON.stringify({
         sent: totalSent,
         total: totalTargets,
-        web: { sent: webSent, total: subscriptions.length, expired: expiredEndpoints.length },
-        fcm: { sent: fcmSent, total: devices.length, invalid: invalidDeviceIds.length },
+        web: {
+          sent: webSent,
+          total: subscriptions.length,
+          expired: expiredEndpoints.length,
+          // 設定の不一致で弾かれた数。0 でない間は誰にも届いていない。
+          vapidRejected: webVapidRejected,
+        },
+        fcm: {
+          sent: fcmSent,
+          total: devices.length,
+          invalid: invalidDeviceIds.length,
+          configRejected: fcmConfigRejected,
+        },
         // Keep top-level "expired" for backwards compatibility with existing callers
         expired: expiredEndpoints.length,
       }),

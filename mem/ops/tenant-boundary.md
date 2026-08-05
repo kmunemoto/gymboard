@@ -697,3 +697,81 @@ trainer なら:
 自分自身への通知なので `user_id: user.id` に直した（新しい規則でも自分宛は常に許可）。
 
 型からも `userId` を消したので、同じ渡し方はできない。
+
+---
+
+## 穴6（2026-08-05 発見・修正）: `REVOKE ... FROM PUBLIC` が効いていなかった
+
+**相談ボード（兄弟アプリ）が `pg_proc.proacl` を実際に見て発見。**
+穴1〜5 と違い、**ログインすら要らない**（`anon` キーは全クライアントに埋め込まれている）。
+
+### 「塞いだつもり」だったコード
+
+```sql
+-- 20260612061340_email_infra.sql:199-211
+REVOKE EXECUTE ON FUNCTION public.enqueue_email(TEXT, JSONB) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.enqueue_email(TEXT, JSONB) TO service_role;
+```
+
+コメントには「service_role だけに限定する」と書いてあった。**限定できていない。**
+
+Supabase は初期設定で
+`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;`
+を入れている。`public` に関数を作った瞬間、**`anon` / `authenticated` に「明示の」EXECUTE が付く。**
+
+そして **`REVOKE ... FROM PUBLIC` は名前付きロールへの明示 GRANT を消さない。**
+ACL 上 `=X/postgres`（PUBLIC）と `anon=X/postgres` は別のエントリなので、
+REVOKE は PUBLIC の分だけ消して、両ロールはそのまま残る。
+
+### なぜ致命的だったか
+
+対象の4関数（`enqueue_email` / `read_email_batch` / `delete_email` / `move_to_dlq`）は
+**すべて `SECURITY DEFINER` で、関数の中に認可チェックが1つも無い。GRANT が唯一の防御だった。**
+
+| 関数 | anon から叩けると |
+|---|---|
+| `enqueue_email` | 任意の宛先へ任意の本文を、**SPF/DKIM を通した正規ドメインから**送れる |
+| **`read_email_batch`** | **配送前のキューが読める。パスワード再設定リンクが含まれる** |
+| `delete_email` / `move_to_dlq` | 配送前のメールを消せる |
+
+`read_email_batch` が最も深刻で、**アカウント乗っ取りに直結する。**
+
+### 直した内容
+
+`supabase/migrations/20260805000000_email_queue_revoke_roles.sql`
+（`to_regprocedure` ガード付き。email_infra を流していない環境でも落ちない）
+
+```sql
+REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION %s TO service_role;
+```
+
+### 権限が「戻る」条件を正確に把握しておく
+
+最初は「`CREATE OR REPLACE` を流すたびに既定権限が付き直す」と考えたが、**それは誤り。**
+**同一シグネチャの `CREATE OR REPLACE FUNCTION` は既存の権限を保持する。**
+
+戻るのは次の2つ:
+
+- `DROP FUNCTION` → `CREATE FUNCTION`
+- **引数の型や数を変える**（別の関数として新規作成されるため）
+
+どちらも実際に起きるので、**定義の直後に必ず REVOKE を書く。**
+
+### 検査
+
+- `security/check.sql` の**検査4**（4関数を名指し）と**検査5**（`SECURITY DEFINER` 全件の棚卸し）
+- CI: `src/test/emailQueueGrants.test.ts`
+  - 関数名をベタ書きせず、**本体が `pgmq.` を触る関数**を対象にする（新設分も自動で拾う）
+  - 「REVOKE を書いたか」ではなく**最後の定義より後ろで REVOKE されているか**を見る
+  - 変異4種で検証済み（マイグレーション削除 / `FROM PUBLIC` へ弱体化 / 定義を後ろに追加 /
+    REVOKE 無しのキューRPCを新設）
+
+### 教訓
+
+**「REVOKE と書いてあるから塞がっている」を、ACL の実物を見ずに信じていた。**
+ポリシー名の思い込み（穴1）、`hasRole` を認可と見なす思い込み（穴3〜5）に続いて、
+**同じ種類の失敗を権限の層でも踏んだ。**
+
+診断は「コードにこう書いてある」ではなく、**DBに何が入っているか**を見ること。
+`pg_policies` を見る検査は作っていたのに、`pg_proc.proacl` は見ていなかった。

@@ -100,8 +100,11 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 2 | グローバル trainer で書けるテーブルを塞ぐ | `supabase/migrations/20260803140000_global_trainer_write_scope.sql` |
 | 3 | プッシュ通知の宛先をテナントで絞る | `supabase/functions/send-push-notification/index.ts` |
 | 4 | 送信メールの宛先をテナントで絞る | `supabase/functions/send-transactional-email/index.ts` |
+| 5 | LINE送信の宛先をテナントで絞る | `supabase/functions/send-line-message/index.ts` |
+| 6 | **メールキューRPCから anon を剥がす** | `supabase/migrations/20260805000000_email_queue_revoke_roles.sql` |
 
-SQL は2本とも `to_regclass` ガードが入っているので、テーブルが無い環境でも止まりません。
+SQL は `to_regclass` / `to_regprocedure` ガードが入っているので、
+対象が無い環境でも止まりません。
 
 **ただし「そのままコピーすれば直る」とは限りません。**
 `DROP POLICY` は名前で消すので、**検査0 で見た実物の名前に置き換えてください。**
@@ -118,10 +121,12 @@ src/test/tenantMembershipWrites.test.ts       ← 穴1
 src/test/globalTrainerRole.test.ts            ← 穴2
 src/test/pushNotificationTenantScope.test.ts  ← 穴3
 src/test/transactionalEmailTenantScope.test.ts ← 穴4
+src/test/lineMessageTenantScope.test.ts       ← 穴5（LINE を使っていなくても入れてよい）
+src/test/emailQueueGrants.test.ts             ← 穴6
 src/test/edgeFunctionOrigin.test.ts           ← 上流のドメインが残っていないか
 ```
 
-この6ファイルを自分のリポジトリの同じパスにコピーして、`npm test` を通してください。
+この8ファイルを自分のリポジトリの同じパスにコピーして、`npm test` を通してください。
 
 > ### `edgeFunctionOrigin.test.ts` だけ `brand.ts` に1行必要です
 > このテストは `src/lib/brand.ts` の **`OWN_WEB_HOSTS`** を唯一の宣言として使います。
@@ -182,6 +187,77 @@ grep -n "hasRole"        supabase/functions/send-transactional-email/index.ts
 
 **直したあと、必ず実機で予約確認メールが1通届くことを確認してください。**
 メール送信は fire-and-forget なので、**塞ぎすぎても画面にエラーが出ません。**
+
+---
+
+## 穴6: `REVOKE ... FROM PUBLIC` は効いていません（2026-08-05 追加）
+
+**これまでで一番範囲が広い穴です。** 相談ボードが `pg_proc.proacl` を実際に見て見つけました。
+**穴1〜5 と違って、ログインすら要りません。**
+
+### マイグレーションは「塞いだつもり」でした
+
+```sql
+REVOKE EXECUTE ON FUNCTION public.enqueue_email(TEXT, JSONB) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.enqueue_email(TEXT, JSONB) TO service_role;
+```
+
+Supabase は初期設定で
+`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;`
+を入れています。**`public` に関数を作った瞬間、`anon` と `authenticated` に「明示の」EXECUTE が付きます。**
+
+そして **`REVOKE ... FROM PUBLIC` は、名前付きロールへの明示 GRANT を消しません。**
+ACL 上 `=X/postgres`（PUBLIC）と `anon=X/postgres` は**別のエントリ**だからです。
+REVOKE は PUBLIC の分だけ消して、`anon` / `authenticated` はそのまま残ります。
+
+### なぜ致命的か
+
+対象の4関数は**すべて `SECURITY DEFINER` で、関数の中に認可チェックが1つもありません。**
+GRANT だけが唯一の防御でした。そして **anon キーは全クライアントに埋め込まれています。**
+
+| 関数 | anon から叩けると |
+|---|---|
+| `enqueue_email` | 任意の宛先へ任意の本文を、**SPF/DKIM を通した自分の正規ドメインから**送れる |
+| **`read_email_batch`** | **配送前のキューが読める。パスワード再設定リンクが含まれます** |
+| `delete_email` | 配送前のメールを消せる |
+| `move_to_dlq` | 同上 |
+
+**`read_email_batch` が一番深刻です。** アカウント乗っ取りに直結します。
+
+### 診断と修正
+
+`security/check.sql` の**検査4**（★要対応 が出たら該当）。塞ぎ方は同ファイルのコメントに
+書いてあります。**引数の型は自分のDBの実物に合わせてください。**
+シグネチャが違うと落ちるか、別のオーバーロードだけ剥がして安心してしまいます。
+
+マイグレーションにも入れてください（作り直したときに戻らないように）:
+`supabase/migrations/20260805000000_email_queue_revoke_roles.sql`
+
+> **同一シグネチャの `CREATE OR REPLACE FUNCTION` は既存の権限を保持します**
+> （＝流し直しても anon が増えることはありません）。
+> **戻るのは `DROP` → `CREATE` と、引数を変えて「別の関数」として作ったときです。**
+> どちらも実際に起こるので、定義の直後に必ず REVOKE を書いてください。
+
+### 同じ形が他に無いかも見てください
+
+`security/check.sql` の**検査5**が全 `SECURITY DEFINER` 関数を洗います。
+判断は2軸です。
+
+```
+anon から叩ける ＋ 関数の中で auth.uid() を見ていない  → 危険
+anon から叩ける ＋ 関数の中で auth.uid() を見ている    → 問題なし
+```
+
+`join_tenant_as_staff_with_invite_code` などは後者なので、出てきても対応不要です。
+
+### 流したあと
+
+**「流した」ではなく「消えた」まで確認してください。**
+検査4 をもう一度実行して `OK` になることを見る。ここを飛ばすと、
+穴1 の `DROP POLICY IF EXISTS "<違う名前>"` と同じ
+「適用したのに直っていない」が起きます。
+
+---
 
 ## ⚠️ プロトコル相対URL（`//`）は **2箇所** あります
 

@@ -74,14 +74,66 @@ function stripLineComments(line: string): string {
 
 interface HostHit { host: string; file: string; line: number }
 
+/**
+ * ホスト名を含む文字列を拾うパターン。
+ *
+ * ⚠️ **`https://` 付きだけを見ると、2つの抜け道がある。**
+ * どちらも 2026-08-05 に兄弟アプリが実際に踏んだ:
+ *
+ * 1. **裸のホスト名**（相談ボード発見）
+ *    ```ts
+ *    const SENDER_DOMAIN = "notify.kyoto-salute.com"   // https:// が付かない
+ *    ```
+ *    上流のドメインのまま残っていても検出できなかった。
+ *
+ * 2. **テンプレートリテラル**（鍼灸ボード発見）
+ *    ```ts
+ *    siteUrl: `https://${ROOT_DOMAIN}`,   // ${ で始まるのでマッチしない
+ *    ```
+ *    `ROOT_DOMAIN` が上流のままだと、登録確認メールが
+ *    **「<自分の製品名>にご登録ありがとうございます」と書きながら
+ *    リンクだけ上流のサイトへ飛ぶ**状態になっていた。
+ *
+ * そこで **`https://` の有無を問わず、ホスト名らしい文字列**を拾う。
+ * 定数への代入（`= "host"`）も対象に含めるため、クォート内も見る。
+ */
+const HOST_PATTERNS: RegExp[] = [
+  // https://example.com / http://example.com
+  /https?:\/\/([a-z0-9][a-z0-9.-]*\.[a-z]{2,})/gi,
+  //
+  // 定数への代入だけを見る: `= "notify.kyoto-salute.com"`
+  //
+  // **`=` に限るのが要点。** 任意のクォート文字列まで広げると、
+  // Stripe のイベント名（`checkout.session.completed` 等）を
+  // ホスト名として誤検出する。フォークが踏むのは
+  // 「ドメイン定数が上流のまま残る」形なので、代入だけで十分。
+  //
+  // テンプレートリテラル（`https://${ROOT_DOMAIN}`）はここでは拾えないが、
+  // **その元になる `const ROOT_DOMAIN = "..."` を拾うので同じことになる。**
+  //
+  // `(?<![=!<>])` は比較を除くため。これが無いと
+  // `type === "checkout.session.completed"` の `===` の末尾に当たってしまう。
+  /(?<![=!<>])=\s*["'`]([a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\.[a-z]{2,})["'`]/gi,
+];
+
+/**
+ * ホスト名として扱わない誤検出。
+ * ファイル名・パッケージ名がドット区切りとして拾われる。
+ */
+const NOT_A_HOST = /\.(ts|tsx|js|mjs|json|sql|png|jpg|svg|css|html|md|lock|yml|yaml|ics|csv|txt|pdf)$/i;
+
 function collectHosts(): HostHit[] {
   const hits: HostHit[] = [];
   for (const file of collectSources(FUNCTIONS_DIR)) {
     const lines = readFileSync(file, "utf8").split("\n");
     lines.forEach((raw, i) => {
       const code = stripLineComments(raw);
-      for (const m of code.matchAll(/https?:\/\/([a-z0-9][a-z0-9.-]*\.[a-z]{2,})/gi)) {
-        hits.push({ host: m[1].toLowerCase(), file, line: i + 1 });
+      for (const pattern of HOST_PATTERNS) {
+        for (const m of code.matchAll(pattern)) {
+          const host = m[1].toLowerCase();
+          if (NOT_A_HOST.test(host)) continue;
+          hits.push({ host, file, line: i + 1 });
+        }
       }
     });
   }

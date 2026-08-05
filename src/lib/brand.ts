@@ -91,6 +91,10 @@ export const OWN_WEB_HOSTS: readonly string[] = [
   "gymboard.lovable.app",     // Lovable の公開URL
   "gymboard-app.lovable.app", // MARKETING_SITE_URL（LP）
   "gymboard.app",             // メールフッターの製品サイト（2026-07 に生存確認済み）
+  // ▼ メール関連。2026-08-05 に検査を広げて拾えるようになったので明示した。
+  //   フォークはここも自分の値に差し替えること（残すと上流を名乗る／上流へ飛ばす）。
+  "notify.kyoto-salute.com",  // 送信ドメイン（auth-email-hook / send-transactional-email）
+  "kyoto-salute.com",         // auth-email-hook の ROOT_DOMAIN。登録確認メールのリンク先
 ];
 
 /**

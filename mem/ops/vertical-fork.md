@@ -674,3 +674,5 @@ Lovable で Publish して `<slug>.lovable.app` を得たら、
 - `mem/ops/vertical-presets/` … 業種ごとに流し込む値の束（語彙・機能ON/OFF・ブランド）
 - `mem/ops/ai-agent-sessions.md` … AIエージェントでこの作業を進めるときの取り決め
   （トークン消費・セッションの切り方・引き継ぎ文書の型・複数AIの分担）
+- `mem/ops/release-signal.md` … 「リリースノート書いて」＝リリース完了の合図（全アプリ共通）
+- `mem/ops/native-release-checklist.md` … 兄弟アプリをネイティブで出すときのチェックリスト

@@ -102,6 +102,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 4 | 送信メールの宛先をテナントで絞る | `supabase/functions/send-transactional-email/index.ts` |
 | 5 | LINE送信の宛先をテナントで絞る | `supabase/functions/send-line-message/index.ts` |
 | 6 | **メールキューRPCから anon を剥がす** | `supabase/migrations/20260805000000_email_queue_revoke_roles.sql` |
+| 7 | **DB内の関数が他プロジェクトを叩くのを止める** | 実DBで直す（下記。リポジトリには無い） |
 
 SQL は `to_regclass` / `to_regprocedure` ガードが入っているので、
 対象が無い環境でも止まりません。
@@ -256,6 +257,96 @@ anon から叩ける ＋ 関数の中で auth.uid() を見ている    → 問�
 検査4 をもう一度実行して `OK` になることを見る。ここを飛ばすと、
 穴1 の `DROP POLICY IF EXISTS "<違う名前>"` と同じ
 「適用したのに直っていない」が起きます。
+
+---
+
+## 穴7: DB内の関数が「他プロジェクト」を叩いています（2026-08-05 追加）
+
+**リポジトリを見る検査では、構造的に見つけられません。** 相談ボードが実DBを見て発見し、
+**8プロジェクトを実測**して確認しました。
+
+### 何が起きているか
+
+remix でできた兄弟アプリの**DB内の関数**に、**remix 元のプロジェクトの URL** が残っています。
+
+```
+アプリ（kyoto-salute）
+   └─ remix → ジムボード
+        ├─ remix → ピラボード / ストレッチボード / 相談ボード
+        └─ remix → セッコツボード / ゴルフボード
+```
+
+その関数は vault から**自分の service_role キー**を取り出し、
+**他プロジェクトの Edge Function へ Authorization ヘッダで送ります。**
+`notify_trainer_new_signup` は加えて**登録者のメールアドレスと表示名**も送ります。
+
+**service_role キーは RLS を無視して全データを読み書きできる鍵です。**
+
+### 2種類のズレ方があります
+
+`setup_email_infra`（Lovable が Management API で流すもの）の挙動が原因です。
+
+| | setup を流した | 流していない |
+|---|---|---|
+| `email_queue_wake` / `email_queue_dispatch` | 自分の ref に直る | **remix 元のまま** |
+| `notify_trainer_new_signup` | **直らない** | 直らない |
+
+**`notify_*` は setup を流しても直りません。手で直すしかありません。**
+
+### 🔴 Vault セットアップの前に、必ずこれを直してください
+
+**順序が逆だと、キーを入れた瞬間に漏れ始めます。**
+
+実測で、`email_queue_wake` の**トリガーは接続済みなのに vault キーが無いだけ**、という
+アプリが2つありました。この状態で Vault を入れると、
+
+- そのアプリの service_role キーが**他プロジェクトへ飛ぶ**
+- そのアプリのメールは**永久に配送されない**（自分の Edge Function を叩かないため）
+
+が同時に起きます。**メール実装ガイドの Vault の手順より前に、この検査を通してください。**
+
+### なぜリポジトリの検査では届かないのか
+
+`src/test/edgeFunctionProjectRef.test.ts` は `supabase/functions/` を見ます。
+しかし**これらの関数はリポジトリのマイグレーションに存在しません**（Management API 製）。
+
+**リポジトリをどれだけ綺麗にしても素通りします。実DBを見る以外に方法がありません。**
+
+### 診断
+
+`security/check.sql` の**検査6**（DB内の関数）と**検査7**（cron の POST 先）。
+
+`scripts/check-schema-applied.mjs` が生成する SQL にも同じ検査が入っています
+（`.env` の `VITE_SUPABASE_PROJECT_ID` と自動で突き合わせるので、そちらのほうが楽です）。
+
+```bash
+node scripts/check-schema-applied.mjs > /tmp/check.sql
+# /tmp/check.sql を SQL Editor に貼る。WRONG PROJECT REF が出たら該当
+```
+
+### 直し方
+
+その関数を `CREATE OR REPLACE` で流し直し、URL を自分の ref に書き換えます。
+**使っていない関数なら `DROP FUNCTION` のほうが安全です**
+（service_role キーがヘッダに載る設計自体を残さない）。
+
+**発火していたかは、トリガーが接続されているかで判断できます。**
+
+```sql
+-- 0件なら一度も発火していない
+select count(*) from pg_trigger t join pg_proc p on p.oid = t.tgfoid
+where not t.tgisinternal and p.proname = 'notify_trainer_new_signup';
+```
+
+> ⚠️ **「0件」を「見えていないだけ」と取り違えないこと。**
+> 対照として、内部トリガーも数えてください。
+> `select count(*) from pg_trigger where tgrelid='auth.users'::regclass;`
+> ここが0なら、カタログが見えていない可能性を疑います（実測では30件見えました）。
+
+### 1本直して終わりにしないこと
+
+**相談ボードは検査を足した直後に2本目を見つけました。**
+**直したら、検査6・7をもう一度流して0件になったことを確認してください。**
 
 ---
 

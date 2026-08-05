@@ -254,3 +254,68 @@ WHERE n.nspname = 'public'
        OR p.proacl::text LIKE '%authenticated=%')
   AND NOT (p.prosrc ~ 'auth\.uid\(\)')
 ORDER BY p.proname;
+
+
+-- ----------------------------------------------------------------------------
+-- 検査6: DB内の関数が「他プロジェクト」を叩いていないか（★穴7）
+-- ----------------------------------------------------------------------------
+-- 2026-08-05、相談ボードが実DBを見て発見。**8プロジェクトを実測して確認済み。**
+--
+-- remix でできた兄弟アプリの**DB内の関数**に、remix 元のプロジェクトの URL が残る。
+-- `setup_email_infra`（Lovable が Management API で流すもの）は
+-- `email_queue_*` は自分の ref に書き換えるが、
+-- **`notify_trainer_new_signup` は書き換えない。**
+--
+-- 何が起きるか:
+--   その関数は vault から**自分の service_role キー**を取り出し、
+--   **他プロジェクトの Edge Function へ Authorization ヘッダで送る。**
+--   `notify_trainer_new_signup` は加えて**登録者のメールアドレスと表示名**も送る。
+--
+-- service_role キーは RLS を無視して全データを読み書きできる鍵です。
+-- 別プロジェクトに渡ってよいものではありません。
+--
+-- ⚠️ なぜリポジトリの検査では届かないか:
+--   `src/test/edgeFunctionProjectRef.test.ts` は `supabase/functions/` しか見ません。
+--   これらの関数は**リポジトリのマイグレーションに存在しません**（Management API 製）。
+--   **リポジトリをどれだけ綺麗にしても素通りします。実DBを見る以外に方法がありません。**
+--
+-- ⚠️ `public` スキーマだけを見ないこと。net / cron / vault に仕込まれると見落とします。
+
+SELECT
+  n.nspname AS schema_name,
+  p.proname,
+  (regexp_matches(p.prosrc, 'https?://([a-z0-9]{20})\.supabase\.co', 'g'))[1] AS project_ref
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND p.prosrc ~ 'supabase[.]co'
+ORDER BY n.nspname, p.proname;
+
+-- 出た `project_ref` が**自分の project ref 以外**なら ★要対応。
+-- 自分の ref は `.env` の `VITE_SUPABASE_PROJECT_ID`、または Supabase の URL で確認できます。
+--
+-- 直し方: その関数を `CREATE OR REPLACE` で流し直し、URL を自分の ref に書き換える。
+--   使っていない関数なら `DROP FUNCTION` のほうが安全です
+--   （service_role キーがヘッダに載る設計自体を残さない）。
+--
+-- ⚠️ **直したら、この検査をもう一度流して消えたことを確認すること。**
+-- ⚠️ **1本直して終わりにしないこと。** 相談ボードは検査を足した直後に2本目を見つけました。
+
+
+-- ----------------------------------------------------------------------------
+-- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
+-- ----------------------------------------------------------------------------
+-- ⚠️ **pg_cron を入れていない環境ではエラーになります。**
+--    「relation "cron.job" does not exist」が出たら、cron を使っていないだけなので
+--    無視してください。**上の検査1〜6の結果はすでに出ています**（だから最後に置いています）。
+--
+-- ⚠️ cron.job は**実行ロールごとに見える行が違います。空でも「無い」とは限りません。**
+--    メールの cron は「必要なときだけ張って、キューが空になったら外す」動きをするので、
+--    平常時は空に見えるのが正常です（配送の確認は email_send_log の pending → sent で）。
+
+SELECT
+  jobid, jobname, schedule, username, active,
+  (regexp_matches(command, 'https?://([a-z0-9]{20})\.supabase\.co', 'g'))[1] AS project_ref
+FROM cron.job
+WHERE command ~ 'supabase[.]co'
+ORDER BY jobid;

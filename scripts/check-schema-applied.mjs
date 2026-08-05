@@ -28,6 +28,24 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 const TYPES_PATH = process.argv[2] ?? "src/integrations/supabase/types.ts";
 const SRC_DIRS = ["src", "supabase/functions"];
 
+/**
+ * 自分の Supabase project ref を `.env` 系から読む。
+ *
+ * WRONG PROJECT REF 検査（後述）で「自分の ref かどうか」を判定するために要る。
+ * 読めなかった場合は判定せず、**見つかった ref を全部並べて人間に照合させる**
+ * （黙って素通りさせない）。
+ */
+function readOwnProjectRef() {
+  for (const f of [".env", ".env.production", ".env.development"]) {
+    if (!existsSync(f)) continue;
+    const m = readFileSync(f, "utf8").match(
+      /VITE_SUPABASE_PROJECT_ID\s*=\s*["']?([a-z0-9]{20})["']?/,
+    );
+    if (m) return m[1];
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // types.ts を読む
 // ---------------------------------------------------------------------------
@@ -131,6 +149,50 @@ const functionRows = [...functions]
 
 const totalCols = columnRows.length;
 
+// ---------------------------------------------------------------------------
+// WRONG PROJECT REF 検査（2026-08-05 追加 / 相談ボード発見）
+//
+// remix でできた兄弟アプリの**DB内の関数**に、remix 元のプロジェクトの URL が
+// 残る。`setup_email_infra`（Lovable が Management API で流すもの）は
+// `email_queue_*` を自分の ref に書き換えるが、**`notify_trainer_new_signup` は
+// 書き換えない**。実測で、5アプリが2代前の ref を指したままだった。
+//
+// 何が起きるか: その関数は vault から**自分の service_role キー**を取り出し、
+// **他プロジェクトの Edge Function に Authorization ヘッダで送る**。
+// 個人情報（登録者のメールアドレス・表示名）も一緒に飛ぶ。
+//
+// なぜ既存の検査では届かないか:
+//   `src/test/edgeFunctionProjectRef.test.ts` は `supabase/functions/` しか見ない。
+//   これらの関数は**リポジトリのマイグレーションに存在しない**（Management API 製）。
+//   リポジトリをどれだけ綺麗にしても素通りする。**実DBを見る以外に方法がない。**
+// ---------------------------------------------------------------------------
+
+/** Supabase の project ref を含む URL。SQL 側の正規表現としてそのまま埋める */
+const REF_REGEX = String.raw`https?://([a-z0-9]{20})\.supabase\.co`;
+const ownRef = readOwnProjectRef();
+
+const refSection = ownRef
+  ? `select
+  -1,
+  'WRONG PROJECT REF',
+  schema_name || '.' || proname,
+  ref,
+  '★ DB内の関数が別プロジェクトを叩いています。service_role キーと個人情報が越境します。'
+from function_refs
+where ref <> ${lit(ownRef)}`
+  : `select
+  -1,
+  'PROJECT REF (要目視照合)',
+  schema_name || '.' || proname,
+  ref,
+  '.env から自分の ref を読めませんでした。自分の ref 以外が出ていたら要対応です。'
+from function_refs`;
+
+const cronVerdict = ownRef
+  ? `case when (regexp_matches(command, '${REF_REGEX}', 'g'))[1] = ${lit(ownRef)}
+            then 'OWN' else '★ WRONG PROJECT' end as verdict`
+  : `'(自分の ref と目視で照合してください)' as verdict`;
+
 process.stdout.write(`-- ============================================================
 -- スキーマ適用チェック（自動生成 / scripts/check-schema-applied.mjs）
 --   元: ${TYPES_PATH}
@@ -166,6 +228,17 @@ live_functions as (
   select p.proname as routine_name
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public'
+),
+-- DB内の関数が焼き込んでいる Supabase の URL を全部拾う。
+-- **public だけを見ないこと。** net / cron / vault などに仕込まれると見落とす。
+function_refs as (
+  select n.nspname as schema_name,
+         p.proname,
+         (regexp_matches(p.prosrc, '${REF_REGEX}', 'g'))[1] as ref
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname not in ('pg_catalog', 'information_schema')
+    and p.prosrc ~ 'supabase[.]co'
 )
 -- 1) 丸ごと存在しないテーブル
 select
@@ -208,7 +281,31 @@ from expected_functions e
 left join live_functions l using (routine_name)
 where l.routine_name is null
 
+union all
+
+-- 4) DB内の関数が「他プロジェクト」を叩いている（★最優先）
+${refSection}
+
 order by sort_key, name, detail;
+
+
+-- ============================================================
+-- 【別枠】cron の POST 先の確認
+-- ============================================================
+-- pg_cron を入れていない環境では「relation "cron.job" does not exist」で
+-- **エラーになります。その場合は cron を使っていないので無視してください。**
+-- （上の SQL とは別のトランザクションなので、こちらが落ちても上の結果は残ります）
+--
+-- ⚠️ cron.job は**実行ロールごとに見える行が違います**。
+--    空でも「無い」とは限りません。SQL Editor は postgres で動くので通常は見えます。
+
+select
+  jobid, jobname, schedule, username, active,
+  (regexp_matches(command, '${REF_REGEX}', 'g'))[1] as project_ref,
+  ${cronVerdict}
+from cron.job
+where command ~ 'supabase[.]co'
+order by jobid;
 `);
 
 console.error(

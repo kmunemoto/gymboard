@@ -35,6 +35,8 @@ const DISTRIBUTED_FILES = [
   "src/test/lineMessageTenantScope.test.ts",
   "src/test/emailQueueGrants.test.ts",
   "src/test/edgeFunctionOrigin.test.ts",
+  // 穴7 は実DBを見ないと分からない。診断SQLを生成するスクリプトを配る
+  "scripts/check-schema-applied.mjs",
 ];
 
 describe("security/ の配布キット", () => {

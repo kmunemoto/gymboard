@@ -127,6 +127,44 @@ describe("スキーマ適用チェックSQLの生成", () => {
     expect(() => run(broken)).toThrow();
   });
 
+  // --- WRONG PROJECT REF 検査（2026-08-05 追加 / 相談ボード発見）-------------
+  //
+  // remix でできた兄弟アプリの**DB内の関数**に、remix 元のプロジェクトの URL が残る。
+  // 実測で5アプリが該当した。その関数は vault から自分の service_role キーを取り出し、
+  // **他プロジェクトへ Authorization ヘッダで送る**（個人情報も一緒に飛ぶ）。
+  //
+  // `edgeFunctionProjectRef.test.ts` では届かない。あちらは `supabase/functions/` を
+  // 見るが、これらの関数は**リポジトリのマイグレーションに存在しない**（Management API 製）。
+  //
+  // ここで見るのは「生成SQLにこの検査が入っていること」だけ。生成SQLが実際に
+  // 検出することは、ジムボード本番で確認済み（notify_trainer_new_signup が1件出た）。
+
+  it("他プロジェクトの ref を叩く関数を検出する SQL を生成する", () => {
+    const { sql } = run(MINIMAL);
+    expect(sql).toContain("WRONG PROJECT REF");
+    // public 限定にしないこと。net / cron / vault に仕込まれると見落とす
+    expect(sql).toMatch(/n\.nspname not in \('pg_catalog', 'information_schema'\)/);
+    // .env から読んだ自分の ref と突き合わせている（プレースホルダのまま出荷しない）
+    expect(sql).toMatch(/where ref <> '[a-z0-9]{20}'/);
+  });
+
+  it("cron の POST 先も確認する（DB内の関数だけでは足りない）", () => {
+    const { sql } = run(MINIMAL);
+    expect(sql).toContain("from cron.job");
+    // pg_cron が無い環境で落ちることを、利用者に先に伝えていること
+    expect(sql).toMatch(/cron.*(入れていない|does not exist)/);
+  });
+
+  it("正規表現のエスケープが壊れていない（生成SQLをそのまま貼れる形）", () => {
+    const { sql } = run(MINIMAL);
+    // JS のテンプレートリテラルで `\.` が `.` に潰れる事故を防ぐ。
+    // 潰れると `[a-z0-9]{20}` の後が任意文字になり、**別ドメインまで拾って誤検出**する。
+    expect(sql).toContain(String.raw`https?://([a-z0-9]{20})\.supabase\.co`);
+    expect(sql).not.toContain("([a-z0-9]{20}).supabase.co");
+    // 二重エスケープも事故（SQL の文字列リテラルではバックスラッシュ2個になる）
+    expect(sql).not.toContain(String.raw`\\.supabase`);
+  });
+
   it("本物の types.ts を処理でき、既知の重要オブジェクトを含む", () => {
     const sql = execFileSync("node", [SCRIPT], { encoding: "utf8" });
     // 予約画面の中核RPCと、過去に実際に未適用だったもの（mem/ops/schema-drift.md）

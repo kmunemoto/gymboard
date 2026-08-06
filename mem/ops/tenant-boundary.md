@@ -970,3 +970,121 @@ lookup_tenant_by_invite_code   招待リンクからの参加（ログイン前�
 
 **実際の ACL は DB にしか無いので CI からは見えない**（穴6・穴7と同じ層）。
 リポジトリ側で見張れるのは「マイグレーションが正しい形か」まで。
+
+---
+
+## 穴8の本番適用と、そこで**壊した**話（2026-08-06）
+
+`20260806120000` の SQL を本番（Lovable `69ac2641-45d8-44e0-b60d-4e002a4f9c1c`）へ
+①〜⑤の順に流した。**結果は 37件 → 3件**（残ったのは公開が仕様の3つだけ）。
+
+ただし途中で **本番のログイン済み画面をほぼ全部落とした。** 経緯を残す。
+
+### 🔴 RLS のポリシー式は「クエリを投げたロール」の権限で評価される
+
+`20260806120000` の第2章に、こう書いていた。
+
+> RLS の内部で使う述語。**ポリシーの中からは所有者権限で評価されるので影響しない**
+
+**これは誤り。** `shares_tenant_with_me` / `is_tenant_member` / `has_tenant_role` を
+`authenticated` から剥がした直後、本番で実測すると:
+
+```sql
+BEGIN;
+SELECT set_config('request.jwt.claims','{"sub":"<user>","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT count(*) FROM public.announcement_reads;
+-- ERROR: 42501: permission denied for function shares_tenant_with_me
+```
+
+**`SECURITY DEFINER` が効くのは「関数の中身」であって「関数を呼べるかどうか」ではない。**
+EXECUTE の判定は呼び出し元のロールに対して行われる。
+だからこそ第1章（anon 向けポリシーを先に絞る）が必要だった —
+**あの手順が正しくて、第2章のコメントが間違っていた。同じ理屈なのに逆に書いていた。**
+
+影響したポリシー数:
+
+```
+shares_tenant_with_me   39件（announcement_reads ほか tenant_user_isolation 系）
+is_tenant_member         3件（tenant_members）
+has_tenant_role          2件（tenant_members の owner 限定の書き込み）
+```
+
+`20260806140000_restore_rls_predicate_grants.sql` で `authenticated` にだけ戻した。
+**`anon` からは剥がしたまま**（44件とも `TO authenticated` なので anon は評価しない）。
+
+`is_tenant_over_limit` は戻していない。ポリシーから使われておらず、呼び出し元は
+`get_tenant_limit_status` / `enforce_tenant_plan_limit` の2つだけで、**どちらも
+SECURITY DEFINER なので中の呼び出しは所有者権限で通る。**
+
+### 検査を足した
+
+`src/test/anonRpcExposure.test.ts` に
+**「RLS ポリシーが使う関数を authenticated から剥がしていない」** を追加した。
+名指しのリストではなく、マイグレーションを畳み込んで機械的に見る:
+
+1. 全マイグレーションを名前順に走査し、DOブロック単位で
+   `REVOKE ... FROM ... authenticated` / `GRANT ... TO authenticated` を畳み込む
+2. `effectivePolicies()` の `USING` / `WITH CHECK` から呼ばれている関数名を集める
+3. 交差が空でなければ落とす
+
+変異3種（復旧マイグレーションを消す／GRANT 先を service_role に変える／
+`has_role` を authenticated の REVOKE 側へ移す）で赤を確認済み。
+
+### 本番で確認したこと（`SET LOCAL ROLE` で実際に演じた）
+
+コンテナからは `*.supabase.co` へ直接出られない（プロキシが CONNECT を 403 で落とす）。
+**代わりに Lovable の SQL から `SET LOCAL ROLE anon` でロールを演じて確認した。**
+トランザクション内なので `ROLLBACK` で必ず戻る。
+
+```sql
+BEGIN;
+SET LOCAL ROLE anon;
+SELECT
+  (SELECT gym_name FROM public.get_tenant_public('<tenant>'::uuid)) AS gym_name,
+  (SELECT count(*) FROM public.get_tenant_booked_slots('<tenant>'::uuid,
+                                CURRENT_DATE, CURRENT_DATE + 14)) AS slots;
+ROLLBACK;
+-- → パーソナルジムSalute御所南 / 34件（未ログインの予約ページは無事）
+```
+
+同じやり方で確認したこと:
+
+```
+anon で7つのゲーミフィケーション表を読む   → 0件（42501 ではない＝①の順序が正しかった）
+anon で get_ranking を呼ぶ                 → 42501 permission denied（塞げている）
+authenticated で announcement_reads を読む → 復旧後は通る
+```
+
+**さらに、ポリシーと権限の食い違いを総当たりで見る SQL を回して 0件を確認した。**
+これは今後も適用後に必ず流す:
+
+```sql
+WITH fns AS (
+  SELECT p.oid, p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public'),
+pol AS (
+  SELECT tablename, policyname,
+         coalesce(qual,'')||' '||coalesce(with_check,'') AS expr,
+         CASE WHEN roles='{public}' THEN ARRAY['anon','authenticated']
+              ELSE roles::text[] END AS check_roles
+  FROM pg_policies WHERE schemaname='public')
+SELECT DISTINCT f.proname, r, pol.tablename, pol.policyname
+FROM pol JOIN fns f ON pol.expr ~ ('\m'||f.proname||'\M')
+CROSS JOIN LATERAL unnest(pol.check_roles) AS r
+WHERE r IN ('anon','authenticated')
+  AND NOT has_function_privilege(r, f.oid, 'EXECUTE');
+-- 0件でなければ、その画面は落ちている
+```
+
+SECURITY INVOKER 関数・トリガー関数から呼ばれる先についても同じ形で 0件を確認した
+（内部呼び出しは DEFINER なら所有者権限で通るが、**INVOKER なら通らない**）。
+
+### 教訓
+
+- **「呼び出し元が0件だから剥がしてよい」は、`src/` の grep だけでは判断できない。**
+  RLS ポリシーとトリガーは grep に出ない呼び出し元。
+- 権限を剥がしたら、**適用後に必ず「そのロールを演じて」読む。**
+  `has_function_privilege` が期待どおりでも、ポリシー越しの評価は別の話。
+- 剥がす作業は `anon` と `authenticated` を**必ず分けて**扱う。
+  1つの配列にまとめた瞬間に事故る。

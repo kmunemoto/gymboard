@@ -107,9 +107,16 @@ BEGIN
     'public.get_booked_slots(date)',
     -- 全ジムのスタッフの user_id 一覧。穴5（send-line-message）で問題になった関数
     'public.get_trainer_ids()',
-    -- RLS の内部で使う述語。**ポリシーの中からは所有者権限で評価されるので影響しない**
+    -- ⚠️ この3つを authenticated から剥がしたのは**誤り**。20260806140000 で戻している。
+    --    「ポリシーの中からは所有者権限で評価されるので影響しない」と書いていたが、
+    --    **RLS のポリシー式はクエリを投げたロールの権限で評価される。**
+    --    本番で 42501 permission denied for function shares_tenant_with_me が出た。
+    --    ここを消さずに残してあるのは、消すと適用済みDBとの対応が崩れるため。
+    --    **兄弟アプリへ持っていくときは、この3つを下の「anon だけ剥がす」側に置くこと。**
     'public.has_tenant_role(uuid, uuid, text[])',
     'public.is_tenant_member(uuid, uuid)',
+    -- is_tenant_over_limit はポリシーから使われていないので、剥がしたままでよい
+    -- （呼び出し元の get_tenant_limit_status / enforce_tenant_plan_limit は両方 DEFINER）
     'public.is_tenant_over_limit(uuid)',
     'public.shares_tenant_with_me(uuid)',
     -- 現在は未使用（明示的に anon へ GRANT された公開APIだが呼び出し元0件）

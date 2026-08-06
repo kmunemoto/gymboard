@@ -891,3 +891,82 @@ email_send_log             : pending 28 / sent 28（変化なし）
 
 **他の兄弟アプリ（ピラボード・ストレッチボード）にも同じ関数が残っている。**
 ピラボードは vault キーが入っているのでジムボードと同じ条件。
+
+---
+
+## 穴8（2026-08-06）: anon から呼べる SECURITY DEFINER 関数が37件あった
+
+穴6（メールキューの4関数）と**同じ形が他にもあった。**
+本番を実測したところ、**anon から EXECUTE でき、関数内に `auth.uid()` のチェックが無い
+SECURITY DEFINER 関数**（トリガー関数を除く＝PostgREST から実際に呼べるもの）が **37件**。
+
+### 共通の形
+
+**「user_id を引数で受け取り、呼び出し元と突き合わせていない」。**
+
+| 関数 | anon からできたこと |
+|---|---|
+| `buy_shop_item(p_user_id, ...)` | 他人のコインで買い物させ、**残高を0にできる** |
+| `complete_dungeon_run(..., p_total_coins, p_total_exp)` | **数値を引数でそのまま渡せる**（検算なし） |
+| `grant_equipment(p_user_id, ...)` | 他人に任意の装備を配れる |
+| `get_ranking(p_type, p_gender)` | **全ジムの会員の user_id 一覧**（上の攻撃の材料になる） |
+| `get_booked_slots(check_date)` | **全テナントの**予約表が日付指定で取れる |
+
+### 実測（これが判断の土台）
+
+```
+呼び出し元（src/ + supabase/functions/、mcp/ を除く）
+  26 / 37 件が **0件**
+
+RLS ポリシーからの参照
+  has_role              104件（うち roles={public} が 7件）
+  shares_tenant_with_me  39件（{public} は0）
+  get_my_tenant_id       22件（同上）
+  is_tenant_member        3件 / has_tenant_role 2件
+  is_tenant_over_limit    0件 / get_trainer_ids 0件
+
+GAMIFICATION_ENABLED = false（画面からは消えている）
+```
+
+### 直し方（段階を分けた）
+
+**段階1（`20260806120000`）: 権限だけ剥がす。壊さないことが確実な範囲。**
+
+1. **先に**、`roles={public}` かつ `has_role` を使う SELECT ポリシー7件を
+   `TO authenticated` に絞る
+2. 呼び出し元0件の26件 → `anon` / `authenticated` の**両方**から剥がす
+3. ログイン後に呼ぶ8件 → **`anon` だけ**剥がす
+
+**段階2（未着手）**: 関数内に `auth.uid()` の照合を入れる／使わない関数を消す。
+
+### 🔴 順序を間違えると壊れる
+
+**ポリシーを絞る前に `has_role` の anon を剥がすと、**
+未ログインでそのテーブルを読んだときに **0件ではなく
+`permission denied for function has_role`** が返る。
+
+### 🔴 塞いではいけないものが混ざる
+
+```
+get_tenant_public              未ログインの予約ページのジム名・ロゴ・営業設定
+get_tenant_booked_slots        同じく空き枠
+lookup_tenant_by_invite_code   招待リンクからの参加（ログイン前に照合）
+```
+
+**塞ぐと未ログインの予約ページが真っ白になる。**
+「anon から呼べる＝危険」で一律に処理すると、ここで事故る。
+
+### 🔴 `has_role` を authenticated から剥がさない
+
+**104件のポリシーが使っている。剥がすとアプリ全体が即死する。**
+
+### 検査
+
+- `src/test/anonRpcExposure.test.ts` … マイグレーション側を見る
+  （公開が仕様のものを塞いでいないか／危険なものを取りこぼしていないか／
+  `has_role` を authenticated から剥がしていないか／ポリシーを絞る手順が先にあるか）。
+  変異4種で検証済み
+- `security/check.sql` の**検査5-b** … 実DBで、**user_id を引数に取るか**で並べ替えて出す
+
+**実際の ACL は DB にしか無いので CI からは見えない**（穴6・穴7と同じ層）。
+リポジトリ側で見張れるのは「マイグレーションが正しい形か」まで。

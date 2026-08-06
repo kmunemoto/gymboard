@@ -303,6 +303,49 @@ ORDER BY n.nspname, p.proname;
 
 
 -- ----------------------------------------------------------------------------
+-- 検査5-b: 危険度で並べ替える（★穴6の続き / 2026-08-06）
+-- ----------------------------------------------------------------------------
+-- 検査5 は「anon から叩けて auth.uid() を見ない SECURITY DEFINER」を全部出す。
+-- そこに**公開が仕様のもの**（予約ページが使う get_tenant_public 等）が混ざるので、
+-- **user_id を引数で受け取っているか**で並べ替えて、危ないものを上に出す。
+--
+-- 上流の実測（2026-08-06）では 37 件出て、そのうち
+-- **user_id を引数で受け取り照合していないもの**が本命だった:
+--
+--   buy_shop_item(p_user_id, ...)   他人のコインで買い物させ残高を0にできる
+--   complete_dungeon_run(...)       コイン・EXPの数値を引数でそのまま渡せる
+--   get_ranking(...)                全ジムの会員の user_id 一覧が取れる（他の攻撃の材料）
+--   get_booked_slots(check_date)    **全テナントの**予約表が取れる
+--
+-- ⚠️ **塞いではいけないものが混ざる。** ログイン前の予約ページが使う関数
+--    （get_tenant_public / get_tenant_booked_slots / lookup_tenant_by_invite_code）
+--    を塞ぐと**未ログインの予約ページが真っ白になる。**
+
+SELECT
+  p.proname,
+  pg_get_function_identity_arguments(p.oid) AS args,
+  (pg_get_function_identity_arguments(p.oid) ~ '(^|,\s*)(p_|_)?user_id\s') AS takes_user_id,
+  CASE
+    WHEN pg_get_function_identity_arguments(p.oid) ~ '(^|,\s*)(p_|_)?user_id\s'
+      THEN '★★ 他人の user_id を渡せる'
+    ELSE '★ 要確認（公開が仕様のものが混ざる）'
+  END AS verdict
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_type t ON t.oid = p.prorettype
+WHERE n.nspname = 'public'
+  AND p.prosecdef
+  AND t.typname <> 'trigger'                    -- トリガー関数は RPC として呼べない
+  AND has_function_privilege('anon', p.oid, 'EXECUTE')
+  AND NOT (p.prosrc ~ 'auth\.uid\(\)')
+ORDER BY takes_user_id DESC, p.proname;
+
+-- 塞ぎ方は supabase/migrations/20260806120000_revoke_anon_security_definer.sql を参照。
+-- **RLS ポリシーが使っている述語（has_role 等）を authenticated から剥がさないこと。**
+-- 上流では has_role を 104 件のポリシーが使っており、剥がすとアプリ全体が即死する。
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

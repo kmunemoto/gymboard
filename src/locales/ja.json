@@ -826,6 +826,62 @@
         "deleteFailedDesc": "権限がないか、すでに削除されている可能性があります",
         "deleteError": "削除に失敗しました"
       }
+    },
+    "analysis": {
+      "categories": {
+        "forwardHead": "頭部の前傾（ストレートネック）",
+        "shoulderTilt": "肩の左右差",
+        "roundedBack": "猫背（胸椎の丸まり）",
+        "pelvicTilt": "骨盤の前傾/後傾",
+        "legAlignment": "O脚/X脚の傾向",
+        "weightShift": "重心の偏り",
+        "overall": "総合"
+      },
+      "sides": {
+        "leftShoulder": "左肩",
+        "rightShoulder": "右肩",
+        "left": "左",
+        "right": "右"
+      },
+      "messages": {
+        "forwardHeadBad": "頭が肩より前に出ています。ストレートネックの傾向があります。デスクワーク時の画面位置を見直しましょう。",
+        "forwardHeadWarning": "頭がやや前方に出ている傾向があります。意識的に顎を引く習慣をつけましょう。",
+        "forwardHeadGood": "頭部の位置は良好です。",
+        "shoulderTiltBad": "{{side}}が明らかに下がっています。片側に荷物を持つ癖がないか確認し、僧帽筋のバランストレーニングを行いましょう。",
+        "shoulderTiltWarning": "{{side}}が少し下がっている傾向があります。片側に荷物を持つ癖がないか確認しましょう。",
+        "shoulderTiltGood": "左右の肩の高さは均等で良好です。",
+        "roundedBackBad": "背中が丸まっている傾向があります。胸を張るストレッチを取り入れましょう。",
+        "roundedBackWarning": "やや前かがみの姿勢です。意識的に胸を開くようにしましょう。",
+        "roundedBackGood": "上半身の姿勢は良好です。背筋が伸びています。",
+        "pelvicTiltAnterior": "骨盤がやや前傾しています。腸腰筋のストレッチと腹筋強化がおすすめです。",
+        "pelvicTiltPosterior": "骨盤がやや後傾しています。ハムストリングスのストレッチがおすすめです。",
+        "pelvicTiltGood": "骨盤のアライメントは良好です。",
+        "legAlignmentKnock": "X脚（ノックニー）の傾向が見られます。内転筋と臀筋のトレーニングを取り入れましょう。",
+        "legAlignmentBow": "O脚（ガニ股）の傾向が見られます。内転筋のストレッチとトレーニングがおすすめです。",
+        "legAlignmentGood": "脚のアライメントは良好です。",
+        "weightShiftWarning": "重心がやや{{side}}に偏っています。左右均等に体重を乗せるよう意識しましょう。",
+        "weightShiftGood": "左右の重心バランスが取れています。",
+        "overallGood": "左右のバランスが取れた綺麗な姿勢です！"
+      },
+      "exercises": {
+        "chinTuck": "チンタック",
+        "neckStretch": "首の後ろのストレッチ",
+        "scmRelease": "胸鎖乳突筋リリース",
+        "shrugWeakSide": "シュラッグ（弱い側を多めに）",
+        "sidePlank": "サイドプランク",
+        "thoracicMobility": "胸椎モビリティドリル",
+        "facePull": "フェイスプル",
+        "thoracicExtension": "ソラシックエクステンション",
+        "hipFlexorStretch": "ヒップフレクサーストレッチ",
+        "deadBug": "デッドバグ",
+        "gluteBridge": "グルートブリッジ",
+        "hamstringStretch": "ハムストリングスストレッチ",
+        "romanianDeadlift": "ルーマニアンデッドリフト",
+        "clamshell": "クラムシェル",
+        "miniBandWalk": "ミニバンドウォーク",
+        "wideSquat": "ワイドスクワット",
+        "adductorStretch": "内転筋ストレッチ"
+      }
     }
   },
   "report": {

@@ -20,8 +20,10 @@ afterEach(() => {
   vi.doUnmock("@/lib/featureFlags");
 });
 
+// ⚠️ **`as PostureFeedback` のキャストを付けないこと。**
+// 以前はキャストで欠けたフィールドを黙らせており、型を変えても気づけなかった。
 const feedbacks: PostureFeedback[] = [
-  { category: "猫背（胸椎の丸まり）", severity: "warning", message: "" } as PostureFeedback,
+  { type: "warning", severity: "warning", categoryKey: "roundedBack", messageKey: "roundedBackWarning" },
 ];
 
 describe("骨格診断（TrainingRecommendationCard の疎結合）", () => {

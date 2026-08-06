@@ -826,6 +826,62 @@
         "deleteFailedDesc": "You may not have permission, or it may already be deleted",
         "deleteError": "Failed to delete"
       }
+    },
+    "analysis": {
+      "categories": {
+        "forwardHead": "Forward head (text neck)",
+        "shoulderTilt": "Shoulder imbalance",
+        "roundedBack": "Rounded back",
+        "pelvicTilt": "Pelvic tilt",
+        "legAlignment": "Knock/bow legs",
+        "weightShift": "Weight distribution",
+        "overall": "Overall"
+      },
+      "sides": {
+        "leftShoulder": "your left shoulder",
+        "rightShoulder": "your right shoulder",
+        "left": "the left",
+        "right": "the right"
+      },
+      "messages": {
+        "forwardHeadBad": "Your head sits forward of your shoulders, a sign of text neck. Check your screen position when working at a desk.",
+        "forwardHeadWarning": "Your head tends to sit slightly forward. Try to tuck your chin consciously.",
+        "forwardHeadGood": "Your head position looks good.",
+        "shoulderTiltBad": "{{side}} is clearly lower. Check whether you carry bags on one side, and train the traps for balance.",
+        "shoulderTiltWarning": "{{side}} sits slightly lower. Check whether you carry bags on one side.",
+        "shoulderTiltGood": "Your shoulders are level. Nicely balanced.",
+        "roundedBackBad": "Your upper back tends to round. Add stretches that open the chest.",
+        "roundedBackWarning": "You lean forward slightly. Try to open your chest consciously.",
+        "roundedBackGood": "Your upper body posture looks good. Your back is nicely extended.",
+        "pelvicTiltAnterior": "Your pelvis tilts slightly forward. Hip flexor stretches and core work are recommended.",
+        "pelvicTiltPosterior": "Your pelvis tilts slightly back. Hamstring stretches are recommended.",
+        "pelvicTiltGood": "Your pelvic alignment looks good.",
+        "legAlignmentKnock": "A knock-knee tendency is visible. Add adductor and glute training.",
+        "legAlignmentBow": "A bow-leg tendency is visible. Adductor stretching and training are recommended.",
+        "legAlignmentGood": "Your leg alignment looks good.",
+        "weightShiftWarning": "Your weight leans slightly to {{side}}. Try to load both sides evenly.",
+        "weightShiftGood": "Your weight is evenly balanced.",
+        "overallGood": "Nicely balanced posture!"
+      },
+      "exercises": {
+        "chinTuck": "Chin tuck",
+        "neckStretch": "Neck stretch",
+        "scmRelease": "SCM release",
+        "shrugWeakSide": "Shrugs (more on the weaker side)",
+        "sidePlank": "Side plank",
+        "thoracicMobility": "Thoracic mobility drill",
+        "facePull": "Face pull",
+        "thoracicExtension": "Thoracic extension",
+        "hipFlexorStretch": "Hip flexor stretch",
+        "deadBug": "Dead bug",
+        "gluteBridge": "Glute bridge",
+        "hamstringStretch": "Hamstring stretch",
+        "romanianDeadlift": "Romanian deadlift",
+        "clamshell": "Clamshell",
+        "miniBandWalk": "Mini band walk",
+        "wideSquat": "Wide squat",
+        "adductorStretch": "Adductor stretch"
+      }
     }
   },
   "report": {

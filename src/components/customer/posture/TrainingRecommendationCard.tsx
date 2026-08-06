@@ -1,7 +1,7 @@
 import { Dumbbell, Target, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
-import type { SkeletalType, PostureFeedback } from "./types";
+import type { SkeletalType, PostureFeedback, PostureCategoryKey } from "./types";
 
 type TrainingTip = {
   area: string;
@@ -39,18 +39,24 @@ const TrainingRecommendationCard = ({ skeletalType, feedbacks = [] }: Props) => 
       }
     : null;
 
-  const POSTURE_EXERCISES: Record<string, TrainingTip> = {
-    "頭部の前傾（ストレートネック）": t("posture.recommendation.postureExercises.straightNeck", { returnObjects: true }) as TrainingTip,
-    "猫背（胸椎の丸まり）": t("posture.recommendation.postureExercises.roundedBack", { returnObjects: true }) as TrainingTip,
-    "骨盤の前傾/後傾": t("posture.recommendation.postureExercises.pelvicTilt", { returnObjects: true }) as TrainingTip,
+  // ⚠️ **表示文字列を照合キーにしないこと。**
+  // 以前は日本語のカテゴリ名（"頭部の前傾（ストレートネック）" 等）をキーにしていた。
+  // その状態で文言を i18n 化して業種オーバーレイで差し替えると、
+  // **照合が黙って外れ、エラーも出ないまま推奨だけが消える**（ピラボードの指摘）。
+  // 翻訳されない categoryKey で引く。
+  const POSTURE_EXERCISES: Partial<Record<PostureCategoryKey, TrainingTip>> = {
+    forwardHead: t("posture.recommendation.postureExercises.straightNeck", { returnObjects: true }) as TrainingTip,
+    roundedBack: t("posture.recommendation.postureExercises.roundedBack", { returnObjects: true }) as TrainingTip,
+    pelvicTilt: t("posture.recommendation.postureExercises.pelvicTilt", { returnObjects: true }) as TrainingTip,
   };
 
   // 見えている姿勢の癖（猫背・ストレートネック・骨盤の傾き）に対する提案は、
   // 骨格タイプの分類（診断）とは独立している。skeletalType が null でも出る。
   const postureTips: TrainingTip[] = [];
   for (const fb of feedbacks) {
-    if (fb.severity !== "good" && POSTURE_EXERCISES[fb.category]) {
-      postureTips.push(POSTURE_EXERCISES[fb.category]);
+    const tip = POSTURE_EXERCISES[fb.categoryKey];
+    if (fb.severity !== "good" && tip) {
+      postureTips.push(tip);
     }
   }
 

@@ -65,26 +65,26 @@ export function analyzePosture(
       feedbacks.push({
         type: "warning",
         severity: "bad",
-        category: "頭部の前傾（ストレートネック）",
-        message: "頭が肩より前に出ています。ストレートネックの傾向があります。デスクワーク時の画面位置を見直しましょう。",
-        exercises: ["チンタック", "首の後ろのストレッチ", "胸鎖乳突筋リリース"],
+        categoryKey: "forwardHead",
+        messageKey: "forwardHeadBad",
+        exerciseKeys: ["chinTuck", "neckStretch", "scmRelease"],
       });
       deductions += 15;
     } else if (Math.abs(forwardShift) > 0.02) {
       feedbacks.push({
         type: "warning",
         severity: "warning",
-        category: "頭部の前傾（ストレートネック）",
-        message: "頭がやや前方に出ている傾向があります。意識的に顎を引く習慣をつけましょう。",
-        exercises: ["チンタック"],
+        categoryKey: "forwardHead",
+        messageKey: "forwardHeadWarning",
+        exerciseKeys: ["chinTuck"],
       });
       deductions += 8;
     } else {
       feedbacks.push({
         type: "good",
         severity: "good",
-        category: "頭部の前傾（ストレートネック）",
-        message: "頭部の位置は良好です。",
+        categoryKey: "forwardHead",
+        messageKey: "forwardHeadGood",
       });
     }
   }
@@ -93,30 +93,30 @@ export function analyzePosture(
   if (isValid(ls) && isValid(rs)) {
     const diff = relDiff(ls, rs, imgH);
     if (Math.abs(diff) > THRESHOLD * 2) {
-      const side = diff > 0 ? "左肩" : "右肩";
+      const sideKey = diff > 0 ? "leftShoulder" : "rightShoulder";
       feedbacks.push({
         type: "warning",
         severity: "bad",
-        category: "肩の左右差",
-        message: `${side}が明らかに下がっています。片側に荷物を持つ癖がないか確認し、僧帽筋のバランストレーニングを行いましょう。`,
-        exercises: ["シュラッグ（弱い側を多めに）", "サイドプランク"],
+        categoryKey: "shoulderTilt",
+        messageKey: "shoulderTiltBad", sideKey,
+        exerciseKeys: ["shrugWeakSide", "sidePlank"],
       });
       deductions += 15;
     } else if (Math.abs(diff) > THRESHOLD) {
-      const side = diff > 0 ? "左肩" : "右肩";
+      const sideKey = diff > 0 ? "leftShoulder" : "rightShoulder";
       feedbacks.push({
         type: "warning",
         severity: "warning",
-        category: "肩の左右差",
-        message: `${side}が少し下がっている傾向があります。片側に荷物を持つ癖がないか確認しましょう。`,
+        categoryKey: "shoulderTilt",
+        messageKey: "shoulderTiltWarning", sideKey,
       });
       deductions += 8;
     } else {
       feedbacks.push({
         type: "good",
         severity: "good",
-        category: "肩の左右差",
-        message: "左右の肩の高さは均等で良好です。",
+        categoryKey: "shoulderTilt",
+        messageKey: "shoulderTiltGood",
       });
     }
   }
@@ -134,26 +134,26 @@ export function analyzePosture(
       feedbacks.push({
         type: "warning",
         severity: "bad",
-        category: "猫背（胸椎の丸まり）",
-        message: "背中が丸まっている傾向があります。胸を張るストレッチを取り入れましょう。",
-        exercises: ["胸椎モビリティドリル", "フェイスプル", "ソラシックエクステンション"],
+        categoryKey: "roundedBack",
+        messageKey: "roundedBackBad",
+        exerciseKeys: ["thoracicMobility", "facePull", "thoracicExtension"],
       });
       deductions += 15;
     } else if (Math.abs(torsoShift) > 0.08) {
       feedbacks.push({
         type: "warning",
         severity: "warning",
-        category: "猫背（胸椎の丸まり）",
-        message: "やや前かがみの姿勢です。意識的に胸を開くようにしましょう。",
-        exercises: ["胸椎モビリティドリル"],
+        categoryKey: "roundedBack",
+        messageKey: "roundedBackWarning",
+        exerciseKeys: ["thoracicMobility"],
       });
       deductions += 8;
     } else {
       feedbacks.push({
         type: "good",
         severity: "good",
-        category: "猫背（胸椎の丸まり）",
-        message: "上半身の姿勢は良好です。背筋が伸びています。",
+        categoryKey: "roundedBack",
+        messageKey: "roundedBackGood",
       });
     }
   }
@@ -175,26 +175,26 @@ export function analyzePosture(
         feedbacks.push({
           type: "warning",
           severity: "bad",
-          category: "骨盤の前傾/後傾",
-          message: "骨盤がやや前傾しています。腸腰筋のストレッチと腹筋強化がおすすめです。",
-          exercises: ["ヒップフレクサーストレッチ", "デッドバグ", "グルートブリッジ"],
+          categoryKey: "pelvicTilt",
+          messageKey: "pelvicTiltAnterior",
+          exerciseKeys: ["hipFlexorStretch", "deadBug", "gluteBridge"],
         });
         deductions += 12;
       } else if (hipForward < -0.02) {
         feedbacks.push({
           type: "warning",
           severity: "warning",
-          category: "骨盤の前傾/後傾",
-          message: "骨盤がやや後傾しています。ハムストリングスのストレッチがおすすめです。",
-          exercises: ["ハムストリングスストレッチ", "ルーマニアンデッドリフト"],
+          categoryKey: "pelvicTilt",
+          messageKey: "pelvicTiltPosterior",
+          exerciseKeys: ["hamstringStretch", "romanianDeadlift"],
         });
         deductions += 8;
       } else {
         feedbacks.push({
           type: "good",
           severity: "good",
-          category: "骨盤の前傾/後傾",
-          message: "骨盤のアライメントは良好です。",
+          categoryKey: "pelvicTilt",
+          messageKey: "pelvicTiltGood",
         });
       }
     }
@@ -214,26 +214,26 @@ export function analyzePosture(
         feedbacks.push({
           type: "warning",
           severity: "warning",
-          category: "O脚/X脚の傾向",
-          message: "X脚（ノックニー）の傾向が見られます。内転筋と臀筋のトレーニングを取り入れましょう。",
-          exercises: ["クラムシェル", "ミニバンドウォーク"],
+          categoryKey: "legAlignment",
+          messageKey: "legAlignmentKnock",
+          exerciseKeys: ["clamshell", "miniBandWalk"],
         });
         deductions += 8;
       } else if (kneeAnkleRatio > 1.4) {
         feedbacks.push({
           type: "warning",
           severity: "warning",
-          category: "O脚/X脚の傾向",
-          message: "O脚（ガニ股）の傾向が見られます。内転筋のストレッチとトレーニングがおすすめです。",
-          exercises: ["ワイドスクワット", "内転筋ストレッチ"],
+          categoryKey: "legAlignment",
+          messageKey: "legAlignmentBow",
+          exerciseKeys: ["wideSquat", "adductorStretch"],
         });
         deductions += 8;
       } else {
         feedbacks.push({
           type: "good",
           severity: "good",
-          category: "O脚/X脚の傾向",
-          message: "脚のアライメントは良好です。",
+          categoryKey: "legAlignment",
+          messageKey: "legAlignmentGood",
         });
       }
     }
@@ -248,20 +248,20 @@ export function analyzePosture(
       const centerX = (ls.x + rs.x) / 2;
       const deviation = (avgX - centerX) / imgH;
       if (Math.abs(deviation) > 0.03) {
-        const side = deviation > 0 ? "右" : "左";
+        const sideKey = deviation > 0 ? "right" : "left";
         feedbacks.push({
           type: "warning",
           severity: "warning",
-          category: "重心の偏り",
-          message: `重心がやや${side}に偏っています。左右均等に体重を乗せるよう意識しましょう。`,
+          categoryKey: "weightShift",
+          messageKey: "weightShiftWarning", sideKey,
         });
         deductions += 5;
       } else {
         feedbacks.push({
           type: "good",
           severity: "good",
-          category: "重心の偏り",
-          message: "左右の重心バランスが取れています。",
+          categoryKey: "weightShift",
+          messageKey: "weightShiftGood",
         });
       }
     }
@@ -271,8 +271,8 @@ export function analyzePosture(
     feedbacks.push({
       type: "good",
       severity: "good",
-      category: "総合",
-      message: "左右のバランスが取れた綺麗な姿勢です！",
+      categoryKey: "overall",
+      messageKey: "overallGood",
     });
   }
 

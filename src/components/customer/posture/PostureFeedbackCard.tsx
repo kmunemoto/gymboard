@@ -77,13 +77,20 @@ const PostureFeedbackCard = ({ feedbacks, score }: Props) => {
               <div className="flex items-start gap-2 text-sm">
                 <SeverityIcon severity={fb.severity} />
                 <div className="flex-1">
-                  <span className="font-semibold text-xs">{fb.category}</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">{fb.message}</p>
-                  {fb.exercises && fb.exercises.length > 0 && (
+                  {/* エンジンはキーだけを返す。翻訳はここで行う（types.ts のコメント参照） */}
+                  <span className="font-semibold text-xs">
+                    {t(`posture.analysis.categories.${fb.categoryKey}`)}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t(`posture.analysis.messages.${fb.messageKey}`, {
+                      side: fb.sideKey ? t(`posture.analysis.sides.${fb.sideKey}`) : "",
+                    })}
+                  </p>
+                  {fb.exerciseKeys && fb.exerciseKeys.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {fb.exercises.map((ex) => (
+                      {fb.exerciseKeys.map((ex) => (
                         <span key={ex} className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
-                          {ex}
+                          {t(`posture.analysis.exercises.${ex}`)}
                         </span>
                       ))}
                     </div>

@@ -8,25 +8,51 @@ U+FFFD（置換文字）に壊す。** 同じ事故が**2回**起きている。
 | 時期 | アプリ | 種別 | 化けた文字 |
 |---|---|---|---|
 | 2026-06 | ジムボード | `recovery` | 「パスワ**???**ード」 |
-| 2026-08 | ピラボード | `signup` | 「お心**当**たり」の「当」が U+FFFD ×3 → **お客様に届いた** |
+| 2026-08 | ピラボード | `signup` | 「お心**当**たり」の「当」が U+FFFD ×3（報告。生ソース未確認） |
+| 2026-08 | **ジムボード** | **予約確認メール** | **「アプ**リ**からキャンセル」の「リ」。実 Deno で再現・修正済み** |
 
 **1回目の対処が `recovery` だけだったので、2回目が起きた。**
 
-## 引き金は `<Preview>`
+## 🔴 真因（2026-08-06 に特定。それまでの理解は誤りだった）
 
-上流自身の `recovery.tsx` のコメントが説明していた。
+**`@react-email/render@0.0.17` の browser ビルド（Deno が引く方）が、
+`TextDecoder` を stream モードで使っていない。**
 
-> `<Preview>` is intentionally omitted. It injects a long run of invisible padding
-> characters before the body, pushing the body to a large byte offset. The streaming
-> HTML renderer (Deno) then splits a multibyte UTF-8 character at a chunk boundary.
+```js
+var decoder = new TextDecoder("utf-8");
+var readStream = (stream) => { ... write(chunk) { result += decoder.decode(chunk); } }
+                                                          ^^^^^^^^^^^^^^^^^^^^^^
+                                              ⚠️ { stream: true } が無い
+```
 
-**5種別すべてに `<Preview>` が残っていた。** そして壊れたのは
-`signup.tsx:53` の**文書の一番後ろにあるフッター文**だった。辻褄が合う。
+`{ stream: true }` が無いと、**各チャンクを独立した完結UTF-8列として復号する。**
+境界をまたいだ多バイト文字は復号できず U+FFFD になる
+（3バイト文字が 1|2 に割れれば U+FFFD ×3、2|1 なら ×2）。
+
+Deno は `react-dom/server` の `deno` 条件で `server.browser.js`
+（`renderToReadableStream`）を引くため**必ずこの経路に入る**。
+Node は `renderToPipeableStream` なので**手元では再現しない**。
+
+### ⚠️ `<Preview>` は原因ではなかった
+
+2026-06 の対処は「`<Preview>` が本文を大きなバイトオフセットまで押し出すのが原因」
+と理解して書かれていた（`recovery.tsx` のコメント）。**これは誤り。**
+`<Preview>` は**壊れる位置をずらすだけ**で、外しても文面が伸びれば別の文字が境界に当たる。
+
+**この誤解を放置すると、次に読んだ人が「Preview を消せば直る」という
+当時うまくいかなかった対処を打つ。**
 
 ### 「短いメールなら平気」は成立しない
 
-壊れるのは**文書の後ろにある文字ほど**起きやすい。`<Preview>` を外しても、
-文面が伸びればまた境界に当たる。**条件次第で再発する対処は対処ではない。**
+**入力の長さ次第で化けたり化けなかったりする。** 実測（実 Deno・2026-08-06）:
+
+```
+予約確認メールの宛名を1〜60文字で振って60通り
+  renderAsync（ストリーミング） … 3件で化けた（宛名1〜3文字。「アプ?からキャンセル」）
+  render（同期）               … 0件
+```
+
+**1通試して無事でも、何も保証されない。**
 
 ## この化けは検知できない
 
@@ -94,3 +120,29 @@ PCのメールソフトで開く）。`token_hash` 方式は**設定に依存し
 ピラボードが先行実装している（`kmunemoto/active-app-studio#55`）。
 `auth-plain.ts` + `authEmailPlain.test.ts` を取り込み、文面を自分の言葉に差し替えること。
 **`<Preview>` を使った react-email テンプレートが残っていたら、それは時限爆弾。**
+
+---
+
+## 取引メールも同じ原因で化けていた（Phase 2・同時に修正）
+
+**認証メールより先に、こちらが実害を出していた。**
+お客様に届く**予約確認メール**が、**宛名が1〜3文字のときに化ける**。
+
+取引メールは予約明細のテーブル・条件分岐・金額表示を持ち、素の文字列に
+書き直すと大規模になる。**いま化けているものを止めるのが先**なので、
+`renderAsync` → **同期 `render`** に置換した（`renderToStaticMarkup` を使い
+ストリームを通らない）。
+
+修正後、**取引メール8種 × 40通り = 320検体すべてで化け0**を確認済み。
+
+`wrapEmailHtml` / `makeEmailHtmlAsciiSafe` は残す。あれは**送信経路**
+（quoted-printable の76バイト折り返し）に対する第2層で、
+**描画側が壊した文字は直せない。** 第1層（`render`）が要る。
+
+### 検査
+
+vitest は `.tsx`（`npm:react`）を import できないので描画結果は検査できない。
+`src/test/emailEncoding.test.ts` が**ソースを見て `renderAsync` の復活を禁じる**
+（変異で赤を確認済み）。
+
+**「手元で試したら大丈夫だった」は根拠にならない。** Node では再現しない。

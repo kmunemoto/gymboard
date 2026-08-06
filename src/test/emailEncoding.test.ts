@@ -98,3 +98,52 @@ describe("makeEmailHtmlAsciiSafe（予約メール文字化け対策）", () => 
     expect(source).toContain("<SafeText style={text}>お会いできることを楽しみにしております！</SafeText>");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 🔴 ストリーミング描画を使っていないこと（2026-08-06 追加）
+// ---------------------------------------------------------------------------
+//
+// `@react-email/render@0.0.17` の browser ビルド（**Deno が引く方**）は
+// `readStream` で `decoder.decode(chunk)` を **`{ stream: true }` 無し**で呼ぶ。
+// 各チャンクを独立した完結UTF-8列として復号するので、**境界をまたいだ
+// 多バイト文字が U+FFFD に化ける。**
+//
+// ⚠️ **Node では再現しない。** Deno だけが `renderToReadableStream` の経路に入る。
+//    だから「手元で試したら大丈夫だった」は根拠にならない。
+//
+// ⚠️ **入力の長さ次第で化けたり化けなかったりする。**
+//    実測（実 Deno / 予約確認メールの宛名を1〜60文字で振る）:
+//      renderAsync … 3件で化けた（宛名1〜3文字。「アプ?からキャンセル」）
+//      render      … 0件
+//    修正後は取引メール8種 × 40通り = 320検体すべて化け0を確認済み。
+//
+// vitest は `.tsx`（`npm:react`）を import できないので描画結果は検査できない。
+// **ソースを見て `renderAsync` が復活していないこと**を見張る。
+
+describe("メール描画にストリーミングを使っていない", () => {
+  const FILES = [
+    "supabase/functions/send-transactional-email/index.ts",
+    "supabase/functions/auth-email-hook/index.ts",
+  ];
+
+  for (const file of FILES) {
+    it(`${file} が renderAsync を使っていない`, () => {
+      const code = readFileSync(file, "utf8")
+        .replace(/\/\/[^\n]*/g, "")
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(
+        code,
+        `${file} に renderAsync が復活しています。Deno のストリーミング描画は ` +
+          `日本語を U+FFFD に壊します（TextDecoder が stream モードでないため）。` +
+          `同期の render を使ってください`,
+      ).not.toMatch(/renderAsync/);
+    });
+  }
+
+  it("取引メールは同期の render を使っている（空振り防止）", () => {
+    const code = readFileSync(FILES[0], "utf8");
+    expect(code).toMatch(/import \{ render \} from/);
+    expect(code).toMatch(/const rawHtml = render\(/);
+    expect(code).toMatch(/const plainText = render\(/);
+  });
+});

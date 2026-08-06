@@ -11,10 +11,15 @@ import {
   PLAN_CARDS,
   lookupKeyFor,
   detectStripeEnvironment,
+  checkoutWebOrigin,
+  checkoutHostname,
+  BILLING_RETURN_PATH,
   formatLimit,
   type GymboardPeriod,
   type GymboardPlan,
 } from "@/lib/gymboardPlans";
+import { PRODUCTION_WEB_ORIGIN } from "@/lib/brand";
+import { NATIVE_DIRECT_CHECKOUT } from "@/lib/featureFlags";
 import { Check, CreditCard, ExternalLink, Users, Info } from "lucide-react";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
@@ -72,16 +77,25 @@ const TrainerBilling = () => {
     if (!lookup_key) return;
     setLoadingPlan(plan);
     try {
-      const origin = window.location.origin;
-      const path = window.location.pathname;
-      const environment = detectStripeEnvironment(window.location.hostname);
+      // ⚠️ ネイティブでは window.location.hostname が "localhost" になり、
+      //    そのまま渡すと sandbox の Checkout が作られて**課金されない**。
+      //    checkoutWebOrigin() が本番Webのオリジンに読み替える（理由はそちらのコメント）。
+      const webOrigin = checkoutWebOrigin(isNative, window.location.origin);
+      const environment = detectStripeEnvironment(checkoutHostname(webOrigin));
+      // 戻り先: Web はいまの画面へ、ネイティブは中継ページ経由でアプリへ戻す
+      const returnBase = isNative
+        ? `${webOrigin}${BILLING_RETURN_PATH}`
+        : `${webOrigin}${window.location.pathname}`;
+      const [successKey, cancelKey] = isNative
+        ? ["status=success", "status=cancel"]
+        : ["billing=success", "billing=cancel"];
       const { data, error } = await supabase.functions.invoke("gymboard-create-checkout", {
         body: {
           tenant_id: tenant.id,
           lookup_key,
           environment,
-          success_url: `${origin}${path}?billing=success`,
-          cancel_url: `${origin}${path}?billing=cancel`,
+          success_url: `${returnBase}?${successKey}`,
+          cancel_url: `${returnBase}?${cancelKey}`,
         },
       });
       let serverError: string | undefined = (data as any)?.error;
@@ -94,7 +108,13 @@ const TrainerBilling = () => {
       if (error || serverError || !data?.url) {
         throw new Error(serverError || error?.message || t("settings.billing.checkoutFailed"));
       }
-      navigateTopLevel(data.url);
+      // ネイティブはシステムブラウザで開く。Stripe Checkout は自前のログイン状態を
+      // 必要としない（状態は URL の cs_... に入っている）ので、**プライベートブラウズでも動く**。
+      if (isNative) {
+        await openExternalUrl(data.url);
+      } else {
+        navigateTopLevel(data.url);
+      }
     } catch (e) {
       console.error("gymboard-create-checkout failed:", e);
       toast.error(e?.message || t("settings.billing.genericError"));
@@ -139,7 +159,8 @@ const TrainerBilling = () => {
   // ===== Native (iOS/Android) view =====
   if (isNative) {
     const currentCard = PLAN_CARDS.find((p) => p.plan === currentPlan)!;
-    const webPlansUrl = "https://gymboard.lovable.app/?tab=billing";
+    // ⚠️ 直書きしないこと。兄弟アプリが上流の課金画面に飛ぶ（2026-08-06 に実際にそうなっていた）
+    const webPlansUrl = `${PRODUCTION_WEB_ORIGIN}/?tab=billing`;
     return (
       <div className="space-y-4">
         <Card>
@@ -210,11 +231,31 @@ const TrainerBilling = () => {
                     <Check className="w-3.5 h-3.5 text-accent" />
                     {t("settings.billing.customers", { limit: formatLimit(card.maxCustomers) })}
                   </div>
+                  {NATIVE_DIRECT_CHECKOUT && isOwner && !isCurrent && !isFree && (
+                    <Button
+                      size="sm"
+                      variant="accent"
+                      className="w-full mt-1"
+                      disabled={loadingPlan !== null}
+                      onClick={() => handleCheckout(card.plan)}
+                    >
+                      {loadingPlan === card.plan
+                        ? t("settings.billing.opening")
+                        : t("settings.billing.selectPlan")}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
+
+        {NATIVE_DIRECT_CHECKOUT && isOwner && (
+          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-[11px] text-muted-foreground">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <p>{t("settings.billing.nativeCheckoutNote")}</p>
+          </div>
+        )}
 
         {isOwner && (
           <Card>
@@ -225,6 +266,7 @@ const TrainerBilling = () => {
               </p>
               <Button
                 size="sm"
+                variant={NATIVE_DIRECT_CHECKOUT ? "outline" : "default"}
                 className="w-full"
                 onClick={() => openExternalUrl(webPlansUrl)}
               >

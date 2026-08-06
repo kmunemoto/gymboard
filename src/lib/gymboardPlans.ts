@@ -1,7 +1,7 @@
 // GymBoard SaaS subscription plan definitions (client-side).
 // Mirrors supabase/functions/_shared/gymboard-plans.ts.
 
-import { STRIPE_LIVE_HOSTS as BRAND_STRIPE_LIVE_HOSTS } from "@/lib/brand";
+import { STRIPE_LIVE_HOSTS as BRAND_STRIPE_LIVE_HOSTS, PRODUCTION_WEB_ORIGIN } from "@/lib/brand";
 
 export type GymboardPlan = "free" | "light" | "standard" | "premium";
 export type GymboardPeriod = "monthly" | "yearly";
@@ -73,6 +73,45 @@ export function lookupKeyFor(plan: GymboardPlan, period: GymboardPeriod): string
 
 export function getPlanCard(plan: GymboardPlan): PlanCardDef | undefined {
   return PLAN_CARDS.find((p) => p.plan === plan);
+}
+
+/** ネイティブから決済へ行って戻ってくる中継ページのパス */
+export const BILLING_RETURN_PATH = "/billing/return";
+
+/**
+ * Checkout の `success_url` / `cancel_url` と **Stripe 環境判定**に使うオリジン。
+ *
+ * ## 🔴 ここを間違えると「決済成功に見えて課金されない」
+ *
+ * ネイティブアプリの `window.location` は **`capacitor://localhost`**（Android は
+ * `https://localhost`）で、**hostname は `localhost`**。
+ * これをそのまま `detectStripeEnvironment()` に渡すと `LIVE_HOSTS` に無いので
+ * **`sandbox` が返る。**
+ *
+ * sandbox の Checkout はテスト用のカード番号しか通らない…のではなく、
+ * **本物のカードを入れても「成功」して、実際には課金されない**。
+ * ジムオーナーからは契約できたように見え、こちらの売上は立たない。
+ * **エラーは一切出ない。**
+ *
+ * 同じ種類の事故は 2026-07 に一度起きている（`app.kyoto-salute.com` が
+ * `LIVE_HOSTS` に無く sandbox に落ちていた）。
+ *
+ * そのためネイティブでは**本番Webのオリジンに読み替える。**
+ * 戻り先URLも同じオリジンにする（Edge Function 側のホワイトリストが
+ * `.kyoto-salute.com` などのドメインしか許さず、カスタムスキームは通らないため。
+ * これは緩めるべきではない — 任意アプリへ飛ばせる穴になる）。
+ */
+export function checkoutWebOrigin(isNative: boolean, windowOrigin: string): string {
+  return isNative ? PRODUCTION_WEB_ORIGIN : windowOrigin;
+}
+
+/** `checkoutWebOrigin()` の結果から、Stripe 環境判定に渡す hostname を取り出す */
+export function checkoutHostname(webOrigin: string): string {
+  try {
+    return new URL(webOrigin).hostname;
+  } catch {
+    return "";
+  }
 }
 
 const STRIPE_ENV_STORAGE_KEY = "gymboard_stripe_env_override";

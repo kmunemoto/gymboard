@@ -336,7 +336,10 @@
       "portalManage": "管理付款·合約",
       "portalDesc": "更新帳單資訊、下載收據、取消方案（變更為 Free）均可在客戶入口中進行。",
       "openPortal": "開啟客戶入口",
-      "freeNote": "變更為 Free 方案（取消）請在客戶入口中進行。"
+      "freeNote": "變更為 Free 方案（取消）請在客戶入口中進行。",
+      "selectPlan": "選擇此方案",
+      "opening": "正在開啟付款頁面…",
+      "nativeCheckoutNote": "付款將在瀏覽器的 Stripe 付款頁面安全完成。完成後會返回應用程式。"
     }
   },
   "home": {
@@ -2300,5 +2303,13 @@
     "body": "如果有2名教練、2張床位等可以同時接待多位顧客的情況，請設定為相應數量。維持為1時，即使有空位也會顯示為「已滿」，因而錯失預約。",
     "save": "儲存",
     "saved": "已儲存"
+  },
+  "billingReturn": {
+    "successTitle": "付款已完成",
+    "cancelTitle": "已取消申請",
+    "successBody": "方案更新可能需要一點時間。請返回應用程式確認。",
+    "cancelBody": "未產生費用。可在應用程式中重新申請。",
+    "backToApp": "返回應用程式",
+    "manualHint": "若未自動返回，請點選上方按鈕。"
   }
 }

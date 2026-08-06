@@ -336,7 +336,10 @@
       "portalManage": "Manage Billing & Subscription",
       "portalDesc": "You can update billing information, download receipts, and cancel your plan (switch to Free) from the customer portal.",
       "openPortal": "Open Customer Portal",
-      "freeNote": "To switch to the Free plan (cancel), please use the customer portal."
+      "freeNote": "To switch to the Free plan (cancel), please use the customer portal.",
+      "selectPlan": "Choose this plan",
+      "opening": "Opening checkout…",
+      "nativeCheckoutNote": "Payment is handled securely on Stripe's checkout page in your browser. You will return to the app when it is complete."
     }
   },
   "home": {
@@ -2300,5 +2303,13 @@
     "body": "If you can handle more than one customer at once - two trainers, two beds - set that number. If it stays at 1, slots that are actually free show as full and you lose bookings.",
     "save": "Save",
     "saved": "Saved"
+  },
+  "billingReturn": {
+    "successTitle": "Payment complete",
+    "cancelTitle": "Checkout cancelled",
+    "successBody": "It may take a moment for your plan to update. Return to the app to check.",
+    "cancelBody": "You were not charged. You can try again from the app.",
+    "backToApp": "Return to the app",
+    "manualHint": "If you are not returned automatically, tap the button above."
   }
 }

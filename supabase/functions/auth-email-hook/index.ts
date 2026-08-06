@@ -1,16 +1,11 @@
-import * as React from 'npm:react@18.3.1'
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js'
 import { WebhookError, verifyWebhookRequest } from 'npm:@lovable.dev/webhooks-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { SignupEmail } from '../_shared/email-templates/signup.tsx'
-import { InviteEmail } from '../_shared/email-templates/invite.tsx'
-import { MagicLinkEmail } from '../_shared/email-templates/magic-link.tsx'
-import { RecoveryEmail } from '../_shared/email-templates/recovery.tsx'
-import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
-import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
 import { wrapEmailHtml } from '../_shared/email-encoding.ts'
-import { renderRecoveryHtml, renderRecoveryText } from '../_shared/email-templates/recovery-plain.ts'
+// ⚠️ 認証メールは6種別すべて素の文字列で組み立てる。React・ストリーミング描画は通さない。
+//    種別ごとに逃がすと必ず取りこぼす（2026-06 recovery → 2026-08 signup で再発）。
+//    理由は auth-plain.ts の冒頭。
+import { renderAuthHtml, renderAuthText, type AuthEmailType } from '../_shared/email-templates/auth-plain.ts'
 
 
 const corsHeaders = {
@@ -28,15 +23,12 @@ const EMAIL_SUBJECTS: Record<string, string> = {
   reauthentication: '【ジムボード】認証コード',
 }
 
-// Template mapping
-const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
-  signup: SignupEmail,
-  invite: InviteEmail,
-  magiclink: MagicLinkEmail,
-  recovery: RecoveryEmail,
-  email_change: EmailChangeEmail,
-  reauthentication: ReauthenticationEmail,
-}
+// 扱う認証メールの種別。描画は auth-plain.ts が担う。
+const AUTH_EMAIL_TYPES: readonly AuthEmailType[] = [
+  'signup', 'invite', 'magiclink', 'recovery', 'email_change', 'reauthentication',
+]
+const isAuthEmailType = (t: string): t is AuthEmailType =>
+  (AUTH_EMAIL_TYPES as readonly string[]).includes(t)
 
 // Configuration
 const SITE_NAME = "ジムボード"
@@ -115,17 +107,18 @@ async function handlePreview(req: Request): Promise<Response> {
     })
   }
 
-  const EmailTemplate = EMAIL_TEMPLATES[type]
-
-  if (!EmailTemplate) {
+  if (!isAuthEmailType(type)) {
     return new Response(JSON.stringify({ error: `Unknown email type: ${type}` }), {
       status: 400,
       headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
+  // ⚠️ **プレビューと本番は同じ描画を通すこと。**
+  //    別経路にすると「プレビューは綺麗なのに、届くメールだけ壊れている」という、
+  //    一番気づけない状態を作る（以前はここだけ renderAsync だった）。
   const sampleData = SAMPLE_DATA[type] || {}
-  const html = await renderAsync(React.createElement(EmailTemplate, sampleData))
+  const html = renderAuthHtml(type, sampleData as any)
 
   return new Response(html, {
     status: 200,
@@ -215,8 +208,7 @@ async function handleWebhook(req: Request): Promise<Response> {
   console.log('payload.data keys:', Object.keys(payload.data), 'url:', (payload.data as any).url)
 
 
-  const EmailTemplate = EMAIL_TEMPLATES[emailType]
-  if (!EmailTemplate) {
+  if (!isAuthEmailType(emailType)) {
     console.error('Unknown email type', { emailType, run_id })
     return new Response(
       JSON.stringify({ error: `Unknown email type: ${emailType}` }),
@@ -282,20 +274,13 @@ async function handleWebhook(req: Request): Promise<Response> {
     newEmail: payload.data.new_email,
   }
 
-  // Render the email body to HTML and plain text.
-  // 再設定メールは react-email の描画(renderAsync)が Deno のストリーミング描画で
-  // 日本語マルチバイト文字を U+FFFD に壊す事象が確認されたため、素のテンプレート
-  // 文字列で生成する（React 描画・ストリーミングを一切経由しない＝化けようがない）。
-  // それ以外のメールは従来どおり react-email で描画する。
-  let rawHtml: string
-  let text: string
-  if (emailType === 'recovery') {
-    rawHtml = renderRecoveryHtml(confirmationUrl)
-    text = renderRecoveryText(confirmationUrl)
-  } else {
-    rawHtml = await renderAsync(React.createElement(EmailTemplate, templateProps), { pretty: true })
-    text = await renderAsync(React.createElement(EmailTemplate, templateProps), { plainText: true })
-  }
+  // 本文の描画。**6種別すべて素の文字列**で作る（React・ストリーミングを通さない）。
+  //
+  // 以前は recovery だけをここで逃がしていたが、**2026-08 に signup が同じ穴に落ちた**
+  // （「お心当たり」の「当」が U+FFFD ×3 になってお客様に届いた／ピラボードが実観測）。
+  // 種別ごとに逃がすと必ず取りこぼすので、分岐そのものを無くした。詳細は auth-plain.ts。
+  const rawHtml = renderAuthHtml(emailType, templateProps as any)
+  const text = renderAuthText(emailType, templateProps as any)
   const html = wrapEmailHtml(rawHtml)
 
   // Enqueue email for async processing by the dispatcher (process-email-queue).

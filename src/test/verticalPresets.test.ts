@@ -91,30 +91,17 @@ describe("業種プリセット", () => {
     }
   });
 
-  // TrainingRecommendationCard.tsx は postureExercises を「日本語リテラルをキーにした
-  // Record」で引いている（POSTURE_EXERCISES["頭部の前傾（ストレートネック）"] など）。
-  // プリセット側で area を書き換えると突き合わせが外れ、姿勢フィードバックに対応する
-  // ストレッチが**エラーも出さずに表示されなくなる**。
-  it("姿勢分析の area は上流と同じ文字列のまま（表示の突き合わせが外れないこと）", () => {
-    const card = readFileSync(
-      "src/components/customer/posture/TrainingRecommendationCard.tsx",
-      "utf8",
-    );
-    for (const file of files) {
-      const overlay = readJson(`${PRESET_DIR}/${file}`);
-      const exercises = (overlay.posture as Node | undefined)?.recommendation as Node | undefined;
-      const postureExercises = exercises?.postureExercises as Node | undefined;
-      if (!postureExercises) continue;
-      for (const [name, tip] of Object.entries(postureExercises)) {
-        const area = (tip as { area?: string }).area;
-        if (area === undefined) continue;
-        expect(
-          card.includes(`"${area}"`),
-          `${file} の postureExercises.${name}.area = "${area}" が ` +
-            `TrainingRecommendationCard.tsx の POSTURE_EXERCISES のキーに見つかりません。` +
-            `area を変えると姿勢フィードバックとの突き合わせが黙って外れます。`,
-        ).toBe(true);
-      }
-    }
-  });
+  // 🔴 かつてここに「姿勢分析の area は上流と同じ文字列のまま」という検査があった。
+  //
+  // `TrainingRecommendationCard` が **日本語のカテゴリ名を連想配列のキー**にして
+  // 推奨種目を引いていたため、プリセット側で `area` を書き換えると突き合わせが外れ、
+  // **エラーも出さずに推奨だけ消えた**。その事故を防ぐために
+  // 「業種オーバーレイで area を変えてはいけない」という制約を課していた。
+  //
+  // **2026-08-06、照合を `categoryKey`（翻訳しない安定キー）に移したので、
+  // この制約は不要になった。** プリセットは `area` を自由に業種の言葉にしてよい。
+  // 突き合わせの不変条件は `src/test/postureI18n.test.ts` が見張る。
+  //
+  // ⚠️ **検査を消すのではなく、制約が消えたことを記録している。**
+  //    次に「area を変えたら壊れるのでは」と思った人が、ここで経緯を辿れるように。
 });

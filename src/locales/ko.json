@@ -826,6 +826,62 @@
         "deleteFailedDesc": "권한이 없거나 이미 삭제되었을 수 있습니다",
         "deleteError": "삭제에 실패했습니다"
       }
+    },
+    "analysis": {
+      "categories": {
+        "forwardHead": "거북목(전방 머리)",
+        "shoulderTilt": "어깨 좌우 불균형",
+        "roundedBack": "굽은 등",
+        "pelvicTilt": "골반 전방/후방 경사",
+        "legAlignment": "O자/X자 다리",
+        "weightShift": "무게중심 치우침",
+        "overall": "종합"
+      },
+      "sides": {
+        "leftShoulder": "왼쪽 어깨",
+        "rightShoulder": "오른쪽 어깨",
+        "left": "왼쪽",
+        "right": "오른쪽"
+      },
+      "messages": {
+        "forwardHeadBad": "머리가 어깨보다 앞으로 나와 있습니다. 거북목 경향이 있으니 책상에서 화면 위치를 점검해 보세요.",
+        "forwardHeadWarning": "머리가 다소 앞으로 나오는 경향이 있습니다. 의식적으로 턱을 당기는 습관을 들여 보세요.",
+        "forwardHeadGood": "머리 위치는 양호합니다.",
+        "shoulderTiltBad": "{{side}}가 뚜렷하게 내려가 있습니다. 한쪽으로만 물건을 드는 습관이 있는지 확인하고 승모근 균형 운동을 해 보세요.",
+        "shoulderTiltWarning": "{{side}}가 조금 내려가는 경향이 있습니다. 한쪽으로만 물건을 드는 습관이 있는지 확인해 보세요.",
+        "shoulderTiltGood": "좌우 어깨 높이가 고르게 양호합니다.",
+        "roundedBackBad": "등이 굽는 경향이 있습니다. 가슴을 펴는 스트레칭을 더해 보세요.",
+        "roundedBackWarning": "약간 앞으로 숙인 자세입니다. 의식적으로 가슴을 열어 보세요.",
+        "roundedBackGood": "상체 자세가 양호합니다. 등이 곧게 펴져 있습니다.",
+        "pelvicTiltAnterior": "골반이 다소 앞으로 기울어 있습니다. 장요근 스트레칭과 복근 강화를 권장합니다.",
+        "pelvicTiltPosterior": "골반이 다소 뒤로 기울어 있습니다. 햄스트링 스트레칭을 권장합니다.",
+        "pelvicTiltGood": "골반 정렬이 양호합니다.",
+        "legAlignmentKnock": "X자 다리 경향이 보입니다. 내전근과 둔근 운동을 더해 보세요.",
+        "legAlignmentBow": "O자 다리 경향이 보입니다. 내전근 스트레칭과 운동을 권장합니다.",
+        "legAlignmentGood": "다리 정렬이 양호합니다.",
+        "weightShiftWarning": "무게중심이 다소 {{side}}으로 치우쳐 있습니다. 좌우 균등하게 체중을 싣도록 의식해 보세요.",
+        "weightShiftGood": "좌우 무게중심이 균형을 이루고 있습니다.",
+        "overallGood": "좌우 균형이 잘 잡힌 좋은 자세입니다!"
+      },
+      "exercises": {
+        "chinTuck": "친 턱",
+        "neckStretch": "목 뒤 스트레칭",
+        "scmRelease": "흉쇄유돌근 이완",
+        "shrugWeakSide": "슈러그(약한 쪽 더 많이)",
+        "sidePlank": "사이드 플랭크",
+        "thoracicMobility": "흉추 모빌리티 드릴",
+        "facePull": "페이스 풀",
+        "thoracicExtension": "흉추 신전",
+        "hipFlexorStretch": "고관절 굴곡근 스트레칭",
+        "deadBug": "데드버그",
+        "gluteBridge": "글루트 브리지",
+        "hamstringStretch": "햄스트링 스트레칭",
+        "romanianDeadlift": "루마니안 데드리프트",
+        "clamshell": "클램셸",
+        "miniBandWalk": "미니밴드 워크",
+        "wideSquat": "와이드 스쿼트",
+        "adductorStretch": "내전근 스트레칭"
+      }
     }
   },
   "report": {

@@ -1,5 +1,5 @@
 import * as React from 'npm:react@18.3.1'
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
+import { render } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from '../_shared/email-encoding.ts'
@@ -489,17 +489,32 @@ Deno.serve(async (req) => {
     )
   }
 
-  // 4. Render React Email template to HTML and plain text
-  // pretty:true で構造行を短くし、さらに wrapEmailHtml で各行の UTF-8 バイト長を
-  // 安全な幅に抑える。これで送信経路の固定幅折り返しがマルチバイト文字の途中に
-  // 入って文字化けする問題を回避する。本文は生の UTF-8 のまま送り、送信経路に
-  // ラップ安全な転送エンコード（base64）を使わせる（auth-email-hook と同等）。
-  const rawHtml = await renderAsync(
+  // 4. テンプレートを HTML とプレーンテキストに描画する。
+  //
+  // 🔴 **`renderAsync` を使わないこと。**
+  //
+  // `@react-email/render@0.0.17` の browser ビルド（Deno が引く方）は
+  // `readStream` で `decoder.decode(chunk)` を **`{ stream: true }` 無し**で呼ぶ。
+  // 各チャンクを独立した完結UTF-8列として復号するため、**境界をまたいだ
+  // 多バイト文字が U+FFFD に化ける。** Deno は必ずこの経路に入る
+  // （Node は別経路なので**手元では再現しない**）。
+  //
+  // 実測（2026-08-06・実 Deno）: 予約確認メールの宛名を1〜60文字で振ると
+  //   renderAsync … **3件で化けた**（宛名が1〜3文字のとき。「アプ?からキャンセル」）
+  //   render      … **0件**
+  // **入力の長さ次第**なので、1通試して無事でも何も保証されない。
+  //
+  // 同期の `render` は `renderToStaticMarkup` を使いストリームを通らない。
+  //
+  // その後の wrapEmailHtml / makeEmailHtmlAsciiSafe は**送信経路**（quoted-printable の
+  // 76バイト折り返し）に対する第2層。描画側が壊した文字は直せないので、
+  // 上の `render` が第1層として要る。
+  const rawHtml = render(
     React.createElement(template.component, templateData),
     { pretty: true }
   )
   const html = makeEmailHtmlAsciiSafe(wrapEmailHtml(rawHtml))
-  const plainText = await renderAsync(
+  const plainText = render(
     React.createElement(template.component, templateData),
     { plainText: true }
   )

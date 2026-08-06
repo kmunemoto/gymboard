@@ -826,6 +826,62 @@
         "deleteFailedDesc": "可能没有权限，或已被删除",
         "deleteError": "删除失败"
       }
+    },
+    "analysis": {
+      "categories": {
+        "forwardHead": "头部前倾（颈前伸）",
+        "shoulderTilt": "双肩高低差",
+        "roundedBack": "驼背",
+        "pelvicTilt": "骨盆前倾/后倾",
+        "legAlignment": "O型腿/X型腿",
+        "weightShift": "重心偏移",
+        "overall": "综合"
+      },
+      "sides": {
+        "leftShoulder": "左肩",
+        "rightShoulder": "右肩",
+        "left": "左侧",
+        "right": "右侧"
+      },
+      "messages": {
+        "forwardHeadBad": "头部位于双肩前方，有颈前伸的倾向。请检查伏案时的屏幕位置。",
+        "forwardHeadWarning": "头部略微前伸。请有意识地养成收下巴的习惯。",
+        "forwardHeadGood": "头部位置良好。",
+        "shoulderTiltBad": "{{side}}明显下沉。请确认是否有单侧负重的习惯，并进行斜方肌的平衡训练。",
+        "shoulderTiltWarning": "{{side}}略微下沉。请确认是否有单侧负重的习惯。",
+        "shoulderTiltGood": "双肩高度均衡，状态良好。",
+        "roundedBackBad": "背部有含胸驼背的倾向。请加入扩胸拉伸。",
+        "roundedBackWarning": "身体略微前倾。请有意识地打开胸廓。",
+        "roundedBackGood": "上半身姿势良好，背部挺拔。",
+        "pelvicTiltAnterior": "骨盆略微前倾。建议进行髂腰肌拉伸与腹肌强化。",
+        "pelvicTiltPosterior": "骨盆略微后倾。建议进行腘绳肌拉伸。",
+        "pelvicTiltGood": "骨盆排列良好。",
+        "legAlignmentKnock": "存在X型腿倾向。请加入内收肌与臀肌训练。",
+        "legAlignmentBow": "存在O型腿倾向。建议进行内收肌拉伸与训练。",
+        "legAlignmentGood": "腿部排列良好。",
+        "weightShiftWarning": "重心略微偏向{{side}}。请有意识地让体重均匀分布。",
+        "weightShiftGood": "左右重心保持平衡。",
+        "overallGood": "左右平衡、姿势优美！"
+      },
+      "exercises": {
+        "chinTuck": "收下巴",
+        "neckStretch": "颈后拉伸",
+        "scmRelease": "胸锁乳突肌放松",
+        "shrugWeakSide": "耸肩（较弱侧多做）",
+        "sidePlank": "侧平板支撑",
+        "thoracicMobility": "胸椎灵活性训练",
+        "facePull": "面拉",
+        "thoracicExtension": "胸椎伸展",
+        "hipFlexorStretch": "髋屈肌拉伸",
+        "deadBug": "死虫式",
+        "gluteBridge": "臀桥",
+        "hamstringStretch": "腘绳肌拉伸",
+        "romanianDeadlift": "罗马尼亚硬拉",
+        "clamshell": "蚌式开合",
+        "miniBandWalk": "迷你弹力带行走",
+        "wideSquat": "宽距深蹲",
+        "adductorStretch": "内收肌拉伸"
+      }
     }
   },
   "report": {

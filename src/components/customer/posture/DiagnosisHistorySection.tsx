@@ -40,23 +40,15 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   natural: { label: "ナチュラル", color: "hsl(160, 40%, 45%)" },
 };
 
-const TRAINING_TIPS: Record<string, { area: string; exercises: string[] }[]> = {
-  straight: [
-    { area: "体幹・腹筋", exercises: ["プランク", "デッドバグ", "ケーブルクランチ"] },
-    { area: "背中", exercises: ["ラットプルダウン", "シーテッドロウ"] },
-    { area: "下半身", exercises: ["スクワット", "ヒップスラスト"] },
-  ],
-  wave: [
-    { area: "肩・上半身", exercises: ["ショルダープレス", "サイドレイズ", "プッシュアップ"] },
-    { area: "下半身・ヒップ", exercises: ["ブルガリアンスクワット", "カーフレイズ"] },
-    { area: "体幹", exercises: ["ヒップリフト", "サイドプランク"] },
-  ],
-  natural: [
-    { area: "全身", exercises: ["デッドリフト", "ケトルベルスイング"] },
-    { area: "胸・肩", exercises: ["ベンチプレス", "フェイスプル"] },
-    { area: "柔軟性", exercises: ["ヨガ", "ダイナミックストレッチ"] },
-  ],
-};
+/**
+ * ⚠️ 推奨種目をここに直書きしないこと。
+ *
+ * 以前は `TRAINING_TIPS` として**日本語の直書きコピー**を持っていた。
+ * `TrainingRecommendationCard` は同じ内容をロケールから引いているので、
+ * **語彙オーバーレイを当ててもこの画面だけ複製元の種目が出たまま**になっていた
+ * （ピラボードの指摘）。この画面は**お客様の設定画面とトレーナーのカルテの両方**に出る。
+ */
+type TrainingTipEntry = { area: string; exercises: string[] };
 
 type Props = { userId: string | undefined; allowDelete?: boolean };
 
@@ -356,7 +348,7 @@ const DiagnosisHistorySection = ({ userId, allowDelete = false }: Props) => {
             const info = TYPE_LABELS[d.skeletal_type] ?? { label: d.skeletal_type, color: "gray" };
             const dt = new Date(d.created_at);
             const isExpanded = expandedId === d.id;
-            const tips = TRAINING_TIPS[d.skeletal_type] ?? [];
+            const tips = (t(`posture.recommendation.types.${d.skeletal_type}.tips`, { returnObjects: true }) as TrainingTipEntry[]) ?? [];
             const isSelected = compareIds.includes(d.id);
 
             return (

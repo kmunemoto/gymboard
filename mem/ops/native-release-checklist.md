@@ -96,6 +96,7 @@ Firebase は「1プロジェクト × 複数アプリ」が正規の構成で、
 - ダウンロードした `GoogleService-Info.plist` / `google-services.json` は
   **そのアプリ登録専用**。使い回してはいけない
 - **iOS は APNs キーを Firebase にアップロードする**（これが無いと iOS だけ届かない）
+  → 詰まったら下の「iOS だけ届かないときの切り分け」を見ること
 - サービスアカウント JSON → Supabase Secrets の `FIREBASE_SERVICE_ACCOUNT_JSON`。
   **同じプロジェクトなら1つのサービスアカウントで全アプリに送れる**
 
@@ -298,3 +299,88 @@ Firebase プロジェクトは共用のまま、という**正しい兄弟アプ
 ```
 
 **どちらかを先に決めてから文言を作ること。**
+
+---
+
+## iOS だけ届かないときの切り分け（2026-08-06 / ピラボードの実測）
+
+**Android が 200 で iOS だけ 401 なら、落ちているのは FCM → APNs の区間だけ。**
+送信鍵・Firebase プロジェクト・トークン・Edge Function のコードは全部シロと確定する。
+
+同じサービスアカウントで iOS と Android の最新トークンへ**同時に**テスト送信すると、
+この切り分けが1回でつく（上流にも `supabase/functions/diag-ios-push` がある）。
+
+### 🔴 応答で3状態が見分けられる
+
+ピラボードが1手ずつ直しながら実測した。**この表が本体。**
+
+| 状態 | iOS | 応答 |
+|---|---|---|
+| APNs キー**未登録** | 401 | `THIRD_PARTY_AUTH_ERROR` **のみ** |
+| **キーIDが誤り**（別の鍵を上げた等） | 401 | ＋ `ApnsError { statusCode: 403, reason: "InvalidProviderToken" }` |
+| 正しい | **200** | `ApnsError` が消える |
+
+**`ApnsError` が出ていれば、キー自体は認識されている。**
+そこから先は キーID・チームID・`.p8` の3つの噛み合わせだけなので、探す範囲が一気に狭まる。
+
+### 最短の判定: そのキーIDが Apple Developer の Keys 一覧にあるか
+
+Firebase に入っているキーIDを、**Apple Developer → Certificates, Identifiers & Profiles →
+Keys の一覧と突き合わせる。** 一覧に無ければ、それは APNs キーではない。
+
+ピラボードの実例:
+
+```
+Firebase に入っていた : U7G5BMJH4T   ← Keys 一覧に存在しない
+Keys 一覧にあったもの  : U4ASLQQH2F（GymBoard Push Key）1つだけ
+```
+
+### 🔴 真犯人は App Store Connect API キーとの取り違えだった
+
+**どちらも `AuthKey_XXXXXXXXXX.p8` という同じファイル名。**
+だから **Firebase へのアップロードは成功する。** そして Apple 側で拒否される。
+
+| どちらの `.p8` か | どこで作る | 何に使う |
+|---|---|---|
+| **APNs 認証キー** | Apple Developer → Keys → **APNs** を有効化 | **Firebase → APNs の認証** |
+| App Store Connect API キー | App Store Connect → Users and Access → Integrations | **ビルドのアップロード**（`APP_STORE_CONNECT_API_KEY`） |
+
+Firebase に入れたキーIDが Keys 一覧に無ければ、**もう一方に入っているはず。**
+
+### 鍵は Team Scoped なら使い回してよい
+
+`GymBoard Push Key` は **`Team Scoped (All topics)`** だったので、
+**同じ鍵を別アプリの登録にも入れるだけで通った。** 新しい鍵は要らない。
+
+- bundle ID ごとに鍵を作る必要はない（証明書方式とは違う）
+- 既存アプリを止めずに済む
+- ⚠️ **Revoke（失効）は押さないこと。** 押すと既存アプリの iOS が止まる
+
+### なぜ気づきにくいか
+
+**APNs キーが無くてもアプリは FCM トークンを取得し、画面は「通知ON」になる。**
+CI は `GoogleService-Info.plist`・`aps-environment`・プロビジョニングプロファイルまで
+検査しているが、**その先は Firebase コンソール側なので見えない。**
+
+穴6（`pg_proc.proacl`）・穴7（DB内の関数のURL）と同じ形で、
+**リポジトリを完璧にしても届かない層**にある。
+
+> ⚠️ `send-push-notification` のログは**保持期間が短い。**
+> 「あとでログを見よう」は成立しない。**その場で `diag-ios-push` を叩くのが最短。**
+
+### 上流のコード側（`send-push-notification`）
+
+`THIRD_PARTY_AUTH_ERROR` は **401** なので、
+
+```ts
+const isInvalid     = result.status === 404 || code === "UNREGISTERED" || ...
+const isConfigError = result.status === 403 || code === "SENDER_ID_MISMATCH";
+```
+
+**どちらにも入らず、ただの `console.warn` に落ちる。**
+
+- トークンは消えない（`isInvalid` に入らないので、そこは事故になっていない）
+- **ただし `fcm.configRejected` に数えられない** → 永久に直らない設定の問題が、
+  一時的な失敗と同じ見た目になる
+
+**401 を `isConfigError` に含め、`platform` もログに出すこと**（ピラボード PR #61 の指摘）。

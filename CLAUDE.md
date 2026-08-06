@@ -69,6 +69,34 @@ Android Studio の手作業）。そのため、**「リリースノート書い
 アップロード直前には必ず Play Console / App Store Connect の実物を確認すること
 （この取り決めは実態と自動同期しない）。詳細は `mem/ops/release-signal.md`。
 
+## Lovable / Supabase は自分で繋いでやる（2026-08-06）
+**手順書を書いて渡さない。接続してできる作業は最後まで自分でやり、結果を報告する。**
+
+- 自分でやる: 本番DBの調査、本番への SQL 適用、適用後の検証、publish 後の動作確認
+- 手順書を渡す: ストア提出、Xcode / Android Studio、Apple・Firebase の管理画面、
+  実機での決済・通知の確認、Stripe ダッシュボード
+
+接続の詰まりどころ:
+- **Lovable Cloud のプロジェクトは Supabase コネクタから見えない**ことがある
+  （コネクタが別アカウント → `permission denied`）。**Lovable の `query_database`** を使う。
+  `project_id` は Supabase の ref ではなく **Lovable のプロジェクトID**
+  （ジムボード = `69ac2641-45d8-44e0-b60d-4e002a4f9c1c`）。
+- **コンテナから `*.supabase.co` へ直接 curl はできない**（プロキシが CONNECT を 403）。
+  REST で確かめたくなったら、代わりに SQL 上でロールを演じる。
+
+**本番を触るときは必ず3段構え。**「読み取りで現状を出す → 実行する →
+**そのロールを演じて**実際に読む・呼ぶ」。`has_function_privilege` が期待どおりでも
+足りない。2026-08-06 に3を怠って本番の全画面を落とした（`mem/ops/tenant-boundary.md`）。
+
+```sql
+BEGIN;
+SELECT set_config('request.jwt.claims',
+  json_build_object('sub','<user_id>','role','authenticated')::text, true);
+SET LOCAL ROLE authenticated;   -- 未ログインを見るなら SET LOCAL ROLE anon;
+SELECT count(*) FROM public.<よく読むテーブル>;
+ROLLBACK;                        -- SET LOCAL なので必ず元に戻る
+```
+
 ## PR の運用
 - CI がグリーンになったら**そのままマージし、ブランチを main に再同期する**まで行う
   （毎回の指示を待たない）。落ちたら直してグリーンにしてからマージする。

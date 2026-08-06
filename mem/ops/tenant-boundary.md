@@ -1088,3 +1088,144 @@ SECURITY INVOKER 関数・トリガー関数から呼ばれる先についても
   `has_function_privilege` が期待どおりでも、ポリシー越しの評価は別の話。
 - 剥がす作業は `anon` と `authenticated` を**必ず分けて**扱う。
   1つの配列にまとめた瞬間に事故る。
+
+---
+
+## 穴9: 未ログインで会員データを消せた（2026-08-06・段階2の途中で発見）
+
+穴8の段階2（「`authenticated` に残した関数に `auth.uid()` の照合を入れる」）を
+やっている最中に、**段階1の検査が見逃していた形**が出てきた。
+
+段階1の検査は `prosrc` に `auth.uid()` が含まれる関数を「照合している」とみなして
+**除外していた。** 書いてあるのに照合になっていない形が3種あった。
+
+### 🔴 形1: NULL で素通りする比較（三値論理）
+
+```sql
+IF NOT public.has_role(auth.uid(), 'trainer') AND auth.uid() != _customer_id THEN
+  RAISE EXCEPTION '権限がありません';
+END IF;
+```
+
+未ログイン（anon）だと `auth.uid()` は **NULL**。
+
+```
+NULL != _customer_id  →  NULL   （false ではない）
+true AND NULL         →  NULL
+IF NULL THEN          →  通らない ＝ 例外が出ない
+```
+
+**RAISE を素通りして本体が走る。** `delete_customer_cascade` がこの形だった。
+
+```sql
+DELETE FROM workouts / bookings / meals / messages
+     / notification_settings / profiles / user_roles   WHERE user_id = <任意>
+```
+
+**anon キーはアプリに埋め込まれているので、ログイン不要で誰の会員データでも消せた。**
+実測で anon から実行できることを確認している（存在しない user_id で試したので実害なし）。
+
+加えて `has_role(auth.uid(),'trainer')` は**グローバルなロール判定でテナントを見ない**。
+つまり**A院のトレーナーが B院の会員を消せる**状態でもあった。
+
+同じ形: `complete_quest_stage` / `equip_item` / `get_quest_progress`
+（`IF v_user <> auth.uid() AND NOT has_role(...) THEN`）。
+
+### 形2: 引数を優先して照合が無い
+
+```sql
+v_user := COALESCE(p_user_id, auth.uid());
+IF v_user IS NULL THEN RAISE EXCEPTION '認証が必要です'; END IF;
+```
+
+**引数を渡した時点で `auth.uid()` は見ない。**「認証が必要です」は
+「引数も無く未ログイン」のときしか出ない。
+`execute_quest_battle` / `get_player_combat_stats` がこの形。
+
+### 形3: そもそも照合が無い
+
+`apply_raid_damage` / `check_*_milestones` / `process_session_rewards` /
+`update_event_progress` / `spin_gacha`。
+
+### 直し方: 本体に触らず「包む」
+
+対象は12関数・合計40KB超の plpgsql。**1行足すために本体を書き写すと、
+写し間違いがそのままロジックの破壊になる。**
+
+```
+1. 既存の関数を <name>_unchecked に RENAME（本体はバイト単位で不変）
+2. _unchecked から EXECUTE を全部剥がす
+3. 元の名前で「照合してから中身を呼ぶだけの関数」を作り直す
+```
+
+**ロジックの差分はゼロ**で、認可の判定が1か所（`assert_can_act_for`）に集まる。
+`delete_customer_cascade` だけは本体が短く、かつ壊れた IF を消す必要があるので直接書き換えた。
+
+`20260806160000_rpc_caller_check.sql`。
+
+### 条件は「本人 **または** 同じテナントの owner / trainer」
+
+**本人限定にすると壊れる。** トレーナーが会員の user_id を渡す経路が本物としてある。
+
+```
+TrainerWeightJourneyPanel.tsx:104   check_weight_milestones(clientId)
+TrainerClientDetail.tsx:499-538     process_session_rewards / check_training_milestones
+                                    / apply_raid_damage / update_event_progress
+TrainerClientList.tsx:178           delete_customer_cascade(clientId)
+useMeasurements.ts:71               本人 or トレーナー（useMeasurements(clientId)）
+```
+
+`get_my_tenant_id()` は `LIMIT 1` なので複数テナントに属する人を取りこぼす。
+`tenant_members` 同士を突き合わせること。
+
+`auth.uid()` が NULL のときは素通しする（service_role・cron・トリガーの内部呼び出し）。
+anon は EXECUTE を剥がしてあるので、NULL に到達できるのは service_role だけ。
+
+### 引数名は変えないこと
+
+PostgREST の RPC は**名前付き引数**。`p_user_id` と `_user_id` が混在しているが、
+**揃えると呼び出し側が 404 になる。** 検査で見張っている。
+
+### 実測での確認（ロールを演じた）
+
+```
+会員 → 自分                    allowed
+会員 → 同テナントの他人        42501     ★塞ぎたかった穴
+会員 → 他テナントの他人        42501
+owner → 自分                   allowed
+owner → 同テナントの会員       allowed   ★トレーナーの経路（壊してはいけない）
+owner → 他テナントの会員       42501     ★これも塞がった（旧: グローバル trainer 判定）
+未ログイン → 誰かを削除        42501 permission denied
+NULL を渡す                    22023
+```
+
+**トレーニング記録の保存（workouts への INSERT）が通ることも実測した。**
+`workouts` の AFTER トリガーが `execute_quest_battle` を呼ぶため。
+トリガー関数は SECURITY DEFINER かつ EXCEPTION を握りつぶすので、
+照合で落ちても INSERT は失敗しない。
+
+### 検査
+
+- `src/test/rpcCallerCheck.test.ts`
+  **クライアント側の `supabase.rpc(...)` を走査して逆に辿る**ので、
+  新しい RPC を足したら自動で対象に入る（名指しのリストにしない）。変異5種で検証済み
+- `security/check.sql` の**検査5-c** … 実DBで
+  「`authenticated` が呼べる VOLATILE で user_id を取り、照合が無い」を出す。**0件が正常**
+
+### ついでに分かったこと
+
+`process_session_rewards` は**本番で動いていない**。本体が参照する
+`public.training_sessions` が存在せず 42P01 になる。呼び出し側が
+`GAMIFICATION_ENABLED = false` ＋ `try/catch`（non-fatal）なので誰も気づいていなかった。
+**ゲーミフィケーションを復活させるなら、まずここが直っていない。**
+
+### 教訓
+
+- **`auth.uid()` を書いてあることは、照合していることを意味しない。**
+  `prosrc ~ 'auth.uid()'` で除外する検査は、この3種を素通しする。
+- **`<>` / `!=` で `auth.uid()` を比べない。** 未ログインで NULL になり、
+  `AND` で繋いだ IF が丸ごと NULL になって通らない。
+  比べるなら `IS DISTINCT FROM`、あるいは先に `IS NULL` を弾く。
+- **`COALESCE(引数, auth.uid())` は照合ではない。**「引数優先」と読む。
+- グローバルな `has_role(uid,'trainer')` は**テナントを見ない**。
+  マルチテナントでは必ずテナント込みで判定する。

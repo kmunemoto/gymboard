@@ -346,6 +346,59 @@ ORDER BY takes_user_id DESC, p.proname;
 
 
 -- ----------------------------------------------------------------------------
+-- 検査5-c: ログイン後に他人の user_id を渡せる関数（★穴8の段階2 / 2026-08-06）
+-- ----------------------------------------------------------------------------
+-- 検査5-b で anon は塞げる。**が、それだけでは足りない。**
+-- `authenticated` に残した関数は、**ログインさえすれば他人の user_id を渡せる。**
+-- 会員は誰でもログインできるので、これは「会員が他の会員を操作できる」という穴。
+--
+-- ここで出したいのは**書き込む関数**だけ。
+-- `has_role` / `is_tenant_member` / `has_tenant_role` は user_id を引数に取るが
+-- **STABLE な述語**で、RLS が使っている。**出さないし、塞いでもいけない。**
+-- だから `provolatile = 'v'`（VOLATILE ＝ 書き込む）で絞る。
+--
+-- 直し方は2つ（supabase/migrations/20260806160000_rpc_caller_check.sql）:
+--   ・関数の先頭で照合する … `PERFORM public.assert_can_act_for(<user_id>)`
+--   ・使っていないなら消す
+--
+-- ⚠️ **「本人だけ」にしないこと。** トレーナーが会員の user_id を渡す経路が本物としてある
+--    （体重ジャーニーの設定、会員のトレーニング記録の保存）。
+--    条件は**「本人 または 同じテナントの owner / trainer」**。
+
+SELECT
+  p.proname,
+  pg_get_function_identity_arguments(p.oid) AS args,
+  '★★ ログインすれば他人の user_id を渡せる' AS verdict
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_type t ON t.oid = p.prorettype
+WHERE n.nspname = 'public'
+  AND p.prosecdef
+  AND t.typname <> 'trigger'
+  AND p.provolatile = 'v'                       -- 書き込む関数だけ（述語は除く）
+  AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  AND pg_get_function_identity_arguments(p.oid) ~ '(^|,\s*)(p_|_)?user_id\s'
+  AND NOT (p.prosrc ~ 'auth\.uid\(\)|assert_can_act_for')
+ORDER BY p.proname;
+
+-- **0件が正常。** 上流は 2026-08-06 に6件出て、すべて包んで0件にした。
+--
+-- ⚠️ 包んだあとの `<name>_unchecked` は**照合していない本体**なので、
+--    `authenticated` から EXECUTE を剥がしてあることを必ず確認すること。
+
+SELECT
+  p.proname,
+  has_function_privilege('anon', p.oid, 'EXECUTE')          AS anon,
+  has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authed,
+  '⚠️ true があってはいけない' AS verdict
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname LIKE '%\_unchecked'
+ORDER BY p.proname;
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

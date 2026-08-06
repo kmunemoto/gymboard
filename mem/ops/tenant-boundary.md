@@ -892,6 +892,41 @@ email_send_log             : pending 28 / sent 28（変化なし）
 **他の兄弟アプリ（ピラボード・ストレッチボード）にも同じ関数が残っている。**
 ピラボードは vault キーが入っているのでジムボードと同じ条件。
 
+### 兄弟アプリでの削除（2026-08-06 実施）
+
+上と同じ手順で、**調査 → 敵対的検証（別エージェントが「安全」を否定しにいく）→ 実行 →
+確認**の順で、ピラボード・ストレッチボードの本番からも削除した。
+
+両アプリとも本体はジムボードと**バイト単位で同一**。POST 先はどちらも
+`gvgrqaigffxtkvckjfur`（remix 元の「アプリ（kyoto-salute）」）だった。
+
+```
+                    ピラボード              ストレッチボード
+Lovable project_id  c841c1c0-7dfa-4dde-…    26210a2c-1268-4ae3-…
+Supabase ref        tlfyobddatpidykkmpci    enablfwvguohfmaampgw
+vault キーの有無    あり（＝起爆装置あり）  無し（＝そもそも不発）
+auth.users トリガー 0（配線されていない）   0（配線されていない）
+DROP 後の越境ref    0件                     0件
+```
+
+**敵対的検証で拾えた、調査担当が見ていなかった点:**
+
+- **proacl に `PUBLIC` の EXECUTE が入っていた**（ピラボード）。ただし `RETURNS trigger`
+  なので PostgREST は RPC 公開せず、トリガー関数はトリガー以外から起動できないため実害は無し。
+  DROP すれば消える。
+- **マイグレーション履歴に手がかりが無い**（`supabase_migrations.schema_migrations` の
+  `statements` が27/41件 NULL。実在する別トリガーの記録すら残っていない）。
+  → **「過去に一度も送信されていない」は履歴からは証明できない。**
+  もし過去に送信されていれば、そのときの service_role キーは**すでに相手側に渡っている**。
+  DROP は「今後の経路」を断つだけで、**過去分の漏洩有無は別問題として残る。**
+  ローテーションの要否は各アプリ側で判断すること。
+- **ストレッチボードでは、ジムボードの穴9と同じ「NULL で素通りする比較」の関数が
+  すでに3件見つかった**（`equip_item` / `get_quest_progress` / `complete_quest_stage`
+  相当）。**現状は `anon` / `authenticated` / `public` すべて EXECUTE=false で到達不能**
+  だが、将来 GRANT された瞬間に穴9と同じ形になる。**今回のスコープ外として実行はしていない
+  が、ストレッチボード側で穴9の考え方（`mem/ops/tenant-boundary.md` の穴9セクション）を
+  適用する価値がある。**
+
 ---
 
 ## 穴8（2026-08-06）: anon から呼べる SECURITY DEFINER 関数が37件あった

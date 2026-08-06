@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { MIGRATIONS_DIR, stripSqlComments } from "./helpers/rlsPolicies";
+import {
+  MIGRATIONS_DIR,
+  stripSqlComments,
+  effectivePolicies,
+  extractClauses,
+} from "./helpers/rlsPolicies";
 
 // anon から呼べる SECURITY DEFINER 関数を増やさないための検査。
 //
@@ -138,5 +143,96 @@ describe("anon から呼べる SECURITY DEFINER 関数", () => {
   it("存在しない関数で落ちないようガードしている", () => {
     // 兄弟アプリはゲーミフィケーションを持たない構成がある
     expect(sql).toContain("to_regprocedure");
+  });
+});
+
+// ── ここから下は 2026-08-06 に本番を壊してから足した検査 ──────────────
+//
+// 20260806120000 を本番に流したところ、ログイン済みの読み取りが 42501 で落ちた。
+//
+//   ERROR: 42501: permission denied for function shares_tenant_with_me
+//
+// **RLS のポリシー式は、クエリを投げたロールの権限で評価される。**
+// SECURITY DEFINER が効くのは「関数の中身」であって「関数を呼べるかどうか」ではない。
+// 「ポリシーの中からは所有者権限で評価されるので影響しない」と書いていたが、誤りだった。
+//
+// 剥がしてしまったのは `shares_tenant_with_me`（39ポリシー）・`is_tenant_member`（3）・
+// `has_tenant_role`（2）。**アプリのほぼ全画面が落ちる。**
+// 20260806140000 で戻した。
+//
+// 同じ形（「呼び出し元が0件だから剥がす」）は今後もやるので、
+// **ポリシーで使っている関数かどうかを、名指しではなくマイグレーションから機械的に見る。**
+//
+// ── 変異テスト（2026-08-06 実施・3件とも赤を確認）──────────────────
+//   1. 20260806140000 を消す                                    → 赤
+//   2. 復旧の GRANT 先を authenticated から service_role に変える → 赤
+//   3. has_role を authenticated の REVOKE 側へ移す              → 赤
+
+/** マイグレーションを名前順に畳み込んで「最後に authenticated から剥がされたまま」の関数名を出す */
+function revokedFromAuthenticated(): Map<string, string> {
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+  /** 関数名 → それを剥がしたマイグレーション（戻されたら消える） */
+  const revoked = new Map<string, string>();
+
+  for (const file of files) {
+    const sql = stripSqlComments(readFileSync(`${MIGRATIONS_DIR}/${file}`, "utf8"));
+    // DO ブロック単位で見る。1ブロックに REVOKE か GRANT のどちらか1つ、という書き方に揃えている
+    for (const block of sql.matchAll(/DO\s+\$\$([\s\S]*?)\$\$/g)) {
+      const body = block[1];
+      const names = [...body.matchAll(/'public\.(\w+)\([^)]*\)'/g)].map((m) => m[1]);
+      if (names.length === 0) continue;
+
+      // REVOKE ... FROM ... authenticated
+      if (/REVOKE\s+EXECUTE[\s\S]*?FROM[^;']*\bauthenticated\b/.test(body)) {
+        for (const n of names) revoked.set(n, file);
+      }
+      // GRANT ... TO authenticated
+      if (/GRANT\s+EXECUTE[\s\S]*?TO[^;']*\bauthenticated\b/.test(body)) {
+        for (const n of names) revoked.delete(n);
+      }
+    }
+  }
+  return revoked;
+}
+
+/** 有効なポリシーの USING / WITH CHECK の中で呼ばれている関数名 */
+function functionsUsedInPolicies(): Map<string, string> {
+  const used = new Map<string, string>();
+  for (const p of effectivePolicies().policies) {
+    for (const clause of extractClauses(p.body)) {
+      for (const m of clause.matchAll(/\b(\w+)\s*\(/g)) {
+        if (!used.has(m[1])) used.set(m[1], `${p.table} / ${p.name}`);
+      }
+    }
+  }
+  return used;
+}
+
+describe("RLS ポリシーが使う関数を authenticated から剥がしていない", () => {
+  const revoked = revokedFromAuthenticated();
+  const usedInPolicies = functionsUsedInPolicies();
+
+  it("畳み込みが空振りしていない", () => {
+    // 実際に剥がしている関数もポリシーで使っている関数も存在するはず。
+    // ここが 0 だと、下の検査は「何も見ていないのに緑」になる
+    expect(revoked.size, "authenticated から剥がす節を1つも読めていません").toBeGreaterThan(0);
+    expect(usedInPolicies.has("has_role"), "ポリシーの関数呼び出しを読めていません").toBe(true);
+  });
+
+  it("ポリシーで使っている関数が REVOKE されたままになっていない", () => {
+    const broken = [...revoked.entries()]
+      .filter(([fn]) => usedInPolicies.has(fn))
+      .map(([fn, file]) => `${fn}（${usedInPolicies.get(fn)} が使用 / ${file} で剥奪）`);
+
+    expect(
+      broken,
+      "RLS のポリシー式は**クエリを投げたロールの権限で評価されます**。" +
+        "SECURITY DEFINER でも EXECUTE の判定は呼び出し元に対して行われるので、" +
+        "剥がすとログイン済みのユーザーに permission denied が返り、" +
+        "そのテーブルを読む画面がすべて落ちます:\n  " +
+        broken.join("\n  "),
+    ).toEqual([]);
   });
 });

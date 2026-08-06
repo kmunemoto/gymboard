@@ -336,7 +336,10 @@
       "portalManage": "管理付款·合约",
       "portalDesc": "更新账单信息、下载收据、取消套餐（变更为 Free）均可在客户门户中进行。",
       "openPortal": "打开客户门户",
-      "freeNote": "变更为 Free 套餐（取消）请在客户门户中进行。"
+      "freeNote": "变更为 Free 套餐（取消）请在客户门户中进行。",
+      "selectPlan": "选择此套餐",
+      "opening": "正在打开支付页面…",
+      "nativeCheckoutNote": "支付将在浏览器的 Stripe 支付页面安全完成。完成后会返回应用。"
     }
   },
   "home": {
@@ -2300,5 +2303,13 @@
     "body": "如果有2名教练、2张床位等可以同时接待多位顾客的情况，请设置为相应数量。保持为1时，即使有空位也会显示为「已满」，从而错失预约。",
     "save": "保存",
     "saved": "已保存"
+  },
+  "billingReturn": {
+    "successTitle": "支付已完成",
+    "cancelTitle": "已取消申请",
+    "successBody": "套餐更新可能需要一点时间。请返回应用查看。",
+    "cancelBody": "未产生费用。可在应用中重新申请。",
+    "backToApp": "返回应用",
+    "manualHint": "如果没有自动返回，请点击上方按钮。"
   }
 }

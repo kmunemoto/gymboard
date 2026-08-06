@@ -31,8 +31,20 @@ if (Capacitor.isNativePlatform()) {
   // OAuth / メール確認のディープリンク（app.gymboard.mobile://auth/callback?...）を受け取り、
   // アプリ内ブラウザを閉じて既存の /auth/callback 処理にクエリ・ハッシュを引き継ぐ。
   CapApp.addListener("appUrlOpen", async ({ url }) => {
-    if (!url || !url.includes("auth/callback")) return;
+    if (!url) return;
     try {
+      // 決済からの復帰（app.gymboard.mobile://billing?status=success）。
+      // 反映は Stripe の webhook が行うので、ここでは画面を戻して合図を渡すだけ。
+      // `?billing=success` は TrainerBilling が拾って toast と再取得を出す。
+      if (url.includes("//billing")) {
+        const parsed = new URL(url);
+        const { Browser } = await import("@capacitor/browser");
+        Browser.close().catch(() => {});
+        const ok = parsed.searchParams.get("status") === "success";
+        window.location.href = `/?tab=billing&billing=${ok ? "success" : "cancel"}`;
+        return;
+      }
+      if (!url.includes("auth/callback")) return;
       const parsed = new URL(url);
       const { Browser } = await import("@capacitor/browser");
       Browser.close().catch(() => {});

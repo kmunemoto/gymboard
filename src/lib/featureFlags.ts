@@ -190,3 +190,22 @@ export const GOOGLE_REVIEW_ENABLED = true;
  * （mem/ops/vertical-fork.md）。UIを隠すだけで、実質的に単一言語で出荷できる。
  */
 export const LANGUAGE_SWITCHER_ENABLED = true;
+
+/**
+ * **ネイティブアプリから Stripe の決済ページへ直行する。**
+ *
+ * false にすると、従来どおり「Webでプランに申し込む」ボタンだけになる
+ * （Webアプリのログイン画面に飛ぶ）。
+ *
+ * ## なぜフラグにしてあるか
+ *
+ * Apple の審査（ガイドライン 3.1.1）で外部決済への誘導を指摘される可能性がある。
+ * **指摘されたらここを false にして再提出すれば、サーバ側は何も変えずに戻せる。**
+ *
+ * 従来の「Webでプランに申し込む」ボタンも外部リンクアウトで、そちらは審査を
+ * 通っている。ただし**Webアプリのトップに飛ばす**のと**決済ページに直行させる**のとで
+ * 審査での見え方が変わる可能性があるため、切れる形にしてある。
+ *
+ * 経緯と、リジェクトされたときの手順は `mem/features/native-checkout.md`。
+ */
+export const NATIVE_DIRECT_CHECKOUT = true;

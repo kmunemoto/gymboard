@@ -25,6 +25,7 @@ const JoinGym = lazy(() => import("./pages/JoinGym.tsx"));
 const JoinGymStaff = lazy(() => import("./pages/JoinGymStaff.tsx"));
 const DeleteAccount = lazy(() => import("./pages/DeleteAccount.tsx"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword.tsx"));
+const BillingReturn = lazy(() => import("./pages/BillingReturn.tsx"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent.tsx"));
 
 
@@ -64,6 +65,8 @@ const App = () => (
               <Route path="/join-staff/:code" element={<JoinGymStaff />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              {/* Stripe Checkout からネイティブアプリへ戻すための中継ページ（ログイン不要） */}
+              <Route path="/billing/return" element={<BillingReturn />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
               <Route path="*" element={<NotFound />} />

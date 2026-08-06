@@ -67,6 +67,50 @@ export const STRIPE_LIVE_HOSTS: readonly string[] = [
 export const MARKETING_SITE_URL = "https://gymboard-app.lovable.app";
 
 /**
+ * **ストア（App Store / Google Play）の掲載情報。**
+ *
+ * ## なぜリポジトリに置くのか
+ *
+ * ここに書いた値は**コードから使われません。** 実際に反映するのは
+ * App Store Connect / Play Console で人が入力する作業です。
+ * それでも置いているのは、**掲載名がどこにも記録されていなかった**からです。
+ *
+ * - コンソールを開かないと現在値が分からない
+ * - 兄弟アプリが「上流はどう書いているか」を参照できない
+ * - **文字数超過はストアに弾かれてから気づく**（審査提出の当日に判明する）
+ *
+ * `src/test/storeListing.test.ts` が文字数と、製品名で始まっていることを見張ります。
+ *
+ * ## ⚠️ ホーム画面のアイコン名とは別物です
+ *
+ * アイコンの下に出る名前は `capacitor.config.ts` の `appName` で、
+ * **iOS は約12文字で省略されます。** そちらに説明を足しても読めません。
+ * 説明は「検索に効くが、端末には出ない」この掲載名側に書きます。
+ *
+ * ## 文字数の上限（2026-08 時点。日本語も1文字＝1）
+ *
+ * | | App Store | Google Play |
+ * |---|---|---|
+ * | `name` | 30 | 30 |
+ * | `subtitle` | 30（サブタイトル） | — |
+ * | `shortDescription` | — | 80（簡単な説明） |
+ *
+ * ## フォークがやること
+ *
+ * 3つとも自分の業種の言葉に差し替える。**`name` は製品名で始めること**
+ * （検索結果で製品名が省略されると、何のアプリか分からなくなる）。
+ */
+export const STORE_LISTING = {
+  /** ストアの検索結果・商品ページに出る名前。App Store / Play とも30文字 */
+  name: "ジムボード｜パーソナルジムの予約・記録",
+  /** App Store のサブタイトル。30文字 */
+  subtitle: "予約もトレーニング記録もこれ1つ",
+  /** Google Play の「簡単な説明」。80文字 */
+  shortDescription:
+    "パーソナルジムの予約・トレーニング記録・体組成管理を1つに。ジム側の顧客管理にも対応します。",
+} as const;
+
+/**
  * **この製品自身のホスト名の集合。**
  *
  * Edge Function（Deno）は `src/lib/brand.ts` を import できないので、ドメインは

@@ -11,9 +11,9 @@
   },
   "mcp": {
     "server": {
-      "name": "salute-gosho-minami-mcp",
+      "name": "gymboard-mcp",
       "version": "0.1.0",
-      "title": "パーソナルジムSalute御所南 MCP"
+      "title": "ジムボード MCP"
     },
     "tools": [
       {

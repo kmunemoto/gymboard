@@ -3546,6 +3546,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _gen_staff_invite_code: { Args: never; Returns: string }
       _quest_condition_values: { Args: { _user_id: string }; Returns: Json }
       _workout_max_weight: {
         Args: { _sets: Json; _weight: number }
@@ -3554,6 +3555,14 @@ export type Database = {
       apply_raid_damage: {
         Args: { _damage: number; _user_id: string; _workout_date: string }
         Returns: Json
+      }
+      apply_raid_damage_unchecked: {
+        Args: { _damage: number; _user_id: string; _workout_date: string }
+        Returns: Json
+      }
+      assert_can_act_for: {
+        Args: { _target_user_id: string }
+        Returns: undefined
       }
       buy_gacha_ticket: {
         Args: { p_quantity?: number; p_user_id: string }
@@ -3568,8 +3577,20 @@ export type Database = {
         Returns: Json
       }
       check_collection_milestones: { Args: { _user_id: string }; Returns: Json }
+      check_collection_milestones_unchecked: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
       check_training_milestones: { Args: { p_user_id: string }; Returns: Json }
+      check_training_milestones_unchecked: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       check_weight_milestones: { Args: { p_user_id: string }; Returns: Json }
+      check_weight_milestones_unchecked: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       claim_daily_login_bonus: { Args: { p_user_id: string }; Returns: Json }
       claim_rival_reward: { Args: { p_battle_id: string }; Returns: Json }
       complete_dungeon_run: {
@@ -3584,6 +3605,10 @@ export type Database = {
         Returns: Json
       }
       complete_quest_stage: {
+        Args: { p_stage_id: number; p_user_id: string }
+        Returns: Json
+      }
+      complete_quest_stage_unchecked: {
         Args: { p_stage_id: number; p_user_id: string }
         Returns: Json
       }
@@ -3619,7 +3644,15 @@ export type Database = {
         Args: { p_item_id: string; p_user_id: string }
         Returns: Json
       }
+      equip_item_unchecked: {
+        Args: { p_item_id: string; p_user_id: string }
+        Returns: Json
+      }
       execute_quest_battle: {
+        Args: { p_session_volume: number; p_user_id: string }
+        Returns: Json
+      }
+      execute_quest_battle_unchecked: {
         Args: { p_session_volume: number; p_user_id: string }
         Returns: Json
       }
@@ -3651,18 +3684,26 @@ export type Database = {
         }[]
       }
       get_login_bonus_status: { Args: { p_user_id: string }; Returns: Json }
-      get_my_tenant_id: { Args: never; Returns: string }
       get_my_staff_invite_code: { Args: never; Returns: string }
+      get_my_tenant_id: { Args: never; Returns: string }
       get_my_tenant_invite_code: { Args: never; Returns: string }
       get_player_combat_stats: { Args: { p_user_id: string }; Returns: Json }
+      get_player_combat_stats_unchecked: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_quest_progress: { Args: { p_user_id: string }; Returns: Json }
+      get_quest_progress_unchecked: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_ranking: { Args: { p_gender: string; p_type: string }; Returns: Json }
       get_tenant_booked_slots: {
         Args: { from_date: string; p_tenant_id: string; to_date: string }
         Returns: {
           booking_date: string
           end_booking_date: string
-          staff_user_id: string | null
+          staff_user_id: string
           status: string
         }[]
       }
@@ -3768,6 +3809,10 @@ export type Database = {
         Args: { _user_id: string; _workout_date: string }
         Returns: Json
       }
+      process_session_rewards_unchecked: {
+        Args: { _user_id: string; _workout_date: string }
+        Returns: Json
+      }
       purchase_customization_item: {
         Args: { p_item_key: string }
         Returns: Json
@@ -3801,11 +3846,19 @@ export type Database = {
         Args: { _result_date: string; _user_id: string }
         Returns: Json
       }
+      spin_gacha_unchecked: {
+        Args: { _result_date: string; _user_id: string }
+        Returns: Json
+      }
       start_dungeon_run: {
         Args: { p_stage_key: string; p_user_id: string }
         Returns: Json
       }
       update_event_progress: { Args: { _user_id: string }; Returns: Json }
+      update_event_progress_unchecked: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
       update_rival_battle_volumes: {
         Args: { p_week_start: string }
         Returns: Json

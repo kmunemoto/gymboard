@@ -9,7 +9,16 @@ export interface Profile {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  /** 連絡先の電話番号。ジム側だけが見る（顧客一覧・カルテ） */
+  phone: string | null;
+  /** ふりがな。50音で並べるために持つ。display_name とは別 */
+  name_kana: string | null;
   plan: string | null;
+  /**
+   * @deprecated 入金は `member_payments` に記録する。
+   * この boolean は「いくら・いつ・何の名目」が残らず、書き込む UI も無いまま放置されていた
+   * （2026-08-08 の棚卸し）。読み取りだけ残してあるが、新しい判断に使わないこと。
+   */
   paid_this_month: boolean;
   trial_completed: boolean;
   line_user_id: string | null;
@@ -34,6 +43,14 @@ export interface ProfileWithBooking extends Profile {
   /** 最終来店日（過去の非キャンセル予約のうち最新のもの）。来店実績が無ければ null。 */
   last_visit_date: string | null;
   gender: "male" | "female" | null;
+  /**
+   * 在籍状態（`tenant_members.status`）。"active" | "suspended" が入る。
+   * 退会（withdrawn / cancelled）はそもそも取得しないのでここには来ない。
+   * 判定は文字列比較せず `@/lib/memberLifecycle` を通すこと。
+   */
+  status: string | null;
+  suspended_from: string | null;
+  suspended_until: string | null;
 }
 
 const PROFILE_UPDATED_EVENT = "profile-updated";
@@ -171,12 +188,17 @@ export const useAllCustomerProfiles = () => {
     }
 
     // 2. Get customers belonging to the same tenant
+    //
+    // ⚠️ 休会（suspended）も取る。以前は `.eq("status", "active")` だったが、
+    //    休会にした瞬間に顧客一覧から消えるのでは「休会」ではなく「消滅」になる。
+    //    退会（withdrawn / cancelled）は取らない＝一覧から外れる、が正しい挙動。
+    //    status が NULL の行は従来どおり対象外（`.eq` のときも除外されていた）。
     const { data: members } = await supabase
       .from("tenant_members")
-      .select("user_id")
+      .select("user_id, status, suspended_from, suspended_until")
       .eq("tenant_id", tenantId)
       .eq("role", "customer")
-      .eq("status", "active");
+      .in("status", ["active", "suspended"]);
 
     if (!members || members.length === 0) {
       setProfiles([]);
@@ -185,6 +207,17 @@ export const useAllCustomerProfiles = () => {
     }
 
     const customerIds = members.map((m: any) => m.user_id);
+    const membershipMap = new Map<
+      string,
+      { status: string | null; suspended_from: string | null; suspended_until: string | null }
+    >();
+    (members as any[]).forEach((m) =>
+      membershipMap.set(m.user_id, {
+        status: m.status ?? null,
+        suspended_from: m.suspended_from ?? null,
+        suspended_until: m.suspended_until ?? null,
+      }),
+    );
 
     // 3. Fetch profiles
     const { data: profileData } = await supabase
@@ -241,6 +274,8 @@ export const useAllCustomerProfiles = () => {
         user_id: uid,
         display_name: p?.display_name || "名前未設定",
         avatar_url: p?.avatar_url || null,
+        phone: p?.phone ?? null,
+        name_kana: p?.name_kana ?? null,
         plan: p?.plan || null,
         paid_this_month: p?.paid_this_month || false,
         trial_completed: p?.trial_completed || false,
@@ -261,6 +296,9 @@ export const useAllCustomerProfiles = () => {
         next_booking_type: nextBookingMap[uid]?.booking_type || null,
         last_visit_date: lastVisitMap[uid] ?? null,
         gender: genderMap[uid] ?? null,
+        status: membershipMap.get(uid)?.status ?? null,
+        suspended_from: membershipMap.get(uid)?.suspended_from ?? null,
+        suspended_until: membershipMap.get(uid)?.suspended_until ?? null,
       };
     });
 

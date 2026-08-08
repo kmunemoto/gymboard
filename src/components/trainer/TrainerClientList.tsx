@@ -1,4 +1,4 @@
-import { Users, Search, ChevronRight, ChevronDown, ChevronUp, Sparkles, UserCheck, Trash2, CalendarDays, Target, ArrowUpDown, EyeOff, Moon, Clock } from "lucide-react";
+import { Users, Search, ChevronRight, ChevronDown, ChevronUp, Sparkles, UserCheck, Trash2, CalendarDays, Target, ArrowUpDown, EyeOff, Moon, Clock, PauseCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAllCustomerProfiles, ProfileWithBooking } from "@/hooks/useProfile";
 import { isMilestoneOverdue } from "@/lib/milestoneGoal";
 import { isDormant, daysSinceLastActivity, DEFAULT_DORMANT_DAYS } from "@/lib/dormancy";
+import { MEMBER_STATUS_LABEL, isSuspended, suspensionLabel } from "@/lib/memberLifecycle";
 import { getJSTNow } from "@/lib/timezone";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +31,11 @@ interface TrainerClientListProps {
 // - action  : 要対応順（既定）。再予約が要る既存→棚卸し時期→通常→未予約の体験客、の順。
 // - booking : 次回予約順。来店が近い順、予約なしは下にまとめる。
 // - name    : 名前順（localeCompare 'ja'）。名前未設定は末尾。
-//             ※読み仮名の列が無いため漢字はコードポイント順で、真の五十音順ではない。
+//             ふりがな（profiles.name_kana）が入っていればそれで並べる＝五十音順になる。
+//             未入力の人は表示名でしか並べられず、漢字はコードポイント順になる
+//             （2026-08-08 に name_kana を足すまでは全員がこの状態だった）。
+//             ふりがな有り／無しを分けずに1つのキーで比べるのは、混在していても
+//             「入っている人だけ正しく並ぶ」ほうが、2ブロックに割れるより読みやすいため。
 // - created : 登録順。状態が変わっても並びが動かない固定表示。
 type SortMode = "action" | "booking" | "name" | "created";
 const SORT_MODES: readonly SortMode[] = ["action", "booking", "name", "created"];
@@ -58,8 +63,9 @@ const makeComparator = (
         const au = isUnnamed(a);
         const bu = isUnnamed(b);
         if (au !== bu) return au ? 1 : -1; // 名前未設定は末尾へ
+        const key = (c: ProfileWithBooking) => c.name_kana?.trim() || c.display_name || "";
         return (
-          (a.display_name || "").localeCompare(b.display_name || "", "ja", { numeric: true, sensitivity: "base" }) ||
+          key(a).localeCompare(key(b), "ja", { numeric: true, sensitivity: "base" }) ||
           (a.created_at || "").localeCompare(b.created_at || "") ||
           byUserId(a, b)
         );
@@ -131,8 +137,13 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
     }
   }, [dormantThreshold]);
 
+  // ふりがな・電話番号でも引けるようにする。漢字が読めない・思い出せないときに
+  // 「たなか」や下4桁で辿れるのが実務上いちばん効く。
   const searchFiltered = profiles.filter(c =>
-    (c.display_name || "").includes(search) || (c.plan || "").includes(search)
+    (c.display_name || "").includes(search) ||
+    (c.plan || "").includes(search) ||
+    (c.name_kana || "").includes(search) ||
+    (c.phone || "").includes(search)
   );
 
   // 「しばらく来ていない（休眠）」お客様をメインリストから分離する。
@@ -229,6 +240,18 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
               ) : (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-muted-foreground">
                   {t("clientList.noBooking")}
+                </Badge>
+              )}
+              {/*
+                休会中。退会（withdrawn）はそもそも一覧に載らないので、ここに出るのは休会だけ。
+                他のバッジより先に置いて、予約や未記録の判断より前に目に入るようにする。
+              */}
+              {isSuspended(c.status) && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-muted text-muted-foreground border-muted-foreground/30">
+                  <PauseCircle className="w-2.5 h-2.5" />
+                  {suspensionLabel(c.suspended_from, c.suspended_until)
+                    ? t("member.suspendedUntilBadge", { period: suspensionLabel(c.suspended_from, c.suspended_until) })
+                    : MEMBER_STATUS_LABEL.suspended}
                 </Badge>
               )}
               {isMilestoneOverdue(c.milestone_goal_set_at, now) && (

@@ -139,7 +139,7 @@ jobs:
       - name: Set marketing version
         run: |
           cd ios/App
-          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.4.8;/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.4.9;/g' App.xcodeproj/project.pbxproj
 
       - name: Sync Capacitor
         run: npx cap sync ios

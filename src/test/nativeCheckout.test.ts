@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   checkoutWebOrigin,
   checkoutHostname,
@@ -114,6 +114,45 @@ describe("ネイティブからの Stripe Checkout", () => {
     expect(
       offenders,
       `${BILLING_TSX} にドメインが直書きされています。brand.ts 経由にしてください`,
+    ).toEqual([]);
+  });
+
+  // 課金画面1つだけを見ていたのでは足りなかった（2026-08-07）。
+  // TrainerHelpGuide.tsx:185 に "https://gymboard.lovable.app" が残っており、
+  // **フォークのオーナーがヘルプから上流の課金画面へ案内されていた。**
+  // 兄弟アプリ全部にこの機能を配る前に、`src/` 全体を見る形へ広げる。
+  it("src/ のどこにも自分以外の本番ドメインが直書きされていない", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? walk(`${dir}/${e.name}`) : [`${dir}/${e.name}`],
+      );
+
+    // brand.ts は**定義する場所**なので対象外。test/ は検査自身が値を書く
+    const files = walk("src").filter(
+      (f) => /\.(ts|tsx)$/.test(f) && !f.includes("/test/") && !f.endsWith("lib/brand.ts"),
+    );
+
+    /**
+     * コメントを落とす（説明文にドメインが出るのは正当）。
+     *
+     * ⚠️ `(?<!:)` が要る。素朴に `\/\/[^\n]*` で消すと
+     * **`https://…` の `//` を行コメントとみなして URL ごと食う。**
+     * 2026-08-07 にこれで空振りし、変異テスト2件が緑のまま通った。
+     */
+    const codeOf = (p: string) =>
+      readFileSync(p, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(?<!:)\/\/[^\n]*/g, "");
+
+    const offenders: string[] = [];
+    for (const f of files) {
+      for (const m of codeOf(f).matchAll(/https:\/\/[a-z0-9.-]+\.(?:lovable\.app|kyoto-salute\.com)/g)) {
+        if (!m[0].startsWith(PRODUCTION_WEB_ORIGIN)) offenders.push(`${f}: ${m[0]}`);
+      }
+    }
+    expect(
+      offenders,
+      "本番ドメインが直書きされています。brand.ts の PRODUCTION_WEB_ORIGIN 経由にしてください" +
+        "（フォークすると、そのアプリのオーナーが上流の画面へ飛ばされます）:\n  " +
+        offenders.join("\n  "),
     ).toEqual([]);
   });
 });

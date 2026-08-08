@@ -1,4 +1,5 @@
 import { useTranslation, Trans } from "react-i18next";
+import { PRODUCTION_WEB_ORIGIN } from "@/lib/brand";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Accordion,
@@ -182,7 +183,9 @@ const TrainerHelpGuide = () => {
                 <li>
                   <b className="text-foreground">{t("help.section5Step1")}</b>
                   <p className="ml-5 mt-1">
-                    {t("help.section5Step1Desc", { url: "https://gymboard.lovable.app" })}
+                    {/* 直書きにしない。フォークで上流の課金画面へ案内してしまう
+                        （brand.ts 経由にすること。mem/features/native-checkout.md） */}
+                    {t("help.section5Step1Desc", { url: PRODUCTION_WEB_ORIGIN })}
                   </p>
                 </li>
                 <li>

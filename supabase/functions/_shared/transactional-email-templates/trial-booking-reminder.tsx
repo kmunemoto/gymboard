@@ -134,7 +134,7 @@ const TrialBookingReminderEmail = ({
           {showAmenities && (
             <Section style={detailSection}>
               <SafeText style={sectionTitle}>当日のご案内</SafeText>
-              <SafeText style={text}>・手ぶらでOK！ウェア・シューズは無料でレンタルできます</SafeText>
+              <SafeText style={text}>・手ぶらでOK！ウェア・シューズ・タオルは無料でレンタルできます</SafeText>
               <SafeText style={text}>・お水はこちらでご用意しております</SafeText>
             </Section>
           )}

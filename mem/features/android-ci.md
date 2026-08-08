@@ -154,7 +154,8 @@ Please commit your changes or stash them before you merge.
 | 日付 | versionCode | versionName | 備考 |
 |---|---|---|---|
 | 2026-08-02 時点 | **81** | **9.0** | Play Console で確認した実績。CI移行を検討した際に判明 |
-| （未リリース） | 82 | 9.1 | `android-version.json` の現在値。担当スタッフ機能・通知アイコン修正 |
+| 2026-08-06 | **82** | **9.1** | 「リリースノート書いて」の合図で実績化。担当スタッフ機能・通知アイコン修正・予約締切の実効化・各種文字化け修正ほか（8/2〜8/6分、iOS は `MARKETING_VERSION 1.4.7` に対応） |
+| （未リリース） | 83 | 9.2 | `android-version.json` の現在値 |
 
 > **正直な注意**: 手で更新する記録は必ず古くなる。ここが実態と合っているか怪しいときは、
 > Play Console → リリース → 製品版を見ること。

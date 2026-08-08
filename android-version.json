@@ -1,5 +1,5 @@
 {
   "_comment": "Android のリリース版数。android/ は .gitignore 済みなので、ここが唯一のリポジトリ内の記録。scripts/set-android-version.mjs が android/app/build.gradle に書き込む。詳細は mem/features/android-ci.md",
-  "versionCode": 82,
-  "versionName": "9.1"
+  "versionCode": 83,
+  "versionName": "9.2"
 }

@@ -246,7 +246,13 @@
       "trialPriceUnset": "未設定（不顯示費用）",
       "trialPriceSaved": "已儲存體驗費用",
       "trialPriceSaveFailed": "體驗費用儲存失敗",
-      "trialPriceInvalid": "請輸入 0 以上的整數"
+      "trialPriceInvalid": "請輸入 0 以上的整數",
+      "cancelPolicyTitle": "取消說明",
+      "cancelPolicyDesc": "顯示於會員預約頁面與取消確認視窗。留空則不顯示。取消規定因門市而異，因此不提供預設文案。",
+      "cancelPolicyPlaceholder": "例：預約的變更與取消可隨時透過App進行。當天取消也不收取費用、不扣次數。",
+      "cancelPolicyUnset": "未設定（不向會員顯示任何內容）",
+      "cancelPolicySaved": "已儲存取消說明",
+      "cancelPolicySaveFailed": "取消說明儲存失敗"
     },
     "notification": {
       "title": "通知設定",
@@ -518,7 +524,8 @@
     "rescheduleForfeitWarningTitle": "確定要更改日期時間嗎？",
     "rescheduleForfeitWarningDesc": "更改當天的預約後，原時段無法再安排給其他人，將計為消耗1次。",
     "rescheduleForfeitConfirmBtn": "計次並更改",
-    "rescheduling": "更改中..."
+    "rescheduling": "更改中...",
+    "cancelPolicyTitle": "關於取消"
   },
   "training": {
     "title": "紀錄",

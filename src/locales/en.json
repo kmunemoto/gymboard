@@ -246,7 +246,13 @@
       "trialPriceUnset": "Not set (price hidden)",
       "trialPriceSaved": "Trial price saved",
       "trialPriceSaveFailed": "Failed to save the trial price",
-      "trialPriceInvalid": "Enter a whole number of 0 or more"
+      "trialPriceInvalid": "Enter a whole number of 0 or more",
+      "cancelPolicyTitle": "Cancellation notice",
+      "cancelPolicyDesc": "Shown on the member booking screen and in the cancellation dialog. Leave blank to show nothing. There is no default text, because cancellation terms differ by gym.",
+      "cancelPolicyPlaceholder": "e.g. You can change or cancel a booking from the app at any time. Same-day cancellations incur no fee and use no session.",
+      "cancelPolicyUnset": "Not set (nothing is shown to members)",
+      "cancelPolicySaved": "Cancellation notice saved",
+      "cancelPolicySaveFailed": "Failed to save the cancellation notice"
     },
     "notification": {
       "title": "Notification Settings",
@@ -518,7 +524,8 @@
     "rescheduleForfeitWarningTitle": "Change this booking?",
     "rescheduleForfeitWarningDesc": "Changing a same-day booking forfeits the original slot as one session, since it can't be offered to someone else.",
     "rescheduleForfeitConfirmBtn": "Change (counts as used)",
-    "rescheduling": "Changing..."
+    "rescheduling": "Changing...",
+    "cancelPolicyTitle": "About cancellations"
   },
   "training": {
     "title": "Records",

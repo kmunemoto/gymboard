@@ -53,6 +53,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   // NULL = 料金を表示しない（従来どおり）。0 は「¥0 と明示する」で NULL とは違うため、
   // TENANT_VALUE_DEFAULTS では null を既定にしている。
   "trial_price_yen",
+  // お客様に見せるキャンセルについての案内。NULL/空なら何も出さない。
+  "cancel_policy_body",
 ];
 
 /**
@@ -117,6 +119,8 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // ⚠️ 0 を既定にしないこと。0 は「¥0 と明示する」の意味になり、
   //    未適用の環境で全ジムの体験ページに「¥0」と出てしまう。
   trial_price_yen: null,
+  // 既定文は持たせない。ペナルティの有無は店ごとに違うので、上流が代弁しない。
+  cancel_policy_body: null,
 };
 
 /**

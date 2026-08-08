@@ -288,8 +288,14 @@ describe("マイグレーションが安全に書けている", () => {
     }
   });
 
-  it("ファイル名が既存より後になっている（適用順）", () => {
+  it("先行するマイグレーションより後に適用される", () => {
+    // ⚠️ 「最後のファイルであること」を断言してはいけない。
+    //    その日のうちに次のマイグレーション（20260808010000_cancel_policy.sql）を
+    //    足した時点で落ちた。**守りたいのは順序**であって、最後尾であることではない。
     const files = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
-    expect(files[files.length - 1]).toBe("20260808000000_trial_price.sql");
+    const idx = files.indexOf("20260808000000_trial_price.sql");
+    expect(idx, "マイグレーションが見つかりません").toBeGreaterThan(-1);
+    // 直前が、このファイルより古い日付になっていること（＝割り込んで前に来ていない）
+    expect(files[idx - 1] < "20260808000000_trial_price.sql").toBe(true);
   });
 });

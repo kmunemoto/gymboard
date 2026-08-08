@@ -246,7 +246,13 @@
       "trialPriceUnset": "未设置（不显示费用）",
       "trialPriceSaved": "已保存体验费用",
       "trialPriceSaveFailed": "体验费用保存失败",
-      "trialPriceInvalid": "请输入 0 以上的整数"
+      "trialPriceInvalid": "请输入 0 以上的整数",
+      "cancelPolicyTitle": "取消说明",
+      "cancelPolicyDesc": "显示在会员预约页面和取消确认框中。留空则不显示。取消规定因门店而异，因此不提供默认文案。",
+      "cancelPolicyPlaceholder": "例：预约的更改和取消可随时通过App进行。当天取消也不收取费用、不扣次数。",
+      "cancelPolicyUnset": "未设置（不向会员显示任何内容）",
+      "cancelPolicySaved": "已保存取消说明",
+      "cancelPolicySaveFailed": "取消说明保存失败"
     },
     "notification": {
       "title": "通知设置",
@@ -518,7 +524,8 @@
     "rescheduleForfeitWarningTitle": "确定要更改日期时间吗？",
     "rescheduleForfeitWarningDesc": "更改当天的预约后，原时段无法再安排给其他人，将计为消耗1次。",
     "rescheduleForfeitConfirmBtn": "计次并更改",
-    "rescheduling": "更改中..."
+    "rescheduling": "更改中...",
+    "cancelPolicyTitle": "关于取消"
   },
   "training": {
     "title": "记录",

@@ -82,6 +82,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   // （空欄=料金を表示しない / 0="¥0" と明示）、number にはしない。
   const [trialPrice, setTrialPrice] = useState("");
   const [savingTrialPrice, setSavingTrialPrice] = useState(false);
+  const [cancelPolicy, setCancelPolicy] = useState("");
+  const [savingCancelPolicy, setSavingCancelPolicy] = useState(false);
 
   // 連絡先メールアドレス（tenants.email）。体験予約の確認メールでお客様への連絡先として案内される。
   const [contactEmail, setContactEmail] = useState("");
@@ -123,6 +125,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     // null/undefined → 空欄。0 は "0" になる（"" にしないこと）。
     setTrialPrice(tenant?.trial_price_yen == null ? "" : String(tenant.trial_price_yen));
   }, [tenant?.trial_price_yen]);
+
+  useEffect(() => {
+    setCancelPolicy(tenant?.cancel_policy_body ?? "");
+  }, [tenant?.cancel_policy_body]);
 
   useEffect(() => {
     setContactEmail(tenant?.email ?? "");
@@ -277,6 +283,25 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingTrialPrice(false);
+  };
+
+  const handleSaveCancelPolicy = async () => {
+    if (!tenant) return;
+    setSavingCancelPolicy(true);
+    // 空欄は NULL。**既定文にフォールバックしない**（何も表示しない）。
+    const body = cancelPolicy.trim();
+    const { error } = await supabase
+      .from("tenants")
+      .update({ cancel_policy_body: body || null } as any)
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("キャンセルポリシーの保存に失敗:", error);
+      toast.error(t("settings.trainer.cancelPolicySaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.cancelPolicySaved"));
+      refetchTenant();
+    }
+    setSavingCancelPolicy(false);
   };
 
   const handleSaveContactEmail = async () => {
@@ -784,6 +809,33 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 onCheckedChange={handleToggleSameDayPenalty}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* お客様に見せるキャンセルについての案内。
+            ⚠️ **既定文を持たせない。** ペナルティの有無は店ごとに違うので、
+               上流が代弁すると事実と食い違う。空欄なら何も出さない。 */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.cancelPolicyTitle")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.cancelPolicyDesc")}</p>
+            </div>
+            <Textarea
+              id="cancel-policy"
+              value={cancelPolicy}
+              onChange={(e) => setCancelPolicy(e.target.value)}
+              placeholder={t("settings.trainer.cancelPolicyPlaceholder")}
+              rows={4}
+              maxLength={500}
+            />
+            {cancelPolicy.trim() === "" && (
+              <p className="text-[11px] text-muted-foreground">{t("settings.trainer.cancelPolicyUnset")}</p>
+            )}
+            <Button onClick={handleSaveCancelPolicy} disabled={savingCancelPolicy || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingCancelPolicy ? t("common.saving") : t("common.save")}
+            </Button>
           </CardContent>
         </Card>
       </section>

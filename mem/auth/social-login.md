@@ -201,9 +201,19 @@ authentication methods ... during the first sign-in.
    ⚠️ **Server-to-Server notification endpoint は空のままにする**
    （Supabase が未対応）
 4. **Services ID**（例 `app.gymboard.mobile.web`）。これが Supabase の Client ID になる
-5. Services ID の **Website URLs**
-   - Domain: `rrbfwitprzuevzytykrq.supabase.co`
-   - Return URL: `https://rrbfwitprzuevzytykrq.supabase.co/auth/v1/callback`
+5. Services ID の **Website URLs**（🔴 下の「Lovable Cloud は Supabase の
+   コールバックを使わない」を先に読むこと）
+   - Domains: `oauth.lovable.app,gymboard.lovable.app,app.kyoto-salute.com`
+   - Return URLs:
+     ```
+     https://oauth.lovable.app/callback
+     https://gymboard.lovable.app/~oauth/callback
+     https://app.kyoto-salute.com/~oauth/callback
+     ```
+   - ⚠️ **カンマ区切りで入れること。** 欄の説明が "comma delimited list" で、
+     改行だけだと1本目しか登録されない恐れがある。Next の次の確認リストで
+     3本並んでいるか目視する
+   - ⚠️ 最後に **Save** まで押す（Next → Done → Continue → Save）
 6. **署名キー（Keys → Sign in with Apple）** → `.p8` を保管し、
    **Supabase ダッシュボードの生成ツールでシークレットを作る**
    （鍵はブラウザ外に出ない。Safari では動かないので Chrome/Firefox で）
@@ -220,27 +230,91 @@ authentication methods ... during the first sign-in.
 > ピラボードが前2つを取り違えて、プッシュが永久に届かない状態になった
 > （`mem/ops/native-release-checklist.md:338-357`）。
 
+---
+
+## 🔴 Lovable Cloud は Supabase のコールバックを使わない（2026-08-08 に踏んだ）
+
+**上流の手順書を Supabase 公式ドキュメントどおりに書いたら、間違っていた。**
+
+Supabase のドキュメントは「Return URL は `https://<ref>.supabase.co/auth/v1/callback`」
+と書いてある。**Lovable Cloud ではこれが使われない。** 自前の OAuth プロキシを
+一枚かぶせていて、実際の Return URL はこの3本だった。
+
+```
+https://oauth.lovable.app/callback
+https://gymboard.lovable.app/~oauth/callback
+https://app.kyoto-salute.com/~oauth/callback
+```
+
+対応する Domains は `oauth.lovable.app` / `gymboard.lovable.app` / `app.kyoto-salute.com`。
+
+**気づけたのは宗本さんが Lovable の設定画面を送ってくれたから。**
+Supabase の URL のまま進めていたら、Apple ログインが `invalid_request`
+（リダイレクト不一致）で落ちて、原因が分かりにくかった。
+
+> **教訓。** Lovable Cloud のプロジェクトでは、**Supabase 公式ドキュメントの
+> 手順をそのまま当てはめない。** 必ず Lovable 側の設定画面に出ている実値を見る。
+> DB が Supabase だからといって、周辺の配線まで素の Supabase とは限らない。
+> **兄弟アプリも全部 Lovable なので、同じことが起きる。**
+
+### 認証情報は「自前」を選ぶこと（マネージドを選ばない）
+
+Lovable Cloud には「マネージド Apple ログイン」（Lovable の認証情報を使う）が
+あるが、**ジムボードでは選んではいけない。**
+
+1. **Apple の `sub` は開発チーム単位。** Lovable のチームで運用してから自前へ
+   移すと、**既存ユーザー全員の識別子が変わって別人になる**
+2. Services ID の Primary App ID が `app.gymboard.mobile` であることが
+   「このアプリの Sign in with Apple」の根拠。マネージドだと別チームの別アプリに紐づく
+3. Email Sources に登録した `notify.kyoto-salute.com` は**自チームのもの**。
+   マネージドだとリレーが別チーム経由になり、非公開メールのお客様に届かない
+
+BYOC の場所（Lovable のエージェントに教えてもらった実パス）:
+
+```
+Users → Authentication Settings → Sign In Methods → Apple
+     → 「Use your own credentials」
+```
+
+### 「Allow users without an email」は ON にする
+
+同じ画面にあるトグル。既定 **OFF**。
+「Allow users to hide their email when signing in with Apple」
+
+Apple の同意画面では**お客様が「メールを非公開」を選べて、こちらから禁止できない。**
+OFF のままだと、非公開を選んだ人がログインできない可能性が高い。
+
+受け入れ側は用意済み: Email Sources 登録済み ✅ ／
+`display_name` が NULL でも「名前未設定」で処理される ✅。
+
+### Redirect URLs（アプリへの戻り先）
+
+Lovable の許可リストを読んでもらったところ、**Web 側は既にカバー済み**だった。
+
+```
+https://app.kyoto-salute.com/**        ← /auth/callback を含む。追加不要
+https://gymboard.lovable.app/**
+https://preview--gymboard.lovable.app/**
+（各 preview / lovableproject ドメイン）
+```
+
+**不足していたのは1本だけ。**
+
+```
+app.gymboard.mobile://auth/callback    ← ネイティブ。無いとアプリだけ戻れない
+```
+
+> ワイルドカードの区切り文字は `.` と `/`。`*` は1階層、`**` は全階層。
+
 ### Google Cloud Console
 
 - OAuth クライアント（**ウェブアプリケーション**）を1つだけ作る
-- 承認済みリダイレクトURI = `https://rrbfwitprzuevzytykrq.supabase.co/auth/v1/callback`
-  （アプリのURLではない。**Supabase のURL**）
-
-**iOS/Android 用のクライアントは要らない。** ジムボードはネイティブでも
-`signInWithOAuth`（＝Supabase 経由の Web OAuth）なので、Google から見ると
-常にウェブアプリケーション1本。アプリが Google と直接話す経路が無い。
-
-### Supabase
-
-- Authentication → Providers → Apple / Google を有効化
-  - Apple の Client ID = **Services ID**（App ID ではない）
-  - Apple の Secret = **生成した JWT**（`.p8` の中身ではない）
-- Authentication → **URL Configuration** → Redirect URLs に**両方**入れる
-  - `https://app.kyoto-salute.com/auth/callback`
-  - `app.gymboard.mobile://auth/callback` ← ネイティブ。忘れるとアプリだけ戻れない
-
-> 許可リストはワイルドカード可。区切り文字は `.` と `/` なので、
-> `*` は1階層、`**` は全階層。本番は**完全一致で書く**のが推奨。
+- **iOS/Android 用のクライアントは要らない。** ネイティブでも `signInWithOAuth`
+  （＝サーバ経由の Web OAuth）なので、Google から見ると常にウェブ1本。
+  アプリが Google と直接話す経路が無い
+- ⚠️ **承認済みリダイレクトURI は、Apple と同じく Lovable のコールバックになるはず。**
+  Supabase の `/auth/v1/callback` を入れないこと。Google を設定する時点で
+  Lovable の画面に出ている実値を確認すること（2026-08-08 時点で未実施）
 
 > ### 🔴 `.p8` が3種類になる
 >

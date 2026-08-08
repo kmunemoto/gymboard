@@ -2,6 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import {
   Body, Container, Head, Heading, Html, Text, Hr, Section, Link, Button,
 } from 'npm:@react-email/components@0.0.22'
+import { trialPriceLine } from '../trial-pricing.ts'
 import type { TemplateEntry } from './registry.ts'
 
 // 以前はジム名・住所・連絡先が Salute御所南 で固定されていたため、他ジムのお客様に
@@ -58,9 +59,20 @@ interface Props {
   gymAddress?: string
   gymContactEmail?: string
   gymWebsiteUrl?: string
-  // 「初回無料体験」の名称で運用するジム（Salute御所南）だけ true。呼び出し側が渡す。
-  // 確認メール(trial-booking-confirmation)と同じ判定・同じ表記に揃えている。
-  isFreeTrial?: boolean
+  /**
+   * 体験の料金（税込・円）。ジムごとの設定（tenants.trial_price_yen）。
+   * null/未指定は「料金を書かない」。**0 は「¥0」と明示する**ので別物。
+   */
+  trialPriceYen?: number | null
+  /**
+   * 「手ぶらでOK・ウェア無料レンタル・お水あり」を出すか。
+   *
+   * ⚠️ 2026-08-08 まで、この案内は `isFreeTrial`（＝Salute御所南か）で出し分けていた。
+   *    そのフラグは「無料と呼ぶ」と「Saluteの設備案内を出す」の**二役を兼ねていた**ので、
+   *    体験を有料化したときに素直に消すと**設備案内まで消える**ところだった。
+   *    料金と設備は無関係なので分けてある。
+   */
+  showAmenities?: boolean
 }
 
 const TrialBookingReminderEmail = ({
@@ -72,13 +84,14 @@ const TrialBookingReminderEmail = ({
   gymAddress = '',
   gymContactEmail = '',
   gymWebsiteUrl = '',
-  isFreeTrial = false,
+  trialPriceYen = null,
+  showAmenities = false,
 }: Props) => {
   const addressLines = splitAddressLines(gymAddress)
-  const trialName = isFreeTrial ? '初回無料体験' : '体験'
-  const contentValue = isFreeTrial
-    ? '初回無料体験（カウンセリング＋トレーニング 計60分）'
-    : 'カウンセリング＋トレーニング体験（計60分）'
+  // 呼称は全ジム共通。**料金を含めないこと**（金額はジムごとに違う）。
+  const trialName = '体験トレーニング'
+  const contentValue = '体験トレーニング（カウンセリング＋トレーニング 計60分）'
+  const priceLine = trialPriceLine(trialPriceYen)
   return (
     <Html lang="ja" dir="ltr">
       <Head>
@@ -99,6 +112,13 @@ const TrialBookingReminderEmail = ({
             <SafeText style={value}>{`${bookingDate} ${bookingTime}`.trim()}</SafeText>
             <SafeText style={label}>内容</SafeText>
             <SafeText style={value}>{contentValue}</SafeText>
+            {/* 料金はジムが設定したときだけ出す。未設定のジムは行ごと出ない。 */}
+            {priceLine && (
+              <>
+                <SafeText style={label}>料金</SafeText>
+                <SafeText style={value}>{priceLine}</SafeText>
+              </>
+            )}
             {addressLines.length > 0 && (
               <>
                 <SafeText style={label}>場所</SafeText>
@@ -109,9 +129,9 @@ const TrialBookingReminderEmail = ({
 
           {/* 「手ぶらでOK・ウェア無料レンタル・お水あり」は Salute御所南 の設備・サービス。
               他ジムに当てはまるとは限らないため、事実でない案内を送らないよう
-              このジム（isFreeTrial）のときだけ出す。
+              このジム（showAmenities）のときだけ出す。
               将来ジムごとに設定させるなら tenants.trial_info_body の流用が候補。 */}
-          {isFreeTrial && (
+          {showAmenities && (
             <Section style={detailSection}>
               <SafeText style={sectionTitle}>当日のご案内</SafeText>
               <SafeText style={text}>・手ぶらでOK！ウェア・シューズは無料でレンタルできます</SafeText>
@@ -161,7 +181,7 @@ const TrialBookingReminderEmail = ({
 export const template = {
   component: TrialBookingReminderEmail,
   subject: (data: Record<string, any>) =>
-    `【明日のご予約】${data?.isFreeTrial ? '初回無料体験' : '体験'}のリマインド`,
+    '【明日のご予約】体験トレーニングのリマインド',
   displayName: '体験予約 前日リマインド',
   previewData: {
     guestName: '山田 太郎',
@@ -171,7 +191,8 @@ export const template = {
     gymAddress: '京都市中京区\n毘沙門町533-1\nプラザ御所南 2階',
     gymContactEmail: 'k.munemoto@kyoto-salute.com',
     gymWebsiteUrl: 'https://app.kyoto-salute.com',
-    isFreeTrial: true,
+    trialPriceYen: 3000,
+    showAmenities: true,
   },
 } satisfies TemplateEntry
 

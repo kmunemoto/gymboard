@@ -32,7 +32,11 @@ Deno.serve(async (req) => {
   // 誤った住所を送らないようテナントを限定していた。その結果、他ジムのお客様には前日リマインドが
   // 一切届いていなかった。テンプレートをジム情報の差し込み式にしたので、全ジムへ送る（2026-07）。
   //
-  // 「初回無料体験」の名称で運用するジムだけ見出し・本文をその表記にする（確認メールと同じ判定）。
+  // ⚠️ このIDは**設備案内（手ぶらOK・ウェア無料レンタル・お水）を出すかどうか**だけに使う。
+  //    その設備は Salute御所南のもので、他ジムに当てはまるとは限らないため。
+  //    2026-08-08 まで「初回無料体験」の呼称の出し分けも兼ねていたが、
+  //    **体験の有料化で呼称の分岐は廃止した**（金額は tenants.trial_price_yen から出す）。
+  //    将来ジムごとに設定させるなら tenants.trial_info_body の流用が候補。
   const SALUTE_TENANT_ID = 'ceda19b0-d5e0-4928-ab2e-996a0b823af4'
 
   // Compute tomorrow's date in JST
@@ -70,11 +74,11 @@ Deno.serve(async (req) => {
   // 予約に紐づくジムの情報（名前・住所・連絡先・サイト）をまとめて1回で引き、
   // メール本文にそのジムの情報を差し込む。予約1件ごとに問い合わせない。
   const tenantIds = [...new Set((bookings ?? []).map((b: any) => b.tenant_id).filter(Boolean))]
-  const tenantMap = new Map<string, { gym_name: string | null; address: string | null; email: string | null; website_url: string | null }>()
+  const tenantMap = new Map<string, { gym_name: string | null; address: string | null; email: string | null; website_url: string | null; trial_price_yen: number | null }>()
   if (tenantIds.length > 0) {
     const { data: tenantRows, error: tenantErr } = await supabase
       .from('tenants')
-      .select('id, gym_name, address, email, website_url')
+      .select('id, gym_name, address, email, website_url, trial_price_yen')
       .in('id', tenantIds)
     if (tenantErr) console.error('Failed to fetch tenants for reminder:', tenantErr)
     for (const row of tenantRows ?? []) {
@@ -112,8 +116,10 @@ Deno.serve(async (req) => {
           gymAddress: (tenant?.address ?? '').trim(),
           gymContactEmail: (tenant?.email ?? '').trim(),
           gymWebsiteUrl: (tenant?.website_url ?? '').trim(),
-          // Salute だけ「初回無料体験」表記にする（確認メール trial-booking-confirmation と同じ判定）。
-          isFreeTrial: booking.tenant_id === SALUTE_TENANT_ID,
+          // 金額はジムごとの設定。未設定なら料金行は出ない。
+          trialPriceYen: tenant?.trial_price_yen ?? null,
+          // 設備案内（手ぶらOK）は Salute の設備なのでこのジムだけ。呼称・料金とは無関係。
+          showAmenities: booking.tenant_id === SALUTE_TENANT_ID,
           // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
           // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
         },

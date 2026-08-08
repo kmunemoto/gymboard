@@ -2,6 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import {
   Body, Container, Head, Heading, Html, Text, Hr, Section, Link, Button,
 } from 'npm:@react-email/components@0.0.22'
+import { trialPriceLine } from '../trial-pricing.ts'
 import type { TemplateEntry } from './registry.ts'
 
 // 本文の表示テキストは事前に ASCII 数値文字参照へエンコードして dangerouslySetInnerHTML で描画する。
@@ -54,9 +55,11 @@ interface TrialBookingConfirmationProps {
   gymAddress?: string
   gymContactEmail?: string
   gymWebsiteUrl?: string
-  // 「初回無料体験」の名称で運用するジム（Salute御所南）だけ true。呼び出し側(trial-book)が
-  // テナントを見て渡す。未指定/false は多ジム既定の「体験」表記のまま。
-  isFreeTrial?: boolean
+  /**
+   * 体験の料金（税込・円）。ジムごとの設定（tenants.trial_price_yen）。
+   * null/未指定は「料金を書かない」。**0 は「¥0」と明示する**ので別物。
+   */
+  trialPriceYen?: number | null
 }
 
 const TrialBookingConfirmationEmail = ({
@@ -68,14 +71,13 @@ const TrialBookingConfirmationEmail = ({
   gymAddress = '',
   gymContactEmail = '',
   gymWebsiteUrl = '',
-  isFreeTrial = false,
+  trialPriceYen = null,
 }: TrialBookingConfirmationProps) => {
   const addressLines = splitAddressLines(gymAddress)
-  // 見出し・本文で使う体験の呼称。Salute は「初回無料体験」、他ジムは「体験」。
-  const trialName = isFreeTrial ? '初回無料体験' : '体験'
-  const contentValue = isFreeTrial
-    ? '初回無料体験（カウンセリング＋トレーニング 計60分）'
-    : 'カウンセリング＋トレーニング体験（計60分）'
+  // 呼称は全ジム共通。**料金を含めないこと**（金額はジムごとに違う）。
+  const trialName = '体験トレーニング'
+  const contentValue = '体験トレーニング（カウンセリング＋トレーニング 計60分）'
+  const priceLine = trialPriceLine(trialPriceYen)
   return (
     <Html lang="ja" dir="ltr">
       <Head>
@@ -95,6 +97,15 @@ const TrialBookingConfirmationEmail = ({
             <SafeText style={value}>{`${bookingDate} ${bookingTime}`.trim()}</SafeText>
             <SafeText style={label}>内容</SafeText>
             <SafeText style={value}>{contentValue}</SafeText>
+            {/* 料金はジムが設定したときだけ出す。未設定のジムは行ごと出ない。
+                「当日入会で無料」のような条件は金額欄では書けないので、
+                ジムが体験ページの案内文（tenants.trial_info_body）に書く。 */}
+            {priceLine && (
+              <>
+                <SafeText style={label}>料金</SafeText>
+                <SafeText style={value}>{priceLine}</SafeText>
+              </>
+            )}
             {addressLines.length > 0 && (
               <>
                 <SafeText style={label}>場所</SafeText>
@@ -147,7 +158,7 @@ const TrialBookingConfirmationEmail = ({
 export const template = {
   component: TrialBookingConfirmationEmail,
   subject: (data: Record<string, any>) =>
-    `【${(data?.gymName as string) || 'ジム'}】${data?.isFreeTrial ? '初回無料体験' : '体験'}のご予約を承りました`,
+    `【${(data?.gymName as string) || 'ジム'}】体験トレーニングのご予約を承りました`,
   displayName: '体験予約 確認（顧客向け）',
   previewData: {
     customerName: '山田 太郎',
@@ -157,8 +168,8 @@ export const template = {
     gymAddress: '京都市中京区\n毘沙門町533-1\nプラザ御所南 2階',
     gymContactEmail: 'k.munemoto@kyoto-salute.com',
     gymWebsiteUrl: 'https://app.kyoto-salute.com',
-    // プレビューは Salute（初回無料体験を提供するジム）を想定し、無料体験表記で描画する。
-    isFreeTrial: true,
+    // プレビューは料金を設定しているジムを想定して料金行まで描画する。
+    trialPriceYen: 3000,
     // cancelUrl は渡さない（セルフキャンセルのボタンは出さない）。プレビューは実配信と同じく
     // gymContactEmail へのメール連絡案内が描画される。
   },

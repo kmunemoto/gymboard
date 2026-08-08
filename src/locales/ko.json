@@ -238,7 +238,15 @@
         "standard": "매출·고객 관리까지",
         "full": "모든 기능"
       },
-      "displayPresetCustom": "개별 조정됨 (프리셋과 일치하지 않음)"
+      "displayPresetCustom": "개별 조정됨 (프리셋과 일치하지 않음)",
+      "trialPriceSection": "체험 요금",
+      "trialPriceDesc": "체험 예약 페이지와 확인 메일에 표시됩니다. 비워두면 요금을 표시하지 않습니다(0을 입력하면 “¥0”으로 명시). 당일 등록 시 무료 같은 조건은 위의 “체험 예약 페이지 안내문”에 적어주세요.",
+      "trialPriceLabel": "요금(엔, 부가세 포함)",
+      "trialPricePlaceholder": "예: 3000",
+      "trialPriceUnset": "미설정(요금 표시 안 함)",
+      "trialPriceSaved": "체험 요금을 저장했습니다",
+      "trialPriceSaveFailed": "체험 요금 저장에 실패했습니다",
+      "trialPriceInvalid": "0 이상의 정수를 입력해 주세요"
     },
     "notification": {
       "title": "알림 설정",
@@ -1673,8 +1681,7 @@
     "addGoogleCal": "Google 캘린더에 등록",
     "addAppleCal": "Apple 캘린더에 등록",
     "noteContact": "궁금한 점이 있으시면 편하게 문의해 주세요.",
-    "headerTitle": "체험 예약",
-    "headerTitleFreeTrial": "첫 회 무료 체험",
+    "headerTitle": "체험 트레이닝",
     "headerSub": "상담 + 트레이닝 (총 60분)",
     "infoTitle": "빈손으로 OK",
     "infoBody": "처음 오시는 분 한정 체험입니다. 전문 트레이너가 1:1로 도와드립니다.",
@@ -1692,9 +1699,10 @@
     "submitBooking": "체험 예약하기",
     "lineNewBooking": "[{{gym}}] 새로운 체험 예약이 들어왔습니다!\n\n· 이름: {{name}} 님\n· 일시: {{date}} {{start}}~{{end}}\n\n앱의 예약 관리 화면에서 자세한 내용을 확인해 주세요.",
     "notifTrainerSubject": "{{name}} (체험 예약)",
-    "trialPlanName": "첫 무료 체험",
     "pushTitle": "체험 예약 신청",
-    "pushBody": "{{name}}님이 체험 예약을 신청했습니다"
+    "pushBody": "{{name}}님이 체험 예약을 신청했습니다",
+    "priceLabel": "요금",
+    "taxIncluded": "(부가세 포함)"
   },
   "trialCancel": {
     "loading": "예약 내용을 확인하고 있습니다...",
@@ -2346,6 +2354,16 @@
       "visited": "방문함",
       "joined": "등록함",
       "declined": "보류"
+    },
+    "feeLabel": "체험료",
+    "feeHint": "앱은 결제를 처리하지 않습니다. 매장에서 받은 결과를 기록하는 칸입니다.",
+    "feeUpdated": "체험료 기록을 업데이트했습니다",
+    "feeUpdateFailed": "체험료 기록에 실패했습니다",
+    "feeStatus": {
+      "unset": "미기록",
+      "pending": "미확인",
+      "collected": "받았음",
+      "waived": "등록으로 면제"
     }
   },
   "waitlistAlert": {

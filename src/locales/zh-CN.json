@@ -238,7 +238,15 @@
         "standard": "加上营收与客户跟进",
         "full": "全部功能"
       },
-      "displayPresetCustom": "已单独调整（与任何预设都不一致）"
+      "displayPresetCustom": "已单独调整（与任何预设都不一致）",
+      "trialPriceSection": "体验费用",
+      "trialPriceDesc": "将显示在体验预约页面和确认邮件中。留空则不显示费用（填 0 会明确显示“¥0”）。当天入会免费等条件，请写在上方的“体验预约页面说明”里。",
+      "trialPriceLabel": "费用（日元、含税）",
+      "trialPricePlaceholder": "例：3000",
+      "trialPriceUnset": "未设置（不显示费用）",
+      "trialPriceSaved": "已保存体验费用",
+      "trialPriceSaveFailed": "体验费用保存失败",
+      "trialPriceInvalid": "请输入 0 以上的整数"
     },
     "notification": {
       "title": "通知设置",
@@ -1673,8 +1681,7 @@
     "addGoogleCal": "添加到 Google 日历",
     "addAppleCal": "添加到 Apple 日历",
     "noteContact": "如有任何疑问，欢迎随时咨询。",
-    "headerTitle": "体验预约",
-    "headerTitleFreeTrial": "首次免费体验",
+    "headerTitle": "体验训练",
     "headerSub": "咨询 + 训练（共 60 分钟）",
     "infoTitle": "空手即可",
     "infoBody": "仅限首次到访者的体验。专业教练将一对一为您提供支持。",
@@ -1692,9 +1699,10 @@
     "submitBooking": "预约体验",
     "lineNewBooking": "【{{gym}}】有新的体验预约！\n\n· 姓名：{{name}} 先生/女士\n· 时间：{{date}} {{start}}〜{{end}}\n\n请在应用的预约管理界面查看详情。",
     "notifTrainerSubject": "{{name}}（体验预约）",
-    "trialPlanName": "首次免费体验",
     "pushTitle": "体验预约申请",
-    "pushBody": "{{name}} 申请了体验预约"
+    "pushBody": "{{name}} 申请了体验预约",
+    "priceLabel": "费用",
+    "taxIncluded": "（含税）"
   },
   "trialCancel": {
     "loading": "正在确认您的预约...",
@@ -2346,6 +2354,16 @@
       "visited": "已到店",
       "joined": "已入会",
       "declined": "未成交"
+    },
+    "feeLabel": "体验费",
+    "feeHint": "本应用不处理支付。请在此记录店内收取的结果。",
+    "feeUpdated": "已更新体验费记录",
+    "feeUpdateFailed": "体验费记录失败",
+    "feeStatus": {
+      "unset": "未记录",
+      "pending": "未确认",
+      "collected": "已收取",
+      "waived": "因入会而免除"
     }
   },
   "waitlistAlert": {

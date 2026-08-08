@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { UserCheck, Phone, StickyNote, Save, TrendingUp, AlertCircle } from "lucide-react";
+import { UserCheck, Phone, StickyNote, Save, TrendingUp, AlertCircle, JapaneseYen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,34 @@ import { useTenant } from "@/hooks/useTenant";
 import { formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { hasTrialPrice } from "@/lib/trialPricing";
 
 // 体験予約のフォローアップ管理（体験CRM）。trial_bookings.follow_up_status/note は
 // マイグレーション未適用の環境では存在しないため、select("*") + any キャストで
 // 扱う（useTenant 等、既存の新カラム未適用フォールバック方針と同じ）。
 export const FOLLOW_UP_STATUSES = ["未対応", "来店した", "入会した", "見送り"] as const;
 export type FollowUpStatus = (typeof FOLLOW_UP_STATUSES)[number];
+
+/**
+ * 体験料の徴収結果（trial_bookings.trial_fee_status）。
+ *
+ * ⚠️ **アプリは決済しない。** 現金・カード・QR はこれまでどおり店頭の手段で受け取る。
+ *    ここに持つのは「その結果どうなったか」の記録だけ。
+ *
+ * 料金を設定していないジム（tenants.trial_price_yen が null）には、この欄自体を出さない。
+ */
+export const TRIAL_FEE_STATUSES = ["未確認", "頂いた", "入会のため免除"] as const;
+export type TrialFeeStatus = (typeof TRIAL_FEE_STATUSES)[number];
+
+const FEE_I18N_KEY: Record<TrialFeeStatus, string> = {
+  "未確認": "pending",
+  "頂いた": "collected",
+  "入会のため免除": "waived",
+};
+
+/** DB は自由文字列にもなりうるので、未知の値は「未確認」に寄せる（follow_up_status と同じ扱い） */
+const feeI18nKey = (v: string | null | undefined): string =>
+  FEE_I18N_KEY[(v ?? "未確認") as TrialFeeStatus] ?? FEE_I18N_KEY["未確認"];
 
 // i18n キーは英語で統一する方針のため、DB値（日本語）→ 翻訳キーの対応表を用意する。
 const STATUS_I18N_KEY: Record<FollowUpStatus, string> = {
@@ -42,6 +64,8 @@ interface TrialRow {
   status: string;
   follow_up_status: FollowUpStatus | null;
   follow_up_note: string | null;
+  /** 体験料の徴収結果。null は未記録（列が無い環境でも null になる） */
+  trial_fee_status: TrialFeeStatus | null;
 }
 
 const statusBadgeVariant = (status: FollowUpStatus): "outline" | "secondary" | "default" | "destructive" => {
@@ -88,6 +112,8 @@ const TrainerTrialFollowUps = () => {
             status: r.status,
             follow_up_status: (r.follow_up_status as FollowUpStatus) ?? "未対応",
             follow_up_note: r.follow_up_note ?? null,
+            // 列が無い環境（マイグレーション未適用）では undefined → null。
+            trial_fee_status: (r.trial_fee_status as TrialFeeStatus) ?? null,
           })),
         );
       }
@@ -126,6 +152,23 @@ const TrainerTrialFollowUps = () => {
     toast.success(t("trialFollowUp.updated"));
   };
 
+  const handleFeeChange = async (id: string, fee: TrialFeeStatus) => {
+    setSavingId(id);
+    const { error } = await supabase
+      .from("trial_bookings")
+      .update({ trial_fee_status: fee } as any)
+      .eq("id", id);
+    setSavingId(null);
+    if (error) {
+      // 列未追加（マイグレーション未適用）もここに来る。理由を画面でも見せる。
+      console.error("体験料の記録に失敗:", error);
+      toast.error(t("trialFollowUp.feeUpdateFailed"), { description: error.message });
+      return;
+    }
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, trial_fee_status: fee } : r)));
+    toast.success(t("trialFollowUp.feeUpdated"));
+  };
+
   const handleSaveNote = async (id: string) => {
     setSavingId(id);
     const note = noteDraft.trim();
@@ -151,6 +194,10 @@ const TrainerTrialFollowUps = () => {
       </div>
     );
   }
+
+  // 体験料の欄を出すか。**料金を設定しているジムだけ。**
+  // hasTrialPrice を通すのは 0（¥0 と明示）と未設定を区別するため。
+  const showFee = hasTrialPrice(tenant?.trial_price_yen);
 
   const renderCard = (r: TrialRow) => (
     <Card key={r.id} className={r.follow_up_status === "未対応" && new Date(r.booking_date) < now ? "border-warning/40" : undefined}>
@@ -187,6 +234,32 @@ const TrainerTrialFollowUps = () => {
             ))}
           </SelectContent>
         </Select>
+
+        {/* 体験料の徴収記録。**料金を設定しているジムにだけ出す。**
+            無料体験のジムに「体験料」の欄が出ても意味がないため。
+            アプリは決済しない（店頭で受け取った結果を記録するだけ）。 */}
+        {showFee && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground">
+              <JapaneseYen className="w-3 h-3 shrink-0" />
+              {t("trialFollowUp.feeLabel")}
+            </div>
+            <Select
+              value={r.trial_fee_status ?? "未確認"}
+              disabled={savingId === r.id}
+              onValueChange={(v) => handleFeeChange(r.id, v as TrialFeeStatus)}
+            >
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TRIAL_FEE_STATUSES.map((f) => (
+                  <SelectItem key={f} value={f} className="text-xs">{t(`trialFollowUp.feeStatus.${feeI18nKey(f)}`)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {editingNoteId === r.id ? (
           <div className="space-y-2">
@@ -239,6 +312,14 @@ const TrainerTrialFollowUps = () => {
         <UserCheck className="w-5 h-5 text-accent" />
         {t("trialFollowUp.title")}
       </h2>
+
+      {/* 「アプリで決済できる」と誤解されないよう、料金を設定しているジムにだけ1回出す。 */}
+      {showFee && (
+        <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+          <JapaneseYen className="w-3.5 h-3.5 shrink-0 mt-px" />
+          {t("trialFollowUp.feeHint")}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Card>

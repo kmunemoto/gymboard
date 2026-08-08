@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, User, CalendarPlus, Sparkles } from "lucide-react";
+import { CalendarDays, Clock, Check, User, CalendarPlus, Sparkles, JapaneseYen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -19,6 +19,7 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
+import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
 
 interface TrialSlotBooking {
   date: string;
@@ -37,6 +38,8 @@ interface PublicTenant {
   primary_color: string | null;
   trial_info_title: string | null;
   trial_info_body: string | null;
+  /** 体験の料金（税込・円）。null は「料金を表示しない」で、0（無料と明示）とは別。 */
+  trial_price_yen: number | null;
   /** 予約と予約の間に必ず空ける時間（分）。null/未設定は既定15分。 */
   booking_buffer_minutes: number | null;
   /** 1セッションの長さ（分）。null/未設定は既定60分。 */
@@ -92,17 +95,15 @@ const TrialBooking = () => {
 
   const effectiveTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
 
-  // ページ見出し。Salute御所南（このサイトの既定テナント）は「初回無料体験」の名称で
-  // 運用するため専用ラベルを出す。他ジムは「無料」かどうかがジムによるため、共通の
-  // 「体験予約」を使う（多ジム方針: 特定ジム専用の文言を全ジムに適用しない）。
+  // ページ見出し。
   //
-  // `DEFAULT_TENANT_ID !== null` を先に見ているのは、既定テナントを持たない兄弟アプリで
-  // **null === null が成立して全テナントに Salute 専用の見出しが出る**のを防ぐため。
-  // テナントID無しの /trial では effectiveTenantId も null になるので実際に起きる。
-  const headerTitle =
-    DEFAULT_TENANT_ID !== null && effectiveTenantId === DEFAULT_TENANT_ID
-      ? t("trialBooking.headerTitleFreeTrial")
-      : t("trialBooking.headerTitle");
+  // 2026-08-08 まで、既定テナント（Salute御所南）だけ「初回無料体験」という専用ラベルを
+  // 出していた。Salute が体験を有料に切り替えたので、**その分岐ごと廃止した。**
+  // 「体験トレーニング」は料金を語らない呼称なので、全ジム共通で問題ない。
+  //
+  // ⚠️ 料金はジムごとに違う。**呼称に料金を含めないこと**（「無料体験」に戻さない）。
+  //    金額は tenants.trial_price_yen を出す。
+  const headerTitle = t("trialBooking.headerTitle");
 
   // テナント限定の埋まり枠を60日分まとめて1回で取得する (get_tenant_booked_slots)
   const fetchExistingSlots = useCallback(async () => {
@@ -454,6 +455,27 @@ const TrialBooking = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* 体験の料金。ジムが設定したときだけ出す。
+            hasTrialPrice を通すのは **0 と未設定を区別する**ため（`!price` だと 0 が落ちる）。
+            「当日入会で無料」のような条件は金額欄では表現しきれないので、
+            上の案内カード（trial_info_body・ジムが編集できる）に書いてもらう。 */}
+        {hasTrialPrice(tenant?.trial_price_yen) && (
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between gap-3">
+              <span className="text-sm font-medium flex items-center gap-1.5">
+                <JapaneseYen className="w-4 h-4 text-muted-foreground" />
+                {t("trialBooking.priceLabel")}
+              </span>
+              <span className="text-base font-bold tabular-nums">
+                {formatYen(tenant.trial_price_yen)}
+                <span className="text-xs font-normal text-muted-foreground ml-0.5">
+                  {t("trialBooking.taxIncluded")}
+                </span>
+              </span>
+            </CardContent>
+          </Card>
+        )}
 
         <section className="slide-up">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">

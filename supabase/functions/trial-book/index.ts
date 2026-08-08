@@ -56,10 +56,10 @@ const SLOT_MAX_START = 1260; // 21:00 (JST 分)
 const RATE_LIMIT_PER_CONTACT_24H = 3;
 const RATE_LIMIT_PER_TENANT_1H = 20;
 const CANCELLED = "キャンセル済み";
-// Salute御所南は「初回無料体験」の名称で運用するジム。確認メールの見出し・件名・本文を
-// このジムだけ「初回無料体験」表記にする（他ジムは「体験」のまま）。公開サイトの見出し
-// （TrialBooking.tsx の headerTitleFreeTrial）と揃える。
-const SALUTE_TENANT_ID = "ceda19b0-d5e0-4928-ab2e-996a0b823af4";
+// 2026-08-08 まで、ここに Salute御所南のテナントIDを直書きし、そのジムだけ
+// 確認メールを「初回無料体験」表記にしていた。**体験の有料化に伴い分岐ごと廃止。**
+// 呼称は全ジム共通「体験トレーニング」で、金額は tenants.trial_price_yen から出す。
+// **テナントIDをこのファイルに戻さないこと**（1ジムの都合を全ジムのコードに置かない）。
 
 const GENERIC_ERROR = "サーバーで問題が発生しました。時間をおいて再度お試しください。";
 
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
     // (ジムごとに正しい情報を載せる。旧実装は Salute 固定だったため他ジムには送っていなかった)。
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes")
+      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -158,6 +158,9 @@ Deno.serve(async (req) => {
     const gymAddress = ((tenant.address as string | null) ?? "").trim();
     const gymContactEmail = ((tenant.email as string | null) ?? "").trim();
     const gymWebsiteUrl = ((tenant.website_url as string | null) ?? "").trim();
+    // 体験の料金（税込・円）。ジムごとの設定。null は「料金を書かない」で 0 とは別。
+    // 列がまだ無い環境（マイグレーション未適用）では undefined になり、料金行は出ない。
+    const trialPriceYen = (tenant.trial_price_yen as number | null | undefined) ?? null;
 
     // ===== 連続予約ガード =====
     // (1) 同一メール 24時間で3件まで (ジム側でキャンセルして取り直すケースは数えない)
@@ -280,8 +283,8 @@ Deno.serve(async (req) => {
           gymAddress,
           gymContactEmail,
           gymWebsiteUrl,
-          // Salute だけ「初回無料体験」表記にする（見出し・件名・本文・内容）。
-          isFreeTrial: tenantId === SALUTE_TENANT_ID,
+          // 呼称は全ジム共通「体験トレーニング」。金額だけジムごとに出す。
+          trialPriceYen,
           // cancelUrl は渡さない。テンプレートは gymContactEmail（＝登録したジムのアカウントの
           // メールアドレス tenants.email）へのメール連絡案内をフォールバック表示する。
         },

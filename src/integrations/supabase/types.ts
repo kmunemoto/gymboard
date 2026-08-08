@@ -2548,6 +2548,7 @@ export type Database = {
           trial_ends_at: string | null
           trial_info_body: string | null
           trial_info_title: string | null
+          trial_price_yen: number | null
           updated_at: string
           website_url: string | null
         }
@@ -2606,6 +2607,7 @@ export type Database = {
           trial_ends_at?: string | null
           trial_info_body?: string | null
           trial_info_title?: string | null
+          trial_price_yen?: number | null
           updated_at?: string
           website_url?: string | null
         }
@@ -2664,6 +2666,7 @@ export type Database = {
           trial_ends_at?: string | null
           trial_info_body?: string | null
           trial_info_title?: string | null
+          trial_price_yen?: number | null
           updated_at?: string
           website_url?: string | null
         }
@@ -2720,6 +2723,7 @@ export type Database = {
           id: string
           status: string
           tenant_id: string
+          trial_fee_status: string | null
         }
         Insert: {
           booking_date: string
@@ -2735,6 +2739,7 @@ export type Database = {
           id?: string
           status?: string
           tenant_id: string
+          trial_fee_status?: string | null
         }
         Update: {
           booking_date?: string
@@ -2750,6 +2755,7 @@ export type Database = {
           id?: string
           status?: string
           tenant_id?: string
+          trial_fee_status?: string | null
         }
         Relationships: [
           {
@@ -3674,6 +3680,7 @@ export type Database = {
           slot_duration_minutes: number
           trial_info_body: string
           trial_info_title: string
+          trial_price_yen: number
         }[]
       }
       get_trainer_ids: {

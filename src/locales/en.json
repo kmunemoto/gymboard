@@ -238,7 +238,15 @@
         "standard": "Plus revenue & follow-ups",
         "full": "Every feature"
       },
-      "displayPresetCustom": "Customized (doesn't match any preset)"
+      "displayPresetCustom": "Customized (doesn't match any preset)",
+      "trialPriceSection": "Trial Price",
+      "trialPriceDesc": "Shown on the trial booking page and in the confirmation email. Leave blank to hide the price (enter 0 to show “¥0”). Conditions such as waiving the fee on same-day sign-up belong in the trial page message above.",
+      "trialPriceLabel": "Price (JPY, incl. tax)",
+      "trialPricePlaceholder": "e.g. 3000",
+      "trialPriceUnset": "Not set (price hidden)",
+      "trialPriceSaved": "Trial price saved",
+      "trialPriceSaveFailed": "Failed to save the trial price",
+      "trialPriceInvalid": "Enter a whole number of 0 or more"
     },
     "notification": {
       "title": "Notification Settings",
@@ -1673,8 +1681,7 @@
     "addGoogleCal": "Add to Google Calendar",
     "addAppleCal": "Add to Apple Calendar",
     "noteContact": "If you have any questions, feel free to contact us.",
-    "headerTitle": "Trial Session",
-    "headerTitleFreeTrial": "Free First-Time Trial",
+    "headerTitle": "Trial Training",
     "headerSub": "Counseling + training (60 min total)",
     "infoTitle": "No gear needed",
     "infoBody": "A trial exclusively for first-timers. A professional trainer will support you one-on-one.",
@@ -1692,9 +1699,10 @@
     "submitBooking": "Book a trial",
     "lineNewBooking": "[{{gym}}] A new trial booking has come in!\n\n· Name: {{name}}\n· Date: {{date}} {{start}}–{{end}}\n\nPlease check the details in the app's booking management screen.",
     "notifTrainerSubject": "{{name}} (Trial Booking)",
-    "trialPlanName": "Free First Trial",
     "pushTitle": "Trial booking request",
-    "pushBody": "{{name}} has requested a trial session"
+    "pushBody": "{{name}} has requested a trial session",
+    "priceLabel": "Price",
+    "taxIncluded": " (incl. tax)"
   },
   "trialCancel": {
     "loading": "Checking your booking...",
@@ -2346,6 +2354,16 @@
       "visited": "Visited",
       "joined": "Signed up",
       "declined": "Did not sign up"
+    },
+    "feeLabel": "Trial fee",
+    "feeHint": "The app does not process payments. Record here what was collected in person.",
+    "feeUpdated": "Trial fee record updated",
+    "feeUpdateFailed": "Failed to record the trial fee",
+    "feeStatus": {
+      "unset": "Not recorded",
+      "pending": "Not confirmed",
+      "collected": "Collected",
+      "waived": "Waived (signed up)"
     }
   },
   "waitlistAlert": {

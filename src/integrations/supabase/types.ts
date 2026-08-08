@@ -1250,6 +1250,81 @@ export type Database = {
           },
         ]
       }
+      member_agreements: {
+        Row: {
+          agreed_on: string
+          created_at: string
+          id: string
+          note: string | null
+          recorded_by: string | null
+          tenant_id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          agreed_on: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          recorded_by?: string | null
+          tenant_id: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          agreed_on?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          recorded_by?: string | null
+          tenant_id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      member_payments: {
+        Row: {
+          amount_yen: number
+          created_at: string
+          id: string
+          kind: string
+          method: string
+          note: string | null
+          paid_on: string
+          plan_name: string | null
+          recorded_by: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_yen: number
+          created_at?: string
+          id?: string
+          kind: string
+          method: string
+          note?: string | null
+          paid_on: string
+          plan_name?: string | null
+          recorded_by?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          amount_yen?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          method?: string
+          note?: string | null
+          paid_on?: string
+          plan_name?: string | null
+          recorded_by?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -1531,7 +1606,9 @@ export type Database = {
           line_user_id: string | null
           milestone_goal: string | null
           milestone_goal_set_at: string | null
+          name_kana: string | null
           paid_this_month: boolean
+          phone: string | null
           plan: string | null
           review_prompted_at: string | null
           show_usage_period: boolean
@@ -1555,7 +1632,9 @@ export type Database = {
           line_user_id?: string | null
           milestone_goal?: string | null
           milestone_goal_set_at?: string | null
+          name_kana?: string | null
           paid_this_month?: boolean
+          phone?: string | null
           plan?: string | null
           review_prompted_at?: string | null
           show_usage_period?: boolean
@@ -1579,7 +1658,9 @@ export type Database = {
           line_user_id?: string | null
           milestone_goal?: string | null
           milestone_goal_set_at?: string | null
+          name_kana?: string | null
           paid_this_month?: boolean
+          phone?: string | null
           plan?: string | null
           review_prompted_at?: string | null
           show_usage_period?: boolean
@@ -2351,10 +2432,14 @@ export type Database = {
           plan_start_date: string | null
           role: string
           status: string | null
+          suspended_from: string | null
+          suspended_until: string | null
           tenant_id: string
           ticket_expires_at: string | null
           ticket_remaining: number | null
           user_id: string
+          withdrawal_reason: string | null
+          withdrawn_on: string | null
         }
         Insert: {
           cycle_start_date?: string | null
@@ -2365,10 +2450,14 @@ export type Database = {
           plan_start_date?: string | null
           role?: string
           status?: string | null
+          suspended_from?: string | null
+          suspended_until?: string | null
           tenant_id: string
           ticket_expires_at?: string | null
           ticket_remaining?: number | null
           user_id: string
+          withdrawal_reason?: string | null
+          withdrawn_on?: string | null
         }
         Update: {
           cycle_start_date?: string | null
@@ -2379,10 +2468,14 @@ export type Database = {
           plan_start_date?: string | null
           role?: string
           status?: string | null
+          suspended_from?: string | null
+          suspended_until?: string | null
           tenant_id?: string
           ticket_expires_at?: string | null
           ticket_remaining?: number | null
           user_id?: string
+          withdrawal_reason?: string | null
+          withdrawn_on?: string | null
         }
         Relationships: [
           {

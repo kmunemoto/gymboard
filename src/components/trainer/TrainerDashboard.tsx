@@ -1,4 +1,4 @@
-import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, MessageCircle, UserCheck } from "lucide-react";
+import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, MessageCircle, UserCheck, Banknote } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,9 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TRIAL_BOOKING_ENABLED, WAITLIST_ENABLED } from "@/lib/featureFlags";
+import { useTenantPayments } from "@/hooks/useMemberPayments";
+import { formatYen, outstandingMembers, revenueByMonth as revenueByMonthOf } from "@/lib/memberPayments";
+import { isActiveMember } from "@/lib/memberLifecycle";
 
 // 同時受入数の選択肢。設定画面（BUSINESS_CAPACITY_OPTIONS）・
 // オンボーディング（CAPACITY_OPTIONS）と必ず同じ並びにする。
@@ -35,12 +38,6 @@ interface TrainerDashboardProps {
   onNavigateFollowUps?: () => void;
 }
 
-type RevenueProfile = {
-  user_id: string;
-  plan: string | null;
-  cycle_start_date: string | null;
-};
-
 const addMonthsToDateKey = (dateKey: string, months: number) => {
   const [year, month, day] = dateKey.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1 + months, day));
@@ -53,39 +50,6 @@ const addMonthsToDateKey = (dateKey: string, months: number) => {
 const getRecentMonths = (todayKey: string, count = 4) => {
   const currentMonthStart = `${todayKey.slice(0, 7)}-01`;
   return Array.from({ length: count }, (_, index) => addMonthsToDateKey(currentMonthStart, index - count + 1));
-};
-
-const getRevenueCycleStartDates = (
-  profile: RevenueProfile,
-  userBookings: BookingForProgress[],
-  todayKey: string,
-  now: Date,
-) => {
-  const starts = new Set<string>();
-  const bookingDates = userBookings
-    .filter((b) => {
-      if (b.status === "キャンセル済み") return false;
-      return new Date(b.booking_date) <= now;
-    })
-    .map((b) => b.booking_date.slice(0, 10))
-    .sort();
-
-  if (!profile.cycle_start_date || bookingDates.length === 0) return starts;
-
-  if (profile.cycle_start_date <= todayKey) {
-    starts.add(profile.cycle_start_date);
-  }
-
-  let nextStart = profile.cycle_start_date;
-  while (nextStart) {
-    const windowStart = addMonthsToDateKey(nextStart, -1);
-    const previousStart = bookingDates.find((date) => date >= windowStart && date < nextStart);
-    if (!previousStart || starts.has(previousStart)) break;
-    starts.add(previousStart);
-    nextStart = previousStart;
-  }
-
-  return starts;
 };
 
 const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps }: TrainerDashboardProps) => {
@@ -203,6 +167,10 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   };
 
   const today = formatJST(new Date(), "yyyy-MM-dd");
+
+  // 入金の記録。グラフに出す4ヶ月分だけ取る（全期間を引くと行数が年々増える）。
+  const paymentsFromMonth = getRecentMonths(today)[0].slice(0, 7);
+  const { payments: tenantPayments } = useTenantPayments(paymentsFromMonth);
   // 本日のスケジュールには体験予約（user_id === "trial-guest"）も含める。
   // トレーナーが当日その枠に対応するため予定として表示する必要がある。
   // （月間セッション数・売上の集計では体験は無料/非会員のため引き続き除外する）
@@ -239,34 +207,49 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   );
 
   // 売上:
-  //  1回目のトレーニング日 = 支払い日として計上する。
-  //  今期は profiles.cycle_start_date、過去月は予約履歴から「次サイクル開始日の1ヶ月前以降で最初の予約」を逆算する。
-  //  未来の1回目トレーニング日は、当日になるまで売上に含めない。
-  const revenueByMonth = useMemo(() => {
-    const now = new Date();
-    const map = new Map<string, number>();
-    profiles.forEach((p) => {
-      if (!p.plan || !p.cycle_start_date) return;
-      const matched = tenantPlans.find((tp) => tp.plan_name === p.plan);
-      const price = matched?.price || 0;
-      if (!price) return;
-
-      const cycleStarts = getRevenueCycleStartDates(p, bookingsByUser.get(p.user_id) || [], today, now);
-      cycleStarts.forEach((dateKey) => {
-        const monthKey = dateKey.slice(0, 7);
-        map.set(monthKey, (map.get(monthKey) || 0) + price);
-      });
-    });
-    return map;
-  }, [profiles, bookingsByUser, today, tenantPlans]);
+  //  **実際に受け取った入金（member_payments）だけを数える。**
+  //
+  //  🔴 2026-08-08 に方式を変えた。それまでは「定価 × サイクル開始日」の推計で、
+  //     受け取ったかどうかは一切見ていなかった。滞納していても満額が計上されるため、
+  //     「今月いくら入ったか」を経営判断に使える数字ではなかった。
+  //     推計していた getRevenueCycleStartDates は同時に削除した（残すと
+  //     「どっちが本物か」が分からなくなる）。経緯は mem/features/member-lifecycle.md。
+  const revenueByMonth = useMemo(() => revenueByMonthOf(tenantPayments), [tenantPayments]);
 
   const currentMonthRevenue = revenueByMonth.get(currentMonth) || 0;
 
-  const revenueData = getRecentMonths(today).map((monthStart) => {
+  const revenueMonths = getRecentMonths(today);
+  const revenueData = revenueMonths.map((monthStart) => {
     const monthKey = monthStart.slice(0, 7);
     const monthNumber = Number(monthStart.slice(5, 7));
     return { month: t("dashboard.monthLabel", { month: monthNumber }), revenue: revenueByMonth.get(monthKey) || 0 };
   });
+
+  // 表示期間に入金の記録が1件も無いジム＝まだ記録を始めていない。
+  // グラフが全部ゼロなだけだと「壊れた」と読まれるので、案内を出す。
+  const hasAnyPaymentRecord = tenantPayments.length > 0;
+
+  const activeClientCount = profiles.filter((p) => isActiveMember(p.status)).length;
+
+  // 今月の入金が未記録の在籍会員。
+  // ⚠️ **「未収」ではない。** 記録し忘れているだけかもしれないので、督促も予約ブロックもしない。
+  //    休会・退会とプラン未設定の人は最初から出さない（払わなくて当然なので）。
+  const unrecordedThisMonth = useMemo(
+    () =>
+      outstandingMembers({
+        members: profiles.map((p) => ({
+          user_id: p.user_id,
+          name: p.display_name || t("common.nameUnset"),
+          status: p.status,
+          planName: p.plan,
+        })),
+        payments: tenantPayments,
+        monthKey: currentMonth,
+        priceOf: (planName) => tenantPlans.find((tp) => tp.plan_name === planName)?.price ?? null,
+        isActive: isActiveMember,
+      }),
+    [profiles, tenantPayments, currentMonth, tenantPlans, t],
+  );
 
   // フォローが必要な顧客（離脱検知）:
   //  最終来店から INACTIVE_DAYS 日以上経過し、今後の予約が無い顧客を抽出。
@@ -296,6 +279,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
     type Risk = { user_id: string; name: string; reason: "lapsed" | "neverBooked"; days: number };
     const list: Risk[] = [];
     profiles.forEach((p) => {
+      // 休会中の人は来なくて当然。離脱リスクとして毎日出すと本当の離脱が埋もれる。
+      if (!isActiveMember(p.status)) return;
       const info = visit.get(p.user_id);
       const hasUpcoming = (info?.upcoming ?? false) || !!p.next_booking_date;
       if (hasUpcoming) return;
@@ -323,6 +308,8 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
     type Renewal = { user_id: string; name: string; days: number; remaining: number | null; isUnlimited: boolean };
     const list: Renewal[] = [];
     profiles.forEach((p) => {
+      // 休会中はサイクルが進まない。更新の催促を出すのは在籍に戻してから。
+      if (!isActiveMember(p.status)) return;
       if (!p.cycle_start_date || !p.plan) return;
       const tenantPlan = tenantPlans.find((tp) => tp.plan_name === p.plan) ?? null;
       const input = resolvePlanUsageInput(p.plan, tenantPlan, p.cycle_start_date);
@@ -364,7 +351,9 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
       {(() => {
         const statCards = [
           showStatTodaySessions && { label: t("dashboard.statTodaySessions"), value: t("dashboard.countUnit", { count: todayBookings.length }), icon: CalendarDays, color: 'text-accent' },
-          showStatActiveClients && { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: profiles.length }), icon: Users, color: 'text-info' },
+          // 「アクティブ顧客」なので休会中は数えない。顧客一覧の総数（休会も含む）とは
+          // 意図的に食い違う。合わせたくなったら、まずラベルの意味を決め直すこと。
+          showStatActiveClients && { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: activeClientCount }), icon: Users, color: 'text-info' },
           showStatMonthSessions && { label: t("dashboard.statMonthSessions"), value: t("dashboard.countUnit", { count: monthBookings.length }), icon: Clock, color: 'text-success' },
           showStatMonthRevenue && { label: t("dashboard.statMonthRevenue"), value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
         ].filter((s): s is { label: string; value: string; icon: typeof CalendarDays; color: string } => !!s);
@@ -655,6 +644,64 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
               )}
             </h2>
             <CounselingResponseList />
+          </section>
+        )}
+
+        {/*
+          入金の記録がまだ1件も無いジム向けの案内。
+          2026-08-08 に売上を「定価×サイクル開始日の推計」から「実際に受け取った記録」へ
+          切り替えたため、記録を始めるまでグラフも今月の売上も 0 になる。
+          何も言わないと「壊れた」と読まれるので、切り替えたことを明示する。
+          売上系の表示を両方オフにしているジムには出さない。
+        */}
+        {!hasAnyPaymentRecord && (showRevenueChart || showStatMonthRevenue) && (
+          <section>
+            <Card className="border-info/30">
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-sm font-bold mb-1">{t("member.revenueEmptyTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("member.revenueEmptyBody")}</p>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/*
+          今月の入金が未記録の在籍会員。
+          ⚠️ **「未収」「滞納」とは書かない。** 記録し忘れているだけの可能性があり、
+             督促の根拠として出しているわけではない（画面の文言も t("member.unrecorded*") 側で統一）。
+          記録を1件も付けていないジムには出さない。全員が並ぶだけで意味が無いため。
+        */}
+        {hasAnyPaymentRecord && unrecordedThisMonth.length > 0 && (
+          <section>
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+              <Banknote className="w-3.5 h-3.5 text-warning" />
+              {t("member.unrecordedTitle")}
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-1">
+                {t("dashboard.countUnit", { count: unrecordedThisMonth.length })}
+              </Badge>
+            </h2>
+            <div className="space-y-2">
+              {unrecordedThisMonth.slice(0, 10).map((m) => (
+                <Card key={m.user_id} className="card-hover cursor-pointer" onClick={() => onSelectClient(m.user_id)}>
+                  <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{m.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {m.planName}
+                        {m.expectedYen ? ` ・ ${formatYen(m.expectedYen)}` : ""}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </CardContent>
+                </Card>
+              ))}
+              {unrecordedThisMonth.length > 10 && (
+                <p className="text-[11px] text-muted-foreground text-center pt-1">
+                  {t("retention.more", { count: unrecordedThisMonth.length - 10 })}
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground">{t("member.unrecordedNote")}</p>
+            </div>
           </section>
         )}
 

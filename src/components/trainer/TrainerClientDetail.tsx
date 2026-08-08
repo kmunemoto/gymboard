@@ -66,6 +66,9 @@ import TrainerWeightJourneyPanel from "./TrainerWeightJourneyPanel";
 import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import TrainingGrowthChart from "./clientDetail/TrainingGrowthChart";
+import MemberInfoCard from "./clientDetail/MemberInfoCard";
+import MemberPaymentsSection from "./clientDetail/MemberPaymentsSection";
+import MemberAgreementsSection from "./clientDetail/MemberAgreementsSection";
 import type { SetEntry, ExerciseEntry, ExerciseMaster, WorkoutRecord, MealRecord } from "./clientDetail/types";
 
 interface TrainerClientDetailProps {
@@ -78,6 +81,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const { plans: tenantPlans, tenant } = useTenant();
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   const [profile, setProfile] = useState<any>(null);
+  // tenant_members 側の在籍状態。profiles とは別テーブルなので分けて持つ
+  const [membership, setMembership] = useState<{
+    status: string | null; suspended_from: string | null; suspended_until: string | null;
+  }>({ status: null, suspended_from: null, suspended_until: null });
+  // 事務セクション（連絡先・在籍状態）を保存したあとに profile / membership を取り直すための鍵
+  const [memberRefreshKey, setMemberRefreshKey] = useState(0);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
   const [showUsagePeriod, setShowUsagePeriod] = useState(true);
@@ -145,9 +154,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         // Resolve current plan: prefer tenant_members.plan_id mapping, fallback to profiles.plan
         const { data: mem } = await supabase
           .from("tenant_members")
-          .select("plan_id, tenant_plans:plan_id(plan_name)")
+          .select("plan_id, status, suspended_from, suspended_until, tenant_plans:plan_id(plan_name)")
           .eq("user_id", clientId)
           .maybeSingle();
+        setMembership({
+          status: (mem as any)?.status ?? null,
+          suspended_from: (mem as any)?.suspended_from ?? null,
+          suspended_until: (mem as any)?.suspended_until ?? null,
+        });
         const linkedName = (mem as any)?.tenant_plans?.plan_name as string | undefined;
         setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
@@ -169,7 +183,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       setLoadingProfile(false);
     };
     fetchProfile();
-  }, [clientId]);
+  }, [clientId, memberRefreshKey]);
 
   // Fetch user_avatars gender
   useEffect(() => {
@@ -1110,6 +1124,30 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
         {/* Overview */}
         <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+          {/*
+            事務まわり（連絡先・在籍状態・入金・同意）。
+            タブを増やさず概要の先頭に置いている。タブは最大7本まで埋まっていて、
+            8本目を足すとモバイルでラベルが潰れるため（各テナントの機能フラグ次第で本数が変わる）。
+          */}
+          <MemberInfoCard
+            clientId={clientId}
+            phone={profile?.phone ?? null}
+            nameKana={profile?.name_kana ?? null}
+            status={membership.status}
+            suspendedFrom={membership.suspended_from}
+            suspendedUntil={membership.suspended_until}
+            onChanged={() => setMemberRefreshKey((k) => k + 1)}
+            onWithdrawn={onBack}
+          />
+
+          <MemberPaymentsSection
+            clientId={clientId}
+            currentPlanName={clientPlan || null}
+            suggestedAmountYen={clientPlan ? getPrice(clientPlan) : null}
+          />
+
+          <MemberAgreementsSection clientId={clientId} />
+
           {BODY_METRICS_ENABLED && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">

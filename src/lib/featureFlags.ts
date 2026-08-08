@@ -112,13 +112,22 @@ export const APPLE_CONNECTION_ENABLED = false; // Apple連携セクション（A
 export const WAITLIST_ENABLED = true;
 
 // ソーシャルログイン（Appleでサインイン / Googleでログイン）のボタン表示。
-// 既定 OFF。Supabase の Authentication → Providers で Apple / Google を
-// 有効化し OAuth 認証情報（クライアントID/シークレット・リダイレクトURL等）を
-// 設定するまでは、ボタンを押すと Supabase が
-// "Unsupported provider: provider is not enabled" を返し、生のエラー画面へ
-// 遷移してしまう（Web では SDK が認可URLへ遷移するためコード側で抑止できない）。
-// プロバイダー設定が完了したら true に戻すだけでログイン画面に再表示される。
-export const SOCIAL_LOGIN_ENABLED = false;
+//
+// **2026-08-08 に ON。** それまでは、プロバイダー未設定のまま押すと
+// "Unsupported provider: provider is not enabled" が返って生のエラー画面へ
+// フルリダイレクトしてしまうため OFF にしていた
+// （Web は SDK が認可URLへ遷移するのでコード側で抑止できない）。
+//
+// Apple・Google とも認可画面まで到達することを本番で確認済み:
+//   /auth/v1/authorize?provider=apple  → Apple のサインイン画面 ✅
+//   /auth/v1/authorize?provider=google → Google のアカウント選択 ✅
+//
+// ⚠️ **Apple のクライアントシークレットは6ヶ月で失効する**（2027-02-04）。
+//    切れると Apple ログインだけが突然落ちる。`.p8` から再生成すること。
+//    経緯・設定値・落とし穴は mem/auth/social-login.md。
+//
+// 片方のプロバイダーだけ無効化された状態にしないこと。押した人がエラー画面に飛ぶ。
+export const SOCIAL_LOGIN_ENABLED = true;
 
 // ジムボードの課金システム（GymBoard SaaS の料金・トライアル・席数上限・延滞ブロック）。
 // false にすると課金まわりを一括で無効化し、ジムは無料・無制限で利用できる。

@@ -28,7 +28,7 @@
 | G | 売上を実績ベースへ。`is_tenant_over_limit` が退会者を数えないよう修正 |
 
 マイグレーション: `supabase/migrations/20260808030000_member_lifecycle_and_payments.sql`
-検査: `src/test/memberLifecycle.test.ts`（41件・変異11件とも赤を確認）
+検査: `src/test/memberLifecycle.test.ts`（42件・変異11件とも赤を確認）
 
 ## 🔴 触るときに壊しやすいところ
 
@@ -137,3 +137,48 @@ status が NULL の行は従来どおり対象外（`.eq` のときも除外さ�
   **退会は「記録を残して在籍を終える」別の操作**で、置き換えではない。
 - 回数券の購入履歴は `member_payments.kind = '回数券'` で記録できるが、
   `ticket_remaining` との自動連動はしていない（残数はこれまでどおり手で調整）。
+
+## 本番への適用（2026-08-08 実施・PR #284）
+
+Lovable の `query_database`（project_id = `69ac2641-45d8-44e0-b60d-4e002a4f9c1c`）で適用。
+H-1/H-2 → D → B → G の4回に分けた（1本で流すと、途中で落ちたときにどこまで進んだか分からなくなる）。
+
+### 適用前に確かめたこと
+
+- `tenant_members` は 63 行、**status は全部 `'active'`。NULL も想定外の値も 0 件**。
+  → `tenant_members_status_known` の CHECK は無事に付いた。
+- `is_tenant_over_limit` は本番でも元の `status <> 'cancelled'` だった（想定どおり）。
+- 全15テナントで `over_limit` は false。
+
+### 適用後（3段構えの3段目・ロールを演じて実読）
+
+`has_function_privilege` が true でも足りない。実際に読んで・書いて確かめた。
+
+| 演じた相手 | 確かめたこと | 結果 |
+| --- | --- | --- |
+| Salute のオーナー | bookings 386 / profiles 34 / tenant_members 34 が今も読める | OK（穴8の再発なし） |
+| Salute のオーナー | `member_payments` に**実際に INSERT できる** | OK（12,000円の行が返った） |
+| お客様 | 自分の入金を自分で INSERT | **弾かれた（期待どおり）** |
+| お客様 | 自分の同意記録を自分で INSERT | **弾かれた（期待どおり）** |
+| お客様 | bookings 33 / profiles 1 が今も読める | OK |
+| anon | 新テーブルは 0 件 | OK |
+| anon | `get_tenant_public` が 1 行返る（体験予約の公開経路） | OK |
+| anon | `is_tenant_over_limit` が呼べる | OK |
+| 全テナント | 適用後に `over_limit` が true になったジムは 0 | OK |
+
+**テナント越えは対照実験で確かめた。** 空のテーブルを覗いて「0件でした」では、
+RLS が効いているのか単に行が無いのか区別が付かない。
+トランザクション内で Salute の入金を1件実在させたうえで、
+
+- 別ジム（ジムボードパーソナルジム）のオーナー → **0 件**
+- Salute のオーナー → **1 件**
+- 本人（そのお客様） → **1 件**
+
+を確認して ROLLBACK した。検証で作った行は残っていない（適用後も payments / agreements とも 0 行）。
+
+### 踏みかけた読み違い
+
+anon で `SELECT (public.get_tenant_public(...) IS NOT NULL)` が **false** を返した。
+壊したかと思ったが、これは **composite 型の `IS NOT NULL` は全列が非 NULL のときだけ true** という罠。
+`SELECT count(*) FROM public.get_tenant_public(...)` で引き直したら 1 行返った。
+**戻り値が複合型の関数の生存確認に `IS NOT NULL` を使わないこと。**

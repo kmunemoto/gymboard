@@ -33,6 +33,25 @@
 -- ── 通常のメール登録の挙動は変えない ──────────────────────────
 -- メールアドレスで登録した人にとって、メールは意味のある識別子なので
 -- 従来どおりフォールバックに残す。除外するのは privaterelay だけ。
+--
+-- ── 🔴 この関数は、本番では**まだ誰からも呼ばれていない** ─────────
+-- 2026-08-08 に実測したところ、本番の auth.users に**ユーザートリガーが0件**だった。
+-- リポジトリの 20260507051932 が作るはずの
+-- `on_auth_user_created_profile` / `on_auth_user_created_role` が存在しない。
+--
+--   auth.users の内部トリガー   30件（見えている）
+--   DB全体のユーザートリガー    36件（見えている）
+--   auth.users のユーザートリガー 0件  ← 権限ではなく、本当に無い
+--
+-- **意図的に復活させない判断をした（2026-08-08）。**
+--   ・いまの流れ（JoinGym / Onboarding が upsert で profiles を作る）は破綻していない
+--   ・auth.users の AFTER INSERT トリガーは、失敗すると**新規登録そのものが止まる**。
+--     いま無いということは、その故障モードが存在しない状態でもある
+--
+-- したがってこの CREATE OR REPLACE は**現時点では不活性**。
+-- トリガーを復活させたときに正しく動くようにしてあるだけ。
+-- 表示名の実務上の入り口は JoinGym.tsx と Onboarding.tsx（どちらも upsert）。
+-- 経緯は mem/auth/social-login.md。
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger

@@ -24,6 +24,90 @@
 
 ---
 
+---
+
+## 🔴 本番に auth.users のトリガーが存在しない（2026-08-08 実測）
+
+**これを知らないと、この先の話が全部ずれる。**
+
+リポジトリの `20260507051932` が作るはずの
+`on_auth_user_created_profile` / `on_auth_user_created_role` が**本番に無い。**
+
+権限で見えていないだけ、という可能性は対照実験で潰した。
+
+```
+auth.users の内部トリガー      30件（見えている）
+DB全体のユーザートリガー       36件（見えている）
+auth.users のユーザートリガー   0件  ← 本当に無い
+```
+
+`supabase_migrations.schema_migrations` にも `20260507051932` は無く、
+適用済みの最終は `20260721160949`。ただし本番の変更は Lovable の
+`query_database` から直接当てている運用なので、**この表は実態を表さない。**
+判断は必ず `pg_trigger` を見ること。
+
+### 意図的に復活させない判断をした（2026-08-08）
+
+- いまの流れ（`JoinGym` / `Onboarding` が upsert で profiles を作る）は破綻していない
+- `auth.users` の AFTER INSERT トリガーは、**失敗すると新規登録そのものが止まる**。
+  いま無いということは、その故障モードが存在しない状態でもある
+
+したがって下の `handle_new_user` 修正は**現時点では不活性**。
+トリガーを復活させたときに正しく動くようにしてあるだけ。
+
+### ⚠️ 「Apple の privaterelay が顧客一覧に並ぶ」は**今は起きない**
+
+トリガーが無いので `handle_new_user` が走らず、profiles は
+`JoinGym`（お客様が名前を入力する）でしか作られない。
+最初この被害を実在するものとして説明してしまったが、**誤りだった。**
+
+---
+
+## 🔴 `.update()` は行が無いと黙って成功する（2026-08-08 に踏んだ）
+
+```ts
+// src/pages/Onboarding.tsx（修正前）
+await supabase.from("tenant_members").insert({ ..., display_name: gymName + "オーナー" });  // 入る
+await supabase.from("profiles").update({ display_name: ... }).eq("user_id", user.id);       // no-op
+```
+
+profiles の行はトリガーが作る前提で書かれていた。トリガーが無いので
+**エラーも出さずに0行更新で成功**し、**開設したオーナー14人ぶんの profiles が
+丸ごと欠けていた**（ジム側ホームの挨拶が既定文言のままになる）。
+
+`JoinGym.tsx` は最初から `upsert` だったので、自分で参加したお客様は無事だった。
+**欠落がオーナーに偏っていたのが手がかり。**
+
+### 実測（バックフィル前）
+
+```
+profiles が無い active メンバー   16人  … オーナー14 / お客様2
+うち tenant_members に名前がある   16人  ← データは在った。写せていなかっただけ
+うち予約実績がある                 0人
+一度もジムに参加していない        10人  … 補完元が無いので対象外
+```
+
+5/21 以降に開設した人が全員該当。そこでトリガーが失われたと見られる。
+
+### やったこと
+
+1. `Onboarding.tsx` を `update` → `upsert({ onConflict: "user_id" })`
+2. `tenant_members.display_name` から16件バックフィル
+3. `SET LOCAL ROLE authenticated` でオーナー本人を演じ、自分の名前が読めることを確認
+
+```
+バックフィル後: profiles 47 → 63 / active メンバーの欠落 0件 / 空名 0件
+```
+
+`src/test/socialLogin.test.ts` が「profiles を作りうる経路は upsert であること」を
+見張っている（`update` に戻すと赤）。
+
+> **一般化して覚えること。** このアプリで profiles の行の存在は**保証されていない。**
+> 新しく行を作りうる経路では必ず `upsert`。`update` を書いてよいのは
+> 「行が在ることを直前に確かめた」ときだけ。
+
+---
+
 ## 直したこと（2026-08-08）
 
 ### `handle_new_user` がプロバイダーの氏名を拾えていなかった
@@ -141,7 +225,28 @@ await Browser.open({ url: data.url });   // @capacitor/browser
 
 ## 残っていること
 
-- [ ] `handle_new_user` の本番適用（2026-08-08 時点でコネクタ切断のため未適用）
+- [x] `handle_new_user` の本番適用（2026-08-08 適用。トランザクション内で一時トリガーを
+      張って7ケース通し、ROLLBACK で後片付けまで確認）
+- [x] オーナー14人＋お客様2人の profiles バックフィル
 - [ ] 管理画面の設定（上記）
 - [ ] 設定後に `SOCIAL_LOGIN_ENABLED = true`
 - [ ] 実機で Apple / Google 両方ログインして、`auth.identities` に行が入るか確認
+- [ ] 一度もジムに参加していない10人の profiles（補完元の名前が無いので保留）
+
+### 検証に使った形（トリガーが無い関数をどう確かめるか）
+
+誰からも呼ばれない関数は、**検証のあいだだけトリガーを張って ROLLBACK する。**
+
+```sql
+BEGIN;
+CREATE TRIGGER tmp_verify AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+INSERT INTO auth.users (id, instance_id, aud, role, email, raw_user_meta_data, created_at, updated_at)
+VALUES ('00000000-0000-4000-a000-000000000001','00000000-0000-0000-0000-000000000000',
+        'authenticated','authenticated','taro@gmail.com','{"full_name":"山田 太郎"}'::jsonb, now(), now());
+SELECT display_name FROM public.profiles WHERE user_id = '00000000-0000-4000-a000-000000000001';
+ROLLBACK;   -- DDL も含めて巻き戻る
+```
+
+通した7ケース: Google氏名 / Apple非公開・名前なし（NULL）/ Apple非公開・名前あり /
+display_name 優先 / 通常メール / 大文字 PrivateRelay（NULL）/ 空白だけの氏名は素通り。

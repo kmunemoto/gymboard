@@ -139,6 +139,49 @@ describe("OAuth の開始", () => {
   });
 });
 
+describe("🔴 profiles の行はトリガーが作ってくれない", () => {
+  // 2026-08-08 の実測: 本番の auth.users に**ユーザートリガーが0件**。
+  // リポジトリの 20260507051932 が作るはずの on_auth_user_created_profile が無い。
+  // （権限で見えないのではない。内部トリガー30件・DB全体のユーザートリガー36件は見えている）
+  //
+  // つまり **profiles の行は誰も自動では作らない。**
+  // 「行はもう在るはず」と思って `update` を書くと、
+  // **エラーも出さずに0行更新で成功する**ので気づけない。
+  //
+  // 実際に Onboarding.tsx がこれを踏み、開設したオーナー14人ぶんの profiles が
+  // 丸ごと欠けて、ジム側ホームの挨拶が既定文言のままになっていた
+  // （2026-08-08 に tenant_members.display_name から16件バックフィル済み）。
+
+  const NEW_ROW_PATHS = [
+    ["src/pages/Onboarding.tsx", "ジム開設（オーナー）"],
+    ["src/pages/JoinGym.tsx", "招待コードでの参加（お客様）"],
+  ] as const;
+
+  for (const [path, label] of NEW_ROW_PATHS) {
+    it(`${label} は profiles を upsert している`, () => {
+      const src = read(path);
+      const i = src.indexOf('.from("profiles")');
+      expect(i, `${path} に profiles への書き込みがありません`).toBeGreaterThan(-1);
+      const stmt = src.slice(i, i + 400);
+      expect(
+        stmt,
+        `${path} が profiles を update しています。行が無いと**黙って0行更新で成功**します。` +
+          `本番に auth.users のトリガーは無いので、行が既に在る保証はありません`,
+      ).not.toMatch(/\.from\("profiles"\)\s*\n?\s*\.update\(/);
+      expect(stmt).toMatch(/\.upsert\(/);
+    });
+  }
+
+  it("upsert の衝突キーが user_id になっている", () => {
+    // onConflict を間違えると重複行か 23505 になる。
+    for (const [path] of NEW_ROW_PATHS) {
+      const src = read(path);
+      const i = src.indexOf('.from("profiles")');
+      expect(src.slice(i, i + 400), `${path}`).toMatch(/onConflict:\s*"user_id"/);
+    }
+  });
+});
+
 describe("画面まわり", () => {
   it("ボタンは Apple と Google の2つ", () => {
     const src = read(BUTTONS);

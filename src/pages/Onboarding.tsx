@@ -217,10 +217,21 @@ const Onboarding = () => {
       });
       if (mErr) throw mErr;
 
+      // ⚠️ **upsert であること。`update` にしないこと。**
+      //
+      // `update` は対象行が無いと**エラーも出さずに0行更新で成功する。**
+      // profiles の行は auth.users の INSERT トリガー（handle_new_user）が
+      // 作る前提で書かれていたが、**本番にそのトリガーは存在しない**
+      // （2026-08-08 に確認。mem/auth/social-login.md）。
+      // そのため開設したオーナー14人ぶんの profiles が丸ごと欠けていて、
+      // ジム側ホームの挨拶が既定文言のままになっていた。
+      // JoinGym.tsx は最初から upsert なので、自分で参加したお客様は無事だった。
       await supabase
         .from("profiles")
-        .update({ display_name: gymName.trim() + t("onboarding.ownerSuffix") })
-        .eq("user_id", user.id);
+        .upsert(
+          { user_id: user.id, display_name: gymName.trim() + t("onboarding.ownerSuffix") },
+          { onConflict: "user_id" },
+        );
 
       await supabase
         .from("user_roles")

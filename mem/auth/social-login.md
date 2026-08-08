@@ -158,23 +158,89 @@ OAuth のメタデータは攻撃者が細工しうるので、ここから role
 
 ## 管理画面でやること
 
-### Supabase
+> 以下は Supabase 公式ドキュメント（`auth-apple` / `redirect-urls`）を
+> 2026-08-08 に読んで確認した内容。**うろ覚えで書いていない。**
 
-- Authentication → Providers → Google / Apple を有効化
-- Redirect URLs の許可リストに**両方**入れる
-  - `https://app.kyoto-salute.com/auth/callback`
-  - `app.gymboard.mobile://auth/callback` ← ネイティブ。忘れるとアプリだけ戻れない
+### 🔴 Apple のシークレットは6ヶ月で切れる。ローテーションが要る
+
+```
+Apple requires you to generate a new secret key every 6 months using the
+signing key (.p8 file). This is a critical maintenance task that will
+cause authentication failures if missed.
+```
+
+**Supabase に入れるのは `.p8` の中身そのものではない。** `.p8` から生成した
+**JWT（クライアントシークレット）**で、これに有効期限がある。
+OAuth フロー（＝ジムボードが使っている方式）を使う限り必須の作業。
+
+- **6ヶ月ごとのカレンダー登録を必ず入れること**
+- `.p8` は生成のたびに要るので保管する
+- ネイティブ実装だけならローテーション不要だが、ジムボードは OAuth フロー
+
+### 🔴 OAuth フローでは Apple から氏名が**一切**来ない
+
+```
+When using the OAuth flow, the user's full name is not accessible from
+Apple's response. Apple only provides the full name through native
+authentication methods ... during the first sign-in.
+```
+
+「初回だけ来る」のは **Sign in with Apple JS / ネイティブ SDK** の話。
+`signInWithOAuth` を使っているジムボードでは**常に来ない。**
+
+つまり **Apple 登録者は全員 `display_name` が NULL**（メール非公開なら
+メールも使えないため）。これは例外ではなく**通常ケース**。
+`JoinGym` で名前を入力させる導線が、Apple 経路の唯一の名前の入り口になる。
+
+### Apple Developer（必要なもの6つ）
+
+1. **Team ID**（10桁）。既存の `APPLE_TEAM_ID` と同じもの
+2. **Email Sources の登録** — Services セクション。
+   これが無いと `@privaterelay.appleid.com` 宛のメールが届かない
+3. **App ID** = `app.gymboard.mobile`。Capabilities で Sign in with Apple を有効化。
+   ⚠️ **Server-to-Server notification endpoint は空のままにする**
+   （Supabase が未対応）
+4. **Services ID**（例 `app.gymboard.mobile.web`）。これが Supabase の Client ID になる
+5. Services ID の **Website URLs**
+   - Domain: `rrbfwitprzuevzytykrq.supabase.co`
+   - Return URL: `https://rrbfwitprzuevzytykrq.supabase.co/auth/v1/callback`
+6. **署名キー（Keys → Sign in with Apple）** → `.p8` を保管し、
+   **Supabase ダッシュボードの生成ツールでシークレットを作る**
+   （鍵はブラウザ外に出ない。Safari では動かないので Chrome/Firefox で）
+
+> ### 🔴 `.p8` が3種類になる
+>
+> | 種類 | どこで作る | 何に使う |
+> |---|---|---|
+> | APNs 認証キー | Keys → APNs | Firebase → プッシュ通知 |
+> | App Store Connect API キー | ASC → Users and Access → Integrations | ビルドのアップロード |
+> | **Sign in with Apple キー** | Keys → Sign in with Apple | **これ。Supabase のシークレット生成** |
+>
+> **全部 `AuthKey_XXXXXXXXXX.p8` という同じファイル名。**
+> ピラボードが前2つを取り違えて、プッシュが永久に届かない状態になった
+> （`mem/ops/native-release-checklist.md:338-357`）。
 
 ### Google Cloud Console
 
-- OAuth クライアント（ウェブアプリケーション）を作る
+- OAuth クライアント（**ウェブアプリケーション**）を1つだけ作る
 - 承認済みリダイレクトURI = `https://rrbfwitprzuevzytykrq.supabase.co/auth/v1/callback`
   （アプリのURLではない。**Supabase のURL**）
 
-### Apple Developer
+**iOS/Android 用のクライアントは要らない。** ジムボードはネイティブでも
+`signInWithOAuth`（＝Supabase 経由の Web OAuth）なので、Google から見ると
+常にウェブアプリケーション1本。アプリが Google と直接話す経路が無い。
 
-- Services ID を作る
-- **Sign in with Apple 用の `.p8` キー**を作る
+### Supabase
+
+- Authentication → Providers → Apple / Google を有効化
+  - Apple の Client ID = **Services ID**（App ID ではない）
+  - Apple の Secret = **生成した JWT**（`.p8` の中身ではない）
+- Authentication → **URL Configuration** → Redirect URLs に**両方**入れる
+  - `https://app.kyoto-salute.com/auth/callback`
+  - `app.gymboard.mobile://auth/callback` ← ネイティブ。忘れるとアプリだけ戻れない
+
+> 許可リストはワイルドカード可。区切り文字は `.` と `/` なので、
+> `*` は1階層、`**` は全階層。本番は**完全一致で書く**のが推奨。
 
 > ### 🔴 `.p8` が3種類になる
 >

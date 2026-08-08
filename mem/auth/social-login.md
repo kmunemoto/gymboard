@@ -24,8 +24,6 @@
 
 ---
 
----
-
 ## 🔴 本番に auth.users のトリガーが存在しない（2026-08-08 実測）
 
 **これを知らないと、この先の話が全部ずれる。**
@@ -201,8 +199,8 @@ authentication methods ... during the first sign-in.
    ⚠️ **Server-to-Server notification endpoint は空のままにする**
    （Supabase が未対応）
 4. **Services ID**（例 `app.gymboard.mobile.web`）。これが Supabase の Client ID になる
-5. Services ID の **Website URLs**（🔴 下の「Lovable Cloud は Supabase の
-   コールバックを使わない」を先に読むこと）
+5. Services ID の **Website URLs**（🔴 下の「リダイレクト先はプロバイダーごとに違う」
+   を先に読むこと。**Apple と Google で別の値**）
    - Domains: `oauth.lovable.app,gymboard.lovable.app,app.kyoto-salute.com`
    - Return URLs:
      ```
@@ -214,9 +212,17 @@ authentication methods ... during the first sign-in.
      改行だけだと1本目しか登録されない恐れがある。Next の次の確認リストで
      3本並んでいるか目視する
    - ⚠️ 最後に **Save** まで押す（Next → Done → Continue → Save）
-6. **署名キー（Keys → Sign in with Apple）** → `.p8` を保管し、
-   **Supabase ダッシュボードの生成ツールでシークレットを作る**
-   （鍵はブラウザ外に出ない。Safari では動かないので Chrome/Firefox で）
+6. **署名キー（Keys → Sign in with Apple）** → `.p8` を保管する。
+   シークレット（JWT）は Lovable の「Generate secret」でも作れるが、
+   2026-08-08 は**上流セッションが openssl で生成して渡した**（検証済み）。
+   ```
+   header  {"alg":"ES256","kid":<Key ID>}
+   payload {"iss":<Team ID>,"iat":…,"exp":iat+180日,
+            "aud":"https://appleid.apple.com","sub":<Services ID>}
+   ```
+   `cryptography` は壊れているので `openssl dgst -sha256 -sign` で署名し、
+   DER を r‖s の64バイトへ変換する。生成後は公開鍵で必ず検証すること
+   （改ざん版が落ちることまで確認する）
 
 > ### 🔴 `.p8` が3種類になる
 >
@@ -232,30 +238,48 @@ authentication methods ... during the first sign-in.
 
 ---
 
-## 🔴 Lovable Cloud は Supabase のコールバックを使わない（2026-08-08 に踏んだ）
+## 🔴 リダイレクト先は**プロバイダーごとに違う**（2026-08-08 に2回間違えた）
 
-**上流の手順書を Supabase 公式ドキュメントどおりに書いたら、間違っていた。**
-
-Supabase のドキュメントは「Return URL は `https://<ref>.supabase.co/auth/v1/callback`」
-と書いてある。**Lovable Cloud ではこれが使われない。** 自前の OAuth プロキシを
-一枚かぶせていて、実際の Return URL はこの3本だった。
+**Apple と Google で違った。** 推測すると必ず外す。
 
 ```
-https://oauth.lovable.app/callback
-https://gymboard.lovable.app/~oauth/callback
-https://app.kyoto-salute.com/~oauth/callback
+Apple   https://oauth.lovable.app/callback
+        https://gymboard.lovable.app/~oauth/callback
+        https://app.kyoto-salute.com/~oauth/callback
+                                      ↑ Lovable の OAuth プロキシ経由
+
+Google  https://rrbfwitprzuevzytykrq.supabase.co/auth/v1/callback
+                                      ↑ 素の Supabase
 ```
 
-対応する Domains は `oauth.lovable.app` / `gymboard.lovable.app` / `app.kyoto-salute.com`。
+Apple 側の Domains は `oauth.lovable.app` / `gymboard.lovable.app` / `app.kyoto-salute.com`。
 
-**気づけたのは宗本さんが Lovable の設定画面を送ってくれたから。**
-Supabase の URL のまま進めていたら、Apple ログインが `invalid_request`
-（リダイレクト不一致）で落ちて、原因が分かりにくかった。
+### 私が2回間違えた経緯
 
-> **教訓。** Lovable Cloud のプロジェクトでは、**Supabase 公式ドキュメントの
-> 手順をそのまま当てはめない。** 必ず Lovable 側の設定画面に出ている実値を見る。
-> DB が Supabase だからといって、周辺の配線まで素の Supabase とは限らない。
-> **兄弟アプリも全部 Lovable なので、同じことが起きる。**
+1. **1回目**: Supabase 公式ドキュメントどおり「Return URL は
+   `https://<ref>.supabase.co/auth/v1/callback`」と手順書に書いた
+   → **Apple では誤り**（Lovable のプロキシが正）
+2. **2回目**: その反省から「Lovable Cloud では Supabase の URL を使わない」と
+   **一般化した**。Lovable の Google 設定画面も Apple と同じ3本を
+   「これを登録してね」と表示していたので、それを信じた
+   → **Google では誤り**（素の Supabase が正）。`redirect_uri_mismatch` で判明
+
+**Lovable の設定画面に出ている「登録してね」の一覧すら、Google では実態と違った。**
+
+> ### 教訓: エラーが返す `redirect_uri` を読むのが唯一確実
+>
+> ドキュメントでも設定画面でもなく、**実際に送られた値**を見る。
+> `redirect_uri_mismatch` のエラーページの URL に入っている `authError=` を
+> base64 デコードすると、送信された `redirect_uri` がそのまま入っている。
+>
+> ```python
+> import base64
+> d = base64.urlsafe_b64decode(blob + "=" * (-len(blob) % 4))
+> # → redirect_uri: https://....../auth/v1/callback
+> ```
+>
+> **兄弟アプリも全部 Lovable なので、同じ確認を毎回やること。**
+> 「ジムボードではこうだった」も当てにしない。
 
 ### 認証情報は「自前」を選ぶこと（マネージドを選ばない）
 
@@ -312,9 +336,16 @@ app.gymboard.mobile://auth/callback    ← ネイティブ。無いとアプリ�
 - **iOS/Android 用のクライアントは要らない。** ネイティブでも `signInWithOAuth`
   （＝サーバ経由の Web OAuth）なので、Google から見ると常にウェブ1本。
   アプリが Google と直接話す経路が無い
-- ⚠️ **承認済みリダイレクトURI は、Apple と同じく Lovable のコールバックになるはず。**
-  Supabase の `/auth/v1/callback` を入れないこと。Google を設定する時点で
-  Lovable の画面に出ている実値を確認すること（2026-08-08 時点で未実施）
+- 承認済みリダイレクトURI は **`https://rrbfwitprzuevzytykrq.supabase.co/auth/v1/callback`**
+  （2026-08-08 に実測。Apple とは違う。上の「プロバイダーごとに違う」を参照）
+- 🔴 **OAuth 同意画面の「対象」を「外部」にする。** 組織 `kyoto-salute.com` があるため
+  既定が「内部」になりやすく、内部のままだと `@kyoto-salute.com` の人しかログインできない
+- 🔴 **公開ステータスを「本番環境」にする。** テストのままだとテストユーザー以外は弾かれる。
+  スコープが `email` / `profile` のみ（非機密）なので審査なしで公開できる
+- 「OAuth ユーザー数の上限 100」の表示は**無視してよい**。
+  未承認の機密スコープを要求する場合の制限で、非機密のみなら適用されない
+- クライアントは `gymboard`（`gymboard-59570`）プロジェクトに作った。
+  `salute-seo` / `Salute` は別事業のプロジェクトなので使わない
 
 > ### 🔴 `.p8` が3種類になる
 >

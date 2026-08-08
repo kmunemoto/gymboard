@@ -61,11 +61,27 @@ describe("既定テナントを null にできる形になっている", () => {
     expect(src).toMatch(/LEGACY_DEFAULT_TENANT_ID:\s*string \| null/);
   });
 
-  it("TrialBooking は DEFAULT_TENANT_ID が null のとき見出しを切り替えない", () => {
-    // null === null で「初回無料体験」（複製元ジム専用の文言）が
-    // 全テナントに出てしまうのを防ぐガード。
+  it("TrialBooking の見出しがテナントで分岐していない", () => {
+    // ── この検査が変わった経緯（2026-08-08）────────────────────────
+    // 元は `DEFAULT_TENANT_ID !== null && effectiveTenantId === DEFAULT_TENANT_ID`
+    // というガードの存在を断言していた。複製元ジム専用の見出し（「初回無料体験」）が、
+    // 既定テナントを持たないフォークで **null === null が成立して全テナントに出る**
+    // のを防ぐためのもの。
+    //
+    // Salute御所南が体験を有料化したので、**その見出しの分岐ごと廃止した。**
+    // 呼称は全ジム共通「体験トレーニング」（料金を語らない）で、金額は
+    // tenants.trial_price_yen から出す。つまりガードが守っていた危険自体が消えた。
+    //
+    // ガードの存在を断言し続けると、**消したことで落ちる**（実際に落ちた）。
+    // 代わりに「そもそも分岐が無い」という、より強い形を断言する。
     const src = readFileSync("src/pages/TrialBooking.tsx", "utf8");
-    expect(src).toMatch(/DEFAULT_TENANT_ID !== null && effectiveTenantId === DEFAULT_TENANT_ID/);
+    const headerLine = /const headerTitle\s*=([\s\S]*?);/.exec(src);
+    expect(headerLine, "headerTitle の算出が見つからない").not.toBeNull();
+    expect(
+      headerLine![1],
+      "見出しをテナントで分岐させています。既定テナントを持たないフォークでは " +
+        "null === null が成立して、複製元ジム専用の文言が全テナントに出ます",
+    ).not.toContain("DEFAULT_TENANT_ID");
   });
 
   it("公開ページはテナントIDが無いとき get_tenant_public を呼ばない", () => {

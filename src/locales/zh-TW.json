@@ -238,7 +238,21 @@
         "standard": "加上營收與客戶追蹤",
         "full": "全部功能"
       },
-      "displayPresetCustom": "已個別調整（與任何預設都不一致）"
+      "displayPresetCustom": "已個別調整（與任何預設都不一致）",
+      "trialPriceSection": "體驗費用",
+      "trialPriceDesc": "將顯示於體驗預約頁面與確認郵件。留空則不顯示費用（填 0 會明確顯示「¥0」）。當天入會免費等條件，請寫在上方的「體驗預約頁面說明」裡。",
+      "trialPriceLabel": "費用（日圓、含稅）",
+      "trialPricePlaceholder": "例：3000",
+      "trialPriceUnset": "未設定（不顯示費用）",
+      "trialPriceSaved": "已儲存體驗費用",
+      "trialPriceSaveFailed": "體驗費用儲存失敗",
+      "trialPriceInvalid": "請輸入 0 以上的整數",
+      "cancelPolicyTitle": "取消說明",
+      "cancelPolicyDesc": "顯示於會員預約頁面與取消確認視窗。留空則不顯示。取消規定因門市而異，因此不提供預設文案。",
+      "cancelPolicyPlaceholder": "例：預約的變更與取消可隨時透過App進行。當天取消也不收取費用、不扣次數。",
+      "cancelPolicyUnset": "未設定（不向會員顯示任何內容）",
+      "cancelPolicySaved": "已儲存取消說明",
+      "cancelPolicySaveFailed": "取消說明儲存失敗"
     },
     "notification": {
       "title": "通知設定",
@@ -510,7 +524,8 @@
     "rescheduleForfeitWarningTitle": "確定要更改日期時間嗎？",
     "rescheduleForfeitWarningDesc": "更改當天的預約後，原時段無法再安排給其他人，將計為消耗1次。",
     "rescheduleForfeitConfirmBtn": "計次並更改",
-    "rescheduling": "更改中..."
+    "rescheduling": "更改中...",
+    "cancelPolicyTitle": "關於取消"
   },
   "training": {
     "title": "紀錄",
@@ -1673,8 +1688,7 @@
     "addGoogleCal": "加入 Google 行事曆",
     "addAppleCal": "加入 Apple 行事曆",
     "noteContact": "如有任何疑問，歡迎隨時諮詢。",
-    "headerTitle": "體驗預約",
-    "headerTitleFreeTrial": "首次免費體驗",
+    "headerTitle": "體驗訓練",
     "headerSub": "諮詢 + 訓練（共 60 分鐘）",
     "infoTitle": "空手即可",
     "infoBody": "僅限首次到訪者的體驗。專業教練將一對一為您提供協助。",
@@ -1692,9 +1706,10 @@
     "submitBooking": "預約體驗",
     "lineNewBooking": "【{{gym}}】有新的體驗預約！\n\n· 姓名：{{name}} 先生/小姐\n· 時間：{{date}} {{start}}〜{{end}}\n\n請在應用程式的預約管理畫面查看詳情。",
     "notifTrainerSubject": "{{name}}（體驗預約）",
-    "trialPlanName": "首次免費體驗",
     "pushTitle": "體驗預約申請",
-    "pushBody": "{{name}} 申請了體驗預約"
+    "pushBody": "{{name}} 申請了體驗預約",
+    "priceLabel": "費用",
+    "taxIncluded": "（含稅）"
   },
   "trialCancel": {
     "loading": "正在確認您的預約...",
@@ -2346,6 +2361,16 @@
       "visited": "已到店",
       "joined": "已入會",
       "declined": "未成交"
+    },
+    "feeLabel": "體驗費",
+    "feeHint": "本應用不處理付款。請在此記錄店內收取的結果。",
+    "feeUpdated": "已更新體驗費記錄",
+    "feeUpdateFailed": "體驗費記錄失敗",
+    "feeStatus": {
+      "unset": "未記錄",
+      "pending": "未確認",
+      "collected": "已收取",
+      "waived": "因入會而免除"
     }
   },
   "waitlistAlert": {

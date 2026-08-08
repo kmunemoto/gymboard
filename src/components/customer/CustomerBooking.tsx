@@ -500,6 +500,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     [myBookings],
   );
 
+  // ジムが設定したキャンセルについての案内。空欄なら何も出さない（既定文は持たない）。
+  const cancelPolicy = tenant?.cancel_policy_body?.trim() || "";
+
   const cancelDescription = cancelTarget
     ? t("booking.cancelDescWithTime", { date: formatJST(`${cancelTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }), startTime: cancelTarget.startTime, endTime: cancelTarget.endTime })
     : t("booking.cancelDescDefault");
@@ -527,6 +530,17 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
             {t("booking.selectDateTimePrompt")}
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">{t("booking.advanceNotice")}</p>
+          {/* ジムが書いたキャンセルについての案内。設定していないジムには何も出さない。
+              予約する前に読めるよう、キャンセル確認だけでなくここにも出す。 */}
+          {cancelPolicy && (
+            <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3">
+              <p className="text-[11px] font-bold flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                {t("booking.cancelPolicyTitle")}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-line">{cancelPolicy}</p>
+            </div>
+          )}
         </div>
 
         <PlanUsageCard
@@ -1022,6 +1036,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
               <p className="text-sm text-muted-foreground">
                 {forfeitPending ? t("booking.sameDayForfeitWarningDesc") : cancelDescription}
               </p>
+              {/* ジムが書いたキャンセルについての案内。設定していないジムには何も出さない。
+                  ペナルティの警告（forfeitPending）を出しているときは、そちらが優先。 */}
+              {!forfeitPending && cancelPolicy && (
+                <p className="text-xs text-muted-foreground whitespace-pre-line rounded-lg bg-muted/50 p-3 text-left">
+                  {cancelPolicy}
+                </p>
+              )}
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
               <Button

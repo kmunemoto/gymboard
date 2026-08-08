@@ -78,6 +78,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [trialInfoTitle, setTrialInfoTitle] = useState("");
   const [trialInfoBody, setTrialInfoBody] = useState("");
   const [savingTrialInfo, setSavingTrialInfo] = useState(false);
+  // 体験の料金。入力は文字列で持つ。**空欄("")と "0" を区別する**ため
+  // （空欄=料金を表示しない / 0="¥0" と明示）、number にはしない。
+  const [trialPrice, setTrialPrice] = useState("");
+  const [savingTrialPrice, setSavingTrialPrice] = useState(false);
+  const [cancelPolicy, setCancelPolicy] = useState("");
+  const [savingCancelPolicy, setSavingCancelPolicy] = useState(false);
 
   // 連絡先メールアドレス（tenants.email）。体験予約の確認メールでお客様への連絡先として案内される。
   const [contactEmail, setContactEmail] = useState("");
@@ -114,6 +120,15 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     setTrialInfoTitle(tenant?.trial_info_title ?? "");
     setTrialInfoBody(tenant?.trial_info_body ?? "");
   }, [tenant?.trial_info_title, tenant?.trial_info_body]);
+
+  useEffect(() => {
+    // null/undefined → 空欄。0 は "0" になる（"" にしないこと）。
+    setTrialPrice(tenant?.trial_price_yen == null ? "" : String(tenant.trial_price_yen));
+  }, [tenant?.trial_price_yen]);
+
+  useEffect(() => {
+    setCancelPolicy(tenant?.cancel_policy_body ?? "");
+  }, [tenant?.cancel_policy_body]);
 
   useEffect(() => {
     setContactEmail(tenant?.email ?? "");
@@ -235,6 +250,58 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       refetchTenant();
     }
     setSavingTrialInfo(false);
+  };
+
+  const handleSaveTrialPrice = async () => {
+    if (!tenant) return;
+    const raw = trialPrice.trim();
+    // 空欄 = 料金を表示しない（NULL）。"0" は「¥0 と明示する」なので NULL に倒さない。
+    let value: number | null = null;
+    if (raw !== "") {
+      if (!/^\d+$/.test(raw)) {
+        toast.error(t("settings.trainer.trialPriceInvalid"));
+        return;
+      }
+      value = Number(raw);
+      // DB 側の CHECK (0〜1000000) と同じ範囲。ここで弾いて分かりにくい 23514 を出さない。
+      if (!Number.isSafeInteger(value) || value < 0 || value > 1000000) {
+        toast.error(t("settings.trainer.trialPriceInvalid"));
+        return;
+      }
+    }
+    setSavingTrialPrice(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ trial_price_yen: value } as any)
+      .eq("id", tenant.id);
+    if (error) {
+      // 失敗理由（例: カラム未追加＝マイグレーション未適用）を画面でも確認できるようにする
+      console.error("体験料金の保存に失敗:", error);
+      toast.error(t("settings.trainer.trialPriceSaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.trialPriceSaved"));
+      refetchTenant();
+    }
+    setSavingTrialPrice(false);
+  };
+
+  const handleSaveCancelPolicy = async () => {
+    if (!tenant) return;
+    setSavingCancelPolicy(true);
+    // 空欄は NULL。**既定文にフォールバックしない**（何も表示しない）。
+    const body = cancelPolicy.trim();
+    const { error } = await supabase
+      .from("tenants")
+      .update({ cancel_policy_body: body || null } as any)
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("キャンセルポリシーの保存に失敗:", error);
+      toast.error(t("settings.trainer.cancelPolicySaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.cancelPolicySaved"));
+      refetchTenant();
+    }
+    setSavingCancelPolicy(false);
   };
 
   const handleSaveContactEmail = async () => {
@@ -477,6 +544,41 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
               </CardContent>
             </Card>
           </section>
+
+          <Separator />
+
+          {/* === 体験の料金 ===
+              ジムごとの設定。**コードに金額を書かない**（本番には14テナントいて、
+              無料体験で集客しているジムもある）。空欄なら料金を出さない＝従来の見た目。 */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPriceSection")}</h3>
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.trialPriceDesc")}</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trial-price" className="text-xs font-bold">{t("settings.trainer.trialPriceLabel")}</Label>
+                  <Input
+                    id="trial-price"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={1000000}
+                    step={100}
+                    value={trialPrice}
+                    onChange={(e) => setTrialPrice(e.target.value)}
+                    placeholder={t("settings.trainer.trialPricePlaceholder")}
+                  />
+                  {trialPrice.trim() === "" && (
+                    <p className="text-[11px] text-muted-foreground">{t("settings.trainer.trialPriceUnset")}</p>
+                  )}
+                </div>
+                <Button onClick={handleSaveTrialPrice} disabled={savingTrialPrice || !tenant} size="sm" className="h-10">
+                  <Save className="w-4 h-4 mr-1" />
+                  {savingTrialPrice ? t("common.saving") : t("common.save")}
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
         </>
       )}
 
@@ -707,6 +809,33 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 onCheckedChange={handleToggleSameDayPenalty}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* お客様に見せるキャンセルについての案内。
+            ⚠️ **既定文を持たせない。** ペナルティの有無は店ごとに違うので、
+               上流が代弁すると事実と食い違う。空欄なら何も出さない。 */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <h4 className="font-bold text-sm">{t("settings.trainer.cancelPolicyTitle")}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.cancelPolicyDesc")}</p>
+            </div>
+            <Textarea
+              id="cancel-policy"
+              value={cancelPolicy}
+              onChange={(e) => setCancelPolicy(e.target.value)}
+              placeholder={t("settings.trainer.cancelPolicyPlaceholder")}
+              rows={4}
+              maxLength={500}
+            />
+            {cancelPolicy.trim() === "" && (
+              <p className="text-[11px] text-muted-foreground">{t("settings.trainer.cancelPolicyUnset")}</p>
+            )}
+            <Button onClick={handleSaveCancelPolicy} disabled={savingCancelPolicy || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingCancelPolicy ? t("common.saving") : t("common.save")}
+            </Button>
           </CardContent>
         </Card>
       </section>

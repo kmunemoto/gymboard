@@ -49,6 +49,12 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   // ⚠️ TENANT_VALUE_DEFAULTS には**入れない**。列が読めない環境では undefined のままにして、
   //    「未確認(null)」と区別できるようにする（保存できない環境で聞き続けないため）。
   "booking_capacity_confirmed_at",
+  // 体験トレーニングの料金（税込・円）。ジムごとの設定で、コードに金額を書かない。
+  // NULL = 料金を表示しない（従来どおり）。0 は「¥0 と明示する」で NULL とは違うため、
+  // TENANT_VALUE_DEFAULTS では null を既定にしている。
+  "trial_price_yen",
+  // お客様に見せるキャンセルについての案内。NULL/空なら何も出さない。
+  "cancel_policy_body",
 ];
 
 /**
@@ -109,6 +115,12 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   google_review_url: null,
   trial_info_title: null,
   trial_info_body: null,
+  // 列が読めない環境では「料金を表示しない」に倒す。
+  // ⚠️ 0 を既定にしないこと。0 は「¥0 と明示する」の意味になり、
+  //    未適用の環境で全ジムの体験ページに「¥0」と出てしまう。
+  trial_price_yen: null,
+  // 既定文は持たせない。ペナルティの有無は店ごとに違うので、上流が代弁しない。
+  cancel_policy_body: null,
 };
 
 /**

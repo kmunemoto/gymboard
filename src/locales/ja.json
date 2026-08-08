@@ -238,7 +238,21 @@
         "standard": "売上・顧客フォローも",
         "full": "すべての機能"
       },
-      "displayPresetCustom": "個別に調整済み（どのプリセットとも一致していません）"
+      "displayPresetCustom": "個別に調整済み（どのプリセットとも一致していません）",
+      "trialPriceSection": "体験の料金",
+      "trialPriceDesc": "体験予約ページと確認メールに表示します。空欄にすると料金を表示しません（0 を入れると「¥0」と明示します）。当日入会で無料にするなどの条件は、上の「体験予約ページの案内文」に書いてください。",
+      "trialPriceLabel": "料金（税込・円）",
+      "trialPricePlaceholder": "例: 3000",
+      "trialPriceUnset": "未設定（料金を表示しない）",
+      "trialPriceSaved": "体験の料金を保存しました",
+      "trialPriceSaveFailed": "体験の料金の保存に失敗しました",
+      "trialPriceInvalid": "0 以上の整数を入力してください",
+      "cancelPolicyTitle": "キャンセルについての案内",
+      "cancelPolicyDesc": "お客様の予約画面とキャンセル確認に表示します。空欄にすると何も表示しません。ペナルティの有無はジムによって違うため、既定の文章は用意していません。",
+      "cancelPolicyPlaceholder": "例: 予約の変更・キャンセルはアプリからいつでも可能です。当日のキャンセルでもキャンセル料や回数の消費はありません。",
+      "cancelPolicyUnset": "未設定（お客様には何も表示しません）",
+      "cancelPolicySaved": "キャンセルについての案内を保存しました",
+      "cancelPolicySaveFailed": "キャンセルについての案内の保存に失敗しました"
     },
     "notification": {
       "title": "通知設定",
@@ -510,7 +524,8 @@
     "rescheduleForfeitWarningTitle": "本当に日時を変更しますか？",
     "rescheduleForfeitWarningDesc": "当日の予約を変更すると、元の枠は他の方にご案内できないため、1回分の消化扱いになります。",
     "rescheduleForfeitConfirmBtn": "消化して変更する",
-    "rescheduling": "変更中..."
+    "rescheduling": "変更中...",
+    "cancelPolicyTitle": "キャンセルについて"
   },
   "training": {
     "title": "記録",
@@ -1673,8 +1688,7 @@
     "addGoogleCal": "Googleカレンダーに登録",
     "addAppleCal": "Appleカレンダーに登録",
     "noteContact": "ご不明な点がございましたらお気軽にお問い合わせください。",
-    "headerTitle": "体験予約",
-    "headerTitleFreeTrial": "初回無料体験",
+    "headerTitle": "体験トレーニング",
     "headerSub": "カウンセリング＋トレーニング（計60分）",
     "infoTitle": "手ぶらでOK",
     "infoBody": "初めての方限定の体験です。プロのトレーナーがマンツーマンでサポートいたします。",
@@ -1692,9 +1706,10 @@
     "submitBooking": "体験を予約する",
     "lineNewBooking": "【{{gym}}】新規の体験予約が入りました！\n\n・お名前：{{name}} 様\n・日時：{{date}} {{start}}〜{{end}}\n\nアプリの予約管理画面から詳細を確認してください。",
     "notifTrainerSubject": "{{name}}（体験予約）",
-    "trialPlanName": "初回無料体験",
     "pushTitle": "体験予約の申し込み",
-    "pushBody": "{{name}}さんから体験予約のお申し込みがありました"
+    "pushBody": "{{name}}さんから体験予約のお申し込みがありました",
+    "priceLabel": "料金",
+    "taxIncluded": "（税込）"
   },
   "trialCancel": {
     "loading": "予約内容を確認しています...",
@@ -2346,6 +2361,16 @@
       "visited": "来店した",
       "joined": "入会した",
       "declined": "見送り"
+    },
+    "feeLabel": "体験料",
+    "feeHint": "アプリでは決済しません。店頭で受け取った結果を記録する欄です。",
+    "feeUpdated": "体験料の記録を更新しました",
+    "feeUpdateFailed": "体験料の記録に失敗しました",
+    "feeStatus": {
+      "unset": "未記録",
+      "pending": "未確認",
+      "collected": "頂いた",
+      "waived": "入会のため免除"
     }
   },
   "waitlistAlert": {

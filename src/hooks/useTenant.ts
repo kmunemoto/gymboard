@@ -63,6 +63,16 @@ export interface Tenant {
   trial_info_title: string | null;
   /** 体験予約ページの案内カード説明文。null/空なら既定文言を表示 */
   trial_info_body: string | null;
+  /**
+   * 体験トレーニングの料金（税込・円）。
+   * null は「料金を表示しない」。**0（無料と明示する）とは別**。
+   */
+  trial_price_yen: number | null;
+  /**
+   * お客様に見せるキャンセルについての案内。
+   * null/空なら**何も表示しない**（既定文は持たない。店ごとに方針が違うため）。
+   */
+  cancel_policy_body: string | null;
   invite_code?: string;
   status: string;
   gymboard_plan: string;

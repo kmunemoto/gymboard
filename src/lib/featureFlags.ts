@@ -122,9 +122,14 @@ export const WAITLIST_ENABLED = true;
 //   /auth/v1/authorize?provider=apple  → Apple のサインイン画面 ✅
 //   /auth/v1/authorize?provider=google → Google のアカウント選択 ✅
 //
-// ⚠️ **Apple のクライアントシークレットは6ヶ月で失効する**（2027-02-04）。
+// ⚠️ **Apple のクライアントシークレットは6ヶ月で失効する**（現在の期限 2027-02-07）。
 //    切れると Apple ログインだけが突然落ちる。`.p8` から再生成すること。
 //    経緯・設定値・落とし穴は mem/auth/social-login.md。
+//
+//    2026-08-09 に鍵ごとローテーション済み（Key ID: AZT73RCMQZ → 49S6HJTM6S）。
+//    旧鍵は失効させた。理由は「初回の JWT を Lovable への依頼文に書いてしまい、
+//    public リポジトリのコミットメッセージに平文で載った」ため。
+//    🔴 **秘密情報を Lovable への依頼文に書かないこと**（CLAUDE.md にも明記）。
 //
 // 片方のプロバイダーだけ無効化された状態にしないこと。押した人がエラー画面に飛ぶ。
 export const SOCIAL_LOGIN_ENABLED = true;

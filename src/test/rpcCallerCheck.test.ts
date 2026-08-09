@@ -219,3 +219,101 @@ describe("delete_customer_cascade（未ログインで会員データを消せ�
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// 実DB用の検査（security/check.sql）が穴9を見つけられる形になっているか
+// ---------------------------------------------------------------------------
+//
+// 🔴 **検査5-c は構造的に穴9を見つけられない。**
+//    5-c の最後は `AND NOT (p.prosrc ~ 'auth\.uid\(\)|assert_can_act_for')`。
+//    prosrc に auth.uid() があれば「照合している」とみなして**除外する**。
+//    穴9 は「書いてあるのに照合になっていない」形なので、
+//    5-c を何度流しても 0件のまま出てこない（8日間見逃した理由）。
+//
+// リポジトリ側（上のテスト群）はジムボード自身しか守らない。
+// **兄弟アプリは自分の実DBを見るしかなく、その道具が check.sql** なので、
+// ここが欠けていると兄弟には穴9を渡す手段が無くなる。
+//
+// ── 変異テスト（2026-08-09 実施・4件とも赤を確認）────────────────
+//   1. 検査5-d の節ごと削除                          → 赤
+//   2. auth.uid() を「含む」→「含まない」に反転      → 赤（5-c と同じ盲点に戻る）
+//   3. 形1（NULL 素通り比較）の判定を消す            → 赤
+//   4. IS DISTINCT FROM の除外を消す                 → 赤（正しい形を誤検出する）
+describe("🔴 security/check.sql が穴9を見つけられる", () => {
+  const sql = readFileSync("security/check.sql", "utf8");
+
+  /**
+   * 検査5-d の節から、**コメントを落とした SQL 本体だけ**を返す。
+   *
+   * ⚠️ コメントを残したまま見ると落ちる。5-d の説明文には
+   *    「5-c はこう書いてあるから見つけられない」として
+   *    `AND NOT (p.prosrc ~ 'auth\.uid\(\)|...')` を**引用している**ので、
+   *    禁止したい書き方をそのまま含んでいる（2026-08-09 に実際に踏んだ）。
+   *
+   * ⚠️ describe 直下で expect しないこと。節が消えたとき collection error になり、
+   *    「テストが失敗した」形で出てこないため変異検証をすり抜ける
+   *    （これも 2026-08-09 に踏んだ。だから関数にして it の中から呼ぶ）。
+   */
+  const section = (): string => {
+    const start = sql.indexOf("検査5-d");
+    if (start === -1) return "";
+    const after = sql.indexOf("検査7", start);
+    return sql
+      .slice(start, after === -1 ? undefined : after)
+      .split("\n")
+      .map((l) => l.replace(/--.*$/, ""))
+      .join("\n");
+  };
+
+  it("検査5-d の節が存在する", () => {
+    expect(
+      section(),
+      "check.sql に検査5-d がありません。これが無いと兄弟アプリは穴9を自分で見つけられません",
+    ).not.toBe("");
+  });
+
+  it("auth.uid() を含む関数を『除外』ではなく『対象』にしている", () => {
+    // ここが 5-c と逆でないと意味がない
+    expect(
+      section(),
+      "検査5-d が auth.uid() を含む関数を対象にしていません（5-c と同じ盲点です）",
+    ).toMatch(/AND\s+p\.prosrc\s+~\s+'auth\\\.uid\\\(\\\)'/);
+    expect(
+      section(),
+      "検査5-d が auth.uid() を含む関数を除外しています（5-c の盲点そのものです）",
+    ).not.toMatch(/AND\s+NOT\s*\(\s*p\.prosrc\s+~\s+'auth\\\.uid/);
+  });
+
+  it("穴9の壊れた形を2つとも『判定として』出している", () => {
+    // ⚠️ `!=|<>` や `COALESCE` の**出現**だけを見ないこと。
+    //    ORDER BY 側にも同じ式があるので、CASE の判定を消しても素通りする
+    //    （2026-08-09 に変異検証で発覚）。**出力される判定文字列**を見る。
+    const s = section();
+    expect(s, "形1（NULL で素通りする比較）の判定が出力されません").toContain("形1");
+    expect(s, "形2（引数を優先して照合しない）の判定が出力されません").toContain("形2");
+    // 判定の根拠になる式もそれぞれ必要
+    expect(s, "形1 を判定する式（!= / <>）がありません").toMatch(/!=\|<>/);
+    expect(s, "形2 を判定する式（COALESCE）がありません").toMatch(/COALESCE/);
+  });
+
+  it("自動判定できないものを黙って捨てず、目視送りにしている", () => {
+    // 穴9 の教訓は「auth.uid() があるから安全、と機械が決めつけた」こと。
+    // 判定できないものは人に回す必要がある
+    expect(section(), "要目視の受け皿がありません").toContain("要目視");
+  });
+
+  it("正しい形を誤検出しない（assert_can_act_for / IS DISTINCT FROM を除外）", () => {
+    // 誤検出が続くと「どうせ出るもの」と読み飛ばされ、検査が死ぬ
+    expect(section(), "包み済み（assert_can_act_for）を除外していません").toMatch(
+      /NOT\s*\(p\.prosrc\s+~\s+'assert_can_act_for'\)/,
+    );
+    expect(section(), "IS DISTINCT FROM（NULL 安全な正しい形）を除外していません").toMatch(
+      /IS\\s\+DISTINCT\\s\+FROM/,
+    );
+  });
+
+  it("述語（STABLE な has_role 等）を巻き込まない", () => {
+    // 5-c と同じ理由。RLS が使っているので出しても塞いでもいけない
+    expect(section()).toMatch(/p\.provolatile\s*=\s*'v'/);
+  });
+});

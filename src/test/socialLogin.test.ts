@@ -206,3 +206,24 @@ describe("画面まわり", () => {
     expect(missing, "翻訳の取りこぼし:\n  " + missing.join("\n  ")).toEqual([]);
   });
 });
+
+// ── PKCE への切り替えで壊しかけたところ（2026-08-09 追加）────────────────
+describe("🔴 PKCE 切替でログインを壊さない", () => {
+  const src = readFileSync("src/pages/AuthCallback.tsx", "utf8");
+
+  it("交換の失敗を即座にログイン失敗として扱っていない", () => {
+    // detectSessionInUrl（既定 true）が先に code を消費すると
+    // exchangeCodeForSession は必ず失敗する。**そこでセッションは既にある。**
+    // ここで /auth に飛ばすと、ログインできているのにログイン画面へ戻される。
+    const block = src.slice(src.indexOf("exchangeCodeForSession"));
+    const upToRedirect = block.slice(0, block.indexOf('window.location.replace("/auth")'));
+    expect(
+      upToRedirect,
+      "交換に失敗したとき、諦める前に getSession() で確認していません",
+    ).toContain("getSession()");
+  });
+
+  it("復帰できたかを表す判定を持っている", () => {
+    expect(src).toMatch(/recovered/);
+  });
+});

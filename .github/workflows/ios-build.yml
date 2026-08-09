@@ -55,6 +55,41 @@ jobs:
           echo "--- Info.plist after patch ---"
           /usr/libexec/PlistBuddy -c "Print" "$PLIST" | grep -A0 "UsageDescription"
 
+      # 🔴 カスタムURLスキームの登録。**これが無いと OS がアプリに URL を渡さない。**
+      #
+      # 2026-08-09 に実機で発覚: Apple / Google ログインがアプリ内ブラウザから戻れず、
+      # Web 版（app.kyoto-salute.com）に着地したまま操作できてしまっていた。
+      #
+      # 原因は「ここに登録が無かった」こと。確認した事実:
+      #   - Capacitor の iOS テンプレート（node_modules/@capacitor/cli/assets/
+      #     ios-pods-template.tar.gz の App/App/Info.plist）に CFBundleURLTypes は**無い**。
+      #     展開して全17キーを列挙して確認済み。
+      #   - `cap add` も `cap sync` も足さない（CLI 8.4.2 の dist を grep して0件）。
+      #   - ios/ は .gitignore 済みで、毎ビルド `npx cap add ios` でまっさらに再生成される。
+      #     **Xcode で手で足しても残らない。ここに書くしかない。**
+      #
+      # ⚠️ `npx cap sync ios`（後段）は CFBundleURLTypes を触らない。
+      #    既存の UsageDescription が消えていないのと同じ理由。
+      # ⚠️ SCHEME は capacitor.config.ts の appId と必ず一致させること
+      #    （src/lib/brand.ts の NATIVE_APP_SCHEME も同じ値。
+      #     ズレると実機でだけ戻ってこられなくなり、ビルドもテストも通ってしまう）。
+      #    src/test/nativeAppIdentity.test.ts が一致を見張っている。
+      - name: Register custom URL scheme (deep link) in Info.plist
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          SCHEME="app.gymboard.mobile"
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleURLTypes" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleTypeRole string Editor" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string $SCHEME" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $SCHEME" "$PLIST"
+          echo "--- CFBundleURLTypes after patch ---"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$PLIST"
+          # 登録できていなければここで落とす（黙って出荷しない）
+          /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$PLIST" | grep -qx "$SCHEME"
+
       - name: Inject GoogleService-Info.plist
         run: |
           DEST="ios/App/App/GoogleService-Info.plist"

@@ -421,3 +421,122 @@ ROLLBACK;   -- DDL も含めて巻き戻る
 
 通した7ケース: Google氏名 / Apple非公開・名前なし（NULL）/ Apple非公開・名前あり /
 display_name 優先 / 通常メール / 大文字 PrivateRelay（NULL）/ 空白だけの氏名は素通り。
+
+---
+
+## 🔴 2026-08-09: ネイティブで「戻ってこられない」＋セッションが漏れていた
+
+実機（App Store 版）で宗本さんが発見。**メール＋パスワードは正常にアプリ内で完結するのに、
+Apple / Google だけアプリ内ブラウザ（SFSafariViewController）から戻れず、
+Web 版（app.kyoto-salute.com）に着地してそこで操作できてしまっていた。**
+
+「戻れない」だけの話ではなかった。**故障は3つ重なっていた。**
+
+| | 故障 | 状態 |
+| --- | --- | --- |
+| A | Redirect URLs 許可リストに `app.gymboard.mobile://auth/callback` が無く、Site URL にフォールバック | 推定（コンソール確認が要る） |
+| B | iOS の `CFBundleURLTypes` にスキームが**登録されていない** | **確定** |
+| C | `flowType` 未指定＝**implicit** で、トークンが URL フラグメントで外部ブラウザに渡っていた | **確定** |
+
+### B: スキームはどこにも登録されていなかった
+
+- Capacitor の iOS テンプレート（`node_modules/@capacitor/cli/assets/ios-pods-template.tar.gz`
+  の `App/App/Info.plist`）を**実際に展開して全17キーを列挙**。`CFBundleURLTypes` は無い。
+- `cap add` も `cap sync` も足さない（CLI 8.4.2 の dist を grep して0件）。
+- `ios/` は `.gitignore` 済みで、毎ビルド `npx cap add ios` でまっさらに再生成される。
+  **Xcode で手で足しても残らない。**
+- Android も同じ穴（`android-template` の AndroidManifest に VIEW は0件、
+  `strings.xml` の `custom_url_scheme` は既定値のまま）。
+
+→ `.github/workflows/ios-build.yml` に PlistBuddy のステップを追加。
+   `scripts/patch-android.mjs` に intent-filter の追加を実装。
+
+### C: supabase-js の既定は PKCE ではない
+
+**`@supabase/auth-js` 2.108.2 の `dist/module/GoTrueClient.js:21` は `flowType: 'implicit'`。**
+PKCE が既定なのは `@supabase/ssr` であって supabase-js ではない。ここを取り違えていた。
+
+implicit だと戻りが `#access_token=...&refresh_token=...` になり、
+**その URL を開いたブラウザが誰であれログインしてしまう**
+（`GoTrueClient.js:3262` の `_isImplicitGrantCallback` はパスすら見ない）。
+そして **SFSafariViewController は Safari とデータストアを共有する**ので、
+セッションが端末の Safari 側に残る。
+
+→ `src/integrations/supabase/client.ts` に `flowType: 'pkce'` を明示。
+   PKCE なら verifier を持たないブラウザは `?code=` を使えないので
+   （`GoTrueClient.js:3271`）、同じ事故が起きても「ログインできない」で止まり漏れない。
+
+**⚠️ `client.ts` は「automatically generated」。再生成で `flowType` が黙って消える。**
+`src/test/nativeAppIdentity.test.ts` に落ちる検査を置いた。
+
+### 実害の範囲（本番DBで確認・2026-08-09）
+
+```
+auth.identities:  email 59 / google 1 / apple 1
+OAuth 由来の auth.sessions: 6件、すべて 5wz7892v8d@privaterelay.appleid.com
+                            （宗本さんのテスト用 Apple アカウント）
+                            6件とも refreshed_at IS NULL
+```
+
+**お客様の被害はゼロ。** OAuth を使ったのは宗本さんのテストアカウントだけだった。
+`refreshed_at` が全件 NULL＝**どのセッションもアプリの中で生き続けたことがない**、
+というのが「戻れていない」ことの実測証拠でもある。
+
+### PKCE 切替で危うく作りかけた別の壊し方
+
+`detectSessionInUrl`（既定 true）は、PKCE では**クライアント初期化時に自分で
+`?code=` を交換してしまう**。そうすると `AuthCallback.tsx` の明示的な
+`exchangeCodeForSession` は「code が既に使われている」で必ず失敗する。
+**そこでセッションは既にある。** 旧コードはここで即 `/auth` に飛ばしていたので、
+そのまま出すと「ログインできているのにログイン画面へ戻される」になっていた。
+→ 諦める前に `getSession()` で確認する形に変更。検査も追加（socialLogin.test.ts）。
+
+### 決済の前例は根拠にならなかった
+
+「決済（8/7 審査通過）でディープリンク復帰が動いているからスキームは効いている」は**誤り**。
+`src/pages/BillingReturn.tsx:44-51` に
+`/* スキームが登録されていない環境では何も起きない。手動ボタンに委ねる */` とあり、
+**不発でも成立するように設計されていた**（画面に「決済は完了」と出る＋手動ボタン＋
+SFSafariViewController なので X で必ず戻れる）。
+認証だけが詰むのは、X で閉じて戻ってもアプリ側にセッションが無いから。
+
+`mem/features/native-checkout.md:50` の「ディープリンクが効かない場合（プライベート
+ブラウズ等）」という記述は、**実際には常に不発だった可能性が高い**。
+
+### A は確定した（2026-08-09 に画面で確認）
+
+宗本さんが Lovable の Advanced → Redirect URLs を開いて確認したところ、
+**`app.gymboard.mobile://auth/callback` は入っていなかった。** その場で追加済み。
+
+つまり 2026-08-08 のコミット 660ca13 で Lovable に依頼した2本のうち、
+**カスタムスキームの1本は実際には反映されていなかった。**
+Lovable の返事はチャットにしか残らないので、**依頼しただけで確認しないと今回のように落ちる。**
+
+確認できた実値（記録が1件も無かったので残す）:
+
+```
+Site URL      https://app.kyoto-salute.com
+Redirect URLs https://app.kyoto-salute.com/**       ← これがあったので Web版に着地できた
+              https://gymboard.lovable.app/**
+              app.gymboard.mobile://auth/callback   ← 2026-08-09 に追加
+              （ほか計 8/50。Apple 用の ~oauth/callback 系を含む）
+```
+
+`https://app.kyoto-salute.com/**` が許可リストにあったことが、
+「Site URL にフォールバックして、しかもそこでログインできてしまった」理由。
+
+### この時点での状態（B が残っているので、まだ直っていない）
+
+A を直したので**トークンが Web 版に渡る漏れは止まった**が、
+B（iOS に URL スキームが未登録）はアプリの再ビルドが要る。
+そのため A 修正後・次の iOS リリース前は、**症状が変わる**:
+
+- 変更前: アプリ内ブラウザに Web 版が出てログインできてしまう（＝漏れる）
+- 変更後: アプリ内ブラウザが「アドレスが無効」系で止まる（＝漏れないが、ログインもできない）
+
+**これは想定どおりの中間状態。** 直ったように見えなくても正しい。
+
+### まだ人がやること
+- [ ] 次の iOS リリース後、実機で Apple / Google 両方のログインがアプリに戻るか確認
+- [ ] メモ帳に `app.gymboard.mobile://billing?status=success` と書いてタップ →
+      アプリが起動すればスキーム登録が効いている

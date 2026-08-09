@@ -399,6 +399,74 @@ ORDER BY p.proname;
 
 
 -- ----------------------------------------------------------------------------
+-- 検査5-d: 「auth.uid() は書いてあるが照合になっていない」関数（★穴9 / 2026-08-06）
+-- ----------------------------------------------------------------------------
+-- 🔴 **検査5-c はこれを構造的に見つけられない。**
+--    5-c の最後の行は `AND NOT (p.prosrc ~ 'auth\.uid\(\)|assert_can_act_for')`。
+--    つまり **prosrc に auth.uid() があれば「照合している」とみなして除外する。**
+--    穴9 はまさに「書いてあるのに照合になっていない」形だったので、
+--    5-c を何度流しても 0件のまま出てこない。ここはその補集合を見る。
+--
+-- 見つけたい3つの形（詳細は mem/ops/tenant-boundary.md の穴9）:
+--
+--   形1: NULL で素通りする比較（三値論理）
+--        IF NOT has_role(auth.uid(),'trainer') AND auth.uid() != _customer_id THEN RAISE
+--        未ログインだと auth.uid() は NULL。NULL != x は false ではなく **NULL**。
+--        true AND NULL → NULL → IF が通らない → **RAISE を素通りして本体が走る。**
+--        `delete_customer_cascade` がこれで、**anon から誰の会員データでも消せた。**
+--
+--   形2: 引数を優先して照合が無い
+--        v_user := COALESCE(p_user_id, auth.uid());
+--        **引数を渡した時点で auth.uid() は見ない。**
+--
+--   形3: そもそも照合が無い（auth.uid() を別用途で使っているだけ）
+--        → prosrc に auth.uid() があるので 5-c からは除外され、ここに出る。
+--
+-- ⚠️ **`IS DISTINCT FROM` は正しい形**（NULL でも false にならない）。除外している。
+-- ⚠️ **`assert_can_act_for` で包んであるものも正しい形**。除外している。
+--
+-- 読み方:
+--   ★★ が出たら **その場で直す**（既知の壊れた形に一致している）
+--   ⚠️  は「auth.uid() はあるが自動判定できない」。**1件ずつ目で見ること。**
+--       ここを面倒がって飛ばしたのが穴9を8日間見逃した原因そのもの。
+--
+-- 直し方は 5-c と同じ（supabase/migrations/20260806160000_rpc_caller_check.sql）。
+-- 本体が大きいものは**書き写さず、_unchecked に RENAME して包む**こと。
+
+SELECT
+  p.proname,
+  pg_get_function_identity_arguments(p.oid) AS args,
+  has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,
+  CASE
+    WHEN p.prosrc ~* 'COALESCE\s*\(\s*[a-z_]*user_id\s*,\s*auth\.uid\(\)'
+      THEN '★★ 形2: 引数を優先していて auth.uid() を見ていない'
+    WHEN p.prosrc ~ '(!=|<>)\s*auth\.uid\(\)|auth\.uid\(\)\s*(!=|<>)'
+      THEN '★★ 形1: NULL で素通りする比較（未ログインだと例外が出ない）'
+    ELSE '⚠️ 要目視: auth.uid() はあるが、照合になっているか自動判定できない'
+  END AS verdict
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_type t ON t.oid = p.prorettype
+WHERE n.nspname = 'public'
+  AND p.prosecdef
+  AND t.typname <> 'trigger'
+  AND p.provolatile = 'v'                       -- 書き込む関数だけ（述語は除く。5-c と同じ理由）
+  AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  AND p.proname NOT LIKE '%\_unchecked'         -- 包んだ本体は上の検査で別に見ている
+  AND p.prosrc ~ 'auth\.uid\(\)'                -- ← 5-c が除外していた側
+  AND NOT (p.prosrc ~ 'assert_can_act_for')     -- 包んであるものは正しい形
+  AND NOT (p.prosrc ~* 'IS\s+DISTINCT\s+FROM\s+auth\.uid\(\)'
+        OR p.prosrc ~* 'auth\.uid\(\)\s+IS\s+DISTINCT\s+FROM')
+ORDER BY
+  CASE WHEN p.prosrc ~* 'COALESCE\s*\(\s*[a-z_]*user_id\s*,\s*auth\.uid\(\)'
+         OR p.prosrc ~ '(!=|<>)\s*auth\.uid\(\)|auth\.uid\(\)\s*(!=|<>)' THEN 0 ELSE 1 END,
+  p.proname;
+
+-- **★★ が0件で、⚠️ を全部目視し終えているのが正常。**
+-- 上流は 2026-08-06 に12関数が該当し、すべて包むか直すかして ★★ を0件にした。
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

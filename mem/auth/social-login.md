@@ -536,6 +536,63 @@ B（iOS に URL スキームが未登録）はアプリの再ビルドが要る�
 
 **これは想定どおりの中間状態。** 直ったように見えなくても正しい。
 
+### 🔴 Apple のシークレットを公開してしまった（2026-08-08 発生 / 2026-08-09 対処済み）
+
+`kmunemoto/gymboard` は **public リポジトリ**。そこにコミット `660ca13` の
+**コミットメッセージ本文として、Apple のクライアントシークレット（JWT）が平文で載った。**
+
+原因は「Lovable への依頼文に JWT を書いた」こと。
+**Lovable は依頼文をそのままコミットメッセージにして push する。**
+`.gitignore` は効かないし、squash-merge 運用なので履歴の書き換えも現実的でない。
+
+履歴全体を走査した結果、漏れたのはこの1件だけ
+（`.p8` / `.pem` / 秘密鍵のファイルコミットは0件、他のコミットメッセージにも JWT 無し）。
+
+**漏れたのは `.p8`（署名鍵）ではなく、そこから作った期限付きの JWT。**
+新しい JWT を作るだけでは古いものは無効にならない（期限まで有効なまま）ので、
+**鍵ごとローテーションした。**
+
+```
+旧 Key ID  AZT73RCMQZ   → 失効（Revoke）済み
+新 Key ID  49S6HJTM6S   → 有効。期限 2027-02-07
+Team ID    PNSR55VN9Q          （変更なし）
+Services ID app.gymboard.mobile.web （変更なし）
+```
+
+手順（無停止の順番。次にやるときもこの順で）:
+
+1. Apple Developer → Keys で**新しい Sign in with Apple 鍵**を作る（この時点では何も失効させない）
+2. `.p8` から JWT を生成（下記）
+3. Supabase の Apple プロバイダーに貼り替えて publish
+4. **Web で** Apple ログインが通ることを確認
+5. **通ってから**古い鍵を Revoke
+
+⚠️ **失効させるのは Sign in with Apple の鍵だけ。** `.p8` は
+「APNs用」「App Store Connect API用」「Sign in with Apple用」の3種類あって、
+**どれも `AuthKey_XXXXXXXXXX.p8` という同じファイル名**。Key ID で必ず確認する。
+APNs の鍵を失効させると全兄弟アプリのプッシュが止まる。
+
+#### JWT の作り方（このコンテナで動く方法）
+
+`python3-cryptography` は import した時点で pyo3 が panic して**使えない**（PyJWT も同様）。
+openssl は動くので、ES256 の署名だけ外に出し、**DER → raw(r‖s) 64バイト**の変換を自前でやる。
+ここを変換し忘れると Supabase 側で invalid signature になる。
+
+スクリプトは毎回書き起こす（秘密情報を扱うのでリポジトリには置かない）。要点:
+
+- header  `{"alg":"ES256","kid":"<Key ID>"}`
+- payload `{"iss":"<Team ID>","iat":now,"exp":now+15777000,"aud":"https://appleid.apple.com","sub":"<Services ID>"}`
+  （`exp` は Apple の上限が6ヶ月＝15777000秒。超えると拒否される）
+- 署名対象は `base64url(header) + "." + base64url(payload)`
+- `openssl dgst -sha256 -sign` の出力は DER。JWS は raw 64バイトを要求する
+- **作った JWT は公開鍵で自己検証してから貼る**（署名を1文字壊して弾けることも確認すること。
+  検証が素通りだと意味がない）
+
+#### 渡し方
+
+🔴 **Lovable のエージェント経由で渡さない**（それが今回の事故そのもの）。
+チャットで宗本さんに渡し、**画面に直接貼ってもらう**。CLAUDE.md にも明記した。
+
 ### まだ人がやること
 - [ ] 次の iOS リリース後、実機で Apple / Google 両方のログインがアプリに戻るか確認
 - [ ] メモ帳に `app.gymboard.mobile://billing?status=success` と書いてタップ →

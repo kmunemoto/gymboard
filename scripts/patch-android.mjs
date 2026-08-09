@@ -184,6 +184,40 @@ patchFile(path.join(APP, "src/main/AndroidManifest.xml"), (src) => {
   );
 });
 
+// 3a) AndroidManifest.xml: カスタムURLスキームの intent-filter
+//
+// 🔴 これが無いと OS がアプリに URL を渡さず、ディープリンクが死ぬ。
+//    2026-08-09 に iOS 側で実機発覚（Apple / Google ログインがアプリ内ブラウザから
+//    戻れない）。Android も同じ穴が空いていたのでここで塞ぐ。
+//
+// 確認した事実:
+//   - Capacitor の android-template の AndroidManifest.xml に
+//     android.intent.action.VIEW は0件。`cap sync` も足さない。
+//   - strings.xml の custom_url_scheme は既定値 com.getcapacitor.myapp のままで、
+//     CLI に書き換え処理は無い（＝Capacitor 既定の仕組みには乗れない）。
+//   - android/ は .gitignore 済みで手修正が残らないため、ここに書くしかない。
+//
+// ⚠️ SCHEME は capacitor.config.ts の appId と必ず一致させること
+//    （src/lib/brand.ts の NATIVE_APP_SCHEME、ios-build.yml の登録とも同じ値）。
+//    src/test/nativeAppIdentity.test.ts が一致を見張っている。
+const DEEP_LINK_SCHEME = "app.gymboard.mobile";
+
+patchFile(path.join(APP, "src/main/AndroidManifest.xml"), (src) => {
+  if (src.includes(`android:scheme="${DEEP_LINK_SCHEME}"`)) return src;
+  // MainActivity の </activity> の直前に足す。<activity> が複数あっても
+  // Capacitor のテンプレートでは MainActivity が唯一なので、最初の1つでよい。
+  const filter =
+    `            <intent-filter>\n` +
+    `                <action android:name="android.intent.action.VIEW" />\n` +
+    `                <category android:name="android.intent.category.DEFAULT" />\n` +
+    `                <category android:name="android.intent.category.BROWSABLE" />\n` +
+    `                <data android:scheme="${DEEP_LINK_SCHEME}" />\n` +
+    `            </intent-filter>\n`;
+  const at = src.indexOf("</activity>");
+  if (at === -1) return src; // 想定外の形。壊さずそのまま返す
+  return src.slice(0, at) + filter + src.slice(at);
+});
+
 // 3b) 通知アイコン（白＋透過）を配置し、AndroidManifest.xml で既定に指定する
 //
 // ⚠️ 指定しないと、通知にはランチャーアイコン（フルカラー）がそのまま使われる。

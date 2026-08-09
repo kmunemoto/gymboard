@@ -65,11 +65,29 @@ const AuthCallback = () => {
         try {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
-            console.error("[AuthCallback] Code exchange error:", error.message);
-            window.location.replace("/auth");
-            return;
-          }
-          if (!data.session) {
+            // ⚠️ **交換の失敗＝ログイン失敗、ではない。**
+            //
+            // flowType を 'pkce' にした（2026-08-09）ことで、supabase-js の
+            // detectSessionInUrl（既定 true）が**クライアント初期化時に自分で
+            // `?code=` を交換してしまう**経路が生きるようになった。
+            // その場合ここは「code が既に使われている」で必ず失敗するが、
+            // **セッションは既に確立している。**
+            // ここで /auth に飛ばすと、ログインできているのにログイン画面に
+            // 戻される（＝直したつもりで別の壊し方をする）。
+            //
+            // なので、諦める前にセッションの有無を実際に確かめる。
+            let recovered = false;
+            for (let i = 0; i < 5; i += 1) {
+              const { data: sessionData } = await supabase.auth.getSession();
+              if (sessionData.session) { recovered = true; break; }
+              await new Promise((resolve) => window.setTimeout(resolve, 250));
+            }
+            if (!recovered) {
+              console.error("[AuthCallback] Code exchange error:", error.message);
+              window.location.replace("/auth");
+              return;
+            }
+          } else if (!data.session) {
             for (let i = 0; i < 5; i += 1) {
               const { data: sessionData } = await supabase.auth.getSession();
               if (sessionData.session) break;

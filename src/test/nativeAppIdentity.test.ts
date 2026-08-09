@@ -175,6 +175,64 @@ describe("ネイティブ識別子は capacitor.config.ts の appId に揃える
     ).toMatch(new RegExp(`^1:${esc(sender!)}:ios:`));
   });
 
+  // ── 🔴 スキームが「OSに登録されているか」の検査（2026-08-09 に追加）──────────
+  //
+  // それまでこのファイルは**値の整合しか見ていなかった**（brand.ts == appId）。
+  // 値が揃っていても、OS に登録されていなければディープリンクは死ぬ。
+  // 実際 2026-08-09 に実機で発覚した: Apple / Google ログインがアプリ内ブラウザから
+  // 戻れず、Web 版に着地したまま操作できてしまっていた。
+  //
+  // 上の「NATIVE_APP_SCHEME が appId と一致する」のコメントは
+  // 「不一致だと実機でだけ認証から戻ってこられなくなる」と書いてあったのに、
+  // **一致していても戻れなかった。** 見ている場所が足りなかった。
+
+  it("🔴 ios-build.yml が CFBundleURLTypes に appId を登録している", () => {
+    // Capacitor の iOS テンプレートにも cap add / cap sync にも CFBundleURLTypes は無い
+    // （node_modules/@capacitor/cli/assets/ios-pods-template.tar.gz を展開して確認、
+    //  CLI dist の grep も0件）。ios/ は .gitignore 済みで毎ビルド再生成されるので、
+    // **ワークフローに書く以外に登録する手段が無い。**
+    const yml = readFileSync(IOS_YML, "utf8");
+    expect(
+      yml,
+      `${IOS_YML} に CFBundleURLSchemes の登録がありません。` +
+        `これが無いと iOS がアプリに URL を渡さず、OAuth も決済もアプリに戻れません。`,
+    ).toMatch(/CFBundleURLTypes:0:CFBundleURLSchemes:0 string/);
+    // 登録している値が appId であること（別アプリのスキームを書いても気づけないため）
+    const m = yml.match(/SCHEME="([^"]+)"/);
+    expect(m, `${IOS_YML} の SCHEME 変数を読めません`).toBeTruthy();
+    expect(m![1], "登録しているスキームが appId と違います").toBe(APP_ID);
+  });
+
+  it("🔴 patch-android.mjs が VIEW/BROWSABLE の intent-filter を足している", () => {
+    // Android も同じ穴。android/ は .gitignore 済みなので、このスクリプトが唯一の歯止め。
+    const src = readFileSync("scripts/patch-android.mjs", "utf8");
+    for (const needle of [
+      "android.intent.action.VIEW",
+      "android.intent.category.BROWSABLE",
+    ]) {
+      expect(src, `patch-android.mjs に ${needle} がありません`).toContain(needle);
+    }
+    const m = src.match(/DEEP_LINK_SCHEME\s*=\s*"([^"]+)"/);
+    expect(m, "patch-android.mjs の DEEP_LINK_SCHEME を読めません").toBeTruthy();
+    expect(m![1], "登録しているスキームが appId と違います").toBe(APP_ID);
+  });
+
+  it("🔴 supabase クライアントが flowType: 'pkce' を明示している", () => {
+    // auth-js の既定は 'implicit'（dist/module/GoTrueClient.js:21）。
+    // implicit だと OAuth の戻りが `#access_token=` になり、**その URL を開いた
+    // ブラウザが誰であれログインしてしまう**。2026-08-09 に本番で実害が出た
+    // （ネイティブの戻り先が Web 版にフォールバックし、SFSafariViewController に
+    //  本番セッションが渡った。あれは Safari とデータストアを共有する）。
+    //
+    // ⚠️ client.ts は「automatically generated」なので、**再生成で黙って消える**。
+    //    消えると同じ漏れ方が復活するため、ここで落とす。
+    const src = readFileSync("src/integrations/supabase/client.ts", "utf8");
+    expect(
+      src,
+      "flowType: 'pkce' が消えています。消すと OAuth のトークンがアプリ外のブラウザに渡ります。",
+    ).toMatch(/flowType:\s*['"]pkce['"]/);
+  });
+
   it("android-build.yml のアップロード先 packageName が appId と一致する", () => {
     // ここは **Play Console のアップロード先**。取り違えると他人のアプリ枠に上げにいく。
     const yml = readFileSync(ANDROID_YML, "utf8");

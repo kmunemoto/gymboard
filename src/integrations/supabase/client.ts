@@ -21,6 +21,27 @@ const realClient = () =>
       storage: localStorage,
       persistSession: true,
       autoRefreshToken: true,
+      // 🔴 **消さないこと。消すと OAuth のトークンがアプリ外のブラウザに渡る。**
+      //
+      // auth-js の既定は 'implicit'（dist/module/GoTrueClient.js:21 で確認。
+      // PKCE 既定なのは @supabase/ssr であって supabase-js ではない）。
+      // implicit だと OAuth の戻りが `#access_token=...&refresh_token=...` になり、
+      // **その URL を開いたブラウザが誰であれログインしてしまう**
+      // （GoTrueClient.js:3262 の _isImplicitGrantCallback はパスすら見ない）。
+      //
+      // 2026-08-09 に本番で実害が出た: ネイティブの Apple / Google ログインで
+      // リダイレクト先が Site URL（Web版）にフォールバックし、
+      // SFSafariViewController に本番セッションが渡っていた。
+      // **SFSafariViewController は Safari とデータストアを共有する**ので、
+      // お客様のセッションが端末の Safari 側に残る。
+      //
+      // PKCE なら code_verifier を持たないブラウザは `?code=` を使えないため
+      // （GoTrueClient.js:3271 の _isPKCECallback がストレージの verifier を要求する）、
+      // 同じ事故が起きても「ログインできない」で止まり、漏れない。
+      //
+      // メール系（確認メール・パスワード再設定）はこの設定と無関係。
+      // auth-email-hook が token_hash のリンクを組み立て、受け側は verifyOtp を使う。
+      flowType: 'pkce',
     }
   });
 

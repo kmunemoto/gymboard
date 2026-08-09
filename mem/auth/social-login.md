@@ -503,11 +503,40 @@ SFSafariViewController なので X で必ず戻れる）。
 `mem/features/native-checkout.md:50` の「ディープリンクが効かない場合（プライベート
 ブラウズ等）」という記述は、**実際には常に不発だった可能性が高い**。
 
-### まだ人がやること
+### A は確定した（2026-08-09 に画面で確認）
 
-- [ ] Redirect URLs に `app.gymboard.mobile://auth/callback` を追加し、**目視で確認**する
-      （2026-08-08 のコミット 660ca13 で同じ依頼をしたが、入ったかの記録が残っていない）
-- [ ] Site URL の実値を控えてここに書く（記録が1件も無い）
+宗本さんが Lovable の Advanced → Redirect URLs を開いて確認したところ、
+**`app.gymboard.mobile://auth/callback` は入っていなかった。** その場で追加済み。
+
+つまり 2026-08-08 のコミット 660ca13 で Lovable に依頼した2本のうち、
+**カスタムスキームの1本は実際には反映されていなかった。**
+Lovable の返事はチャットにしか残らないので、**依頼しただけで確認しないと今回のように落ちる。**
+
+確認できた実値（記録が1件も無かったので残す）:
+
+```
+Site URL      https://app.kyoto-salute.com
+Redirect URLs https://app.kyoto-salute.com/**       ← これがあったので Web版に着地できた
+              https://gymboard.lovable.app/**
+              app.gymboard.mobile://auth/callback   ← 2026-08-09 に追加
+              （ほか計 8/50。Apple 用の ~oauth/callback 系を含む）
+```
+
+`https://app.kyoto-salute.com/**` が許可リストにあったことが、
+「Site URL にフォールバックして、しかもそこでログインできてしまった」理由。
+
+### この時点での状態（B が残っているので、まだ直っていない）
+
+A を直したので**トークンが Web 版に渡る漏れは止まった**が、
+B（iOS に URL スキームが未登録）はアプリの再ビルドが要る。
+そのため A 修正後・次の iOS リリース前は、**症状が変わる**:
+
+- 変更前: アプリ内ブラウザに Web 版が出てログインできてしまう（＝漏れる）
+- 変更後: アプリ内ブラウザが「アドレスが無効」系で止まる（＝漏れないが、ログインもできない）
+
+**これは想定どおりの中間状態。** 直ったように見えなくても正しい。
+
+### まだ人がやること
 - [ ] 次の iOS リリース後、実機で Apple / Google 両方のログインがアプリに戻るか確認
 - [ ] メモ帳に `app.gymboard.mobile://billing?status=success` と書いてタップ →
       アプリが起動すればスキーム登録が効いている

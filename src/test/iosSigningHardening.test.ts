@@ -267,6 +267,30 @@ describe("足りないシークレットはビルド前に落とす", () => {
   });
 });
 
+describe("アップロードの失敗を緑で通さない", () => {
+  it("🔴 altool の終了コードだけを信用しない", () => {
+    // 2026-08-10 に実測した事実: Actions #126 のログには
+    //   UPLOAD FAILED with 2 errors / Failed to upload package.
+    // と出ていたのに、**ステップは緑・ジョブ全体も success** で終わった。
+    // 「Actions が緑 = App Store Connect に届いた」は成り立っていなかった。
+    //
+    // ネイティブは Actions を回すまでお客様に1行も届かない。ここを見逃すと
+    // 「直した・出した」と思い込んだまま、実際には何も届いていない状態が作れる。
+    // git log を見ても気づけない。
+    expect(CODE, "altool の出力を残していません").toMatch(/tee "\$RUNNER_TEMP\/altool\.log"/);
+    expect(CODE, "パイプ越しの終了コードを拾っていません").toMatch(/PIPESTATUS\[0\]/);
+    expect(
+      CODE,
+      "altool の出力から失敗を読み取っていません（終了コードだけでは緑になります）",
+    ).toMatch(/UPLOAD FAILED\|Failed to upload package/);
+
+    // 読み取ったうえで、ちゃんと落ちること。
+    const idx = CODE.indexOf("UPLOAD FAILED|Failed to upload package");
+    expect(idx, "失敗判定そのものが見つかりません").toBeGreaterThan(-1);
+    expect(CODE.slice(idx, idx + 500), "失敗を見つけても exit していません").toMatch(/exit 1/);
+  });
+});
+
 describe("appId との整合（このテスト自身が空振りしていないこと）", () => {
   it("appId を読めている", () => {
     expect(APP_ID).toMatch(/^[a-z0-9]+(\.[a-z0-9]+)+$/);

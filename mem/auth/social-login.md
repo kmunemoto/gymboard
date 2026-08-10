@@ -593,6 +593,70 @@ openssl は動くので、ES256 の署名だけ外に出し、**DER → raw(r‖
 🔴 **Lovable のエージェント経由で渡さない**（それが今回の事故そのもの）。
 チャットで宗本さんに渡し、**画面に直接貼ってもらう**。CLAUDE.md にも明記した。
 
+### 🔴 2026-08-10: 鍵を取り違えて失効させ、Apple ログインを止めた
+
+ローテーションの翌日、実機で「Apple はサインイン完了まで行くのに、
+何もなかったようにログイン画面に戻る」という報告。Google は完璧に動いていた。
+
+**Google が無事で Apple だけ落ちる**＝両者で共通の部分（URLスキーム・PKCE・
+AuthCallback・許可リスト）は除外できる、という切り分けが効いた。
+
+Auth ログの実物:
+
+```
+error: oauth2: "invalid_client"
+msg:   500: Unable to exchange external code
+path:  /callback  (POST)
+```
+
+原因は **失効させる鍵を取り違えたこと**。
+新しい `49S6HJTM6S` を失効させ、公開してしまった古い `AZT73RCMQZ` が残っていた。
+つまり「漏れた鍵は生きたまま、動いていた鍵を殺した」という最悪の取り違え。
+
+Apple Developer の Keys 一覧に `49S6HJTM6S` が**無い**ことで判明した
+（失効した鍵は一覧から消える）。
+
+最終的に `2JJ478P77P`（GymBoard SIWA 2026-08-10）を作り直して復旧し、
+そのあと `AZT73RCMQZ` を失効させて、**失効後にもう一度サインインして
+まだ通ることまで確認**した。
+
+#### 取り違えを防ぐために
+
+- 鍵の名前に**日付を入れる**（`GymBoard SIWA 2026-08-10`）。
+  `GymBoard Sign in with Apple` と `PilaBoard Sign in with Apple` が並ぶと、
+  Key ID だけが頼りになって間違える
+- Revoke する前に、開いた画面で **Key ID・名前・作成日の3つ**を読み合わせる
+- **どの Key ID を押すかを名指しで指定する。** 「古いほうを」では足りない
+
+### 🔴 「直ったか」の確認は、見る列を間違えると意味がない
+
+2026-08-10 に**2回続けて誤判定しかけた**。記録しておく。
+
+| 見た指標 | なぜダメか |
+|---|---|
+| `auth.identities` の**件数** | **同じ Apple ID で入り直すと新規作成されず既存が再利用される。** 件数も `created_at` も動かないのが正常 |
+| `auth.identities.last_sign_in_at` | 作成時のまま動かないことがある |
+| `auth.flow_state` の `updated_at` / `auth_code_issued_at` | **成功した行は削除されるらしく、失敗だけが溜まる。** 0件のままが正常。失敗の検出には使えるが、成功の検出には使えない |
+| `auth.audit_log_entries` | この環境では**総数0件**。一切使われていない |
+
+**正しい指標:**
+
+```sql
+-- ① identity の updated_at が「試した時刻より後」に動いたか
+SELECT updated_at FROM auth.identities WHERE provider='apple';
+
+-- ② 新しいセッションが作られたか
+SELECT max(created_at) FROM auth.sessions
+ WHERE user_id IN (SELECT user_id FROM auth.identities WHERE provider='apple');
+
+-- ③ Auth ログ（Logs → Authentication logs）から invalid_client が消えたか
+```
+
+**試す前に①の値を控えておき、あとで「それより後か」を見る。** これが唯一確実。
+
+⚠️ Logs の既定は **Edge logs**（PostgREST の通信）で、認証は写らない。
+   ドロップダウンで **Authentication logs** に切り替えること。
+
 ### まだ人がやること
 - [ ] 次の iOS リリース後、実機で Apple / Google 両方のログインがアプリに戻るか確認
 - [ ] メモ帳に `app.gymboard.mobile://billing?status=success` と書いてタップ →

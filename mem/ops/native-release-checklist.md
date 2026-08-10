@@ -52,6 +52,7 @@
 | `src/test/edgeFunctionProjectRef.test.ts` | Supabase の project ref が上流のまま残っていないか | **どの配布キットにも入っていない。** 無ければ一緒にコピーする |
 | `src/test/edgeFunctionOrigin.test.ts` | Edge Function に上流のドメインが残っていないか | `security/` の配布キット経由で配られている。既にあれば不要 |
 | `src/test/pushConfigGuards.test.ts` + `src/test/patchAndroid.test.ts` | 通知アイコンと Firebase プロジェクトの突き合わせ | **入れると最初は赤くなる。** 下の「通知アイコン」を先に用意すること |
+| `src/test/iosSigningHardening.test.ts` | iOS の署名値を Secrets ではなくプロファイル本体から読んでいるか | `ios-build.yml` を一緒に持っていくこと。下の「プロファイルが見つからない」参照 |
 
 **`nativeAppIdentity.test.ts` を入れないと、この手順書はただの読み物になる。**
 「差し替えたつもり」を機械的に検出できるのがこの手順書の value なので、
@@ -140,14 +141,26 @@ Firebase は「1プロジェクト × 複数アプリ」が正規の構成で、
 
 iOS（`ios-build.yml`）:
 ```
-APPLE_TEAM_ID
-APP_STORE_CONNECT_API_KEY
-APP_STORE_CONNECT_API_KEY_ID
-APP_STORE_CONNECT_ISSUER_ID
-IOS_P12_BASE64
-IOS_P12_PASSWORD
-IOS_PROVISION_PROFILE_BASE64
+APP_STORE_CONNECT_API_KEY        必須
+APP_STORE_CONNECT_API_KEY_ID     必須
+APP_STORE_CONNECT_ISSUER_ID      必須
+IOS_P12_BASE64                   必須
+IOS_P12_PASSWORD                 必須
+IOS_PROVISION_PROFILE_BASE64     必須
+APPLE_TEAM_ID                    任意（照合用。値はプロファイル本体から読む）
 ```
+ワークフローの先頭の Preflight が、足りないものを**ビルド前に名指しで**落とす
+（以前は15分ビルドしてからアップロードで落ちていた）。
+
+`APP_STORE_CONNECT_API_KEY` の `.p8` は
+**App Store Connect → Users and Access → Integrations** で作る。
+**Apple Developer の Keys 一覧には出てこない**（別サイト）。Issuer ID もこの画面にしかない。
+
+> ★ **同じ Apple Team なら、ASC API キーは全アプリで使い回せる。**
+> キーはアプリ単位ではなくチーム単位。ジムボードの3つの値をそのまま入れれば通る。
+> ⚠️ ただし: `.p8` は**作成時に1回しかダウンロードできない**（増やすほど紛失事故が増える）。
+> ロールは **App Manager 以上**が要る（Developer だとアップロードだけ 403 になる）。
+> 新しめの ASC はキーを特定アプリに制限できるので、流用するならそこも確認する。
 
 Android（`android-build.yml`。使うなら）:
 ```
@@ -165,6 +178,88 @@ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 - Apple Developer アカウント、App Store Connect にアプリ登録
 - Google Play Console にアプリ登録
 - **`keystore` はアプリごとに作り、絶対に紛失しない**（失うと同じアプリとして更新できない）
+
+---
+
+## 🔴 iOS の署名が「プロファイルが見つからない」で落ちるとき（2026-08-10）
+
+```
+error: No profile for team '***' matching '***' found:
+Xcode couldn't find any provisioning profiles matching '***/***'
+```
+
+ストレッチボードがこれで3回落とした。**正体は、Secrets に入れたプロファイル名の
+末尾に改行が1文字入っていたこと。**
+
+### なぜ誰も見つけられないか
+
+- Secrets の入力欄は **textarea**。コピー元の末尾に改行があれば、**それごと保存される**
+- ログでは `***` に伏せられる。**目視では絶対に見つからない**
+- 出るエラーは「プロファイルが無い」。**プロファイルが壊れている・期限切れ・
+  証明書違い**と誤診する。実際そちらを全部潰してから、最後にここへ辿り着いた
+- `\r`（Windows で編集した値）はもっと悪い。ログ上ではカーソルが行頭に戻るだけで、
+  **改行としてすら見えない**
+
+### 直し方は「1フィールドを直す」ではない
+
+末尾改行は特定のシークレット固有の問題ではなく、**貼り付けで入る値すべての問題**。
+base64 系は `base64 --decode` が改行を無視するので無事だが、短いスカラー値は全部壊れる:
+
+| シークレット | 改行が入るとどうなるか |
+|---|---|
+| プロファイル名 | 署名で「プロファイルが見つからない」 |
+| `APPLE_TEAM_ID` | `DEVELOPMENT_TEAM` と `ExportOptions.plist` の両方が壊れる |
+| `IOS_P12_PASSWORD` | `security import` がパスワード違いで落ちる。**証明書が壊れているように見える** |
+| `APP_STORE_CONNECT_API_KEY_ID` | **ファイル名になる**ので `AuthKey_XXXXXXXXXX(改行).p8` が作られ、鍵が見つからない |
+| `APP_STORE_CONNECT_ISSUER_ID` | altool の認証が落ちる |
+
+やることは2つ:
+
+**1. 署名に使う値は `.mobileprovision` の現物から読む。**
+プロファイル名・チームID・bundle ID は**全部プロファイルの中に入っている**。
+シークレットで渡す理由が無い。`$( )` は末尾の改行を捨てるので、読み出した時点で汚れようがない。
+ベタ書きの二重管理（署名側と `ExportOptions.plist` 側）も同時に消える。
+
+```bash
+security cms -D -i "$PROFILE" > profile.plist 2>/dev/null \
+  || openssl smime -inform DER -verify -noverify -in "$PROFILE" -out profile.plist
+# 日付はロケール依存の文字列で出るので、PlistBuddy ではなく python3 で読む
+python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1],"rb")); print(p["Name"])' profile.plist
+```
+
+読んだら **`capacitor.config.ts` の `appId` と突き合わせて落とす**。
+上流の Secrets をそのまま引き継いだ兄弟アプリを止める、唯一の歯止めになる。
+
+**2. 残りのシークレットは、入ってくる境界で空白を落とす。**
+
+```bash
+trim_id() { printf '%s' "${1-}" | tr -d '[:space:]'; }   # 識別子（空白を含まない）
+trim_nl() { printf '%s' "${1-}" | tr -d '\r\n'; }        # パスワード（改行だけ落とす）
+```
+
+ジムボードの `ios-build.yml` がこの形になっている。そのまま持っていける。
+`src/test/iosSigningHardening.test.ts` が**元に戻したら赤くなる**ので、一緒にコピーすること。
+
+### ⚠️ 中身を覗いて調べようとしないこと
+
+`od -c` / `xxd` / `sed -n l` は文字列を1バイトずつに分解するので、
+**GitHub のマスクをすり抜けて public のログに平文で出る**。
+安全に取れるのは **`wc -c`（長さ）** と「空白が入っていたか」の真偽だけ。
+
+### ついでに: Xcode 16 以降、プロファイルの置き場所が変わった
+
+```
+旧: ~/Library/MobileDevice/Provisioning Profiles
+新: ~/Library/Developer/Xcode/UserData/Provisioning Profiles
+```
+
+**両方に置く。ファイル名は左右で変える**:
+
+- 旧 … これまで通りの固定名。**動いている経路には触らない**
+- 新 … `<UUID>.mobileprovision`。Xcode 自身がこの名前で書くので、固定名だと拾わないことがある
+
+ワークフローが「一番新しい Xcode」を選ぶ作りだと、**コードを1行も変えていなくても
+ランナーの Xcode が上がった日に落ちる**。`xcodebuild -version` は必ずログに出しておくこと。
 
 ---
 

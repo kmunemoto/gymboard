@@ -7,6 +7,41 @@ jobs:
   build:
     runs-on: macos-15
     steps:
+      # ── 必要なシークレットが揃っているかを最初に見る ──────────────────────
+      # 揃っていなければ**15分ビルドしてから**アップロードで落ちる。ここで30秒で落とす。
+      # 名前しか出さないので、ログに秘密は載らない。
+      - name: Preflight — 必要な GitHub Secrets が揃っているか
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for n in IOS_P12_BASE64 IOS_P12_PASSWORD IOS_PROVISION_PROFILE_BASE64 \
+                   APP_STORE_CONNECT_API_KEY APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID; do
+            eval "v=\${$n-}"
+            if [ -n "$v" ]; then echo "  $n: OK"; else missing="$missing $n"; fi
+          done
+          # APPLE_TEAM_ID は **任意**。チームIDはプロビジョニングプロファイル本体から読むので、
+          # ここは「入っているなら食い違っていないか」を見る照合用でしかない。
+          if [ -n "${APPLE_TEAM_ID-}" ]; then
+            echo "  APPLE_TEAM_ID: OK（照合用。プロファイル本体の値を正とします）"
+          else
+            echo "  APPLE_TEAM_ID: 未設定（任意なので続行します）"
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error::GitHub Secrets が足りません:$missing" \
+                 "（Settings → Secrets and variables → Actions）。" \
+                 "App Store Connect の API キーは Apple Developer の Keys 一覧ではなく、" \
+                 "App Store Connect → Users and Access → Integrations にあります。"
+            exit 1
+          fi
+
       - name: List available Xcode versions
         run: ls /Applications/ | grep Xcode
 
@@ -200,10 +235,222 @@ jobs:
           echo "--- AppDelegate.swift ---"
           cat "$DELEGATE"
 
-      - name: Configure App signing (App target only, not SPM packages)
+      # ── 🔴 署名に使う値は「プロファイルの現物」から読む（2026-08-10）────────────
+      #
+      # ストレッチボードが同日、iOS ビルドを3回落とした。原因は
+      # **GitHub Secrets に入れたプロファイル名の末尾に改行が入っていた**こと。
+      # Secrets は textarea なので貼り付けた文字をそのまま保存し、ログでは *** に
+      # 伏せられる。つまり **目視では絶対に見つからない**。
+      #
+      # ジムボードにも同じ穴が空いていた（APPLE_TEAM_ID と IOS_P12_PASSWORD を素通し、
+      # プロファイル名は2箇所にベタ書き）。たまたま改行が入っていなかっただけで、
+      # 仕掛けとしては何も守っていなかった。手当ては2つ:
+      #
+      #   1. シークレットが入ってくる境界で空白を落とす（下の trim_id / trim_nl）
+      #   2. プロファイル名・チームID・bundle ID を **.mobileprovision 本体から読む**。
+      #      `$( )` は末尾の改行を捨てるので、読み出した時点で汚れようがない。
+      #      ベタ書きの二重管理も同時に無くなる（以前は署名側と ExportOptions 側の
+      #      2箇所に "GymBoard App Store" と書いてあり、片方だけ直す事故が作れた）。
+      #
+      # ⚠️ シークレットの中身を od / xxd / sed -n l で覗いて調べないこと。
+      #    1バイトずつに分けると GitHub のマスクをすり抜け、**public のログに平文で出る**。
+      #    ここでは長さも出さず、「空白が入っていたか」だけを出す。
+      - name: Import certificate and provisioning profile (derive signing values)
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
         run: |
+          set -euo pipefail
+
+          # 識別子（チームID等）は空白を含まない。途中の空白ごと落として構わない。
+          trim_id() { printf '%s' "${1-}" | tr -d '[:space:]'; }
+          # パスワードは空白を含みうる。**改行だけ**を落とす（意図した末尾スペースを壊さない）。
+          trim_nl() { printf '%s' "${1-}" | tr -d '\r\n'; }
+          # 中身も長さも出さない。「余分な空白が混ざっていたか」だけを出す。
+          note_ws() {
+            if [ "$2" != "$3" ]; then
+              echo "::warning::Secret $1 に余分な空白（末尾の改行の可能性が高い）が含まれていたので取り除きました。GitHub Secrets は貼り付けた文字をそのまま保存し、ログでは *** に伏せられるため目視では見つかりません。貼り直しておくことを勧めます。"
+            fi
+          }
+
+          TEAM_ID_SECRET="$(trim_id "${APPLE_TEAM_ID-}")"
+          note_ws APPLE_TEAM_ID "${APPLE_TEAM_ID-}" "$TEAM_ID_SECRET"
+          P12_PASSWORD_CLEAN="$(trim_nl "$P12_PASSWORD")"
+          note_ws IOS_P12_PASSWORD "$P12_PASSWORD" "$P12_PASSWORD_CLEAN"
+
+          # ── 証明書 ──────────────────────────────────────────────────
+          KEYCHAIN_PASSWORD="temp_password"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k build.keychain -P "$P12_PASSWORD_CLEAN" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+          # 取り込めたかをここで確かめる。失敗すると後段で無関係な顔のエラーになる。
+          # 証明書の CN（名義）はログに出さない。種類と本数だけ見る。
+          #
+          # ⚠️ ここは**警告に留める**。`security find-identity` の出力書式に依存する検査なので、
+          #    書式が変わった日に「動いているリリース経路」を止めてしまう。
+          #    本当に署名IDが無ければ後段の archive が落ちる。そのときこの行が理由になる。
+          security find-identity -v -p codesigning build.keychain > "$RUNNER_TEMP/identities.txt" || true
+          IDENTITY_COUNT="$(grep -c 'Apple Distribution' "$RUNNER_TEMP/identities.txt" || true)"
+          echo "Apple Distribution の署名 ID: ${IDENTITY_COUNT} 件"
+          if [ "$IDENTITY_COUNT" -lt 1 ]; then
+            echo "::warning::キーチェーンに Apple Distribution の署名 ID が見当たりません。この後の archive が落ちるなら IOS_P12_BASE64 / IOS_P12_PASSWORD を疑ってください。"
+          fi
+
+          # ── プロビジョニングプロファイル ─────────────────────────────
+          PROFILE="$RUNNER_TEMP/profile.mobileprovision"
+          echo "$PROVISION_PROFILE_BASE64" | base64 --decode > "$PROFILE"
+          # .mobileprovision は CMS 署名された plist。security が駄目なら openssl で開く。
+          security cms -D -i "$PROFILE" > "$RUNNER_TEMP/profile.plist" 2>/dev/null \
+            || openssl smime -inform DER -verify -noverify -in "$PROFILE" -out "$RUNNER_TEMP/profile.plist"
+
+          # 唯一の正は capacitor.config.ts の appId（src/test/nativeAppIdentity.test.ts が見張る）
+          APP_ID="$(sed -n "s/.*appId:[[:space:]]*['\"]\([^'\"]*\)['\"].*/\1/p" capacitor.config.ts | head -1)"
+          if [ -z "$APP_ID" ]; then
+            echo "::error::capacitor.config.ts から appId を読めませんでした。"
+            exit 1
+          fi
+
+          # plist の読み出しは python3 に任せる。PlistBuddy だと ExpirationDate が
+          # ロケール依存の文字列で出てきて、日付の比較が壊れやすいため。
+          python3 - "$RUNNER_TEMP/profile.plist" "$RUNNER_TEMP/profile.env" "$GITHUB_ENV" <<'PY'
+          import datetime, hashlib, plistlib, shlex, sys
+
+          plist_path, env_sh, github_env = sys.argv[1], sys.argv[2], sys.argv[3]
+          with open(plist_path, "rb") as f:
+              p = plistlib.load(f)
+
+          name = p["Name"]
+          uuid = p["UUID"]
+          team = p["TeamIdentifier"][0]
+          app_id = p["Entitlements"]["application-identifier"]
+
+          # 🔴 チームIDはこれまで Secret 経由だったので、ログでは常に *** だった。
+          #    このワークフローは APPLE_TEAM_ID を任意に格下げし、「削除してよい」と
+          #    案内する。削除されるとマスク登録が消え、**public のログに素で出る**。
+          #    値そのものは機密ではない（配布した IPA から誰でも取れる）が、
+          #    出る/出ないが変わるのはこの変更の副作用なので、ここで登録し直す。
+          #    ⚠️ 印字より前に出すこと。マスクはこの行より後ろにしか効かない。
+          print(f"::add-mask::{team}")
+
+          # ⚠️ application-identifier の接頭辞は **App ID Prefix** であって、
+          #    TeamIdentifier と同じとは限らない。古い seed ID の App ID や、
+          #    チーム間で移した App ID では食い違う。TeamIdentifier で決め打ちすると
+          #    接頭辞が落ちず、この後の appId 突き合わせが
+          #    「別アプリのプロファイルです」と**誤診して**落ちる。
+          #    プロファイルは正しいのに作り直しに走らせる、いちばん質の悪い壊れ方。
+          prefixes = [x for x in (p.get("ApplicationIdentifierPrefix") or []) if x]
+          for prefix in prefixes + [team]:
+              if app_id.startswith(prefix + "."):
+                  bundle_id = app_id[len(prefix) + 1:]
+                  break
+          else:
+              # どれとも合わない場合。接頭辞は必ず先頭1要素なので、それだけ落とす。
+              prefix = app_id.split(".", 1)[0]
+              bundle_id = app_id.split(".", 1)[1] if "." in app_id else app_id
+
+          # plistlib は <date> を naive な UTC で返す
+          exp = p["ExpirationDate"]
+          left = (exp - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)).days
+
+          print(f"プロファイル名 : {name}")
+          print(f"UUID           : {uuid}")
+          print(f"Team           : {team}")
+          print(f"App ID Prefix  : {prefix}{'' if prefix == team else '  ← Team と異なります（正常なこともあります）'}")
+          print(f"bundle id      : {bundle_id}")
+          print(f"期限           : {exp:%Y-%m-%d} (UTC)  残り {left} 日")
+
+          errors = []
+          if left < 0:
+              errors.append(
+                  "プロビジョニングプロファイルの期限が切れています。"
+                  "Apple Developer で作り直して IOS_PROVISION_PROFILE_BASE64 を貼り直してください。"
+              )
+          if "*" in bundle_id:
+              errors.append(
+                  f"ワイルドカードのプロファイル（{app_id}）です。"
+                  "App Store 提出には明示的な App ID のプロファイルが必要です。"
+              )
+          if "\n" in name or "\r" in name:
+              errors.append("プロファイル名が複数行です。プロファイルが壊れています。")
+          for e in errors:
+              print(f"::error::{e}")
+          if errors:
+              sys.exit(1)
+          if left < 30:
+              print(f"::warning::プロビジョニングプロファイルの期限まで残り {left} 日です。")
+
+          vals = {
+              "PROFILE_NAME": name,
+              "PROFILE_UUID": uuid,
+              "PROFILE_TEAM": team,
+              "PROFILE_BUNDLE_ID": bundle_id,
+          }
+          # 同じステップの中で使うぶんはシェル用に quote して吐く
+          # （$GITHUB_ENV は**次のステップから**しか効かない）
+          with open(env_sh, "w", encoding="utf-8") as f:
+              for k, v in vals.items():
+                  f.write(f"{k}={shlex.quote(v)}\n")
+          with open(github_env, "a", encoding="utf-8") as f:
+              for k, v in vals.items():
+                  f.write(f"{k}={v}\n")
+
+          # プロファイルに埋まっている証明書の SHA-1。キーチェーン側と突き合わせる。
+          with open(env_sh + ".sha1", "w", encoding="utf-8") as f:
+              for c in p.get("DeveloperCertificates", []):
+                  f.write(hashlib.sha1(c).hexdigest().upper() + "\n")
+          PY
+
+          . "$RUNNER_TEMP/profile.env"
+
+          if [ "$PROFILE_BUNDLE_ID" != "$APP_ID" ]; then
+            echo "::error::プロファイルの App ID ($PROFILE_BUNDLE_ID) が capacitor.config.ts の appId ($APP_ID) と一致しません。別アプリのプロビジョニングプロファイルを入れています。"
+            exit 1
+          fi
+          if [ -n "$TEAM_ID_SECRET" ] && [ "$TEAM_ID_SECRET" != "$PROFILE_TEAM" ]; then
+            echo "::warning::Secret APPLE_TEAM_ID がプロファイルの TeamIdentifier と一致しません。プロファイル側を正として続行します。APPLE_TEAM_ID は照合用なので、直すか削除してください。"
+          fi
+
+          # .p12 の証明書とプロファイルの証明書が同じものか。ここがズレていると
+          # 「プロファイルが見つからない」という無関係な顔のエラーになる。
+          # 判定できない場合まで落とすと、動いているリリース経路を止めてしまうので警告に留める
+          # （本当に食い違っていれば後段の archive が落ちる。そのときこの行が理由になる）。
+          if [ -s "$RUNNER_TEMP/profile.env.sha1" ] \
+             && ! grep -qi -f "$RUNNER_TEMP/profile.env.sha1" "$RUNNER_TEMP/identities.txt"; then
+            echo "::warning::.p12 の証明書が、プロビジョニングプロファイルに含まれる証明書と一致していないようです。両方を同じ証明書から作り直してください。"
+          fi
+
+          # ⚠️ Xcode 16 以降、プロファイルの置き場所が変わった。
+          #   旧: ~/Library/MobileDevice/Provisioning Profiles
+          #   新: ~/Library/Developer/Xcode/UserData/Provisioning Profiles
+          # このワークフローは「一番新しい Xcode」を選ぶので、**コードを1行も変えていなくても
+          # ランナーの Xcode が上がった日に落ちうる**。両方に置いて、どちらでも拾わせる。
+          #
+          # 置き方は左右で意図的に変えている:
+          #   旧 … これまで通りの固定名。**動いている経路には触らない**
+          #   新 … UUID 名。Xcode 自身がこの名前で書くので、固定名だと拾わないことがある
+          OLD_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          NEW_DIR="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+          mkdir -p "$OLD_DIR" "$NEW_DIR"
+          cp "$PROFILE" "$OLD_DIR/profile.mobileprovision"
+          cp "$PROFILE" "$NEW_DIR/$PROFILE_UUID.mobileprovision"
+          echo "--- installed provisioning profiles ---"
+          ls -1 "$OLD_DIR" "$NEW_DIR"
+
+      - name: Configure App signing (App target only, not SPM packages)
+        run: |
+          set -euo pipefail
+          # 前段の「Import certificate and provisioning profile」で $GITHUB_ENV に入る値。
+          # 空なら前段が飛んでいる（ステップの順番を入れ替えた等）。ここで止める。
+          : "${PROFILE_NAME:?前段の署名値の読み出しが走っていません}"
+          : "${PROFILE_TEAM:?前段の署名値の読み出しが走っていません}"
+
           # Capacitor 8 iOS uses Swift Package Manager. If CODE_SIGN_IDENTITY /
           # PROVISIONING_PROFILE_SPECIFIER are passed as GLOBAL xcodebuild settings, Xcode applies
           # them to EVERY target — including the SPM package targets (Firebase, GoogleUtilities,
@@ -218,35 +465,29 @@ jobs:
             target = project.targets.find { |t| t.name == "App" } or abort("App target not found")
             target.build_configurations.each do |c|
               c.build_settings["CODE_SIGN_STYLE"] = "Manual"
-              c.build_settings["DEVELOPMENT_TEAM"] = ENV["APPLE_TEAM_ID"]
+              c.build_settings["DEVELOPMENT_TEAM"] = ENV["PROFILE_TEAM"]
               c.build_settings["CODE_SIGN_IDENTITY"] = "Apple Distribution"
               c.build_settings["CODE_SIGN_IDENTITY[sdk=iphoneos*]"] = "Apple Distribution"
-              c.build_settings["PROVISIONING_PROFILE_SPECIFIER"] = "GymBoard App Store"
+              c.build_settings["PROVISIONING_PROFILE_SPECIFIER"] = ENV["PROFILE_NAME"]
             end
             project.save
             puts "Configured manual signing on App target only"
           '
 
-      - name: Import certificate and profile
-        env:
-          P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
-          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-          PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
-        run: |
-          KEYCHAIN_PASSWORD="temp_password"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security set-keychain-settings -t 3600 -u build.keychain
-          echo "$P12_BASE64" | base64 --decode > certificate.p12
-          security import certificate.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$PROVISION_PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-
       - name: Create ExportOptions.plist
         run: |
-          cat > ios/App/ExportOptions.plist << 'EOF'
+          set -euo pipefail
+          # 署名側と同じ変数から作る。以前はここと署名側の2箇所にベタ書きしていた。
+          : "${PROFILE_NAME:?前段の署名値の読み出しが走っていません}"
+          : "${PROFILE_TEAM:?前段の署名値の読み出しが走っていません}"
+          : "${PROFILE_BUNDLE_ID:?前段の署名値の読み出しが走っていません}"
+          # プロファイル名は人が付ける自由文字列なので & や < が入りうる。
+          # そのまま埋めると plist が壊れるため XML エスケープしてから流し込む。
+          xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+          PROFILE_NAME="$(xml_escape "$PROFILE_NAME")"
+          PROFILE_TEAM="$(xml_escape "$PROFILE_TEAM")"
+          PROFILE_BUNDLE_ID="$(xml_escape "$PROFILE_BUNDLE_ID")"
+          cat > ios/App/ExportOptions.plist << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -254,17 +495,18 @@ jobs:
             <key>method</key>
             <string>app-store-connect</string>
             <key>teamID</key>
-            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <string>$PROFILE_TEAM</string>
             <key>signingStyle</key>
             <string>manual</string>
             <key>provisioningProfiles</key>
             <dict>
-              <key>app.gymboard.mobile</key>
-              <string>GymBoard App Store</string>
+              <key>$PROFILE_BUNDLE_ID</key>
+              <string>$PROFILE_NAME</string>
             </dict>
           </dict>
           </plist>
           EOF
+          plutil -lint ios/App/ExportOptions.plist
 
       - name: Add GoogleService-Info.plist to Xcode target (Copy Bundle Resources)
         run: |
@@ -328,6 +570,23 @@ jobs:
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
+          set -euo pipefail
+          trim_id() { printf '%s' "${1-}" | tr -d '[:space:]'; }
+          # 🔴 キーIDは **ファイル名になる**。末尾に改行が混ざると AuthKey_XXXX<改行>.p8 が
+          #    作られ、altool は鍵を見つけられない。ログでは *** なので目視では追えない。
+          KEY_ID="$(trim_id "$API_KEY_ID")"
+          ISS_ID="$(trim_id "$ISSUER_ID")"
+          if [ "$API_KEY_ID" != "$KEY_ID" ] || [ "$ISSUER_ID" != "$ISS_ID" ]; then
+            echo "::warning::APP_STORE_CONNECT_API_KEY_ID / _ISSUER_ID に余分な空白が含まれていたので取り除きました。Secrets を貼り直しておくことを勧めます。"
+          fi
+
           mkdir -p private_keys
-          echo "$API_KEY" > private_keys/AuthKey_$API_KEY_ID.p8
-          xcrun altool --upload-app -f $RUNNER_TEMP/output/App.ipa -t ios --apiKey $API_KEY_ID --apiIssuer $ISSUER_ID
+          # CRLF のまま書くと PEM として読めない。改行コードだけ整える（中身は出さない）。
+          printf '%s\n' "$API_KEY" | tr -d '\r' > "private_keys/AuthKey_${KEY_ID}.p8"
+          if ! grep -q "BEGIN PRIVATE KEY" "private_keys/AuthKey_${KEY_ID}.p8"; then
+            echo "::error::APP_STORE_CONNECT_API_KEY が .p8 の中身になっていません（-----BEGIN PRIVATE KEY----- が見当たりません）。App Store Connect → Users and Access → Integrations で落とした .p8 を**丸ごと**貼ってください。Apple Developer の Keys 一覧にあるキーとは別物です。"
+            exit 1
+          fi
+
+          xcrun altool --upload-app -f "$RUNNER_TEMP/output/App.ipa" -t ios \
+            --apiKey "$KEY_ID" --apiIssuer "$ISS_ID"

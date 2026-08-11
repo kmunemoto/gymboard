@@ -158,7 +158,23 @@ Please commit your changes or stash them before you merge.
 | 2026-08-08 | **83** | **9.2** | 「リリースノート書いて」の合図で実績化。ネイティブから決済ページへの直行（審査通過 8/7）・体験予約の料金表示とキャンセルポリシー表示・Apple/Googleアカウントでのログイン・不具合修正ほか（8/6〜8/8分、iOS は `MARKETING_VERSION 1.4.8` に対応） |
 | 2026-08-09 | **84** | **9.3** | 「リリースノート書いて」の合図で実績化。Apple / Google アカウントでのログイン（**ただしネイティブでは戻ってこられない不具合あり。8/9 に修正したが、この版には入っていない**）・オーナーの profiles 欠落修正ほか（8/8分、iOS は `MARKETING_VERSION 1.4.9` に対応。ビルドは 8/8 23:11 の Actions #121 = `9f7d5be`） |
 | 2026-08-10 | **85** | **9.4** | 「リリースノート書いて」の合図で実績化。会員のお金・契約・在籍状態（入金の記録・売上の実績化・休会/退会・電話番号/ふりがな・同意の記録）＋ソーシャルログインがアプリに戻らない不具合の修正（iOS の URLスキーム登録・PKCE 化）（8/9分、iOS は `MARKETING_VERSION 1.5.0` に対応。ビルドは 8/9 19:07 の Actions **#124** = `90f1947`）。⚠️ **Android を実際に Play へ上げたかは未確認**（`android-version.json` が 85/9.4 になったのは 8/10。それ以前にビルドしたなら 84/9.3）。次回アップロード前に Play Console で現物を見ること |
-| （未リリース） | 86 | 9.5 | `android-version.json` の現在値。iOS は `1.5.1`。**Apple ログインの復旧（鍵の取り違え）はサーバー側だけの修正なので、この版には何も入っていない**（出荷済みの 1.5.0 で既に直っている） |
+| （未リリース） | 86 | 9.5 | `android-version.json` の現在値。iOS は `1.5.2`。**Apple ログインの復旧（鍵の取り違え）はサーバー側だけの修正なので、この版には何も入っていない**（出荷済みの 1.5.0 で既に直っている） |
+
+### 🔴 iOS 1.5.1 は「合図」を待たずに実績が判明した（2026-08-10）
+
+いつもは「リリースノート書いて」でリリース完了を知る取り決めだが、この回は
+**Apple 自身が教えてくれた**。8/10 に Actions を回したところ、アップロードが 409 で弾かれた:
+
+```
+Validation failed (409) Invalid Pre-Release Train.
+  The train version '1.5.1' is closed for new build submissions
+Validation failed (409) This bundle is invalid. The value for key
+  CFBundleShortVersionString [1.5.1] must contain a higher version than
+  that of the previously approved version [1.5.1]
+```
+
+つまり **iOS 1.5.1 は Actions #125（8/10 12:04 JST・`3429391`）で上がり、既に審査を通っている。**
+`MARKETING_VERSION` は 1.5.2 に進めた。中身は 1.5.0 と同じ（コメント修正のみ）。
 
 > **正直な注意**: 手で更新する記録は必ず古くなる。ここが実態と合っているか怪しいときは、
 > Play Console → リリース → 製品版を見ること。

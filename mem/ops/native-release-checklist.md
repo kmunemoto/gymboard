@@ -240,6 +240,44 @@ trim_nl() { printf '%s' "${1-}" | tr -d '\r\n'; }        # パスワード（改
 ジムボードの `ios-build.yml` がこの形になっている。そのまま持っていける。
 `src/test/iosSigningHardening.test.ts` が**元に戻したら赤くなる**ので、一緒にコピーすること。
 
+### 🔴 altool は失敗しても終了コード 0 を返すことがある（2026-08-10 に実測）
+
+これは署名とは別の話だが、同じ「緑なのに届いていない」型なので並べておく。
+
+ジムボードの Actions #126 のログには、はっきりこう出ていた:
+
+```
+UPLOAD FAILED with 2 errors
+Validation failed (409) Invalid Pre-Release Train. …
+Failed to upload package.
+```
+
+**それでもステップは緑になり、ジョブ全体も success で終わった。**
+つまり「Actions が緑 = App Store Connect に届いた」は成り立っていなかった。
+
+ネイティブは Actions を回すまでお客様に1行も届かない。ここを見逃すと、
+**「直した・出した」と思い込んだまま、実際には何も届いていない**状態が作れる。
+`git log` を見ても分からない。いちばん質の悪い壊れ方。
+
+終了コードを信用せず、**出力の中身で判定すること**:
+
+```bash
+set +e
+xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISS_ID" \
+  2>&1 | tee "$RUNNER_TEMP/altool.log"
+ALTOOL_RC=${PIPESTATUS[0]}
+set -e
+if [ "$ALTOOL_RC" -ne 0 ] \
+   || grep -qE 'UPLOAD FAILED|Failed to upload package' "$RUNNER_TEMP/altool.log"; then
+  echo "::error::App Store Connect へのアップロードに失敗しました。"
+  exit 1
+fi
+```
+
+いちばん多い原因は **「そのバージョン番号が既に審査を通っている」**。
+`MARKETING_VERSION` を上げれば直る。`android-version.json` と同じで、
+**ワークフローに書いた版数は App Store Connect の実態と自動同期しない。**
+
 ### ⚠️ 中身を覗いて調べようとしないこと
 
 `od -c` / `xxd` / `sed -n l` は文字列を1バイトずつに分解するので、

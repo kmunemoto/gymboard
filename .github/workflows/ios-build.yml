@@ -209,7 +209,7 @@ jobs:
       - name: Set marketing version
         run: |
           cd ios/App
-          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.5.1;/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = 1.5.2;/g' App.xcodeproj/project.pbxproj
 
       - name: Sync Capacitor
         run: npx cap sync ios
@@ -588,5 +588,33 @@ jobs:
             exit 1
           fi
 
+          # ── 🔴 altool は失敗しても終了コード 0 を返すことがある（2026-08-10 に実測）──
+          #
+          # Actions #126 のログには、はっきりこう出ていた:
+          #
+          #     UPLOAD FAILED with 2 errors
+          #     Validation failed (409) Invalid Pre-Release Train.
+          #       The train version '1.5.1' is closed for new build submissions
+          #     Failed to upload package.
+          #
+          # それでも **このステップは緑になり、ジョブ全体も success** で終わった。
+          # つまりこれまで「Actions が緑 = App Store Connect に届いた」は成り立っていない。
+          # ネイティブは Actions を回すまでお客様に届かないので、ここを見逃すと
+          # 「直した・出した」と思い込んだまま、実際には1行も届いていない状態になる。
+          # 2026-08-09 のソーシャルログインの件と同じ形の事故が、もう一段深いところで作れる。
+          #
+          # 終了コードは信用せず、**出力の中身で判定する**。
+          set +e
           xcrun altool --upload-app -f "$RUNNER_TEMP/output/App.ipa" -t ios \
-            --apiKey "$KEY_ID" --apiIssuer "$ISS_ID"
+            --apiKey "$KEY_ID" --apiIssuer "$ISS_ID" 2>&1 | tee "$RUNNER_TEMP/altool.log"
+          ALTOOL_RC=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$ALTOOL_RC" -ne 0 ] \
+             || grep -qE 'UPLOAD FAILED|Failed to upload package' "$RUNNER_TEMP/altool.log"; then
+            echo "::error::App Store Connect へのアップロードに失敗しました（altool の終了コード ${ALTOOL_RC}）。上のログの Validation failed を読んでください。よくある原因: そのバージョン番号が既に審査を通っている（ios-build.yml の MARKETING_VERSION を上げる）／APP_STORE_CONNECT_* の3つが揃っていない／キーのロールが App Manager 未満。"
+            exit 1
+          fi
+          if ! grep -q 'UPLOAD SUCCEEDED' "$RUNNER_TEMP/altool.log"; then
+            echo "::warning::altool が成功も失敗も名乗りませんでした。App Store Connect にビルドが増えたか、実物を確認してください。"
+          fi

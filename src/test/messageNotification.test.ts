@@ -174,6 +174,21 @@ describe("notify-new-message Edge Function", () => {
     expect(deploy, "deploy コマンドに notify-new-message がありません").toMatch(
       /supabase functions deploy notify-new-message --project-ref/,
     );
+
+    // 🔴 トークンが無いときに「スキップして緑」に戻さない。
+    //    #13〜#18 の6回すべてが skipped のまま success で終わっており、
+    //    **このワークフローは一度もデプロイしていなかった**。
+    expect(
+      /has_token/.test(deploy),
+      "トークンが無いときにスキップする作りに戻っています。起動したのにデプロイしない、は失敗にしてください。",
+    ).toBe(false);
+    expect(deploy, "トークンが無いときに落としていません").toMatch(
+      /SUPABASE_ACCESS_TOKEN[\s\S]{0,400}::error::[\s\S]{0,400}exit 1/,
+    );
+
+    // 🔴 デプロイの成功を信じず、実物が 404 でないことを確かめる。
+    expect(deploy, "デプロイ後の到達確認がありません").toMatch(/Verify functions are actually reachable/);
+    expect(deploy, "404 判定になっていません").toMatch(/"404"/);
   });
 
   it("🔴 二重に鳴らさない（冪等キー）", () => {

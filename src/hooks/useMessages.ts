@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
-import { sendLineMessage } from "@/lib/lineNotify";
-import { BRAND } from "@/lib/brand";
 
 export interface Message {
   id: string;
@@ -101,49 +99,17 @@ export const useMessages = (otherUserId: string | null) => {
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     }
 
-    // Fire-and-forget: send LINE + push notification to receiver
-    (async () => {
-      try {
-        // Get sender's display name
-        const { data: senderProfile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        const senderName = senderProfile?.display_name || "不明";
-        const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
-        const lineMessage = `【${BRAND.ja}】新着メッセージが届きました！\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
-
-        await sendLineMessage({ user_id: receiverId, message: lineMessage }, "メッセージ通知");
-      } catch (e) {
-        console.error("LINE notification failed (non-blocking):", e);
-      }
-    })();
-
-    // Fire-and-forget: web push to receiver
-    (async () => {
-      try {
-        const { data: senderProfile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        const senderName = senderProfile?.display_name || "メッセージ";
-        const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
-        await supabase.functions.invoke("send-push-notification", {
-          body: {
-            user_ids: [receiverId],
-            title: `${senderName}さんからメッセージ`,
-            body: preview,
-            url: "/",
-            tag: `chat-${user.id}-${receiverId}`,
-          },
-        });
-      } catch (e) {
-        console.error("Push notification failed (non-blocking):", e);
-      }
-    })();
+    // 🔴 通知はここから送らない（2026-08-11）。
+    //
+    // 以前はここで LINE とプッシュを fire-and-forget していた。つまり
+    // **送信者の端末が通知を投げていた**ので、送信直後にアプリを閉じる・
+    // 画面を切り替える・電波が切れる、のどれでも**通知が飛ばなかった**。
+    // 失敗しても console に出るだけで、送った本人にも受け取る側にも分からない。
+    //
+    // いまは messages の AFTER INSERT トリガー（notify_new_message）が
+    // Edge Function `notify-new-message` を叩く。行が入った時点で確定するので、
+    // このあと端末がどうなろうと通知は飛ぶ。
+    // ⚠️ ここに通知を書き戻すと**二重に鳴る**。足すなら Edge Function 側に。
   };
 
   const markAsRead = async () => {

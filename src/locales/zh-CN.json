@@ -34,7 +34,8 @@
     "lineContact": "用LINE联系",
     "customer": "客户",
     "gymLogo": "健身房 Logo",
-    "unknownError": "未知错误"
+    "unknownError": "未知错误",
+    "messageRead": "已读"
   },
   "settings": {
     "title": "设置",
@@ -2270,7 +2271,6 @@
   },
   "customerChat": {
     "defaultTrainer": "教练",
-    "online": "在线",
     "emptyPrompt": "发送消息开始聊天吧！",
     "inputPlaceholder": "输入消息...",
     "sendFailed": "消息发送失败，请重试。",

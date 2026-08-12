@@ -37,3 +37,7 @@ project_id = "rrbfwitprzuevzytykrq"
   # (関数内で service_role / CRON_SECRET(x-cron-secret) のいずれかを必須にする)。
   [functions.daily-trainer-summary]
     verify_jwt = false
+  # 新着メッセージのプッシュ通知。messages の AFTER INSERT トリガーから
+  # pg_net で JWT なしで叩かれる前提 (daily-trainer-summary と同じ認可)。
+  [functions.notify-new-message]
+    verify_jwt = false

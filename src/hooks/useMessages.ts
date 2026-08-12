@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
-import { sendLineMessage } from "@/lib/lineNotify";
-import { BRAND } from "@/lib/brand";
 
 export interface Message {
   id: string;
@@ -39,6 +37,10 @@ export const useMessages = (otherUserId: string | null) => {
   // Realtime subscription
   useEffect(() => {
     if (!user || !otherUserId) return;
+    const belongsHere = (msg: Message) =>
+      (msg.sender_id === user.id && msg.receiver_id === otherUserId) ||
+      (msg.sender_id === otherUserId && msg.receiver_id === user.id);
+
     const channel = supabase
       .channel(uniqueChannelName(`messages-${otherUserId}`))
       .on(
@@ -47,13 +49,24 @@ export const useMessages = (otherUserId: string | null) => {
         (payload) => {
           const msg = payload.new as Message;
           // Only add if it's part of this conversation
-          if (
-            (msg.sender_id === user.id && msg.receiver_id === otherUserId) ||
-            (msg.sender_id === otherUserId && msg.receiver_id === user.id)
-          ) {
+          if (belongsHere(msg)) {
             // sendMessage 側の即時ローカル反映と重複しないよう id で除外する
             setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages" },
+        (payload) => {
+          // 🔴 既読（read）が相手側で立ったことを、送信者の開いている画面に反映する。
+          //
+          // ここが INSERT だけを購読していたため、`read` は DB にもあり Realtime も
+          // 流れているのに、**送信者の画面だけ永久に更新されなかった**。
+          // 「既読」を出すには、この UPDATE を拾うことが前提になる。
+          const msg = payload.new as Message;
+          if (!belongsHere(msg)) return;
+          setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m)));
         }
       )
       .subscribe();
@@ -86,53 +99,27 @@ export const useMessages = (otherUserId: string | null) => {
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     }
 
-    // Fire-and-forget: send LINE + push notification to receiver
-    (async () => {
-      try {
-        // Get sender's display name
-        const { data: senderProfile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        const senderName = senderProfile?.display_name || "不明";
-        const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
-        const lineMessage = `【${BRAND.ja}】新着メッセージが届きました！\n送信者: ${senderName}\n『${preview}』\n詳細はアプリからご確認ください。`;
-
-        await sendLineMessage({ user_id: receiverId, message: lineMessage }, "メッセージ通知");
-      } catch (e) {
-        console.error("LINE notification failed (non-blocking):", e);
-      }
-    })();
-
-    // Fire-and-forget: web push to receiver
-    (async () => {
-      try {
-        const { data: senderProfile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        const senderName = senderProfile?.display_name || "メッセージ";
-        const preview = content.length > 20 ? content.slice(0, 20) + "..." : content;
-        await supabase.functions.invoke("send-push-notification", {
-          body: {
-            user_ids: [receiverId],
-            title: `${senderName}さんからメッセージ`,
-            body: preview,
-            url: "/",
-            tag: `chat-${user.id}-${receiverId}`,
-          },
-        });
-      } catch (e) {
-        console.error("Push notification failed (non-blocking):", e);
-      }
-    })();
+    // 🔴 通知はここから送らない（2026-08-11）。
+    //
+    // 以前はここで LINE とプッシュを fire-and-forget していた。つまり
+    // **送信者の端末が通知を投げていた**ので、送信直後にアプリを閉じる・
+    // 画面を切り替える・電波が切れる、のどれでも**通知が飛ばなかった**。
+    // 失敗しても console に出るだけで、送った本人にも受け取る側にも分からない。
+    //
+    // いまは messages の AFTER INSERT トリガー（notify_new_message）が
+    // Edge Function `notify-new-message` を叩く。行が入った時点で確定するので、
+    // このあと端末がどうなろうと通知は飛ぶ。
+    // ⚠️ ここに通知を書き戻すと**二重に鳴る**。足すなら Edge Function 側に。
   };
 
   const markAsRead = async () => {
     if (!user || !otherUserId) return;
+    // 呼び出し元は messages が変わるたびに呼ぶ。未読が1件も無いなら書きにいかない
+    // （0行 UPDATE でも往復は発生するため）。
+    const hasUnread = messages.some(
+      (m) => m.sender_id === otherUserId && m.receiver_id === user.id && !m.read,
+    );
+    if (!hasUnread) return;
     await supabase
       .from("messages")
       .update({ read: true })

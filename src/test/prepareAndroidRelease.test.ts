@@ -230,7 +230,9 @@ describe("android-build.yml の versionCode 配線", () => {
 // 実際に一度壊した: run: | のブロックスカラーの中で継続行のインデントを
 // 浅くしてしまい、そこでブロックが終端していた。
 describe("ワークフローYAMLの構文", () => {
-  const FILES = ["android-build.yml", "ios-build.yml", "ci.yml", "deploy-functions.yml"];
+  // deploy-functions.yml は 2026-08-12 に削除（18回すべて skipped で、
+  // そもそもトークンを用意する手段が無かった）。edgeFunctionProjectRef.test.ts 参照。
+  const FILES = ["android-build.yml", "ios-build.yml", "ci.yml"];
 
   it.each(FILES)("%s がYAMLとして解析できる", (f) => {
     const src = readFileSync(join(process.cwd(), ".github/workflows", f), "utf8");

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 
 // 新着メッセージの通知が「送信者の端末任せ」に戻らないことを見張る。
 //
@@ -18,8 +18,27 @@ const FUNC = readFileSync("supabase/functions/notify-new-message/index.ts", "utf
 const CONFIG = readFileSync("supabase/config.toml", "utf8");
 
 const MIGRATION_DIR = "supabase/migrations";
-const MIGRATION_FILE = "20260811010000_message_notification_server_side.sql";
-const MIGRATION = readFileSync(`${MIGRATION_DIR}/${MIGRATION_FILE}`, "utf8");
+
+// ⚠️ ファイル名を直書きしない。**後から CREATE OR REPLACE で上書きされる**ので、
+//    古いファイルを見張り続けると「テストは緑なのに本番の定義は別物」になる。
+//    実際に 20260811010000 の認可が間違っていて、20260812040000 で差し替えた。
+const MIGRATION_FILES = readdirSync(MIGRATION_DIR)
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .filter((f) => /notify_new_message/.test(readFileSync(`${MIGRATION_DIR}/${f}`, "utf8")));
+
+/** トリガーの有無など「どこかで一度やってあればよい」検査はこちらを見る。 */
+const MIGRATION = MIGRATION_FILES.map((f) => readFileSync(`${MIGRATION_DIR}/${f}`, "utf8")).join("\n");
+
+/** いま実際に効いている定義。**最後に関数を定義したファイル**だけを見る。 */
+const LATEST_FN_FILE = [...MIGRATION_FILES]
+  .reverse()
+  .find((f) =>
+    /CREATE OR REPLACE FUNCTION public\.notify_new_message\(\)/.test(
+      readFileSync(`${MIGRATION_DIR}/${f}`, "utf8"),
+    ),
+  );
+const LATEST_FN = LATEST_FN_FILE ? readFileSync(`${MIGRATION_DIR}/${LATEST_FN_FILE}`, "utf8") : "";
 
 /** JS/TS のコメントを落とす。経緯コメントで検査を満たせないようにする。 */
 const stripJs = (src: string): string =>
@@ -39,12 +58,20 @@ const stripSql = (src: string): string =>
 const HOOK_CODE = stripJs(HOOK);
 const FUNC_CODE = stripJs(FUNC);
 const MIGRATION_CODE = stripSql(MIGRATION);
+const LATEST_FN_CODE = stripSql(LATEST_FN);
+const SHARED_AUTH = stripJs(readFileSync("supabase/functions/_shared/auth.ts", "utf8"));
 
 describe("クライアントは通知を投げない", () => {
   it("コメント除去が空振りしていない", () => {
     expect(HOOK_CODE).toContain("sendMessage");
     expect(FUNC_CODE).toContain("Deno.serve");
     expect(MIGRATION_CODE).toContain("CREATE TRIGGER");
+    // ファイル探索が空振りすると LATEST_FN_CODE が空文字になり、
+    // 下の検査が**全部素通り**する（not.toMatch は空文字に対して緑）。
+    expect(MIGRATION_FILES.length, "notify_new_message のマイグレーションが見つかりません").toBeGreaterThan(0);
+    expect(LATEST_FN_CODE, "関数を定義しているマイグレーションが見つかりません").toContain(
+      "CREATE OR REPLACE FUNCTION public.notify_new_message()",
+    );
   });
 
   it("🔴 useMessages がプッシュ/LINE を送っていない", () => {
@@ -73,17 +100,58 @@ describe("DB の INSERT が通知の起点になっている", () => {
   it("🔴 通知の失敗がメッセージの INSERT を巻き添えにしない", () => {
     // 通知は「あったほうがいいもの」、メッセージ本体は「絶対に落とせないもの」。
     // ここが無いと、Edge Function が落ちた日にチャットごと使えなくなる。
-    expect(MIGRATION_CODE, "EXCEPTION で握りつぶしていません").toMatch(
+    //
+    // ⚠️ 見るのは **いま効いている定義**（最後に CREATE OR REPLACE したファイル）。
+    //    全ファイルの結合を見ると、古い版に書いてあるだけで緑になる。
+    expect(LATEST_FN_CODE, "EXCEPTION で握りつぶしていません").toMatch(
       /EXCEPTION\s+WHEN\s+OTHERS\s+THEN/i,
     );
-    const idx = MIGRATION_CODE.search(/EXCEPTION\s+WHEN\s+OTHERS\s+THEN/i);
+    const idx = LATEST_FN_CODE.search(/EXCEPTION\s+WHEN\s+OTHERS\s+THEN/i);
     expect(
-      MIGRATION_CODE.slice(idx, idx + 300),
+      LATEST_FN_CODE.slice(idx, idx + 300),
       "例外を捕まえたあと RETURN NEW していません（INSERT が失敗します）",
     ).toMatch(/RETURN NEW/);
     // vault が未設定でも同じく素通りすること
-    expect(MIGRATION_CODE, "vault 未設定時に素通りしていません").toMatch(
+    expect(LATEST_FN_CODE, "vault 未設定時に素通りしていません").toMatch(
       /IF v_base IS NULL OR v_key IS NULL THEN[\s\S]{0,300}RETURN NEW/,
+    );
+  });
+
+  it("🔴 トリガーが送る認可ヘッダを、Edge Function が受け付ける", () => {
+    // ── 2026-08-12 に本番で踏んだ ────────────────────────────────────
+    // 最初の版は Authorization: Bearer <vault の service_role キー> で叩いていた。
+    // 本番の実測は **403 Forbidden**。通知は1件も飛ばず、しかもトリガーは
+    // EXCEPTION を握りつぶすので **メッセージの INSERT は成功し、どこにもエラーが出ない**。
+    //
+    // 原因: _shared/auth.ts の verifyCaller は
+    //   token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    // と**文字列の完全一致**で見る。vault のキーは「このプロジェクトの正規の
+    // service_role キー」ではあったが、**ランタイムの環境変数と同じ文字列ではなかった**。
+    // 「有効なキーである」ことと「その環境変数と一致する」ことは別。
+    //
+    // このプロジェクトで pg_net から叩いている既存の cron は**全部 x-cron-secret**。
+    // Bearer 経路は一度も通ったことがなかった。両端が噛み合っているかを見る。
+    expect(LATEST_FN_CODE, "トリガーが x-cron-secret を送っていません").toMatch(/'x-cron-secret'/);
+    expect(FUNC_CODE, "Edge Function が x-cron-secret を見ていません").toMatch(
+      /x-cron-secret[\s\S]{0,200}CRON_SECRET|CRON_SECRET[\s\S]{0,200}x-cron-secret/,
+    );
+
+    // 🔴 service_role キーをトリガーに持たせない。
+    //    効かないうえに、漏れたときの被害が「RLS 全素通りの鍵」と
+    //    「この関数1本を呼べる権利」とでは桁が違う。
+    expect(
+      /service_role_key/.test(LATEST_FN_CODE),
+      "トリガーが service_role キーを読んでいます。verifyCaller は環境変数との完全一致で判定するため効きません（本番で 403 でした）。x-cron-secret を使ってください。",
+    ).toBe(false);
+    expect(
+      /Authorization/i.test(LATEST_FN_CODE),
+      "トリガーが Authorization ヘッダを送っています。x-cron-secret を使ってください。",
+    ).toBe(false);
+
+    // verifyCaller の判定が「完全一致」のままであることも押さえる。
+    // ここが緩められたら上のコメントの前提が変わる。
+    expect(SHARED_AUTH, "verifyCaller の service_role 判定が変わっています").toMatch(
+      /token === serviceKey/,
     );
   });
 
@@ -92,7 +160,7 @@ describe("DB の INSERT が通知の起点になっている", () => {
     // そのジムの通知が**ジムボードのプロジェクト**に飛ぶ。
     // 既に email_queue_* で実際に起きている（CLAUDE.md）。
     expect(MIGRATION_CODE).not.toMatch(/[a-z]{20}\.supabase\.co/);
-    expect(MIGRATION_CODE, "URL を vault から読んでいません").toMatch(
+    expect(LATEST_FN_CODE, "URL を vault から読んでいません").toMatch(
       /vault\.decrypted_secrets[\s\S]{0,200}project_functions_url/,
     );
   });
@@ -159,21 +227,36 @@ describe("notify-new-message Edge Function", () => {
     ).toEqual(["message_id"]);
   });
 
-  it("🔴 デプロイ経路に載っている", () => {
+  it("🔴 verify_jwt が明記されていて、デプロイ経路が書き残されている", () => {
     // **DBトリガーが呼ぶ関数は、誰も手で deploy しない。**
-    // Lovable の Publish は config.toml 未記載の関数を面倒みるが、この関数は
-    // verify_jwt=false を明記してあるので deploy-functions.yml の担当になる。
-    // ここに書き忘れると「トリガーは動くのに 404 で通知だけ飛ばない」。
+    // 2026-08-12 に実際にその状態を作った。クライアント側の送信を先に外したのに
+    // 関数が本番に無く、**通知が数時間まるごと止まった**（エラーもどこにも出ない）。
     //
-    // 2026-08-12 に実際にその状態を作った。クライアント側の送信を先に外したので、
-    // **本番の通知が数時間まるごと止まった**（エラーもどこにも出ない）。
-    const deploy = readFileSync(".github/workflows/deploy-functions.yml", "utf8");
-    expect(deploy, "paths に notify-new-message がありません（push で起動しない）").toMatch(
-      /paths:[\s\S]{0,600}supabase\/functions\/notify-new-message\/\*\*/,
+    // ── デプロイ経路は CI ではない ───────────────────────────────
+    // deploy-functions.yml に載せて解決したつもりでいたが、あのワークフローは
+    // **18回の実行すべてで skipped、しかも全部 success** だった（初回からずっと）。
+    // さらにジムボードの Supabase は Lovable Cloud の持ち物なので、
+    // `SUPABASE_ACCESS_TOKEN` を発行する手段がそもそも無い。ので削除した。
+    //
+    // 実際の経路は **Lovable のエージェントに deploy を依頼する**こと。
+    // GitHub 同期でファイルが届いただけでは本番に反映されない（実測）。
+    // 手順と確認方法（pg_net で 404 かどうかを見る）は mem/ops/edge-function-deploy.md。
+    expect(CONFIG, "config.toml に verify_jwt の宣言がありません").toMatch(
+      /\[functions\.notify-new-message\][\s\S]{0,200}verify_jwt = false/,
     );
-    expect(deploy, "deploy コマンドに notify-new-message がありません").toMatch(
-      /supabase functions deploy notify-new-message --project-ref/,
+
+    const DOC = readFileSync("mem/ops/edge-function-deploy.md", "utf8");
+    expect(DOC, "デプロイ手順に notify-new-message の記載がありません").toContain(
+      "notify-new-message",
     );
+    expect(DOC, "404 での確認方法が書かれていません").toMatch(/404/);
+
+    // 🔴 「緑なのにデプロイしていない」ワークフローを戻さない。
+    expect(
+      existsSync(".github/workflows/deploy-functions.yml"),
+      "deploy-functions.yml が戻っています。18回すべて skipped のまま success でした。" +
+        "戻すなら edgeFunctionProjectRef.test.ts のガードを満たすこと。",
+    ).toBe(false);
   });
 
   it("🔴 二重に鳴らさない（冪等キー）", () => {

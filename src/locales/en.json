@@ -2478,7 +2478,8 @@
     "imageAlt": "Attached image",
     "errUnsupported": "That file type cannot be sent. Choose a photo (JPEG/PNG/WebP) or a video (MP4/MOV).",
     "errTooLarge": "That video is too large (limit {{max}}). Please trim it and try again.",
-    "errUploadFailed": "Upload failed. Please try again."
+    "errUploadFailed": "Upload failed. Please try again.",
+    "openImage": "View photo"
   },
   "messageTemplates": {
     "manageTitle": "Quick replies",
@@ -2500,5 +2501,24 @@
   },
   "sharedInbox": {
     "otherStaff": "Another staff member"
+  },
+  "chat": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "reply": "Reply",
+    "unsend": "Unsend",
+    "search": "Search chat",
+    "searchPlaceholder": "Search in conversation",
+    "searchNoHit": "No results",
+    "searchPrev": "Previous",
+    "searchNext": "Next",
+    "unsentNotice": "Message unsent",
+    "unsendFailed": "Could not unsend (it may be older than 24 hours)",
+    "reaction": {
+      "thumbsUp": "Like",
+      "heart": "Love",
+      "check": "Got it",
+      "smile": "Thanks"
+    }
   }
 }

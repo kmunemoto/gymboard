@@ -1358,6 +1358,48 @@ export type Database = {
         }
         Relationships: []
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          message_id: string
+          tenant_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          message_id: string
+          tenant_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          message_id?: string
+          tenant_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachment_path: string | null
@@ -1369,6 +1411,7 @@ export type Database = {
           receiver_id: string
           sender_id: string
           tenant_id: string | null
+          unsent_at: string | null
         }
         Insert: {
           attachment_path?: string | null
@@ -1380,6 +1423,7 @@ export type Database = {
           receiver_id: string
           sender_id: string
           tenant_id?: string | null
+          unsent_at?: string | null
         }
         Update: {
           attachment_path?: string | null
@@ -1391,6 +1435,7 @@ export type Database = {
           receiver_id?: string
           sender_id?: string
           tenant_id?: string | null
+          unsent_at?: string | null
         }
         Relationships: [
           {
@@ -3986,6 +4031,7 @@ export type Database = {
         Args: { p_stage_key: string; p_user_id: string }
         Returns: Json
       }
+      unsend_message: { Args: { _message_id: string }; Returns: string }
       update_event_progress: { Args: { _user_id: string }; Returns: Json }
       update_event_progress_unchecked: {
         Args: { _user_id: string }

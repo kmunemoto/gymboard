@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCircle, Send, ArrowLeft } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,14 @@ import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
 import { useMessageTemplates } from "@/hooks/useMessageTemplates";
 import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import MessageAttachment from "@/components/messages/MessageAttachment";
+import MessageText from "@/components/messages/MessageText";
+import DateSeparator from "@/components/messages/DateSeparator";
+import ImageLightbox from "@/components/messages/ImageLightbox";
+import MessageActions from "@/components/messages/MessageActions";
+import ReplyQuote from "@/components/messages/ReplyQuote";
+import UnsentNotice from "@/components/messages/UnsentNotice";
+import MessageReactions from "@/components/messages/MessageReactions";
+import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
 import MessageTemplateDialog from "@/components/trainer/MessageTemplateDialog";
@@ -18,7 +26,12 @@ import { appendTemplate, replaceTemplateVars } from "@/lib/messageTemplate";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { prependQuote } from "@/lib/messageQuote";
-import { format } from "date-fns";
+import { useConversationSearch } from "@/hooks/useConversationSearch";
+import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
+import { canUnsend, isUnsent } from "@/lib/messageUnsend";
+import { useMessageReactions } from "@/hooks/useMessageReactions";
+import { needsDateSeparator, dayKeyJST } from "@/lib/chatDate";
+import { sortConversations, type LastMessageInfo } from "@/lib/conversationOrder";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
 
@@ -34,6 +47,7 @@ interface MessageRow {
   content: string;
   attachment_type: string | null;
   created_at: string;
+  unsent_at: string | null;
 }
 
 /**
@@ -54,19 +68,35 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const [customers, setCustomers] = useState<CustomerInfo[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(initialCustomerId);
   const [newMsg, setNewMsg] = useState("");
-  const [lastMessages, setLastMessages] = useState<Record<string, { content: string; time: string }>>({});
+  const [lastMessages, setLastMessages] = useState<Record<string, LastMessageInfo>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   // 共有受信箱: 別のスタッフ宛ての未読も自分の一覧に出す
   const staff = useStaffDirectory();
+  const staffKey = staff.ids.join(",");
   const { counts: unreadCounts } = useUnreadBySender(staff.ids);
 
-  const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId, {
+  const { messages, sendMessage, markAsRead, unsendMessage } = useMessages(selectedCustomerId, {
     selfIds: staff.ids,
   });
   const attachment = useAttachmentPicker(user?.id);
   const templateStore = useMessageTemplates();
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const { bookings: quotableBookings } = useQuotableBookings(selectedCustomerId);
+  const search = useConversationSearch(messages);
+  const reactions = useMessageReactions(messages.map((m) => m.id));
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  useEffect(() => {
+    void import("@/lib/tenantHelper").then(({ fetchMyTenantId }) =>
+      fetchMyTenantId().then(setTenantId).catch(() => setTenantId(null)),
+    );
+  }, []);
+  // 添付だけのメッセージを引用したときの文言。**リテラルで持たない**
+  // （兄弟アプリが業種に合わせて差し替えるため。forkHostileTests.test.ts）
+  const attachmentLabels = {
+    image: t("trainerMessages.previewImage"),
+    video: t("trainerMessages.previewVideo"),
+  };
 
   // 会話相手は「自テナントに在籍しているお客様」。
   //
@@ -115,33 +145,58 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   // ⚠️ 以前は **顧客1人につき1クエリ**（N+1）を直列で回していた。30人いれば30往復で、
   //    画面を開くたびにプレビューが1件ずつ遅れて出てくる状態だった。
   //    自分が関わるメッセージを新しい順に1回だけ引き、相手ごとの先頭を採る。
+  //
+  // ⚠️ 引くのは**スタッフ全員が関わる行**（共有受信箱）。自分の user_id だけで引くと、
+  //    別のスタッフが担当している会話のプレビューが**空のまま**になり、
+  //    一覧では「メッセージなし」に見える。未読数は staff.ids で数えているので、
+  //    「バッジは付いているのに本文が出ない」というちぐはぐな状態になっていた。
   const fetchLastMessages = useCallback(async () => {
     if (!user || customers.length === 0) return;
+    const sideIds = [...new Set([user.id, ...(staffKey ? staffKey.split(",") : [])])];
+    const inList = `(${sideIds.join(",")})`;
     const { data } = await supabase
       .from("messages")
-      .select("sender_id, receiver_id, content, attachment_type, created_at")
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .select("sender_id, receiver_id, content, attachment_type, created_at, unsent_at")
+      .or(`sender_id.in.${inList},receiver_id.in.${inList}`)
       .order("created_at", { ascending: false })
       .limit(LAST_MESSAGE_SCAN_LIMIT);
 
-    const map: Record<string, { content: string; time: string }> = {};
+    const map: Record<string, LastMessageInfo> = {};
     for (const row of (data ?? []) as MessageRow[]) {
-      const other = row.sender_id === user.id ? row.receiver_id : row.sender_id;
+      // 相手はスタッフ側でないほう。共有受信箱ではスタッフ同士の行も混ざりうるので、
+      // 両側ともスタッフなら会話一覧の対象ではない。
+      const senderIsUs = sideIds.includes(row.sender_id);
+      const receiverIsUs = sideIds.includes(row.receiver_id);
+      if (senderIsUs === receiverIsUs) continue;
+      const other = senderIsUs ? row.receiver_id : row.sender_id;
       // 新しい順に見ているので、最初に現れたものがその相手の最終メッセージ
       if (map[other]) continue;
       // 添付だけのメッセージは本文が空。プレビューが空欄になると
       //「メッセージなし」と見分けがつかないので、種別を文言にする。
-      const text = row.content.trim()
-        ? row.content
-        : row.attachment_type === "video"
-          ? t("trainerMessages.previewVideo")
-          : row.attachment_type === "image"
-            ? t("trainerMessages.previewImage")
-            : row.content;
-      map[other] = { content: text, time: formatJST(row.created_at, "HH:mm") };
+      // 取り消し済みは本文も添付も無い。空欄のままだと「メッセージなし」と
+      // 見分けがつかないので、取り消された旨を出す。
+      const text = row.unsent_at
+        ? t("chat.unsentNotice")
+        : row.content.trim()
+          ? row.content
+          : row.attachment_type === "video"
+            ? t("trainerMessages.previewVideo")
+            : row.attachment_type === "image"
+              ? t("trainerMessages.previewImage")
+              : row.content;
+      map[other] = {
+        content: text,
+        // 一覧の時刻は「今日なら時刻、それより前は日付」。LINE と同じ読み方。
+        time:
+          dayKeyJST(row.created_at) === dayKeyJST(new Date())
+            ? formatJST(row.created_at, "HH:mm")
+            : formatJST(row.created_at, "M/d"),
+        at: row.created_at,
+      };
     }
     setLastMessages(map);
-  }, [user, customers, t]);
+    // staff.ids は毎レンダー新しい配列になりうるので、キーにして安定させる
+  }, [user, customers, staffKey, t]);
 
   useEffect(() => {
     fetchLastMessages();
@@ -153,9 +208,13 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   }, [selectedCustomerId, messages]);
 
   // Scroll to bottom
+  //
+  // ⚠️ 検索中は下へ飛ばさない。ヒット位置へジャンプした直後に最下部へ戻され、
+  //    探しているものが**一瞬で画面から消える**（検索が使い物にならない）。
   useEffect(() => {
+    if (search.active) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, search.active]);
 
   // 添付だけ送るのは正しい操作。アップロード中は送らせない
   // （行だけ先に入って添付が付かない状態を作らない）。
@@ -176,6 +235,16 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     }
   };
 
+  const handleUnsend = async (messageId: string) => {
+    try {
+      await unsendMessage(messageId);
+    } catch (e) {
+      // 24時間を過ぎている等。DB 側が最終判断なので、出していても弾かれることがある。
+      console.error("送信の取り消しに失敗:", e);
+      toast.error(t("chat.unsendFailed"));
+    }
+  };
+
   const selected = customers.find((c) => c.user_id === selectedCustomerId);
 
   // 定型文を入力欄に入れる。
@@ -186,15 +255,14 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     setNewMsg((current) => appendTemplate(current, filled));
   };
 
-  // Sort customers: those with unread messages first
-  const sortedCustomers = [...customers].sort((a, b) => {
-    const aUnread = unreadCounts[a.user_id] || 0;
-    const bUnread = unreadCounts[b.user_id] || 0;
-    return bUnread - aUnread;
-  });
+  // 🔴 並びは「最後にやり取りした順」。以前は未読優先で、**既読にした瞬間に
+  //    その会話が一覧の下へ飛んでいく**（返信しようとして探すことになる）状態だった。
+  //    未読は新着なので時刻順にすれば自然に上に来る（バッジでも分かる）。
+  const sortedCustomers = sortConversations(customers, lastMessages);
 
   return (
     <div className="pb-24 md:pb-0">
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2 mb-4 sm:mb-6">
         <MessageCircle className="w-5 h-5 text-accent" />
         {t("trainerMessages.title")}
@@ -256,8 +324,29 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
               <div className="w-8 h-8 rounded-lg gym-gradient flex items-center justify-center text-primary-foreground font-bold text-xs">
                 {selected?.avatar_initial}
               </div>
-              <p className="font-bold text-sm">{selected?.display_name || t("common.customer")}</p>
+              <p className="font-bold text-sm flex-1 truncate">
+                {selected?.display_name || t("common.customer")}
+              </p>
+              <button
+                type="button"
+                onClick={() => search.setOpen((v) => !v)}
+                aria-label={t("chat.search")}
+                className="p-2 -mr-1 rounded-lg hover:bg-muted shrink-0"
+              >
+                <Search className="w-4 h-4" />
+              </button>
             </div>
+
+            {search.open && (
+              <ConversationSearch
+                query={search.query}
+                onQueryChange={search.setQuery}
+                total={search.hits.length}
+                index={search.index}
+                onStep={search.step}
+                onClose={search.close}
+              />
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
@@ -266,7 +355,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                   {t("trainerMessages.noHistory")}
                 </div>
               )}
-              {messages.map((msg) => {
+              {messages.map((msg, i) => {
                 // 共有受信箱なので「ジム側の吹き出し」は自分とは限らない。
                 // 他のスタッフが返した分も右側に出し、誰が返したかを上に添える。
                 const isOurSide = msg.sender_id !== selectedCustomerId;
@@ -275,37 +364,96 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                   isOurSide && msg.sender_id !== user?.id
                     ? staff.names.get(msg.sender_id) ?? t("sharedInbox.otherStaff")
                     : null;
+                const showDate = needsDateSeparator(
+                  msg.created_at,
+                  i > 0 ? messages[i - 1].created_at : null,
+                );
+                // 引用は本文の先頭に文字列として入っている。地の文と分けて出す。
+                const { quote, body } = splitReplyQuote(msg.content);
+                const isHit = search.currentId === msg.id;
+                const unsent = isUnsent(msg);
                 return (
-                  <div key={msg.id} className={`flex flex-col ${isTrainer ? "items-end" : "items-start"}`}>
-                    {otherStaffName && (
-                      <span className="text-[10px] text-muted-foreground mb-0.5 mr-1">
-                        {otherStaffName}
-                      </span>
-                    )}
-                    <div
-                      className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${
-                        isTrainer
-                          ? "accent-gradient text-accent-foreground rounded-br-md"
-                          : "bg-muted rounded-bl-md"
-                      }`}
-                    >
-                      {msg.attachment_type && (
-                        <div className={msg.content.trim() ? "mb-1.5" : ""}>
-                          <MessageAttachment type={msg.attachment_type} url={msg.attachment_url} />
-                        </div>
+                  <div key={msg.id} ref={search.registerRef(msg.id)}>
+                    {showDate && <DateSeparator at={msg.created_at} />}
+                    <div className={`flex flex-col ${isTrainer ? "items-end" : "items-start"}`}>
+                      {otherStaffName && (
+                        <span className="text-[10px] text-muted-foreground mb-0.5 mr-1">
+                          {otherStaffName}
+                        </span>
                       )}
-                      {msg.content.trim() && (
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                      )}
-                      <p
-                        className={`text-[10px] mt-1 flex items-center gap-1.5 ${
-                          isTrainer ? "justify-end opacity-70" : "text-muted-foreground"
-                        }`}
+                      <MessageActions
+                        alignEnd={isTrainer}
+                        onReact={
+                          unsent ? undefined : (kind) => reactions.toggle(msg.id, kind, tenantId)
+                        }
+                        onUnsend={
+                          canUnsend(msg, user?.id) ? () => handleUnsend(msg.id) : undefined
+                        }
+                        onReply={() =>
+                          setNewMsg((cur) =>
+                            prependReply(
+                              cur,
+                              formatReplyQuote(
+                                {
+                                  content: msg.content,
+                                  attachment_type: msg.attachment_type,
+                                  senderName: isTrainer
+                                    ? otherStaffName
+                                    : selected?.display_name ?? null,
+                                },
+                                attachmentLabels,
+                              ),
+                            ),
+                          )
+                        }
                       >
-                        {/* 既読は自分（ジム側）が送った分にだけ出す */}
-                        {isTrainer && msg.read && <span>{t("common.messageRead")}</span>}
-                        <span>{formatJST(msg.created_at, "M/d HH:mm")}</span>
-                      </p>
+                      <div
+                        className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 transition-shadow ${
+                          isTrainer
+                            ? "accent-gradient text-accent-foreground rounded-br-md"
+                            : "bg-muted rounded-bl-md"
+                        } ${isHit ? "ring-2 ring-accent" : ""}`}
+                      >
+                        {unsent && <UnsentNotice />}
+                        {!unsent && quote && <ReplyQuote text={quote} onAccent={isTrainer} />}
+                        {!unsent && msg.attachment_type && (
+                          <div className={body.trim() ? "mb-1.5" : ""}>
+                            <MessageAttachment
+                              type={msg.attachment_type}
+                              url={msg.attachment_url}
+                              onOpenImage={setLightboxUrl}
+                            />
+                          </div>
+                        )}
+                        {!unsent && body.trim() && (
+                          <MessageText
+                            text={body}
+                            onAccent={isTrainer}
+                            highlight={search.active ? search.query : undefined}
+                          />
+                        )}
+                        <p
+                          className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+                            isTrainer ? "justify-end opacity-70" : "text-muted-foreground"
+                          }`}
+                        >
+                          {/* 既読は自分（ジム側）が送った分にだけ出す */}
+                          {isTrainer && !unsent && msg.read && (
+                            <span>{t("common.messageRead")}</span>
+                          )}
+                          {/* 日付は区切りが持つので、吹き出しには時刻だけ */}
+                          <span>{formatJST(msg.created_at, "HH:mm")}</span>
+                        </p>
+                      </div>
+                      </MessageActions>
+                      {!unsent && (
+                        <MessageReactions
+                          reactions={reactions.byMessage.get(msg.id) ?? []}
+                          currentUserId={user?.id}
+                          onToggle={(kind) => reactions.toggle(msg.id, kind, tenantId)}
+                          alignEnd={isTrainer}
+                        />
+                      )}
                     </div>
                   </div>
                 );

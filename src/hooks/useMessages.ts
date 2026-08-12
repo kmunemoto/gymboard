@@ -20,6 +20,11 @@ export interface Message {
   /** "image" | "video"。attachment_path とは必ずセット（DBの CHECK 制約） */
   attachment_type: AttachmentType | null;
   /**
+   * 送信を取り消した時刻。null なら通常のメッセージ。
+   * 取り消すと content は空・attachment_* は null になり、**行だけ残る**。
+   */
+  unsent_at: string | null;
+  /**
    * 表示用の署名URL。**DBの列ではない**（クライアントで付ける）。
    * 期限があるので保存しないこと。
    */
@@ -206,6 +211,50 @@ export const useMessages = (otherUserId: string | null, options?: UseMessagesOpt
     // ⚠️ ここに通知を書き戻すと**二重に鳴る**。足すなら Edge Function 側に。
   };
 
+  /**
+   * 送信を取り消す（24時間以内・送信者本人のみ）。
+   *
+   * 可否の判断は **DB 側の `unsend_message`** が持つ。クライアントの
+   * `canUnsend` はメニューを出すかどうかだけで、防御ではない
+   * （端末の時計はずれるし、直接 RPC を叩かれれば素通りする）。
+   *
+   * ⚠️ 添付は**ストレージからも消す**。行から参照が外れた時点で受信者からは
+   *    読めなくなる（ストレージのポリシーが messages を引いているため）が、
+   *    ファイル自体は残ってしまう。
+   */
+  const unsendMessage = async (messageId: string) => {
+    const { data: path, error } = await supabase.rpc("unsend_message", {
+      _message_id: messageId,
+    });
+    if (error) throw error;
+
+    if (path) {
+      const { discardAttachment } = await import("@/lib/messageAttachment");
+      // 消せなくても行の取り消しは成立している。ここで投げると
+      // 「取り消せなかった」と誤解させるので、握って進む。
+      await discardAttachment(path).catch((e) =>
+        console.error("取り消した添付の削除に失敗:", e),
+      );
+    }
+
+    // Realtime の UPDATE でも届くが、往復を待たず自分の画面には即反映する
+    // （購読が確立前／瞬断中だと、押したのに何も起きないように見える）。
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? {
+              ...m,
+              content: "",
+              attachment_path: null,
+              attachment_type: null,
+              attachment_url: undefined,
+              unsent_at: new Date().toISOString(),
+            }
+          : m,
+      ),
+    );
+  };
+
   const markAsRead = async () => {
     const sides = resolveSides();
     if (!sides) return;
@@ -224,7 +273,7 @@ export const useMessages = (otherUserId: string | null, options?: UseMessagesOpt
       .in("id", unread.map((m) => m.id));
   };
 
-  return { messages, loading, sendMessage, markAsRead };
+  return { messages, loading, sendMessage, markAsRead, unsendMessage };
 };
 
 /**

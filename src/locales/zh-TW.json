@@ -2478,7 +2478,8 @@
     "imageAlt": "附件圖片",
     "errUnsupported": "無法傳送此格式的檔案。請選擇照片（JPEG/PNG/WebP）或影片（MP4/MOV）。",
     "errTooLarge": "影片過大（上限 {{max}}）。請剪短後再試。",
-    "errUploadFailed": "上傳失敗，請再試一次。"
+    "errUploadFailed": "上傳失敗，請再試一次。",
+    "openImage": "查看照片"
   },
   "messageTemplates": {
     "manageTitle": "常用語句",
@@ -2500,5 +2501,24 @@
   },
   "sharedInbox": {
     "otherStaff": "其他工作人員"
+  },
+  "chat": {
+    "today": "今天",
+    "yesterday": "昨天",
+    "reply": "回覆",
+    "unsend": "收回",
+    "search": "搜尋對話",
+    "searchPlaceholder": "在對話中搜尋",
+    "searchNoHit": "無結果",
+    "searchPrev": "上一個",
+    "searchNext": "下一個",
+    "unsentNotice": "已收回訊息",
+    "unsendFailed": "無法收回（可能已超過24小時）",
+    "reaction": {
+      "thumbsUp": "讚",
+      "heart": "喜歡",
+      "check": "已確認",
+      "smile": "謝謝"
+    }
   }
 }

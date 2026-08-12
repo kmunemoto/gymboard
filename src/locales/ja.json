@@ -2478,7 +2478,8 @@
     "imageAlt": "添付画像",
     "errUnsupported": "この形式のファイルは送れません。写真（JPEG/PNG/WebP）か動画（MP4/MOV）を選んでください。",
     "errTooLarge": "動画が大きすぎます（上限 {{max}}）。短く切ってからお試しください。",
-    "errUploadFailed": "添付のアップロードに失敗しました。もう一度お試しください。"
+    "errUploadFailed": "添付のアップロードに失敗しました。もう一度お試しください。",
+    "openImage": "写真を拡大"
   },
   "messageTemplates": {
     "manageTitle": "定型文",
@@ -2500,5 +2501,24 @@
   },
   "sharedInbox": {
     "otherStaff": "別のスタッフ"
+  },
+  "chat": {
+    "today": "今日",
+    "yesterday": "昨日",
+    "reply": "返信",
+    "unsend": "送信取消",
+    "search": "会話を検索",
+    "searchPlaceholder": "会話内を検索",
+    "searchNoHit": "0件",
+    "searchPrev": "前へ",
+    "searchNext": "次へ",
+    "unsentNotice": "送信を取り消しました",
+    "unsendFailed": "送信を取り消せませんでした（24時間を過ぎている可能性があります）",
+    "reaction": {
+      "thumbsUp": "いいね",
+      "heart": "うれしい",
+      "check": "確認しました",
+      "smile": "ありがとう"
+    }
   }
 }

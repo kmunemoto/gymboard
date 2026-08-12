@@ -85,10 +85,17 @@ describe("既読は送信者の画面に届く", () => {
     ] as const) {
       expect(code, `${label} が既読を表示していません`).toMatch(/common\.messageRead/);
       // 相手の吹き出しに出すのは誤り。自分の送信分に限定する条件が要る。
+      //
+      // ⚠️ `isMe && msg.read` と**続けて**書いてあることは求めない。
+      //    2026-08-12 に送信取り消しを入れて `isMe && !unsent && msg.read` になり、
+      //    条件が増えただけでこの検査が落ちた（意図は満たしているのに）。
+      //    見るのは「msg.read の手前が isMe / isTrainer で絞られているか」。
+      const at = code.indexOf("msg.read");
+      expect(at, `${label} に msg.read がありません`).toBeGreaterThan(-1);
       expect(
-        code,
+        code.slice(Math.max(0, at - 80), at),
         `${label} の既読表示が「自分が送った分」に限定されていません`,
-      ).toMatch(/(isMe|isTrainer)\s*&&\s*msg\.read/);
+      ).toMatch(/(isMe|isTrainer)\s*&&/);
     }
   });
 

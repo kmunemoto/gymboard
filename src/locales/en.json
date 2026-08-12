@@ -2511,6 +2511,8 @@
     "searchPlaceholder": "Search in conversation",
     "searchNoHit": "No results",
     "searchPrev": "Previous",
-    "searchNext": "Next"
+    "searchNext": "Next",
+    "unsentNotice": "Message unsent",
+    "unsendFailed": "Could not unsend (it may be older than 24 hours)"
   }
 }

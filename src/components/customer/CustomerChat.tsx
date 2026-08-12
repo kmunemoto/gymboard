@@ -12,6 +12,7 @@ import DateSeparator from "@/components/messages/DateSeparator";
 import ImageLightbox from "@/components/messages/ImageLightbox";
 import MessageActions from "@/components/messages/MessageActions";
 import ReplyQuote from "@/components/messages/ReplyQuote";
+import UnsentNotice from "@/components/messages/UnsentNotice";
 import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
@@ -19,6 +20,7 @@ import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { useConversationSearch } from "@/hooks/useConversationSearch";
 import { prependQuote } from "@/lib/messageQuote";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
+import { canUnsend, isUnsent } from "@/lib/messageUnsend";
 import { needsDateSeparator } from "@/lib/chatDate";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -66,7 +68,7 @@ const CustomerChat = () => {
 
   // 共有受信箱: 誰が返信しても同じ会話として見える（担当が休みでも途切れない）
   const staff = useStaffDirectory();
-  const { messages, sendMessage, markAsRead } = useMessages(trainerId, {
+  const { messages, sendMessage, markAsRead, unsendMessage } = useMessages(trainerId, {
     otherIds: staff.ids,
   });
   const attachment = useAttachmentPicker(user?.id);
@@ -110,6 +112,17 @@ const CustomerChat = () => {
       // 以前はここで例外が捕捉されず、送信が黙って失敗し入力欄もそのままだった。
       console.error("メッセージの送信に失敗:", e);
       toast.error(t("customerChat.sendFailed"));
+    }
+  };
+
+  const handleUnsend = async (messageId: string) => {
+    try {
+      await unsendMessage(messageId);
+    } catch (e) {
+      // 24時間を過ぎている・自分の発言ではない等。DB 側が最終判断なので、
+      // クライアントで出していても弾かれることがある。
+      console.error("送信の取り消しに失敗:", e);
+      toast.error(t("chat.unsendFailed"));
     }
   };
 
@@ -199,6 +212,7 @@ const CustomerChat = () => {
           // （同じ見た目で出すと、引用した相手の発言が自分の発言として読まれる）。
           const { quote, body } = splitReplyQuote(msg.content);
           const isHit = search.currentId === msg.id;
+          const unsent = isUnsent(msg);
 
           return (
             <div key={msg.id} ref={search.registerRef(msg.id)}>
@@ -209,6 +223,9 @@ const CustomerChat = () => {
                 )}
                 <MessageActions
                   alignEnd={isMe}
+                  onUnsend={
+                    canUnsend(msg, user?.id) ? () => handleUnsend(msg.id) : undefined
+                  }
                   onReply={() =>
                     setInput((cur) =>
                       prependReply(
@@ -232,8 +249,9 @@ const CustomerChat = () => {
                       : "bg-card border border-border rounded-bl-md shadow-sm"
                   } ${isHit ? "ring-2 ring-accent" : ""}`}
                 >
-                  {quote && <ReplyQuote text={quote} onAccent={isMe} />}
-                  {msg.attachment_type && (
+                  {unsent && <UnsentNotice />}
+                  {!unsent && quote && <ReplyQuote text={quote} onAccent={isMe} />}
+                  {!unsent && msg.attachment_type && (
                     <div className={body.trim() ? "mb-1.5" : ""}>
                       <MessageAttachment
                         type={msg.attachment_type}
@@ -242,7 +260,7 @@ const CustomerChat = () => {
                       />
                     </div>
                   )}
-                  {body.trim() && (
+                  {!unsent && body.trim() && (
                     <MessageText
                       text={body}
                       onAccent={isMe}
@@ -257,7 +275,7 @@ const CustomerChat = () => {
                     {/* 既読は自分が送った分にだけ出す。相手の吹き出しに出しても意味がない。
                         `read` は元から DB にあり、useMessages が UPDATE を購読するように
                         なって初めて画面に反映されるようになった。 */}
-                    {isMe && msg.read && <span>{t("common.messageRead")}</span>}
+                    {isMe && !unsent && msg.read && <span>{t("common.messageRead")}</span>}
                     <span>{formatJST(msg.created_at, "HH:mm")}</span>
                   </p>
                 </div>

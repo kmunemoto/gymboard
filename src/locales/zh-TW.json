@@ -2511,6 +2511,8 @@
     "searchPlaceholder": "在對話中搜尋",
     "searchNoHit": "無結果",
     "searchPrev": "上一個",
-    "searchNext": "下一個"
+    "searchNext": "下一個",
+    "unsentNotice": "已收回訊息",
+    "unsendFailed": "無法收回（可能已超過24小時）"
   }
 }

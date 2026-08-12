@@ -16,6 +16,7 @@ import DateSeparator from "@/components/messages/DateSeparator";
 import ImageLightbox from "@/components/messages/ImageLightbox";
 import MessageActions from "@/components/messages/MessageActions";
 import ReplyQuote from "@/components/messages/ReplyQuote";
+import UnsentNotice from "@/components/messages/UnsentNotice";
 import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
@@ -26,6 +27,7 @@ import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { prependQuote } from "@/lib/messageQuote";
 import { useConversationSearch } from "@/hooks/useConversationSearch";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
+import { canUnsend, isUnsent } from "@/lib/messageUnsend";
 import { needsDateSeparator, dayKeyJST } from "@/lib/chatDate";
 import { sortConversations, type LastMessageInfo } from "@/lib/conversationOrder";
 import { formatJST } from "@/lib/timezone";
@@ -43,6 +45,7 @@ interface MessageRow {
   content: string;
   attachment_type: string | null;
   created_at: string;
+  unsent_at: string | null;
 }
 
 /**
@@ -71,7 +74,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const staffKey = staff.ids.join(",");
   const { counts: unreadCounts } = useUnreadBySender(staff.ids);
 
-  const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId, {
+  const { messages, sendMessage, markAsRead, unsendMessage } = useMessages(selectedCustomerId, {
     selfIds: staff.ids,
   });
   const attachment = useAttachmentPicker(user?.id);
@@ -144,7 +147,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     const inList = `(${sideIds.join(",")})`;
     const { data } = await supabase
       .from("messages")
-      .select("sender_id, receiver_id, content, attachment_type, created_at")
+      .select("sender_id, receiver_id, content, attachment_type, created_at, unsent_at")
       .or(`sender_id.in.${inList},receiver_id.in.${inList}`)
       .order("created_at", { ascending: false })
       .limit(LAST_MESSAGE_SCAN_LIMIT);
@@ -161,13 +164,17 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
       if (map[other]) continue;
       // 添付だけのメッセージは本文が空。プレビューが空欄になると
       //「メッセージなし」と見分けがつかないので、種別を文言にする。
-      const text = row.content.trim()
-        ? row.content
-        : row.attachment_type === "video"
-          ? t("trainerMessages.previewVideo")
-          : row.attachment_type === "image"
-            ? t("trainerMessages.previewImage")
-            : row.content;
+      // 取り消し済みは本文も添付も無い。空欄のままだと「メッセージなし」と
+      // 見分けがつかないので、取り消された旨を出す。
+      const text = row.unsent_at
+        ? t("chat.unsentNotice")
+        : row.content.trim()
+          ? row.content
+          : row.attachment_type === "video"
+            ? t("trainerMessages.previewVideo")
+            : row.attachment_type === "image"
+              ? t("trainerMessages.previewImage")
+              : row.content;
       map[other] = {
         content: text,
         // 一覧の時刻は「今日なら時刻、それより前は日付」。LINE と同じ読み方。
@@ -216,6 +223,16 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
       // 以前は例外が未捕捉のまま送信が黙って失敗していた（useMessages.sendMessage 参照）。
       console.error("メッセージの送信に失敗:", e);
       toast.error(t("trainerMessages.sendFailed"));
+    }
+  };
+
+  const handleUnsend = async (messageId: string) => {
+    try {
+      await unsendMessage(messageId);
+    } catch (e) {
+      // 24時間を過ぎている等。DB 側が最終判断なので、出していても弾かれることがある。
+      console.error("送信の取り消しに失敗:", e);
+      toast.error(t("chat.unsendFailed"));
     }
   };
 
@@ -345,6 +362,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                 // 引用は本文の先頭に文字列として入っている。地の文と分けて出す。
                 const { quote, body } = splitReplyQuote(msg.content);
                 const isHit = search.currentId === msg.id;
+                const unsent = isUnsent(msg);
                 return (
                   <div key={msg.id} ref={search.registerRef(msg.id)}>
                     {showDate && <DateSeparator at={msg.created_at} />}
@@ -356,6 +374,9 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                       )}
                       <MessageActions
                         alignEnd={isTrainer}
+                        onUnsend={
+                          canUnsend(msg, user?.id) ? () => handleUnsend(msg.id) : undefined
+                        }
                         onReply={() =>
                           setNewMsg((cur) =>
                             prependReply(
@@ -381,8 +402,9 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                             : "bg-muted rounded-bl-md"
                         } ${isHit ? "ring-2 ring-accent" : ""}`}
                       >
-                        {quote && <ReplyQuote text={quote} onAccent={isTrainer} />}
-                        {msg.attachment_type && (
+                        {unsent && <UnsentNotice />}
+                        {!unsent && quote && <ReplyQuote text={quote} onAccent={isTrainer} />}
+                        {!unsent && msg.attachment_type && (
                           <div className={body.trim() ? "mb-1.5" : ""}>
                             <MessageAttachment
                               type={msg.attachment_type}
@@ -391,7 +413,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                             />
                           </div>
                         )}
-                        {body.trim() && (
+                        {!unsent && body.trim() && (
                           <MessageText
                             text={body}
                             onAccent={isTrainer}
@@ -404,7 +426,9 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                           }`}
                         >
                           {/* 既読は自分（ジム側）が送った分にだけ出す */}
-                          {isTrainer && msg.read && <span>{t("common.messageRead")}</span>}
+                          {isTrainer && !unsent && msg.read && (
+                            <span>{t("common.messageRead")}</span>
+                          )}
                           {/* 日付は区切りが持つので、吹き出しには時刻だけ */}
                           <span>{formatJST(msg.created_at, "HH:mm")}</span>
                         </p>

@@ -2511,6 +2511,8 @@
     "searchPlaceholder": "在对话中搜索",
     "searchNoHit": "无结果",
     "searchPrev": "上一个",
-    "searchNext": "下一个"
+    "searchNext": "下一个",
+    "unsentNotice": "已撤回消息",
+    "unsendFailed": "无法撤回（可能已超过24小时）"
   }
 }

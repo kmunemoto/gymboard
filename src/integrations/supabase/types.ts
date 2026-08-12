@@ -1369,6 +1369,7 @@ export type Database = {
           receiver_id: string
           sender_id: string
           tenant_id: string | null
+          unsent_at: string | null
         }
         Insert: {
           attachment_path?: string | null
@@ -1380,6 +1381,7 @@ export type Database = {
           receiver_id: string
           sender_id: string
           tenant_id?: string | null
+          unsent_at?: string | null
         }
         Update: {
           attachment_path?: string | null
@@ -1391,6 +1393,7 @@ export type Database = {
           receiver_id?: string
           sender_id?: string
           tenant_id?: string | null
+          unsent_at?: string | null
         }
         Relationships: [
           {
@@ -3986,6 +3989,7 @@ export type Database = {
         Args: { p_stage_key: string; p_user_id: string }
         Returns: Json
       }
+      unsend_message: { Args: { _message_id: string }; Returns: string }
       update_event_progress: { Args: { _user_id: string }; Returns: Json }
       update_event_progress_unchecked: {
         Args: { _user_id: string }

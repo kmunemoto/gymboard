@@ -2511,6 +2511,8 @@
     "searchPlaceholder": "会話内を検索",
     "searchNoHit": "0件",
     "searchPrev": "前へ",
-    "searchNext": "次へ"
+    "searchNext": "次へ",
+    "unsentNotice": "送信を取り消しました",
+    "unsendFailed": "送信を取り消せませんでした（24時間を過ぎている可能性があります）"
   }
 }

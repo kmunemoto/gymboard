@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages, useUnreadBySender } from "@/hooks/useMessages";
+import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
+import MessageAttachment from "@/components/messages/MessageAttachment";
+import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -21,6 +24,7 @@ interface MessageRow {
   sender_id: string;
   receiver_id: string;
   content: string;
+  attachment_type: string | null;
   created_at: string;
 }
 
@@ -47,6 +51,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const { counts: unreadCounts } = useUnreadBySender();
 
   const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId);
+  const attachment = useAttachmentPicker(user?.id);
 
   // 会話相手は「自テナントに在籍しているお客様」。
   //
@@ -99,7 +104,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     if (!user || customers.length === 0) return;
     const { data } = await supabase
       .from("messages")
-      .select("sender_id, receiver_id, content, created_at")
+      .select("sender_id, receiver_id, content, attachment_type, created_at")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order("created_at", { ascending: false })
       .limit(LAST_MESSAGE_SCAN_LIMIT);
@@ -109,10 +114,19 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
       const other = row.sender_id === user.id ? row.receiver_id : row.sender_id;
       // 新しい順に見ているので、最初に現れたものがその相手の最終メッセージ
       if (map[other]) continue;
-      map[other] = { content: row.content, time: formatJST(row.created_at, "HH:mm") };
+      // 添付だけのメッセージは本文が空。プレビューが空欄になると
+      //「メッセージなし」と見分けがつかないので、種別を文言にする。
+      const text = row.content.trim()
+        ? row.content
+        : row.attachment_type === "video"
+          ? t("trainerMessages.previewVideo")
+          : row.attachment_type === "image"
+            ? t("trainerMessages.previewImage")
+            : row.content;
+      map[other] = { content: text, time: formatJST(row.created_at, "HH:mm") };
     }
     setLastMessages(map);
-  }, [user, customers]);
+  }, [user, customers, t]);
 
   useEffect(() => {
     fetchLastMessages();
@@ -128,12 +142,18 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 添付だけ送るのは正しい操作。アップロード中は送らせない
+  // （行だけ先に入って添付が付かない状態を作らない）。
+  const canSend =
+    (!!newMsg.trim() || !!attachment.prepared) && !attachment.uploading && !!selectedCustomerId;
+
   const handleSend = async () => {
-    if (!newMsg.trim() || !selectedCustomerId) return;
+    if (!canSend || !selectedCustomerId) return;
     const text = newMsg.trim();
     try {
-      await sendMessage(text, selectedCustomerId);
+      await sendMessage(text, selectedCustomerId, attachment.prepared);
       setNewMsg("");
+      attachment.consume();
     } catch (e) {
       // 以前は例外が未捕捉のまま送信が黙って失敗していた（useMessages.sendMessage 参照）。
       console.error("メッセージの送信に失敗:", e);
@@ -234,7 +254,14 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                           : "bg-muted rounded-bl-md"
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      {msg.attachment_type && (
+                        <div className={msg.content.trim() ? "mb-1.5" : ""}>
+                          <MessageAttachment type={msg.attachment_type} url={msg.attachment_url} />
+                        </div>
+                      )}
+                      {msg.content.trim() && (
+                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      )}
                       <p
                         className={`text-[10px] mt-1 flex items-center gap-1.5 ${
                           isTrainer ? "justify-end opacity-70" : "text-muted-foreground"
@@ -252,7 +279,21 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
             </div>
 
             {/* Input */}
-            <div className="p-2 sm:p-3 border-t border-border flex gap-2">
+            <div className="p-2 sm:p-3 border-t border-border">
+              {attachment.picked && (
+                <AttachmentPreview
+                  picked={attachment.picked}
+                  uploading={attachment.uploading}
+                  onRemove={attachment.clear}
+                />
+              )}
+              <div className="flex gap-2 items-end">
+              <AttachmentButton
+                inputRef={attachment.inputRef}
+                onPick={attachment.pick}
+                onOpen={attachment.openPicker}
+                disabled={attachment.uploading}
+              />
               <textarea
                 placeholder={t("customerChat.inputPlaceholder")}
                 value={newMsg}
@@ -273,9 +314,16 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 resize-none overflow-y-auto"
                 style={{ maxHeight: 120 }}
               />
-              <Button variant="accent" size="icon" onClick={handleSend} className="shrink-0 h-11 w-11">
+              <Button
+                variant="accent"
+                size="icon"
+                onClick={handleSend}
+                disabled={!canSend}
+                className="shrink-0 h-11 w-11"
+              >
                 <Send className="w-4 h-4" />
               </Button>
+              </div>
             </div>
           </Card>
         ) : (

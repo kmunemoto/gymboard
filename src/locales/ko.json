@@ -2325,7 +2325,9 @@
     "noMessagePreview": "메시지 없음",
     "noHistory": "메시지 기록이 없습니다",
     "selectConversation": "왼쪽 목록에서 대화를 선택해 주세요",
-    "sendFailed": "전송에 실패했습니다. 다시 시도해 주세요."
+    "sendFailed": "전송에 실패했습니다. 다시 시도해 주세요.",
+    "previewImage": "[사진]",
+    "previewVideo": "[동영상]"
   },
   "retention": {
     "title": "팔로우가 필요한 고객",
@@ -2465,5 +2467,17 @@
     "withdrawReasonPlaceholder": "이사, 요금, 목표 달성 등",
     "withdrawTitle": "탈퇴로 변경",
     "withdrawnToast": "탈퇴로 변경했습니다"
+  },
+  "messageAttachment": {
+    "attach": "사진·동영상 첨부",
+    "remove": "첨부 제거",
+    "uploading": "업로드 중…",
+    "readyImage": "사진을 첨부했습니다",
+    "readyVideo": "동영상을 첨부했습니다",
+    "unavailable": "이 첨부파일을 표시할 수 없습니다",
+    "imageAlt": "첨부 이미지",
+    "errUnsupported": "보낼 수 없는 형식입니다. 사진(JPEG/PNG/WebP) 또는 동영상(MP4/MOV)을 선택해 주세요.",
+    "errTooLarge": "동영상이 너무 큽니다(최대 {{max}}). 짧게 자른 뒤 다시 시도해 주세요.",
+    "errUploadFailed": "업로드에 실패했습니다. 다시 시도해 주세요."
   }
 }

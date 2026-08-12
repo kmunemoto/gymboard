@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
+import {
+  type AttachmentType,
+  type PreparedAttachment,
+  signAttachmentUrls,
+} from "@/lib/messageAttachment";
 
 export interface Message {
   id: string;
@@ -10,6 +15,28 @@ export interface Message {
   content: string;
   read: boolean;
   created_at: string;
+  /** 添付のバケット内パス。無ければ null */
+  attachment_path: string | null;
+  /** "image" | "video"。attachment_path とは必ずセット（DBの CHECK 制約） */
+  attachment_type: AttachmentType | null;
+  /**
+   * 表示用の署名URL。**DBの列ではない**（クライアントで付ける）。
+   * 期限があるので保存しないこと。
+   */
+  attachment_url?: string;
+}
+
+/**
+ * 添付のある行に署名URLを付ける。バケットが非公開なので、これが無いと表示できない。
+ * **まとめて1回だけ署名する**（1件ずつ createSignedUrl を呼ぶと添付の数だけ往復する）。
+ */
+async function withSignedUrls(rows: Message[]): Promise<Message[]> {
+  const paths = rows.map((m) => m.attachment_path).filter((p): p is string => !!p);
+  if (paths.length === 0) return rows;
+  const signed = await signAttachmentUrls(paths);
+  return rows.map((m) =>
+    m.attachment_path ? { ...m, attachment_url: signed.get(m.attachment_path) } : m,
+  );
 }
 
 export const useMessages = (otherUserId: string | null) => {
@@ -26,7 +53,7 @@ export const useMessages = (otherUserId: string | null) => {
         `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
       )
       .order("created_at", { ascending: true });
-    if (data) setMessages(data as Message[]);
+    if (data) setMessages(await withSignedUrls(data as Message[]));
     setLoading(false);
   }, [user, otherUserId]);
 
@@ -49,9 +76,18 @@ export const useMessages = (otherUserId: string | null) => {
         (payload) => {
           const msg = payload.new as Message;
           // Only add if it's part of this conversation
-          if (belongsHere(msg)) {
-            // sendMessage 側の即時ローカル反映と重複しないよう id で除外する
-            setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+          if (!belongsHere(msg)) return;
+          // 添付付きで届いた場合、署名URLはこちらで付ける（Realtime の payload には無い）。
+          // 署名は非同期なので、まず本文だけ出してから URL を差し替える。
+          setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+          if (msg.attachment_path) {
+            void signAttachmentUrls([msg.attachment_path]).then((signed) => {
+              const url = signed.get(msg.attachment_path!);
+              if (!url) return;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === msg.id ? { ...m, attachment_url: url } : m)),
+              );
+            });
           }
         }
       )
@@ -66,7 +102,11 @@ export const useMessages = (otherUserId: string | null) => {
           // 「既読」を出すには、この UPDATE を拾うことが前提になる。
           const msg = payload.new as Message;
           if (!belongsHere(msg)) return;
-          setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m)));
+          // attachment_url は DB の列ではないので payload に無い。
+          // 素直に上書きすると、既読が立った瞬間に**添付が消える**。
+          setMessages((prev) =>
+            prev.map((m) => (m.id === msg.id ? { ...m, ...msg, attachment_url: m.attachment_url } : m)),
+          );
         }
       )
       .subscribe();
@@ -75,7 +115,16 @@ export const useMessages = (otherUserId: string | null) => {
     };
   }, [user, otherUserId]);
 
-  const sendMessage = async (content: string, receiverId: string) => {
+  /**
+   * @param attachment すでにアップロード済みの添付（`uploadAttachment` の戻り値）。
+   *   アップロードは呼び出し元が先に済ませる。**行の INSERT が失敗しても
+   *   ファイルだけ残る**ので、失敗時は呼び出し元が `discardAttachment` で片付けること。
+   */
+  const sendMessage = async (
+    content: string,
+    receiverId: string,
+    attachment?: PreparedAttachment | null,
+  ) => {
     if (!user) return;
     const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
     const tenantId = await fetchMyTenantId();
@@ -87,6 +136,8 @@ export const useMessages = (otherUserId: string | null) => {
         sender_id: user.id,
         receiver_id: receiverId,
         content,
+        attachment_path: attachment?.path ?? null,
+        attachment_type: attachment?.type ?? null,
       }, tenantId) as any)
       .select()
       .single();
@@ -95,7 +146,7 @@ export const useMessages = (otherUserId: string | null) => {
     // Realtimeの往復を待たず、送信者自身の画面には送信直後にローカル反映する。
     // Realtimeの購読が確立前/瞬断中だと、送った本人にすら表示されない問題があったため。
     if (data) {
-      const sent = data as Message;
+      const sent = (await withSignedUrls([data as Message]))[0];
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     }
 

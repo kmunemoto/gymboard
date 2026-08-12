@@ -4,6 +4,9 @@ import { Send, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/hooks/useMessages";
+import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
+import MessageAttachment from "@/components/messages/MessageAttachment";
+import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -49,6 +52,7 @@ const CustomerChat = () => {
   }, []);
 
   const { messages, sendMessage, markAsRead } = useMessages(trainerId);
+  const attachment = useAttachmentPicker(user?.id);
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -60,12 +64,18 @@ const CustomerChat = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 添付だけを送る（本文が空）のは正しい操作。写真1枚だけ送りたいことのほうが多い。
+  // ただしアップロード中は送らせない（行だけ先に入って添付が付かない状態を作らない）。
+  const canSend = (!!input.trim() || !!attachment.prepared) && !attachment.uploading && !!trainerId;
+
   const handleSend = async () => {
-    if (!input.trim() || !trainerId) return;
+    if (!canSend || !trainerId) return;
     const text = input.trim();
+    const prepared = attachment.prepared;
     try {
-      await sendMessage(text, trainerId);
+      await sendMessage(text, trainerId, prepared);
       setInput("");
+      attachment.consume();
     } catch (e) {
       // 以前はここで例外が捕捉されず、送信が黙って失敗し入力欄もそのままだった。
       console.error("メッセージの送信に失敗:", e);
@@ -153,7 +163,14 @@ const CustomerChat = () => {
                       : "bg-card border border-border rounded-bl-md shadow-sm"
                   }`}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                  {msg.attachment_type && (
+                    <div className={msg.content.trim() ? "mb-1.5" : ""}>
+                      <MessageAttachment type={msg.attachment_type} url={msg.attachment_url} />
+                    </div>
+                  )}
+                  {msg.content.trim() && (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                  )}
                   <p
                     className={`text-[10px] mt-1 flex items-center gap-1.5 ${
                       isMe ? "justify-end text-accent-foreground/60" : "text-muted-foreground"
@@ -175,7 +192,20 @@ const CustomerChat = () => {
 
       {/* Input */}
       <div className="px-4 py-3 border-t border-border glass">
+        {attachment.picked && (
+          <AttachmentPreview
+            picked={attachment.picked}
+            uploading={attachment.uploading}
+            onRemove={attachment.clear}
+          />
+        )}
         <div className="flex items-center gap-2">
+          <AttachmentButton
+            inputRef={attachment.inputRef}
+            onPick={attachment.pick}
+            onOpen={attachment.openPicker}
+            disabled={attachment.uploading}
+          />
           <textarea
             value={input}
             onChange={handleInputChange}
@@ -187,8 +217,8 @@ const CustomerChat = () => {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
-            className="w-10 h-10 rounded-xl accent-gradient flex items-center justify-center text-accent-foreground disabled:opacity-40 transition-opacity shadow-sm"
+            disabled={!canSend}
+            className="w-10 h-10 rounded-xl accent-gradient flex items-center justify-center text-accent-foreground disabled:opacity-40 transition-opacity shadow-sm shrink-0"
           >
             <Send className="w-4 h-4" />
           </button>

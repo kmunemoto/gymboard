@@ -2479,5 +2479,20 @@
     "errUnsupported": "无法发送该格式的文件。请选择照片（JPEG/PNG/WebP）或视频（MP4/MOV）。",
     "errTooLarge": "视频过大（上限 {{max}}）。请剪短后重试。",
     "errUploadFailed": "上传失败，请重试。"
+  },
+  "messageTemplates": {
+    "manageTitle": "常用短语",
+    "manageDescription": "保存常用语句后，可在聊天中一键输入。",
+    "empty": "尚未添加任何短语。",
+    "add": "添加短语",
+    "atLimit": "最多可保存 {{max}} 条",
+    "titlePlaceholder": "名称（例：致谢）",
+    "bodyPlaceholder": "内容（例：{{name}}，今天也辛苦了！）",
+    "varHint": "在内容中写入 {{name}}，将自动替换为对方的姓名。",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "errEmpty": "请输入名称和内容。",
+    "errSaveFailed": "保存短语失败。",
+    "errDeleteFailed": "删除短语失败。"
   }
 }

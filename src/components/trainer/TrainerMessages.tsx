@@ -8,8 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages, useUnreadBySender } from "@/hooks/useMessages";
 import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
+import { useMessageTemplates } from "@/hooks/useMessageTemplates";
 import MessageAttachment from "@/components/messages/MessageAttachment";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
+import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
+import MessageTemplateDialog from "@/components/trainer/MessageTemplateDialog";
+import { appendTemplate, replaceTemplateVars } from "@/lib/messageTemplate";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -52,6 +56,8 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
   const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId);
   const attachment = useAttachmentPicker(user?.id);
+  const templateStore = useMessageTemplates();
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 
   // 会話相手は「自テナントに在籍しているお客様」。
   //
@@ -162,6 +168,14 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   };
 
   const selected = customers.find((c) => c.user_id === selectedCustomerId);
+
+  // 定型文を入力欄に入れる。
+  // ⚠️ 上書きしない。書きかけの文があれば末尾に足す（書いたものを消さない）。
+  //    {{name}} はここで相手の表示名に置き換える（名前が無ければ敬称ごと落ちる）。
+  const applyTemplate = (body: string) => {
+    const filled = replaceTemplateVars(body, { name: selected?.display_name ?? null });
+    setNewMsg((current) => appendTemplate(current, filled));
+  };
 
   // Sort customers: those with unread messages first
   const sortedCustomers = [...customers].sort((a, b) => {
@@ -280,6 +294,12 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
             {/* Input */}
             <div className="p-2 sm:p-3 border-t border-border">
+              {/* 定型文。離脱アラートの「声かけ」から飛んできたときも、ここから1タップで出せる */}
+              <MessageTemplateChips
+                templates={templateStore.templates}
+                onPick={(tpl) => applyTemplate(tpl.body)}
+                onManage={() => setTemplateDialogOpen(true)}
+              />
               {attachment.picked && (
                 <AttachmentPreview
                   picked={attachment.picked}
@@ -335,6 +355,12 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
           </Card>
         )}
       </div>
+
+      <MessageTemplateDialog
+        open={templateDialogOpen}
+        onClose={() => setTemplateDialogOpen(false)}
+        store={templateStore}
+      />
     </div>
   );
 };

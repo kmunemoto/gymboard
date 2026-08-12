@@ -11,6 +11,9 @@ import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
 import { useMessageTemplates } from "@/hooks/useMessageTemplates";
 import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import MessageAttachment from "@/components/messages/MessageAttachment";
+import MessageText from "@/components/messages/MessageText";
+import DateSeparator from "@/components/messages/DateSeparator";
+import ImageLightbox from "@/components/messages/ImageLightbox";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
 import MessageTemplateDialog from "@/components/trainer/MessageTemplateDialog";
@@ -18,7 +21,8 @@ import { appendTemplate, replaceTemplateVars } from "@/lib/messageTemplate";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { prependQuote } from "@/lib/messageQuote";
-import { format } from "date-fns";
+import { needsDateSeparator, dayKeyJST } from "@/lib/chatDate";
+import { sortConversations, type LastMessageInfo } from "@/lib/conversationOrder";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
 
@@ -54,10 +58,12 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const [customers, setCustomers] = useState<CustomerInfo[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(initialCustomerId);
   const [newMsg, setNewMsg] = useState("");
-  const [lastMessages, setLastMessages] = useState<Record<string, { content: string; time: string }>>({});
+  const [lastMessages, setLastMessages] = useState<Record<string, LastMessageInfo>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   // 共有受信箱: 別のスタッフ宛ての未読も自分の一覧に出す
   const staff = useStaffDirectory();
+  const staffKey = staff.ids.join(",");
   const { counts: unreadCounts } = useUnreadBySender(staff.ids);
 
   const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId, {
@@ -115,18 +121,30 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   // ⚠️ 以前は **顧客1人につき1クエリ**（N+1）を直列で回していた。30人いれば30往復で、
   //    画面を開くたびにプレビューが1件ずつ遅れて出てくる状態だった。
   //    自分が関わるメッセージを新しい順に1回だけ引き、相手ごとの先頭を採る。
+  //
+  // ⚠️ 引くのは**スタッフ全員が関わる行**（共有受信箱）。自分の user_id だけで引くと、
+  //    別のスタッフが担当している会話のプレビューが**空のまま**になり、
+  //    一覧では「メッセージなし」に見える。未読数は staff.ids で数えているので、
+  //    「バッジは付いているのに本文が出ない」というちぐはぐな状態になっていた。
   const fetchLastMessages = useCallback(async () => {
     if (!user || customers.length === 0) return;
+    const sideIds = [...new Set([user.id, ...(staffKey ? staffKey.split(",") : [])])];
+    const inList = `(${sideIds.join(",")})`;
     const { data } = await supabase
       .from("messages")
       .select("sender_id, receiver_id, content, attachment_type, created_at")
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .or(`sender_id.in.${inList},receiver_id.in.${inList}`)
       .order("created_at", { ascending: false })
       .limit(LAST_MESSAGE_SCAN_LIMIT);
 
-    const map: Record<string, { content: string; time: string }> = {};
+    const map: Record<string, LastMessageInfo> = {};
     for (const row of (data ?? []) as MessageRow[]) {
-      const other = row.sender_id === user.id ? row.receiver_id : row.sender_id;
+      // 相手はスタッフ側でないほう。共有受信箱ではスタッフ同士の行も混ざりうるので、
+      // 両側ともスタッフなら会話一覧の対象ではない。
+      const senderIsUs = sideIds.includes(row.sender_id);
+      const receiverIsUs = sideIds.includes(row.receiver_id);
+      if (senderIsUs === receiverIsUs) continue;
+      const other = senderIsUs ? row.receiver_id : row.sender_id;
       // 新しい順に見ているので、最初に現れたものがその相手の最終メッセージ
       if (map[other]) continue;
       // 添付だけのメッセージは本文が空。プレビューが空欄になると
@@ -138,10 +156,19 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
           : row.attachment_type === "image"
             ? t("trainerMessages.previewImage")
             : row.content;
-      map[other] = { content: text, time: formatJST(row.created_at, "HH:mm") };
+      map[other] = {
+        content: text,
+        // 一覧の時刻は「今日なら時刻、それより前は日付」。LINE と同じ読み方。
+        time:
+          dayKeyJST(row.created_at) === dayKeyJST(new Date())
+            ? formatJST(row.created_at, "HH:mm")
+            : formatJST(row.created_at, "M/d"),
+        at: row.created_at,
+      };
     }
     setLastMessages(map);
-  }, [user, customers, t]);
+    // staff.ids は毎レンダー新しい配列になりうるので、キーにして安定させる
+  }, [user, customers, staffKey, t]);
 
   useEffect(() => {
     fetchLastMessages();
@@ -186,15 +213,14 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     setNewMsg((current) => appendTemplate(current, filled));
   };
 
-  // Sort customers: those with unread messages first
-  const sortedCustomers = [...customers].sort((a, b) => {
-    const aUnread = unreadCounts[a.user_id] || 0;
-    const bUnread = unreadCounts[b.user_id] || 0;
-    return bUnread - aUnread;
-  });
+  // 🔴 並びは「最後にやり取りした順」。以前は未読優先で、**既読にした瞬間に
+  //    その会話が一覧の下へ飛んでいく**（返信しようとして探すことになる）状態だった。
+  //    未読は新着なので時刻順にすれば自然に上に来る（バッジでも分かる）。
+  const sortedCustomers = sortConversations(customers, lastMessages);
 
   return (
     <div className="pb-24 md:pb-0">
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2 mb-4 sm:mb-6">
         <MessageCircle className="w-5 h-5 text-accent" />
         {t("trainerMessages.title")}
@@ -266,7 +292,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                   {t("trainerMessages.noHistory")}
                 </div>
               )}
-              {messages.map((msg) => {
+              {messages.map((msg, i) => {
                 // 共有受信箱なので「ジム側の吹き出し」は自分とは限らない。
                 // 他のスタッフが返した分も右側に出し、誰が返したかを上に添える。
                 const isOurSide = msg.sender_id !== selectedCustomerId;
@@ -275,37 +301,49 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                   isOurSide && msg.sender_id !== user?.id
                     ? staff.names.get(msg.sender_id) ?? t("sharedInbox.otherStaff")
                     : null;
+                const showDate = needsDateSeparator(
+                  msg.created_at,
+                  i > 0 ? messages[i - 1].created_at : null,
+                );
                 return (
-                  <div key={msg.id} className={`flex flex-col ${isTrainer ? "items-end" : "items-start"}`}>
-                    {otherStaffName && (
-                      <span className="text-[10px] text-muted-foreground mb-0.5 mr-1">
-                        {otherStaffName}
-                      </span>
-                    )}
-                    <div
-                      className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${
-                        isTrainer
-                          ? "accent-gradient text-accent-foreground rounded-br-md"
-                          : "bg-muted rounded-bl-md"
-                      }`}
-                    >
-                      {msg.attachment_type && (
-                        <div className={msg.content.trim() ? "mb-1.5" : ""}>
-                          <MessageAttachment type={msg.attachment_type} url={msg.attachment_url} />
-                        </div>
+                  <div key={msg.id}>
+                    {showDate && <DateSeparator at={msg.created_at} />}
+                    <div className={`flex flex-col ${isTrainer ? "items-end" : "items-start"}`}>
+                      {otherStaffName && (
+                        <span className="text-[10px] text-muted-foreground mb-0.5 mr-1">
+                          {otherStaffName}
+                        </span>
                       )}
-                      {msg.content.trim() && (
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                      )}
-                      <p
-                        className={`text-[10px] mt-1 flex items-center gap-1.5 ${
-                          isTrainer ? "justify-end opacity-70" : "text-muted-foreground"
+                      <div
+                        className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${
+                          isTrainer
+                            ? "accent-gradient text-accent-foreground rounded-br-md"
+                            : "bg-muted rounded-bl-md"
                         }`}
                       >
-                        {/* 既読は自分（ジム側）が送った分にだけ出す */}
-                        {isTrainer && msg.read && <span>{t("common.messageRead")}</span>}
-                        <span>{formatJST(msg.created_at, "M/d HH:mm")}</span>
-                      </p>
+                        {msg.attachment_type && (
+                          <div className={msg.content.trim() ? "mb-1.5" : ""}>
+                            <MessageAttachment
+                              type={msg.attachment_type}
+                              url={msg.attachment_url}
+                              onOpenImage={setLightboxUrl}
+                            />
+                          </div>
+                        )}
+                        {msg.content.trim() && (
+                          <MessageText text={msg.content} onAccent={isTrainer} />
+                        )}
+                        <p
+                          className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+                            isTrainer ? "justify-end opacity-70" : "text-muted-foreground"
+                          }`}
+                        >
+                          {/* 既読は自分（ジム側）が送った分にだけ出す */}
+                          {isTrainer && msg.read && <span>{t("common.messageRead")}</span>}
+                          {/* 日付は区切りが持つので、吹き出しには時刻だけ */}
+                          <span>{formatJST(msg.created_at, "HH:mm")}</span>
+                        </p>
+                      </div>
                     </div>
                   </div>
                 );

@@ -7,15 +7,23 @@ interface MessageAttachmentProps {
   type: AttachmentType;
   /** 署名URL。まだ取れていない／期限切れなら undefined */
   url?: string;
+  /**
+   * 画像を押したときに全画面で開く。渡さなければ押しても何も起きない。
+   *
+   * ⚠️ 以前は `<a target="_blank">` で別タブに飛ばしていた。ネイティブでは
+   *    外部ブラウザが立ち上がってしまい、しかも署名URLには期限があるので
+   *    そのタブを後で開いても切れている（`ImageLightbox` の冒頭に理由）。
+   */
+  onOpenImage?: (url: string) => void;
 }
 
 /**
- * 吹き出しの中に出す添付。画像は押すと原寸、動画はその場で再生。
+ * 吹き出しの中に出す添付。画像は押すと全画面、動画はその場で再生。
  *
  * ⚠️ URL は**署名付きで期限がある**。取れなかったときに無言で空白を出すと
  *    「送ったはずのものが消えた」ように見えるので、必ず理由を出す。
  */
-const MessageAttachment = ({ type, url }: MessageAttachmentProps) => {
+const MessageAttachment = ({ type, url, onOpenImage }: MessageAttachmentProps) => {
   const { t } = useTranslation();
   const [broken, setBroken] = useState(false);
 
@@ -42,7 +50,16 @@ const MessageAttachment = ({ type, url }: MessageAttachmentProps) => {
   }
 
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+    <button
+      type="button"
+      onClick={(e) => {
+        // 吹き出し側の操作（長押しメニュー等）に伝播させない
+        e.stopPropagation();
+        onOpenImage?.(url);
+      }}
+      aria-label={t("messageAttachment.openImage")}
+      className="block"
+    >
       <img
         src={url}
         alt={t("messageAttachment.imageAlt")}
@@ -50,7 +67,7 @@ const MessageAttachment = ({ type, url }: MessageAttachmentProps) => {
         onError={() => setBroken(true)}
         className="rounded-lg max-h-72 w-auto object-contain"
       />
-    </a>
+    </button>
   );
 };
 

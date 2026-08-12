@@ -2478,7 +2478,8 @@
     "imageAlt": "附件图片",
     "errUnsupported": "无法发送该格式的文件。请选择照片（JPEG/PNG/WebP）或视频（MP4/MOV）。",
     "errTooLarge": "视频过大（上限 {{max}}）。请剪短后重试。",
-    "errUploadFailed": "上传失败，请重试。"
+    "errUploadFailed": "上传失败，请重试。",
+    "openImage": "查看照片"
   },
   "messageTemplates": {
     "manageTitle": "常用短语",
@@ -2500,5 +2501,9 @@
   },
   "sharedInbox": {
     "otherStaff": "其他工作人员"
+  },
+  "chat": {
+    "today": "今天",
+    "yesterday": "昨天"
   }
 }

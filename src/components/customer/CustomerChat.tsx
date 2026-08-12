@@ -7,11 +7,14 @@ import { useMessages } from "@/hooks/useMessages";
 import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
 import MessageAttachment from "@/components/messages/MessageAttachment";
+import MessageText from "@/components/messages/MessageText";
+import DateSeparator from "@/components/messages/DateSeparator";
+import ImageLightbox from "@/components/messages/ImageLightbox";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { prependQuote } from "@/lib/messageQuote";
-import { format } from "date-fns";
+import { needsDateSeparator } from "@/lib/chatDate";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
 
@@ -22,6 +25,7 @@ const CustomerChat = () => {
   const [trainerName, setTrainerName] = useState(() => t("customerChat.defaultTrainer"));
   const [resolvingTrainer, setResolvingTrainer] = useState(true);
   const [input, setInput] = useState("");
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 送信先は「自分が所属するジムのスタッフ」を解決する。
@@ -110,11 +114,6 @@ const CustomerChat = () => {
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
   };
 
-  // Group messages by date
-  const getDateLabel = (dateStr: string) => {
-    return formatJST(dateStr, "M/d");
-  };
-
   // 送信先スタッフが解決できない場合（テナント未所属・所属が非active等）は、
   // 何も起きていないように見える空チャットではなく、明示的にエラーを表示する。
   if (!resolvingTrainer && !trainerId) {
@@ -129,6 +128,7 @@ const CustomerChat = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8.5rem)] slide-up">
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
@@ -151,9 +151,10 @@ const CustomerChat = () => {
           </div>
         )}
         {messages.map((msg, i) => {
-          const dateLabel = getDateLabel(msg.created_at);
-          const prevDateLabel = i > 0 ? getDateLabel(messages[i - 1].created_at) : null;
-          const showDate = i === 0 || dateLabel !== prevDateLabel;
+          const showDate = needsDateSeparator(
+            msg.created_at,
+            i > 0 ? messages[i - 1].created_at : null,
+          );
           const isMe = msg.sender_id === user?.id;
           // スタッフが2人以上いるジムでは、誰から返ってきたかを出す。
           // 1人ジム（Salute 御所南など）では出さない（毎回同じ名前が並ぶだけ）。
@@ -162,13 +163,7 @@ const CustomerChat = () => {
 
           return (
             <div key={msg.id}>
-              {showDate && (
-                <div className="text-center my-3">
-                  <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full font-medium">
-                    {dateLabel}
-                  </span>
-                </div>
-              )}
+              {showDate && <DateSeparator at={msg.created_at} />}
               <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 {staffName && (
                   <span className="text-[10px] text-muted-foreground mb-0.5 ml-1">{staffName}</span>
@@ -182,12 +177,14 @@ const CustomerChat = () => {
                 >
                   {msg.attachment_type && (
                     <div className={msg.content.trim() ? "mb-1.5" : ""}>
-                      <MessageAttachment type={msg.attachment_type} url={msg.attachment_url} />
+                      <MessageAttachment
+                        type={msg.attachment_type}
+                        url={msg.attachment_url}
+                        onOpenImage={setLightboxUrl}
+                      />
                     </div>
                   )}
-                  {msg.content.trim() && (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
-                  )}
+                  {msg.content.trim() && <MessageText text={msg.content} onAccent={isMe} />}
                   <p
                     className={`text-[10px] mt-1 flex items-center gap-1.5 ${
                       isMe ? "justify-end text-accent-foreground/60" : "text-muted-foreground"

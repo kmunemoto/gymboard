@@ -32,6 +32,7 @@ import PlanUsageCard from "@/components/customer/PlanUsageCard";
 import { fetchMyTenantId } from "@/lib/tenantHelper";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import { useMessages } from "@/hooks/useMessages";
+import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import { Switch } from "@/components/ui/switch";
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import {
@@ -138,7 +139,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
   // Check if client has an auth account (user_roles entry)
   const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
-  const { messages: chatMessages, loading: loadingChat, sendMessage, markAsRead } = useMessages(isRegistered ? clientId : null);
+  // 共有受信箱: 他のスタッフとのやり取りも同じ会話として見える
+  const staff = useStaffDirectory();
+  const { messages: chatMessages, loading: loadingChat, sendMessage, markAsRead } = useMessages(
+    isRegistered ? clientId : null,
+    { selfIds: staff.ids },
+  );
 
   // Fetch profile and check registration
   useEffect(() => {

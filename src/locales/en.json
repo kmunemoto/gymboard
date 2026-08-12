@@ -2497,5 +2497,8 @@
   },
   "messageQuote": {
     "label": "Quote a booking"
+  },
+  "sharedInbox": {
+    "otherStaff": "Another staff member"
   }
 }

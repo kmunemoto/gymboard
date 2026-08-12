@@ -2497,5 +2497,8 @@
   },
   "messageQuote": {
     "label": "예약 인용"
+  },
+  "sharedInbox": {
+    "otherStaff": "다른 스태프"
   }
 }

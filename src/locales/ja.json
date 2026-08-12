@@ -2497,5 +2497,8 @@
   },
   "messageQuote": {
     "label": "予約を引用"
+  },
+  "sharedInbox": {
+    "otherStaff": "別のスタッフ"
   }
 }

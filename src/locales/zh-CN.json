@@ -2497,5 +2497,8 @@
   },
   "messageQuote": {
     "label": "引用预约"
+  },
+  "sharedInbox": {
+    "otherStaff": "其他工作人员"
   }
 }

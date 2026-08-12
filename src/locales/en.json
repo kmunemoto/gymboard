@@ -2513,6 +2513,12 @@
     "searchPrev": "Previous",
     "searchNext": "Next",
     "unsentNotice": "Message unsent",
-    "unsendFailed": "Could not unsend (it may be older than 24 hours)"
+    "unsendFailed": "Could not unsend (it may be older than 24 hours)",
+    "reaction": {
+      "thumbsUp": "Like",
+      "heart": "Love",
+      "check": "Got it",
+      "smile": "Thanks"
+    }
   }
 }

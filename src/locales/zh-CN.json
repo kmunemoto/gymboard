@@ -2513,6 +2513,12 @@
     "searchPrev": "上一个",
     "searchNext": "下一个",
     "unsentNotice": "已撤回消息",
-    "unsendFailed": "无法撤回（可能已超过24小时）"
+    "unsendFailed": "无法撤回（可能已超过24小时）",
+    "reaction": {
+      "thumbsUp": "赞",
+      "heart": "喜欢",
+      "check": "已确认",
+      "smile": "谢谢"
+    }
   }
 }

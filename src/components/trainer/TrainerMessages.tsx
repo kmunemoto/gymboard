@@ -17,6 +17,7 @@ import ImageLightbox from "@/components/messages/ImageLightbox";
 import MessageActions from "@/components/messages/MessageActions";
 import ReplyQuote from "@/components/messages/ReplyQuote";
 import UnsentNotice from "@/components/messages/UnsentNotice";
+import MessageReactions from "@/components/messages/MessageReactions";
 import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
@@ -28,6 +29,7 @@ import { prependQuote } from "@/lib/messageQuote";
 import { useConversationSearch } from "@/hooks/useConversationSearch";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
+import { useMessageReactions } from "@/hooks/useMessageReactions";
 import { needsDateSeparator, dayKeyJST } from "@/lib/chatDate";
 import { sortConversations, type LastMessageInfo } from "@/lib/conversationOrder";
 import { formatJST } from "@/lib/timezone";
@@ -82,6 +84,13 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const { bookings: quotableBookings } = useQuotableBookings(selectedCustomerId);
   const search = useConversationSearch(messages);
+  const reactions = useMessageReactions(messages.map((m) => m.id));
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  useEffect(() => {
+    void import("@/lib/tenantHelper").then(({ fetchMyTenantId }) =>
+      fetchMyTenantId().then(setTenantId).catch(() => setTenantId(null)),
+    );
+  }, []);
   // 添付だけのメッセージを引用したときの文言。**リテラルで持たない**
   // （兄弟アプリが業種に合わせて差し替えるため。forkHostileTests.test.ts）
   const attachmentLabels = {
@@ -374,6 +383,9 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                       )}
                       <MessageActions
                         alignEnd={isTrainer}
+                        onReact={
+                          unsent ? undefined : (kind) => reactions.toggle(msg.id, kind, tenantId)
+                        }
                         onUnsend={
                           canUnsend(msg, user?.id) ? () => handleUnsend(msg.id) : undefined
                         }
@@ -434,6 +446,14 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                         </p>
                       </div>
                       </MessageActions>
+                      {!unsent && (
+                        <MessageReactions
+                          reactions={reactions.byMessage.get(msg.id) ?? []}
+                          currentUserId={user?.id}
+                          onToggle={(kind) => reactions.toggle(msg.id, kind, tenantId)}
+                          alignEnd={isTrainer}
+                        />
+                      )}
                     </div>
                   </div>
                 );

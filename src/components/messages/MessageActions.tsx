@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Reply, Undo2 } from "lucide-react";
+import { ReactionPicker } from "@/components/messages/MessageReactions";
+import type { ReactionKind } from "@/lib/messageReaction";
 
 interface MessageActionsProps {
   /** 吹き出しの中身 */
@@ -8,6 +10,8 @@ interface MessageActionsProps {
   onReply: () => void;
   /** 送信取り消し。できない相手／時間切れなら渡さない */
   onUnsend?: () => void;
+  /** リアクションを付ける／外す。渡さなければピッカーを出さない */
+  onReact?: (kind: ReactionKind) => void;
   /** 右寄せの吹き出しか（メニューの出る向きを合わせる） */
   alignEnd?: boolean;
 }
@@ -26,7 +30,13 @@ const LONG_PRESS_MS = 450;
  * ⚠️ **スクロールで誤爆させない。** 指が動いたら長押しを取り消す。
  *    ここを雑にすると、会話を遡るたびにメニューが出て使い物にならない。
  */
-const MessageActions = ({ children, onReply, onUnsend, alignEnd = false }: MessageActionsProps) => {
+const MessageActions = ({
+  children,
+  onReply,
+  onUnsend,
+  onReact,
+  alignEnd = false,
+}: MessageActionsProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,10 +99,21 @@ const MessageActions = ({ children, onReply, onUnsend, alignEnd = false }: Messa
       {open && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`absolute z-20 mt-1 flex gap-1 rounded-xl border border-border bg-popover p-1 shadow-lg ${
+          className={`absolute z-20 mt-1 flex items-center gap-1 rounded-xl border border-border bg-popover p-1 shadow-lg ${
             alignEnd ? "right-0" : "left-0"
           }`}
         >
+          {onReact && (
+            <>
+              <ReactionPicker
+                onPick={(kind) => {
+                  setOpen(false);
+                  onReact(kind);
+                }}
+              />
+              <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
+            </>
+          )}
           <button
             type="button"
             onClick={pick(onReply)}

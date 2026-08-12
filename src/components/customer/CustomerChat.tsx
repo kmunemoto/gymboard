@@ -13,6 +13,7 @@ import ImageLightbox from "@/components/messages/ImageLightbox";
 import MessageActions from "@/components/messages/MessageActions";
 import ReplyQuote from "@/components/messages/ReplyQuote";
 import UnsentNotice from "@/components/messages/UnsentNotice";
+import MessageReactions from "@/components/messages/MessageReactions";
 import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
@@ -21,6 +22,7 @@ import { useConversationSearch } from "@/hooks/useConversationSearch";
 import { prependQuote } from "@/lib/messageQuote";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
+import { useMessageReactions } from "@/hooks/useMessageReactions";
 import { needsDateSeparator } from "@/lib/chatDate";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -75,6 +77,14 @@ const CustomerChat = () => {
   // お客様側は「自分の予約」を引用する（相手ではなく自分の user_id で引く）
   const { bookings: quotableBookings } = useQuotableBookings(user?.id ?? null);
   const search = useConversationSearch(messages);
+  const reactions = useMessageReactions(messages.map((m) => m.id));
+  // リアクション行にもテナントを載せる（RESTRICTIVE な tenant_isolation を満たすため）
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  useEffect(() => {
+    void import("@/lib/tenantHelper").then(({ fetchMyTenantId }) =>
+      fetchMyTenantId().then(setTenantId).catch(() => setTenantId(null)),
+    );
+  }, []);
   // 添付だけのメッセージを引用したときの文言。**リテラルで持たない**
   // （兄弟アプリが業種に合わせて差し替えるため。forkHostileTests.test.ts）
   const attachmentLabels = {
@@ -223,6 +233,9 @@ const CustomerChat = () => {
                 )}
                 <MessageActions
                   alignEnd={isMe}
+                  onReact={
+                    unsent ? undefined : (kind) => reactions.toggle(msg.id, kind, tenantId)
+                  }
                   onUnsend={
                     canUnsend(msg, user?.id) ? () => handleUnsend(msg.id) : undefined
                   }
@@ -280,6 +293,14 @@ const CustomerChat = () => {
                   </p>
                 </div>
                 </MessageActions>
+                {!unsent && (
+                  <MessageReactions
+                    reactions={reactions.byMessage.get(msg.id) ?? []}
+                    currentUserId={user?.id}
+                    onToggle={(kind) => reactions.toggle(msg.id, kind, tenantId)}
+                    alignEnd={isMe}
+                  />
+                )}
               </div>
             </div>
           );

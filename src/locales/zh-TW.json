@@ -2513,6 +2513,12 @@
     "searchPrev": "上一個",
     "searchNext": "下一個",
     "unsentNotice": "已收回訊息",
-    "unsendFailed": "無法收回（可能已超過24小時）"
+    "unsendFailed": "無法收回（可能已超過24小時）",
+    "reaction": {
+      "thumbsUp": "讚",
+      "heart": "喜歡",
+      "check": "已確認",
+      "smile": "謝謝"
+    }
   }
 }

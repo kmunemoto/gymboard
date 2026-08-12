@@ -103,10 +103,17 @@ describe("既読は送信者の画面に届く", () => {
 
   it("未読が無いときは既読の書き込みにいかない", () => {
     // markAsRead は messages が変わるたびに呼ばれる。無条件だと毎回 UPDATE の往復が出る。
-    expect(HOOK_CODE).toMatch(/hasUnread/);
-    const idx = HOOK_CODE.indexOf("hasUnread");
-    expect(HOOK_CODE.slice(idx, idx + 400), "未読が無いときに早期 return していません").toMatch(
-      /if\s*\(!hasUnread\)\s*return/,
+    const idx = HOOK_CODE.indexOf("const markAsRead");
+    expect(idx, "markAsRead が見つかりません").toBeGreaterThan(-1);
+    const body = HOOK_CODE.slice(idx, HOOK_CODE.indexOf("\n  };", idx));
+    expect(body, "未読を数えていません").toMatch(/const unread =/);
+    expect(body, "未読が無いときに早期 return していません").toMatch(
+      /if\s*\(unread\.length === 0\)\s*return/,
+    );
+    // ⚠️ 共有受信箱では「自分宛て」だけを既読にすると、別のスタッフ宛てのまま残り、
+    //    開いて読んだのに未読が消えない。こちら側の集合で判定すること。
+    expect(body, "既読の対象がこちら側の集合になっていません").toMatch(
+      /sides\.selfIds\.includes\(m\.receiver_id\)/,
     );
   });
 });

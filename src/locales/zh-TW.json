@@ -2479,5 +2479,26 @@
     "errUnsupported": "無法傳送此格式的檔案。請選擇照片（JPEG/PNG/WebP）或影片（MP4/MOV）。",
     "errTooLarge": "影片過大（上限 {{max}}）。請剪短後再試。",
     "errUploadFailed": "上傳失敗，請再試一次。"
+  },
+  "messageTemplates": {
+    "manageTitle": "常用語句",
+    "manageDescription": "儲存常用語句後，可在聊天中一鍵輸入。",
+    "empty": "尚未新增任何語句。",
+    "add": "新增語句",
+    "atLimit": "最多可儲存 {{max}} 則",
+    "titlePlaceholder": "名稱（例：致謝）",
+    "bodyPlaceholder": "內容（例：{{name}}，今天也辛苦了！）",
+    "varHint": "在內容中寫入 {{name}}，會自動替換成對方的姓名。",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "errEmpty": "請輸入名稱與內容。",
+    "errSaveFailed": "儲存語句失敗。",
+    "errDeleteFailed": "刪除語句失敗。"
+  },
+  "messageQuote": {
+    "label": "引用預約"
+  },
+  "sharedInbox": {
+    "otherStaff": "其他工作人員"
   }
 }

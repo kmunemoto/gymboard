@@ -4,9 +4,13 @@ import { Send, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/hooks/useMessages";
+import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
 import MessageAttachment from "@/components/messages/MessageAttachment";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
+import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
+import { useQuotableBookings } from "@/hooks/useQuotableBookings";
+import { prependQuote } from "@/lib/messageQuote";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -51,8 +55,14 @@ const CustomerChat = () => {
     fetchTrainer();
   }, []);
 
-  const { messages, sendMessage, markAsRead } = useMessages(trainerId);
+  // 共有受信箱: 誰が返信しても同じ会話として見える（担当が休みでも途切れない）
+  const staff = useStaffDirectory();
+  const { messages, sendMessage, markAsRead } = useMessages(trainerId, {
+    otherIds: staff.ids,
+  });
   const attachment = useAttachmentPicker(user?.id);
+  // お客様側は「自分の予約」を引用する（相手ではなく自分の user_id で引く）
+  const { bookings: quotableBookings } = useQuotableBookings(user?.id ?? null);
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -145,6 +155,10 @@ const CustomerChat = () => {
           const prevDateLabel = i > 0 ? getDateLabel(messages[i - 1].created_at) : null;
           const showDate = i === 0 || dateLabel !== prevDateLabel;
           const isMe = msg.sender_id === user?.id;
+          // スタッフが2人以上いるジムでは、誰から返ってきたかを出す。
+          // 1人ジム（Salute 御所南など）では出さない（毎回同じ名前が並ぶだけ）。
+          const staffName =
+            !isMe && staff.ids.length > 1 ? staff.names.get(msg.sender_id) ?? null : null;
 
           return (
             <div key={msg.id}>
@@ -155,7 +169,10 @@ const CustomerChat = () => {
                   </span>
                 </div>
               )}
-              <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+              <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                {staffName && (
+                  <span className="text-[10px] text-muted-foreground mb-0.5 ml-1">{staffName}</span>
+                )}
                 <div
                   className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
                     isMe
@@ -192,6 +209,11 @@ const CustomerChat = () => {
 
       {/* Input */}
       <div className="px-4 py-3 border-t border-border glass">
+        {/* 予約の引用。「この予約についてなんですが」を文脈付きで言えるようにする */}
+        <BookingQuoteChips
+          bookings={quotableBookings}
+          onQuote={(q) => setInput((cur) => prependQuote(cur, q))}
+        />
         {attachment.picked && (
           <AttachmentPreview
             picked={attachment.picked}

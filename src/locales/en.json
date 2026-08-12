@@ -2479,5 +2479,26 @@
     "errUnsupported": "That file type cannot be sent. Choose a photo (JPEG/PNG/WebP) or a video (MP4/MOV).",
     "errTooLarge": "That video is too large (limit {{max}}). Please trim it and try again.",
     "errUploadFailed": "Upload failed. Please try again."
+  },
+  "messageTemplates": {
+    "manageTitle": "Quick replies",
+    "manageDescription": "Save phrases you use often and insert them from the chat with one tap.",
+    "empty": "Nothing saved yet.",
+    "add": "Add a quick reply",
+    "atLimit": "You can save up to {{max}}",
+    "titlePlaceholder": "Label (e.g. Thanks)",
+    "bodyPlaceholder": "Message (e.g. Great work today, {{name}}!)",
+    "varHint": "Write {{name}} in the message and it becomes the recipient name.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "errEmpty": "Enter a label and a message.",
+    "errSaveFailed": "Could not save the quick reply.",
+    "errDeleteFailed": "Could not delete the quick reply."
+  },
+  "messageQuote": {
+    "label": "Quote a booking"
+  },
+  "sharedInbox": {
+    "otherStaff": "Another staff member"
   }
 }

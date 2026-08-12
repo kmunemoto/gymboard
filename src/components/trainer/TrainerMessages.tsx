@@ -8,8 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages, useUnreadBySender } from "@/hooks/useMessages";
 import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
+import { useMessageTemplates } from "@/hooks/useMessageTemplates";
+import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import MessageAttachment from "@/components/messages/MessageAttachment";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
+import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
+import MessageTemplateDialog from "@/components/trainer/MessageTemplateDialog";
+import { appendTemplate, replaceTemplateVars } from "@/lib/messageTemplate";
+import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
+import { useQuotableBookings } from "@/hooks/useQuotableBookings";
+import { prependQuote } from "@/lib/messageQuote";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -48,10 +56,17 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const [newMsg, setNewMsg] = useState("");
   const [lastMessages, setLastMessages] = useState<Record<string, { content: string; time: string }>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { counts: unreadCounts } = useUnreadBySender();
+  // 共有受信箱: 別のスタッフ宛ての未読も自分の一覧に出す
+  const staff = useStaffDirectory();
+  const { counts: unreadCounts } = useUnreadBySender(staff.ids);
 
-  const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId);
+  const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId, {
+    selfIds: staff.ids,
+  });
   const attachment = useAttachmentPicker(user?.id);
+  const templateStore = useMessageTemplates();
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const { bookings: quotableBookings } = useQuotableBookings(selectedCustomerId);
 
   // 会話相手は「自テナントに在籍しているお客様」。
   //
@@ -163,6 +178,14 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
   const selected = customers.find((c) => c.user_id === selectedCustomerId);
 
+  // 定型文を入力欄に入れる。
+  // ⚠️ 上書きしない。書きかけの文があれば末尾に足す（書いたものを消さない）。
+  //    {{name}} はここで相手の表示名に置き換える（名前が無ければ敬称ごと落ちる）。
+  const applyTemplate = (body: string) => {
+    const filled = replaceTemplateVars(body, { name: selected?.display_name ?? null });
+    setNewMsg((current) => appendTemplate(current, filled));
+  };
+
   // Sort customers: those with unread messages first
   const sortedCustomers = [...customers].sort((a, b) => {
     const aUnread = unreadCounts[a.user_id] || 0;
@@ -244,9 +267,21 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                 </div>
               )}
               {messages.map((msg) => {
-                const isTrainer = msg.sender_id === user?.id;
+                // 共有受信箱なので「ジム側の吹き出し」は自分とは限らない。
+                // 他のスタッフが返した分も右側に出し、誰が返したかを上に添える。
+                const isOurSide = msg.sender_id !== selectedCustomerId;
+                const isTrainer = isOurSide;
+                const otherStaffName =
+                  isOurSide && msg.sender_id !== user?.id
+                    ? staff.names.get(msg.sender_id) ?? t("sharedInbox.otherStaff")
+                    : null;
                 return (
-                  <div key={msg.id} className={`flex ${isTrainer ? "justify-end" : "justify-start"}`}>
+                  <div key={msg.id} className={`flex flex-col ${isTrainer ? "items-end" : "items-start"}`}>
+                    {otherStaffName && (
+                      <span className="text-[10px] text-muted-foreground mb-0.5 mr-1">
+                        {otherStaffName}
+                      </span>
+                    )}
                     <div
                       className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${
                         isTrainer
@@ -280,6 +315,17 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
             {/* Input */}
             <div className="p-2 sm:p-3 border-t border-border">
+              {/* 予約の引用。「明日の予約の件ですが」を文脈付きで言えるようにする */}
+              <BookingQuoteChips
+                bookings={quotableBookings}
+                onQuote={(q) => setNewMsg((cur) => prependQuote(cur, q))}
+              />
+              {/* 定型文。離脱アラートの「声かけ」から飛んできたときも、ここから1タップで出せる */}
+              <MessageTemplateChips
+                templates={templateStore.templates}
+                onPick={(tpl) => applyTemplate(tpl.body)}
+                onManage={() => setTemplateDialogOpen(true)}
+              />
               {attachment.picked && (
                 <AttachmentPreview
                   picked={attachment.picked}
@@ -335,6 +381,12 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
           </Card>
         )}
       </div>
+
+      <MessageTemplateDialog
+        open={templateDialogOpen}
+        onClose={() => setTemplateDialogOpen(false)}
+        store={templateStore}
+      />
     </div>
   );
 };

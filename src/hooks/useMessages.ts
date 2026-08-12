@@ -39,23 +39,65 @@ async function withSignedUrls(rows: Message[]): Promise<Message[]> {
   );
 }
 
-export const useMessages = (otherUserId: string | null) => {
+export interface UseMessagesOptions {
+  /**
+   * 「こちら側」として扱う user_id の集合。既定は自分1人。
+   * ジム側は**スタッフ全員**を渡す（共有受信箱）。
+   */
+  selfIds?: string[];
+  /**
+   * 「相手側」として扱う user_id の集合。既定は otherUserId 1人。
+   * お客様側は**スタッフ全員**を渡す（誰が返しても同じ会話に見える）。
+   */
+  otherIds?: string[];
+}
+
+/** PostgREST の or() 用に、集合同士の会話条件を組み立てる。 */
+const conversationFilter = (selfIds: string[], otherIds: string[]): string => {
+  const inList = (ids: string[]) => `(${ids.join(",")})`;
+  return [
+    `and(sender_id.in.${inList(selfIds)},receiver_id.in.${inList(otherIds)})`,
+    `and(sender_id.in.${inList(otherIds)},receiver_id.in.${inList(selfIds)})`,
+  ].join(",");
+};
+
+/**
+ * 1つの会話。
+ *
+ * ## 共有受信箱（2026-08-11）
+ * 行は 1対1 のまま（`sender_id` / `receiver_id`）だが、**読むときに集合で束ねる**。
+ * ジム側は `selfIds` にスタッフ全員を渡すことで、担当が誰であっても
+ * 「そのお客様とジムの会話」1本として見える。データ移行は要らない。
+ */
+export const useMessages = (otherUserId: string | null, options?: UseMessagesOptions) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 依存配列に配列をそのまま置くと毎レンダーで変わる。キーにして安定させる。
+  const selfKey = (options?.selfIds ?? []).join(",");
+  const otherKey = (options?.otherIds ?? []).join(",");
+
+  const resolveSides = useCallback(() => {
+    if (!user || !otherUserId) return null;
+    const selfIds = [...new Set([user.id, ...(selfKey ? selfKey.split(",") : [])])];
+    const otherIds = [...new Set([otherUserId, ...(otherKey ? otherKey.split(",") : [])])];
+    // 自分がスタッフのとき、相手側にも自分が入ってしまうと「自分との会話」が混ざる。
+    // こちら側を優先して相手側から除く。
+    return { selfIds, otherIds: otherIds.filter((id) => !selfIds.includes(id)) };
+  }, [user, otherUserId, selfKey, otherKey]);
+
   const fetchMessages = useCallback(async () => {
-    if (!user || !otherUserId) return;
+    const sides = resolveSides();
+    if (!sides || sides.otherIds.length === 0) return;
     const { data } = await supabase
       .from("messages")
       .select("*")
-      .or(
-        `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
-      )
+      .or(conversationFilter(sides.selfIds, sides.otherIds))
       .order("created_at", { ascending: true });
     if (data) setMessages(await withSignedUrls(data as Message[]));
     setLoading(false);
-  }, [user, otherUserId]);
+  }, [resolveSides]);
 
   useEffect(() => {
     fetchMessages();
@@ -63,10 +105,11 @@ export const useMessages = (otherUserId: string | null) => {
 
   // Realtime subscription
   useEffect(() => {
-    if (!user || !otherUserId) return;
+    const sides = resolveSides();
+    if (!user || !otherUserId || !sides) return;
     const belongsHere = (msg: Message) =>
-      (msg.sender_id === user.id && msg.receiver_id === otherUserId) ||
-      (msg.sender_id === otherUserId && msg.receiver_id === user.id);
+      (sides.selfIds.includes(msg.sender_id) && sides.otherIds.includes(msg.receiver_id)) ||
+      (sides.otherIds.includes(msg.sender_id) && sides.selfIds.includes(msg.receiver_id));
 
     const channel = supabase
       .channel(uniqueChannelName(`messages-${otherUserId}`))
@@ -113,7 +156,7 @@ export const useMessages = (otherUserId: string | null) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, otherUserId]);
+  }, [user, otherUserId, resolveSides]);
 
   /**
    * @param attachment すでにアップロード済みの添付（`uploadAttachment` の戻り値）。
@@ -164,38 +207,57 @@ export const useMessages = (otherUserId: string | null) => {
   };
 
   const markAsRead = async () => {
-    if (!user || !otherUserId) return;
+    const sides = resolveSides();
+    if (!sides) return;
     // 呼び出し元は messages が変わるたびに呼ぶ。未読が1件も無いなら書きにいかない
     // （0行 UPDATE でも往復は発生するため）。
-    const hasUnread = messages.some(
-      (m) => m.sender_id === otherUserId && m.receiver_id === user.id && !m.read,
+    //
+    // ⚠️ 共有受信箱では「自分宛て」だけでなく**こちら側の誰か宛て**を既読にする。
+    //    別のスタッフ宛てのまま残すと、開いて読んだのに未読が消えない。
+    const unread = messages.filter(
+      (m) => sides.otherIds.includes(m.sender_id) && sides.selfIds.includes(m.receiver_id) && !m.read,
     );
-    if (!hasUnread) return;
+    if (unread.length === 0) return;
     await supabase
       .from("messages")
       .update({ read: true })
-      .eq("sender_id", otherUserId)
-      .eq("receiver_id", user.id)
-      .eq("read", false);
+      .in("id", unread.map((m) => m.id));
   };
 
   return { messages, loading, sendMessage, markAsRead };
 };
 
-// Hook to get unread message count for current user
-export const useUnreadCount = () => {
+/**
+ * 未読数（バッジ用）。
+ *
+ * @param selfIds 「こちら側」として数える user_id。ジム側は**スタッフ全員**を渡す。
+ *   渡さなければ自分宛てだけ（お客様側の挙動）。
+ *
+ * ⚠️ 共有受信箱では、別のスタッフ宛ての未読も自分のバッジに出す必要がある。
+ *    出さないと「誰も気づかないまま溜まる」会話ができる。
+ */
+export const useUnreadCount = (selfIds?: string[]) => {
   const { user } = useAuth();
   const [count, setCount] = useState(0);
+  const selfKey = (selfIds ?? []).join(",");
+
+  const receivers = useCallback(() => {
+    if (!user) return [];
+    return [...new Set([user.id, ...(selfKey ? selfKey.split(",") : [])])];
+  }, [user, selfKey]);
 
   const fetchCount = useCallback(async () => {
     if (!user) return;
+    const ids = receivers();
     const { count: c } = await supabase
       .from("messages")
       .select("*", { count: "exact", head: true })
-      .eq("receiver_id", user.id)
+      .in("receiver_id", ids)
+      // 自分たちで送ったものは未読に数えない
+      .not("sender_id", "in", `(${ids.join(",")})`)
       .eq("read", false);
     setCount(c ?? 0);
-  }, [user]);
+  }, [user, receivers]);
 
   useEffect(() => {
     fetchCount();
@@ -211,7 +273,9 @@ export const useUnreadCount = () => {
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const msg = payload.new as Message;
-          if (msg.receiver_id === user.id) {
+          const ids = receivers();
+          // 自分たち（スタッフ）同士の行は未読に数えない
+          if (ids.includes(msg.receiver_id) && !ids.includes(msg.sender_id)) {
             setCount((prev) => prev + 1);
           }
         }
@@ -221,7 +285,8 @@ export const useUnreadCount = () => {
         { event: "UPDATE", schema: "public", table: "messages" },
         (payload) => {
           const msg = payload.new as Message;
-          if (msg.receiver_id === user.id && msg.read) {
+          const ids = receivers();
+          if (ids.includes(msg.receiver_id) && !ids.includes(msg.sender_id) && msg.read) {
             setCount((prev) => Math.max(0, prev - 1));
           }
         }
@@ -230,22 +295,33 @@ export const useUnreadCount = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, receivers]);
 
   return { count, refetch: fetchCount };
 };
 
-// Hook to get unread counts per sender (for trainer conversation list)
-export const useUnreadBySender = () => {
+/**
+ * 会話一覧の「相手ごとの未読数」。
+ *
+ * @param selfIds 「こちら側」として数える user_id。ジム側は**スタッフ全員**を渡す。
+ *
+ * ⚠️ 自分宛てだけで数えると、**別のスタッフ宛ての未読が一覧に出ない**。
+ *    共有受信箱なのに、担当以外には「新着なし」に見えてしまう。
+ */
+export const useUnreadBySender = (selfIds?: string[]) => {
   const { user } = useAuth();
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const selfKey = (selfIds ?? []).join(",");
 
   const fetchCounts = useCallback(async () => {
     if (!user) return;
+    const ids = [...new Set([user.id, ...(selfKey ? selfKey.split(",") : [])])];
     const { data } = await supabase
       .from("messages")
       .select("sender_id")
-      .eq("receiver_id", user.id)
+      .in("receiver_id", ids)
+      // スタッフ同士の行を「お客様からの未読」に数えない
+      .not("sender_id", "in", `(${ids.join(",")})`)
       .eq("read", false);
     if (data) {
       const map: Record<string, number> = {};
@@ -254,7 +330,7 @@ export const useUnreadBySender = () => {
       });
       setCounts(map);
     }
-  }, [user]);
+  }, [user, selfKey]);
 
   useEffect(() => {
     fetchCounts();

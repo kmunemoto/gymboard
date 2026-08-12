@@ -23,6 +23,7 @@ import GymLogo from "@/components/GymLogo";
 import PlanLimitBanner from "@/components/PlanLimitBanner";
 import SubscriptionBlockedBanner from "@/components/SubscriptionBlockedBanner";
 import { useUnreadCount } from "@/hooks/useMessages";
+import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
@@ -39,7 +40,9 @@ const TrainerView = () => {
   const [messageClientId, setMessageClientId] = useState<string | null>(null);
   const { signOut } = useAuth();
   const { user } = useAuth();
-  const { count: unreadMessages, refetch: refetchUnread } = useUnreadCount();
+  // 共有受信箱: 別のスタッフ宛ての未読もバッジに出す（誰も気づかない会話を作らない）
+  const staff = useStaffDirectory();
+  const { count: unreadMessages, refetch: refetchUnread } = useUnreadCount(staff.ids);
   const { unreadCount: unreadCounseling } = useCounselingResponses();
   const { tenant } = useTenant();
 

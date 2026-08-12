@@ -2479,5 +2479,26 @@
     "errUnsupported": "보낼 수 없는 형식입니다. 사진(JPEG/PNG/WebP) 또는 동영상(MP4/MOV)을 선택해 주세요.",
     "errTooLarge": "동영상이 너무 큽니다(최대 {{max}}). 짧게 자른 뒤 다시 시도해 주세요.",
     "errUploadFailed": "업로드에 실패했습니다. 다시 시도해 주세요."
+  },
+  "messageTemplates": {
+    "manageTitle": "자주 쓰는 문구",
+    "manageDescription": "자주 쓰는 문장을 등록해 두면 채팅에서 한 번에 입력할 수 있습니다.",
+    "empty": "아직 등록된 문구가 없습니다.",
+    "add": "문구 추가",
+    "atLimit": "최대 {{max}}개까지 등록할 수 있습니다",
+    "titlePlaceholder": "표시 이름(예: 감사 인사)",
+    "bodyPlaceholder": "본문(예: {{name}}님, 오늘도 수고하셨습니다!)",
+    "varHint": "본문에 {{name}}이라고 쓰면 받는 분의 이름으로 바뀝니다.",
+    "moveUp": "위로",
+    "moveDown": "아래로",
+    "errEmpty": "표시 이름과 본문을 입력해 주세요.",
+    "errSaveFailed": "문구를 저장하지 못했습니다.",
+    "errDeleteFailed": "문구를 삭제하지 못했습니다."
+  },
+  "messageQuote": {
+    "label": "예약 인용"
+  },
+  "sharedInbox": {
+    "otherStaff": "다른 스태프"
   }
 }

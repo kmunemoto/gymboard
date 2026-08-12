@@ -2479,5 +2479,26 @@
     "errUnsupported": "この形式のファイルは送れません。写真（JPEG/PNG/WebP）か動画（MP4/MOV）を選んでください。",
     "errTooLarge": "動画が大きすぎます（上限 {{max}}）。短く切ってからお試しください。",
     "errUploadFailed": "添付のアップロードに失敗しました。もう一度お試しください。"
+  },
+  "messageTemplates": {
+    "manageTitle": "定型文",
+    "manageDescription": "よく使う文章を登録しておくと、チャットからワンタップで入力できます。",
+    "empty": "まだ登録がありません。",
+    "add": "定型文を追加",
+    "atLimit": "登録できるのは{{max}}件までです",
+    "titlePlaceholder": "表示名（例: お礼）",
+    "bodyPlaceholder": "本文（例: {{name}}様、本日もお疲れさまでした！）",
+    "varHint": "本文に {{name}} と書くと、送る相手のお名前に置き換わります。",
+    "moveUp": "1つ上へ",
+    "moveDown": "1つ下へ",
+    "errEmpty": "表示名と本文を入力してください。",
+    "errSaveFailed": "定型文の保存に失敗しました。",
+    "errDeleteFailed": "定型文の削除に失敗しました。"
+  },
+  "messageQuote": {
+    "label": "予約を引用"
+  },
+  "sharedInbox": {
+    "otherStaff": "別のスタッフ"
   }
 }

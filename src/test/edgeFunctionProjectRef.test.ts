@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 // Edge Function に Supabase の project ref が焼き込まれていないことを見張る。
@@ -84,34 +84,59 @@ describe("Edge Function に project ref が焼き込まれていない", () => {
   });
 });
 
-// deploy-functions.yml が「別プロジェクトへのデプロイ」を止めること。
+// deploy-functions.yml は削除した（2026-08-12）。復活させるなら丸腰で戻さないこと。
 //
-// PROJECT_REF はワークフローに直書きなので、フォークが直し忘れると
-// 他人（ジムボード）の本番プロジェクトに Edge Function を上書きデプロイする。
+// ── なぜ消したか ─────────────────────────────────────────────────
+//
+// **18回の実行すべてで Deploy ステップが skipped、しかも全部 success。**
+// 2026-07-01 の初回（#1）からそうで、**一度もデプロイしたことがなかった。**
+// `SUPABASE_ACCESS_TOKEN` が無いとき「失敗にせずスキップ」する作りだったため。
+//
+// そして**このプロジェクトでは、そのトークンを用意する方法が無い**。
+// ジムボードの Supabase（rrbfwitprzuevzytykrq）は Lovable Cloud の持ち物で、
+// 宗本さんの Supabase アカウントには存在しない。アカウントに紐づくアクセストークンは
+// 発行しようがない。**直しようがないワークフローだった。**
+//
+// 実害も出ている。mem/ops/tenant-boundary.md に
+// 「#246 は deploy-functions.yml が自動デプロイした（成功を確認済み）」と
+// 書き残されていたが、その実行（#14）も skipped だった。
+// **緑を見て「デプロイされた」と記録してしまった。**
+//
+// 実際のデプロイ経路は Lovable のエージェント（supabase--deploy_edge_functions）。
+// 詳細は mem/ops/edge-function-deploy.md。
+//
+// ── 戻すときの条件 ───────────────────────────────────────────────
+//
+// PROJECT_REF をワークフローに直書きすると、フォークが直し忘れたときに
+// **他人（ジムボード）の本番プロジェクトに上書きデプロイする**。
 // .env や config.toml と違って Lovable の remix はここを直してくれない
 // （ゴルフボードで実際に残っていた・2026-08-03 報告）。
-describe("deploy-functions.yml のデプロイ先ガード", () => {
-  const yml = readFileSync(join(process.cwd(), ".github/workflows/deploy-functions.yml"), "utf8");
+describe("deploy-functions.yml", () => {
+  const PATH = join(process.cwd(), ".github/workflows/deploy-functions.yml");
+  const exists = existsSync(PATH);
 
-  it("デプロイ前に .env の VITE_SUPABASE_PROJECT_ID と突き合わせている", () => {
-    expect(yml).toMatch(/VITE_SUPABASE_PROJECT_ID/);
-    expect(yml).toMatch(/ENV_REF.*!=.*PROJECT_REF|"\$ENV_REF" != "\$PROJECT_REF"/);
-  });
+  it("🔴 消したままか、戻すなら .env と突き合わせるガードが付いている", () => {
+    if (!exists) return; // 消えているのが現状の正
+    const yml = readFileSync(PATH, "utf8");
 
-  it("突き合わせは実際のデプロイ手前で行われる", () => {
+    // 戻ってきたなら、デプロイ先ガードは必須。
+    expect(yml, "PROJECT_REF を .env と突き合わせていません").toMatch(/VITE_SUPABASE_PROJECT_ID/);
     const iCheck = yml.indexOf("VITE_SUPABASE_PROJECT_ID");
     const iDeploy = yml.indexOf("supabase functions deploy");
-    expect(iCheck).toBeGreaterThan(-1);
-    expect(iDeploy).toBeGreaterThan(-1);
-    expect(iCheck).toBeLessThan(iDeploy);
-  });
+    expect(iDeploy, "deploy コマンドがありません").toBeGreaterThan(-1);
+    expect(iCheck, "突き合わせがデプロイより後です").toBeLessThan(iDeploy);
 
-  it("このリポジトリでは PROJECT_REF と .env が一致している", () => {
     const wf = yml.match(/PROJECT_REF:\s*([a-z0-9]+)/);
     const env = readFileSync(join(process.cwd(), ".env"), "utf8")
       .match(/^VITE_SUPABASE_PROJECT_ID="?([a-z0-9]+)"?/m);
     expect(wf).not.toBeNull();
     expect(env).not.toBeNull();
     expect(wf![1]).toBe(env![1]);
+
+    // 🔴 「トークンが無いのでスキップ、でも緑」に戻さない。18回それで騙された。
+    expect(
+      /has_token|steps\..*\.outputs\.has/.test(yml),
+      "トークンが無いときにスキップして緑で終わる作りに戻っています。18回それで騙されました。",
+    ).toBe(false);
   });
 });

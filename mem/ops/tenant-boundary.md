@@ -293,8 +293,17 @@ storage も1件。`avatars` バケットの `tenant-logos/` が
 ## 本番への適用（2026-08-03 実施済み）
 
 Lovable 経由で GymBoard 本番（project `69ac2641-…` / Supabase `rrbfwitprzuevzytykrq`）に
-#247 / #248 のマイグレーションを適用した。#246 は Edge Function なので
-`deploy-functions.yml` が main へのマージで自動デプロイした（成功を確認済み）。
+#247 / #248 のマイグレーションを適用した。#246 は Edge Function。
+
+> ⚠️ **訂正（2026-08-12）。** ここには元々
+> 「`deploy-functions.yml` が main へのマージで自動デプロイした（成功を確認済み）」
+> と書いてあったが、**それは事実ではなかった**。該当の実行（#14）を後から見たら
+> Deploy ステップは **skipped**（conclusion は success）。あのワークフローは
+> 初回から18回すべて skipped で、**一度もデプロイしていない**。
+> 「成功を確認済み」の中身は **Actions が緑だったこと**でしかなかった。
+> `send-push-notification` は既存の関数なので、実際には Lovable の Publish が
+> 反映していたと思われる（新規の関数は Publish でも入らない）。
+> デプロイ経路と確認方法は `mem/ops/edge-function-deploy.md`。
 
 ### 実際に攻撃してみて確認した（本番DB・ROLLBACK 付き）
 

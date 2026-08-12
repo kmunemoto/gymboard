@@ -128,6 +128,26 @@ main にマージしたが、**iOS の最後のビルドは前日 8/8 23:11 の 
 - **コンテナから `*.supabase.co` へ直接 curl はできない**（プロキシが CONNECT を 403）。
   REST で確かめたくなったら、代わりに SQL 上でロールを演じる。
 
+### 🔴 Edge Function は push でも Publish でも本番に出ない（2026-08-12）
+
+**新しい Edge Function を本番に出す経路は「Lovable のエージェントに頼む」だけ。**
+GitHub にマージしても、Lovable が同期しても、宗本さんが Publish しても出ない
+（`read_file` で見るとファイルは在る。動いていないだけ）。
+
+```
+mcp__Lovable__send_message(… "supabase/functions/<名前> をデプロイしてください。
+                               コードは既にリポジトリにあります。編集は不要です。")
+```
+
+**そのあと必ず自分で叩いて確かめる。404 なら未デプロイ、それ以外ならデプロイ済み。**
+コンテナから `*.supabase.co` へ curl はできないので DB から `net.http_post`。
+**デプロイ済みと分かっている関数を1本、対照として同時に叩くこと。**
+
+`.github/workflows/deploy-functions.yml` は**削除した**。18回すべて skipped の
+まま success で、しかもジムボードの Supabase は Lovable Cloud の持ち物なので
+`SUPABASE_ACCESS_TOKEN` を発行する手段が無い。直しようがなかった。
+詳細と手順は `mem/ops/edge-function-deploy.md`。
+
 **本番を触るときは必ず3段構え。**「読み取りで現状を出す → 実行する →
 **そのロールを演じて**実際に読む・呼ぶ」。`has_function_privilege` が期待どおりでも
 足りない。2026-08-06 に3を怠って本番の全画面を落とした（`mem/ops/tenant-boundary.md`）。

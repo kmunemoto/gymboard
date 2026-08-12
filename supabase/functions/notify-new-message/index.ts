@@ -42,9 +42,22 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function preview(text: string): string {
+/**
+ * 通知に出す本文。
+ *
+ * ⚠️ 添付だけ（本文が空）で送れる。そのとき空文字を渡すと**中身の無い通知**が出て
+ *    「何か届いたが何かは分からない」になる。種別を文言にする。
+ */
+function preview(text: string, attachmentType: string | null): string {
   const oneLine = text.replace(/\s+/g, " ").trim();
-  return oneLine.length > PREVIEW_MAX ? `${oneLine.slice(0, PREVIEW_MAX)}…` : oneLine;
+  if (!oneLine) {
+    if (attachmentType === "image") return "写真が届きました";
+    if (attachmentType === "video") return "動画が届きました";
+    return "メッセージが届きました";
+  }
+  const label = attachmentType === "image" ? "[写真] " : attachmentType === "video" ? "[動画] " : "";
+  const room = PREVIEW_MAX - label.length;
+  return label + (oneLine.length > room ? `${oneLine.slice(0, room)}…` : oneLine);
 }
 
 Deno.serve(async (req) => {
@@ -71,7 +84,7 @@ Deno.serve(async (req) => {
 
     const { data: message, error: msgErr } = await supabase
       .from("messages")
-      .select("id, sender_id, receiver_id, content, created_at")
+      .select("id, sender_id, receiver_id, content, attachment_type, created_at")
       .eq("id", message_id)
       .maybeSingle();
     if (msgErr) throw msgErr;
@@ -104,7 +117,7 @@ Deno.serve(async (req) => {
       body: {
         user_ids: [message.receiver_id],
         title: `${senderName}さんからメッセージ`,
-        body: preview(message.content),
+        body: preview(message.content, message.attachment_type ?? null),
         url: "/",
         // 同じ相手からの連投を1つにまとめる（クライアント実装時からの挙動を踏襲）
         tag: `chat-${message.sender_id}-${message.receiver_id}`,

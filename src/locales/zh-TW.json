@@ -2325,7 +2325,9 @@
     "noMessagePreview": "無訊息",
     "noHistory": "無訊息記錄",
     "selectConversation": "請從左側列表中選擇對話",
-    "sendFailed": "傳送失敗，請重試。"
+    "sendFailed": "傳送失敗，請重試。",
+    "previewImage": "[照片]",
+    "previewVideo": "[影片]"
   },
   "retention": {
     "title": "需要跟進的客戶",
@@ -2465,5 +2467,17 @@
     "withdrawReasonPlaceholder": "搬家、費用、已達成目標 等",
     "withdrawTitle": "設為退會",
     "withdrawnToast": "已設為退會"
+  },
+  "messageAttachment": {
+    "attach": "附加照片或影片",
+    "remove": "移除附件",
+    "uploading": "上傳中…",
+    "readyImage": "已附加照片",
+    "readyVideo": "已附加影片",
+    "unavailable": "無法顯示此附件",
+    "imageAlt": "附件圖片",
+    "errUnsupported": "無法傳送此格式的檔案。請選擇照片（JPEG/PNG/WebP）或影片（MP4/MOV）。",
+    "errTooLarge": "影片過大（上限 {{max}}）。請剪短後再試。",
+    "errUploadFailed": "上傳失敗，請再試一次。"
   }
 }

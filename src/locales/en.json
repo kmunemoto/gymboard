@@ -2325,7 +2325,9 @@
     "noMessagePreview": "No messages",
     "noHistory": "No message history",
     "selectConversation": "Select a conversation from the list on the left",
-    "sendFailed": "Failed to send. Please try again."
+    "sendFailed": "Failed to send. Please try again.",
+    "previewImage": "[Photo]",
+    "previewVideo": "[Video]"
   },
   "retention": {
     "title": "Customers needing follow-up",
@@ -2465,5 +2467,17 @@
     "withdrawReasonPlaceholder": "Moved away, price, goal reached, etc.",
     "withdrawTitle": "Mark as left",
     "withdrawnToast": "Marked as left"
+  },
+  "messageAttachment": {
+    "attach": "Attach photo or video",
+    "remove": "Remove attachment",
+    "uploading": "Uploading…",
+    "readyImage": "Photo attached",
+    "readyVideo": "Video attached",
+    "unavailable": "This attachment cannot be shown",
+    "imageAlt": "Attached image",
+    "errUnsupported": "That file type cannot be sent. Choose a photo (JPEG/PNG/WebP) or a video (MP4/MOV).",
+    "errTooLarge": "That video is too large (limit {{max}}). Please trim it and try again.",
+    "errUploadFailed": "Upload failed. Please try again."
   }
 }

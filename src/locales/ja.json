@@ -2325,7 +2325,9 @@
     "noMessagePreview": "メッセージなし",
     "noHistory": "メッセージ履歴がありません",
     "selectConversation": "左のリストから会話を選択してください",
-    "sendFailed": "送信に失敗しました。もう一度お試しください。"
+    "sendFailed": "送信に失敗しました。もう一度お試しください。",
+    "previewImage": "[写真]",
+    "previewVideo": "[動画]"
   },
   "retention": {
     "title": "フォローが必要な顧客",
@@ -2465,5 +2467,17 @@
     "withdrawReasonPlaceholder": "引っ越し、料金、目標達成 など",
     "withdrawTitle": "退会にする",
     "withdrawnToast": "退会にしました"
+  },
+  "messageAttachment": {
+    "attach": "写真・動画を添付",
+    "remove": "添付を外す",
+    "uploading": "アップロード中…",
+    "readyImage": "写真を添付しました",
+    "readyVideo": "動画を添付しました",
+    "unavailable": "この添付は表示できません",
+    "imageAlt": "添付画像",
+    "errUnsupported": "この形式のファイルは送れません。写真（JPEG/PNG/WebP）か動画（MP4/MOV）を選んでください。",
+    "errTooLarge": "動画が大きすぎます（上限 {{max}}）。短く切ってからお試しください。",
+    "errUploadFailed": "添付のアップロードに失敗しました。もう一度お試しください。"
   }
 }

@@ -1327,6 +1327,8 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_path: string | null
+          attachment_type: string | null
           content: string
           created_at: string
           id: string
@@ -1336,6 +1338,8 @@ export type Database = {
           tenant_id: string | null
         }
         Insert: {
+          attachment_path?: string | null
+          attachment_type?: string | null
           content: string
           created_at?: string
           id?: string
@@ -1345,6 +1349,8 @@ export type Database = {
           tenant_id?: string | null
         }
         Update: {
+          attachment_path?: string | null
+          attachment_type?: string | null
           content?: string
           created_at?: string
           id?: string

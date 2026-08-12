@@ -112,6 +112,60 @@ select vault.create_secret('https://<自分のref>.supabase.co/functions/v1',
 
 どちらか欠けていると通知は飛ばないが、**メッセージの送受信は普通に動く**。
 
+---
+
+## 画像・動画の添付（2026-08-11）
+
+パーソナルジムのチャットで一番やり取りしたいのは**フォーム動画と食事写真**。
+テキストしか送れなかったので、そこだけ LINE に逃げていた。
+
+| | |
+|---|---|
+| 列 | `messages.attachment_path` / `attachment_type`（`'image'` \| `'video'`） |
+| バケット | `message-attachments`（**非公開**）。パスは `<sender_id>/<uuid>.<ext>` |
+| 上限 | 25MB。**バケット側にも設定**（`file_size_limit`） |
+| 形式 | jpeg / png / webp / mp4 / quicktime。**バケット側にも設定** |
+| 実装 | `src/lib/messageAttachment.ts`, `src/hooks/useAttachmentPicker.ts`, `src/components/messages/` |
+
+### 🔴 読める人を「会話の当事者」に絞っている
+
+進捗写真のバケットは `has_role(trainer)` で広く許している。**添付では同じことをしない。**
+
+```sql
+-- 送った本人（アップロード直後、まだ参照する行が無い瞬間もここで読める）
+auth.uid()::text = (storage.foldername(name))[1]
+-- そのファイルを添付したメッセージの受信者
+OR EXISTS (SELECT 1 FROM public.messages m
+            WHERE m.attachment_path = storage.objects.name
+              AND m.receiver_id = auth.uid())
+```
+
+`shares_tenant_with_me` で「同じジムなら読める」にすると、**同じジムの別のお客様**が
+他人の会話の添付を読める。パスが推測困難なだけ、という状態になる。
+
+### 上限と形式は「両側」に置く。片方だけ変えない
+
+クライアントの検査は**親切**であって防御ではない（直接 API を叩かれれば素通り）。
+逆にバケットだけ絞ると「上げきってから怒られる」。両方に同じ値を置き、
+`messageAttachments.test.ts` が**一致しているか**を見張っている。
+
+### 踏みかけた罠
+
+| こうすると | こうなる |
+|---|---|
+| Realtime の UPDATE を `{...m, ...msg}` で素直にマージ | `attachment_url` は DB の列ではないので、**既読が立った瞬間に添付が消える** |
+| `createSignedUrl` を1件ずつ | 添付の数だけ往復する。必ず `createSignedUrls` でまとめる |
+| 送信をやめたときに片付けない | **誰からも見えないファイル**だけがストレージに溜まる |
+| アップロード中に送信を許す | 行だけ先に入って**添付の付かないメッセージ**ができる |
+| 本文が空のまま通知 | 「何か届いたが何かは分からない」通知になる。種別を文言にする |
+| 会話一覧のプレビューが空 | 「メッセージなし」と見分けがつかない |
+
+### CHECK 制約を `NOT VALID` で入れている理由
+
+`btrim(content) <> '' OR attachment_path IS NOT NULL` を素で足すと、**既存行を全部検査する**。
+本文が空の行が1件でもあると適用が落ちる。`NOT VALID` は「既存行を見ない」だけで、
+**新しい INSERT/UPDATE にはそのまま効く**。
+
 ### LINE は引き継いでいない
 
 クライアント側には LINE 送信もあったが、`LINE_INTEGRATION_ENABLED = false` なので

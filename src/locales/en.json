@@ -2494,5 +2494,8 @@
     "errEmpty": "Enter a label and a message.",
     "errSaveFailed": "Could not save the quick reply.",
     "errDeleteFailed": "Could not delete the quick reply."
+  },
+  "messageQuote": {
+    "label": "Quote a booking"
   }
 }

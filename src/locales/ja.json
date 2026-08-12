@@ -2494,5 +2494,8 @@
     "errEmpty": "表示名と本文を入力してください。",
     "errSaveFailed": "定型文の保存に失敗しました。",
     "errDeleteFailed": "定型文の削除に失敗しました。"
+  },
+  "messageQuote": {
+    "label": "予約を引用"
   }
 }

@@ -2494,5 +2494,8 @@
     "errEmpty": "请输入名称和内容。",
     "errSaveFailed": "保存短语失败。",
     "errDeleteFailed": "删除短语失败。"
+  },
+  "messageQuote": {
+    "label": "引用预约"
   }
 }

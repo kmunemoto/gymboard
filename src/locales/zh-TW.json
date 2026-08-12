@@ -2494,5 +2494,8 @@
     "errEmpty": "請輸入名稱與內容。",
     "errSaveFailed": "儲存語句失敗。",
     "errDeleteFailed": "刪除語句失敗。"
+  },
+  "messageQuote": {
+    "label": "引用預約"
   }
 }

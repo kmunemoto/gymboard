@@ -14,6 +14,9 @@ import { AttachmentButton, AttachmentPreview } from "@/components/messages/Attac
 import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
 import MessageTemplateDialog from "@/components/trainer/MessageTemplateDialog";
 import { appendTemplate, replaceTemplateVars } from "@/lib/messageTemplate";
+import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
+import { useQuotableBookings } from "@/hooks/useQuotableBookings";
+import { prependQuote } from "@/lib/messageQuote";
 import { format } from "date-fns";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -58,6 +61,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const attachment = useAttachmentPicker(user?.id);
   const templateStore = useMessageTemplates();
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const { bookings: quotableBookings } = useQuotableBookings(selectedCustomerId);
 
   // 会話相手は「自テナントに在籍しているお客様」。
   //
@@ -294,6 +298,11 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
             {/* Input */}
             <div className="p-2 sm:p-3 border-t border-border">
+              {/* 予約の引用。「明日の予約の件ですが」を文脈付きで言えるようにする */}
+              <BookingQuoteChips
+                bookings={quotableBookings}
+                onQuote={(q) => setNewMsg((cur) => prependQuote(cur, q))}
+              />
               {/* 定型文。離脱アラートの「声かけ」から飛んできたときも、ここから1タップで出せる */}
               <MessageTemplateChips
                 templates={templateStore.templates}

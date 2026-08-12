@@ -2494,5 +2494,8 @@
     "errEmpty": "표시 이름과 본문을 입력해 주세요.",
     "errSaveFailed": "문구를 저장하지 못했습니다.",
     "errDeleteFailed": "문구를 삭제하지 못했습니다."
+  },
+  "messageQuote": {
+    "label": "예약 인용"
   }
 }

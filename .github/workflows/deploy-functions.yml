@@ -23,6 +23,7 @@ on:
       - "supabase/functions/google-calendar-sync/**"
       - "supabase/functions/line-login-callback/**"
       - "supabase/functions/send-push-notification/**"
+      - "supabase/functions/notify-new-message/**"
       - "supabase/config.toml"
   workflow_dispatch:
 
@@ -88,3 +89,9 @@ jobs:
           supabase functions deploy google-calendar-sync --project-ref "$PROJECT_REF"
           supabase functions deploy line-login-callback --project-ref "$PROJECT_REF"
           supabase functions deploy send-push-notification --project-ref "$PROJECT_REF"
+          # 🔴 messages の AFTER INSERT トリガーから pg_net で叩かれる。
+          #    **DBトリガーが呼ぶ関数は、誰も手で deploy しない。** ここに書かないと
+          #    「トリガーは動くのに 404 で通知だけ飛ばない」状態になる。
+          #    2026-08-12 に実際にその状態を作った（クライアント側の送信を先に外したため、
+          #    通知が本番で数時間止まった）。src/test/messageNotification.test.ts が見張る。
+          supabase functions deploy notify-new-message --project-ref "$PROJECT_REF"

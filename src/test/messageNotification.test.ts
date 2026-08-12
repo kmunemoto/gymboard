@@ -159,6 +159,23 @@ describe("notify-new-message Edge Function", () => {
     ).toEqual(["message_id"]);
   });
 
+  it("🔴 デプロイ経路に載っている", () => {
+    // **DBトリガーが呼ぶ関数は、誰も手で deploy しない。**
+    // Lovable の Publish は config.toml 未記載の関数を面倒みるが、この関数は
+    // verify_jwt=false を明記してあるので deploy-functions.yml の担当になる。
+    // ここに書き忘れると「トリガーは動くのに 404 で通知だけ飛ばない」。
+    //
+    // 2026-08-12 に実際にその状態を作った。クライアント側の送信を先に外したので、
+    // **本番の通知が数時間まるごと止まった**（エラーもどこにも出ない）。
+    const deploy = readFileSync(".github/workflows/deploy-functions.yml", "utf8");
+    expect(deploy, "paths に notify-new-message がありません（push で起動しない）").toMatch(
+      /paths:[\s\S]{0,600}supabase\/functions\/notify-new-message\/\*\*/,
+    );
+    expect(deploy, "deploy コマンドに notify-new-message がありません").toMatch(
+      /supabase functions deploy notify-new-message --project-ref/,
+    );
+  });
+
   it("🔴 二重に鳴らさない（冪等キー）", () => {
     expect(FUNC_CODE).toMatch(/notification_dedupe/);
     expect(FUNC_CODE, "冪等キーがメッセージ単位になっていません").toMatch(

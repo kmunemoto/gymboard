@@ -57,6 +57,14 @@ const setup = async () => {
             }),
             limit: () => Promise.resolve({ data: [], error: null }),
             gte: () => ({ lt: () => Promise.resolve({ data: [], error: null }) }),
+            // 共有受信箱（2026-08-11）で fetchTenantStaff が
+            //   .select().eq(tenant_id).in(role).eq(status).order(joined_at)
+            // を呼ぶようになった。ここが無いと **effect の中で TypeError が投げられ、
+            // vitest は「Tests は全部 passed、Errors 6件」で exit 1 になる**。
+            // 「Tests 行だけ見て緑」と誤読しやすいので注意（実際に一度見落とした）。
+            in: () => ({
+              eq: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
+            }),
           }),
           order: () => {
             const result: any = Promise.resolve({ data: [], error: null });

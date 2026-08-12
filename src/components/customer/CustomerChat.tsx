@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Send, AlertTriangle } from "lucide-react";
+import { Send, AlertTriangle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/hooks/useMessages";
@@ -10,10 +10,15 @@ import MessageAttachment from "@/components/messages/MessageAttachment";
 import MessageText from "@/components/messages/MessageText";
 import DateSeparator from "@/components/messages/DateSeparator";
 import ImageLightbox from "@/components/messages/ImageLightbox";
+import MessageActions from "@/components/messages/MessageActions";
+import ReplyQuote from "@/components/messages/ReplyQuote";
+import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
+import { useConversationSearch } from "@/hooks/useConversationSearch";
 import { prependQuote } from "@/lib/messageQuote";
+import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { needsDateSeparator } from "@/lib/chatDate";
 import { formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
@@ -67,6 +72,13 @@ const CustomerChat = () => {
   const attachment = useAttachmentPicker(user?.id);
   // お客様側は「自分の予約」を引用する（相手ではなく自分の user_id で引く）
   const { bookings: quotableBookings } = useQuotableBookings(user?.id ?? null);
+  const search = useConversationSearch(messages);
+  // 添付だけのメッセージを引用したときの文言。**リテラルで持たない**
+  // （兄弟アプリが業種に合わせて差し替えるため。forkHostileTests.test.ts）
+  const attachmentLabels = {
+    image: t("trainerMessages.previewImage"),
+    video: t("trainerMessages.previewVideo"),
+  };
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -74,9 +86,13 @@ const CustomerChat = () => {
   }, [messages]);
 
   // Scroll to bottom on new messages
+  //
+  // ⚠️ 検索中は下へ飛ばさない。ヒット位置へジャンプした直後に最下部へ戻され、
+  //    探しているものが**一瞬で画面から消える**（検索が使い物にならない）。
   useEffect(() => {
+    if (search.active) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, search.active]);
 
   // 添付だけを送る（本文が空）のは正しい操作。写真1枚だけ送りたいことのほうが多い。
   // ただしアップロード中は送らせない（行だけ先に入って添付が付かない状態を作らない）。
@@ -139,9 +155,28 @@ const CustomerChat = () => {
               プレゼンスを一切見ておらず、**誰が見ても常に緑で「オンライン」**だった。
               深夜に送ったお客様に「オンラインなのに返事が来ない」と感じさせる嘘の表示。
               実プレゼンスを作るほどの価値は無いと判断し、表示ごと落とした。 */}
-          <p className="font-bold text-sm">{trainerName}</p>
+          <p className="font-bold text-sm flex-1">{trainerName}</p>
+          <button
+            type="button"
+            onClick={() => search.setOpen((v) => !v)}
+            aria-label={t("chat.search")}
+            className="p-2 -mr-2 rounded-lg hover:bg-muted"
+          >
+            <Search className="w-4 h-4" />
+          </button>
         </div>
       </div>
+
+      {search.open && (
+        <ConversationSearch
+          query={search.query}
+          onQueryChange={search.setQuery}
+          total={search.hits.length}
+          index={search.index}
+          onStep={search.step}
+          onClose={search.close}
+        />
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
@@ -160,23 +195,46 @@ const CustomerChat = () => {
           // 1人ジム（Salute 御所南など）では出さない（毎回同じ名前が並ぶだけ）。
           const staffName =
             !isMe && staff.ids.length > 1 ? staff.names.get(msg.sender_id) ?? null : null;
+          // 引用は本文の先頭に文字列として入っている。地の文と分けて出す
+          // （同じ見た目で出すと、引用した相手の発言が自分の発言として読まれる）。
+          const { quote, body } = splitReplyQuote(msg.content);
+          const isHit = search.currentId === msg.id;
 
           return (
-            <div key={msg.id}>
+            <div key={msg.id} ref={search.registerRef(msg.id)}>
               {showDate && <DateSeparator at={msg.created_at} />}
               <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 {staffName && (
                   <span className="text-[10px] text-muted-foreground mb-0.5 ml-1">{staffName}</span>
                 )}
+                <MessageActions
+                  alignEnd={isMe}
+                  onReply={() =>
+                    setInput((cur) =>
+                      prependReply(
+                        cur,
+                        formatReplyQuote(
+                          {
+                            content: msg.content,
+                            attachment_type: msg.attachment_type,
+                            senderName: isMe ? null : staffName ?? trainerName,
+                          },
+                          attachmentLabels,
+                        ),
+                      ),
+                    )
+                  }
+                >
                 <div
-                  className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
+                  className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 transition-shadow ${
                     isMe
                       ? "accent-gradient text-accent-foreground rounded-br-md"
                       : "bg-card border border-border rounded-bl-md shadow-sm"
-                  }`}
+                  } ${isHit ? "ring-2 ring-accent" : ""}`}
                 >
+                  {quote && <ReplyQuote text={quote} onAccent={isMe} />}
                   {msg.attachment_type && (
-                    <div className={msg.content.trim() ? "mb-1.5" : ""}>
+                    <div className={body.trim() ? "mb-1.5" : ""}>
                       <MessageAttachment
                         type={msg.attachment_type}
                         url={msg.attachment_url}
@@ -184,7 +242,13 @@ const CustomerChat = () => {
                       />
                     </div>
                   )}
-                  {msg.content.trim() && <MessageText text={msg.content} onAccent={isMe} />}
+                  {body.trim() && (
+                    <MessageText
+                      text={body}
+                      onAccent={isMe}
+                      highlight={search.active ? search.query : undefined}
+                    />
+                  )}
                   <p
                     className={`text-[10px] mt-1 flex items-center gap-1.5 ${
                       isMe ? "justify-end text-accent-foreground/60" : "text-muted-foreground"
@@ -197,6 +261,7 @@ const CustomerChat = () => {
                     <span>{formatJST(msg.created_at, "HH:mm")}</span>
                   </p>
                 </div>
+                </MessageActions>
               </div>
             </div>
           );

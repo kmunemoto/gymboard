@@ -2504,6 +2504,13 @@
   },
   "chat": {
     "today": "今日",
-    "yesterday": "昨日"
+    "yesterday": "昨日",
+    "reply": "返信",
+    "unsend": "送信取消",
+    "search": "会話を検索",
+    "searchPlaceholder": "会話内を検索",
+    "searchNoHit": "0件",
+    "searchPrev": "前へ",
+    "searchNext": "次へ"
   }
 }

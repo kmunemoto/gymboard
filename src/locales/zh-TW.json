@@ -2504,6 +2504,13 @@
   },
   "chat": {
     "today": "今天",
-    "yesterday": "昨天"
+    "yesterday": "昨天",
+    "reply": "回覆",
+    "unsend": "收回",
+    "search": "搜尋對話",
+    "searchPlaceholder": "在對話中搜尋",
+    "searchNoHit": "無結果",
+    "searchPrev": "上一個",
+    "searchNext": "下一個"
   }
 }

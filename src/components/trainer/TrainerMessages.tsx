@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCircle, Send, ArrowLeft } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import MessageAttachment from "@/components/messages/MessageAttachment";
 import MessageText from "@/components/messages/MessageText";
 import DateSeparator from "@/components/messages/DateSeparator";
 import ImageLightbox from "@/components/messages/ImageLightbox";
+import MessageActions from "@/components/messages/MessageActions";
+import ReplyQuote from "@/components/messages/ReplyQuote";
+import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
 import MessageTemplateDialog from "@/components/trainer/MessageTemplateDialog";
@@ -21,6 +24,8 @@ import { appendTemplate, replaceTemplateVars } from "@/lib/messageTemplate";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { prependQuote } from "@/lib/messageQuote";
+import { useConversationSearch } from "@/hooks/useConversationSearch";
+import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { needsDateSeparator, dayKeyJST } from "@/lib/chatDate";
 import { sortConversations, type LastMessageInfo } from "@/lib/conversationOrder";
 import { formatJST } from "@/lib/timezone";
@@ -73,6 +78,13 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const templateStore = useMessageTemplates();
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const { bookings: quotableBookings } = useQuotableBookings(selectedCustomerId);
+  const search = useConversationSearch(messages);
+  // 添付だけのメッセージを引用したときの文言。**リテラルで持たない**
+  // （兄弟アプリが業種に合わせて差し替えるため。forkHostileTests.test.ts）
+  const attachmentLabels = {
+    image: t("trainerMessages.previewImage"),
+    video: t("trainerMessages.previewVideo"),
+  };
 
   // 会話相手は「自テナントに在籍しているお客様」。
   //
@@ -180,9 +192,13 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   }, [selectedCustomerId, messages]);
 
   // Scroll to bottom
+  //
+  // ⚠️ 検索中は下へ飛ばさない。ヒット位置へジャンプした直後に最下部へ戻され、
+  //    探しているものが**一瞬で画面から消える**（検索が使い物にならない）。
   useEffect(() => {
+    if (search.active) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, search.active]);
 
   // 添付だけ送るのは正しい操作。アップロード中は送らせない
   // （行だけ先に入って添付が付かない状態を作らない）。
@@ -282,8 +298,29 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
               <div className="w-8 h-8 rounded-lg gym-gradient flex items-center justify-center text-primary-foreground font-bold text-xs">
                 {selected?.avatar_initial}
               </div>
-              <p className="font-bold text-sm">{selected?.display_name || t("common.customer")}</p>
+              <p className="font-bold text-sm flex-1 truncate">
+                {selected?.display_name || t("common.customer")}
+              </p>
+              <button
+                type="button"
+                onClick={() => search.setOpen((v) => !v)}
+                aria-label={t("chat.search")}
+                className="p-2 -mr-1 rounded-lg hover:bg-muted shrink-0"
+              >
+                <Search className="w-4 h-4" />
+              </button>
             </div>
+
+            {search.open && (
+              <ConversationSearch
+                query={search.query}
+                onQueryChange={search.setQuery}
+                total={search.hits.length}
+                index={search.index}
+                onStep={search.step}
+                onClose={search.close}
+              />
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
@@ -305,8 +342,11 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                   msg.created_at,
                   i > 0 ? messages[i - 1].created_at : null,
                 );
+                // 引用は本文の先頭に文字列として入っている。地の文と分けて出す。
+                const { quote, body } = splitReplyQuote(msg.content);
+                const isHit = search.currentId === msg.id;
                 return (
-                  <div key={msg.id}>
+                  <div key={msg.id} ref={search.registerRef(msg.id)}>
                     {showDate && <DateSeparator at={msg.created_at} />}
                     <div className={`flex flex-col ${isTrainer ? "items-end" : "items-start"}`}>
                       {otherStaffName && (
@@ -314,15 +354,36 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                           {otherStaffName}
                         </span>
                       )}
+                      <MessageActions
+                        alignEnd={isTrainer}
+                        onReply={() =>
+                          setNewMsg((cur) =>
+                            prependReply(
+                              cur,
+                              formatReplyQuote(
+                                {
+                                  content: msg.content,
+                                  attachment_type: msg.attachment_type,
+                                  senderName: isTrainer
+                                    ? otherStaffName
+                                    : selected?.display_name ?? null,
+                                },
+                                attachmentLabels,
+                              ),
+                            ),
+                          )
+                        }
+                      >
                       <div
-                        className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${
+                        className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 transition-shadow ${
                           isTrainer
                             ? "accent-gradient text-accent-foreground rounded-br-md"
                             : "bg-muted rounded-bl-md"
-                        }`}
+                        } ${isHit ? "ring-2 ring-accent" : ""}`}
                       >
+                        {quote && <ReplyQuote text={quote} onAccent={isTrainer} />}
                         {msg.attachment_type && (
-                          <div className={msg.content.trim() ? "mb-1.5" : ""}>
+                          <div className={body.trim() ? "mb-1.5" : ""}>
                             <MessageAttachment
                               type={msg.attachment_type}
                               url={msg.attachment_url}
@@ -330,8 +391,12 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                             />
                           </div>
                         )}
-                        {msg.content.trim() && (
-                          <MessageText text={msg.content} onAccent={isTrainer} />
+                        {body.trim() && (
+                          <MessageText
+                            text={body}
+                            onAccent={isTrainer}
+                            highlight={search.active ? search.query : undefined}
+                          />
                         )}
                         <p
                           className={`text-[10px] mt-1 flex items-center gap-1.5 ${
@@ -344,6 +409,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                           <span>{formatJST(msg.created_at, "HH:mm")}</span>
                         </p>
                       </div>
+                      </MessageActions>
                     </div>
                   </div>
                 );

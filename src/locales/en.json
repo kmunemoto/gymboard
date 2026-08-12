@@ -2504,6 +2504,13 @@
   },
   "chat": {
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "reply": "Reply",
+    "unsend": "Unsend",
+    "search": "Search chat",
+    "searchPlaceholder": "Search in conversation",
+    "searchNoHit": "No results",
+    "searchPrev": "Previous",
+    "searchNext": "Next"
   }
 }

@@ -2504,6 +2504,13 @@
   },
   "chat": {
     "today": "오늘",
-    "yesterday": "어제"
+    "yesterday": "어제",
+    "reply": "답장",
+    "unsend": "전송 취소",
+    "search": "대화 검색",
+    "searchPlaceholder": "대화 내 검색",
+    "searchNoHit": "결과 없음",
+    "searchPrev": "이전",
+    "searchNext": "다음"
   }
 }

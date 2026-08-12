@@ -17,6 +17,20 @@ interface CustomerInfo {
   avatar_initial: string;
 }
 
+interface MessageRow {
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+}
+
+/**
+ * 会話プレビューを作るために遡るメッセージ件数。
+ * これより古い会話しかない相手はプレビューが空になる（一覧からは消えない）。
+ * 相手ごとに1クエリ投げる N+1 に戻すよりは、ここを上げるほうが安い。
+ */
+const LAST_MESSAGE_SCAN_LIMIT = 1000;
+
 interface TrainerMessagesProps {
   /** 開いたときに選択しておく顧客（離脱アラートの「声かけ」等からの遷移用） */
   initialCustomerId?: string | null;
@@ -34,16 +48,30 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
   const { messages, sendMessage, markAsRead } = useMessages(selectedCustomerId);
 
-  // Fetch customers - trainer can view all roles via RLS
+  // 会話相手は「自テナントに在籍しているお客様」。
+  //
+  // ⚠️ 以前は user_roles を role=customer で**全テナント横断**に引き、status も見ていなかった。
+  //    そのため 2026-08-10 に入れた退会・休会が一覧に反映されず、**退会した人が
+  //    会話相手として並び続けていた**。useProfile の顧客一覧と同じ条件に揃える。
+  //    休会（suspended）は残す。休会にした瞬間に消えるのは「休会」ではなく「消滅」。
   useEffect(() => {
     const fetchCustomers = async () => {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "customer");
-      if (!roles || roles.length === 0) return;
+      const { fetchMyTenantId } = await import("@/lib/tenantHelper");
+      const tenantId = await fetchMyTenantId();
+      if (!tenantId) return;
 
-      const ids = roles.map((r) => r.user_id);
+      const { data: members } = await supabase
+        .from("tenant_members")
+        .select("user_id")
+        .eq("tenant_id", tenantId)
+        .eq("role", "customer")
+        .in("status", ["active", "suspended"]);
+      if (!members || members.length === 0) {
+        setCustomers([]);
+        return;
+      }
+
+      const ids = members.map((m: { user_id: string }) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name")
@@ -62,26 +90,26 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     fetchCustomers();
   }, []);
 
-  // Fetch last message per customer
+  // 各会話の最終メッセージ。
+  //
+  // ⚠️ 以前は **顧客1人につき1クエリ**（N+1）を直列で回していた。30人いれば30往復で、
+  //    画面を開くたびにプレビューが1件ずつ遅れて出てくる状態だった。
+  //    自分が関わるメッセージを新しい順に1回だけ引き、相手ごとの先頭を採る。
   const fetchLastMessages = useCallback(async () => {
     if (!user || customers.length === 0) return;
+    const { data } = await supabase
+      .from("messages")
+      .select("sender_id, receiver_id, content, created_at")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order("created_at", { ascending: false })
+      .limit(LAST_MESSAGE_SCAN_LIMIT);
+
     const map: Record<string, { content: string; time: string }> = {};
-    for (const c of customers) {
-      const { data } = await supabase
-        .from("messages")
-        .select("content, created_at")
-        .or(
-          `and(sender_id.eq.${user.id},receiver_id.eq.${c.user_id}),and(sender_id.eq.${c.user_id},receiver_id.eq.${user.id})`
-        )
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      if (data) {
-        map[c.user_id] = {
-          content: data.content,
-          time: formatJST(data.created_at, "HH:mm"),
-        };
-      }
+    for (const row of (data ?? []) as MessageRow[]) {
+      const other = row.sender_id === user.id ? row.receiver_id : row.sender_id;
+      // 新しい順に見ているので、最初に現れたものがその相手の最終メッセージ
+      if (map[other]) continue;
+      map[other] = { content: row.content, time: formatJST(row.created_at, "HH:mm") };
     }
     setLastMessages(map);
   }, [user, customers]);
@@ -206,9 +234,15 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                           : "bg-muted rounded-bl-md"
                       }`}
                     >
-                      <p className="text-sm">{msg.content}</p>
-                      <p className={`text-[10px] mt-1 ${isTrainer ? "opacity-70" : "text-muted-foreground"}`}>
-                        {formatJST(msg.created_at, "M/d HH:mm")}
+                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      <p
+                        className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+                          isTrainer ? "justify-end opacity-70" : "text-muted-foreground"
+                        }`}
+                      >
+                        {/* 既読は自分（ジム側）が送った分にだけ出す */}
+                        {isTrainer && msg.read && <span>{t("common.messageRead")}</span>}
+                        <span>{formatJST(msg.created_at, "M/d HH:mm")}</span>
                       </p>
                     </div>
                   </div>

@@ -39,6 +39,10 @@ export const useMessages = (otherUserId: string | null) => {
   // Realtime subscription
   useEffect(() => {
     if (!user || !otherUserId) return;
+    const belongsHere = (msg: Message) =>
+      (msg.sender_id === user.id && msg.receiver_id === otherUserId) ||
+      (msg.sender_id === otherUserId && msg.receiver_id === user.id);
+
     const channel = supabase
       .channel(uniqueChannelName(`messages-${otherUserId}`))
       .on(
@@ -47,13 +51,24 @@ export const useMessages = (otherUserId: string | null) => {
         (payload) => {
           const msg = payload.new as Message;
           // Only add if it's part of this conversation
-          if (
-            (msg.sender_id === user.id && msg.receiver_id === otherUserId) ||
-            (msg.sender_id === otherUserId && msg.receiver_id === user.id)
-          ) {
+          if (belongsHere(msg)) {
             // sendMessage 側の即時ローカル反映と重複しないよう id で除外する
             setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages" },
+        (payload) => {
+          // 🔴 既読（read）が相手側で立ったことを、送信者の開いている画面に反映する。
+          //
+          // ここが INSERT だけを購読していたため、`read` は DB にもあり Realtime も
+          // 流れているのに、**送信者の画面だけ永久に更新されなかった**。
+          // 「既読」を出すには、この UPDATE を拾うことが前提になる。
+          const msg = payload.new as Message;
+          if (!belongsHere(msg)) return;
+          setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m)));
         }
       )
       .subscribe();
@@ -133,6 +148,12 @@ export const useMessages = (otherUserId: string | null) => {
 
   const markAsRead = async () => {
     if (!user || !otherUserId) return;
+    // 呼び出し元は messages が変わるたびに呼ぶ。未読が1件も無いなら書きにいかない
+    // （0行 UPDATE でも往復は発生するため）。
+    const hasUnread = messages.some(
+      (m) => m.sender_id === otherUserId && m.receiver_id === user.id && !m.read,
+    );
+    if (!hasUnread) return;
     await supabase
       .from("messages")
       .update({ read: true })

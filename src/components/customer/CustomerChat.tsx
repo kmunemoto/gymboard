@@ -115,13 +115,11 @@ const CustomerChat = () => {
           <div className="w-10 h-10 rounded-full gym-gradient flex items-center justify-center text-primary-foreground font-bold text-sm">
             {trainerName.charAt(0)}
           </div>
-          <div>
-            <p className="font-bold text-sm">{trainerName}</p>
-            <p className="text-xs text-success font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-success rounded-full inline-block" />
-              {t("customerChat.online")}
-            </p>
-          </div>
+          {/* 🔴 「オンライン」表示は削除した（2026-08-11）。
+              プレゼンスを一切見ておらず、**誰が見ても常に緑で「オンライン」**だった。
+              深夜に送ったお客様に「オンラインなのに返事が来ない」と感じさせる嘘の表示。
+              実プレゼンスを作るほどの価値は無いと判断し、表示ごと落とした。 */}
+          <p className="font-bold text-sm">{trainerName}</p>
         </div>
       </div>
 
@@ -156,8 +154,16 @@ const CustomerChat = () => {
                   }`}
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
-                  <p className={`text-[10px] mt-1 ${isMe ? "text-accent-foreground/60" : "text-muted-foreground"}`}>
-                    {formatJST(msg.created_at, "HH:mm")}
+                  <p
+                    className={`text-[10px] mt-1 flex items-center gap-1.5 ${
+                      isMe ? "justify-end text-accent-foreground/60" : "text-muted-foreground"
+                    }`}
+                  >
+                    {/* 既読は自分が送った分にだけ出す。相手の吹き出しに出しても意味がない。
+                        `read` は元から DB にあり、useMessages が UPDATE を購読するように
+                        なって初めて画面に反映されるようになった。 */}
+                    {isMe && msg.read && <span>{t("common.messageRead")}</span>}
+                    <span>{formatJST(msg.created_at, "HH:mm")}</span>
                   </p>
                 </div>
               </div>

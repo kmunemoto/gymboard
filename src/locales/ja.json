@@ -34,7 +34,8 @@
     "lineContact": "LINEで連絡",
     "customer": "顧客",
     "gymLogo": "ジムロゴ",
-    "unknownError": "不明なエラー"
+    "unknownError": "不明なエラー",
+    "messageRead": "既読"
   },
   "settings": {
     "title": "設定",
@@ -2270,7 +2271,6 @@
   },
   "customerChat": {
     "defaultTrainer": "コーチ",
-    "online": "オンライン",
     "emptyPrompt": "メッセージを送ってみましょう！",
     "inputPlaceholder": "メッセージを入力...",
     "sendFailed": "メッセージの送信に失敗しました。もう一度お試しください。",

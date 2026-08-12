@@ -34,7 +34,8 @@
     "lineContact": "Contact via LINE",
     "customer": "Customer",
     "gymLogo": "Gym logo",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "messageRead": "Read"
   },
   "settings": {
     "title": "Settings",
@@ -2270,7 +2271,6 @@
   },
   "customerChat": {
     "defaultTrainer": "Coach",
-    "online": "Online",
     "emptyPrompt": "Send a message to get started!",
     "inputPlaceholder": "Type a message...",
     "sendFailed": "Failed to send message. Please try again.",

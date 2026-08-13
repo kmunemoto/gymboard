@@ -202,3 +202,68 @@ describe("ジムを閉じるときの確認", () => {
     expect(ui).toMatch(/noCandidates/);
   });
 });
+
+describe("🔴 本番検証で見つかった落とし穴（2026-08-13）", () => {
+  const all = SQL;
+
+  it("min(uuid) を使わない", () => {
+    // Postgres に min(uuid) は存在しない。本番に適用してから検証で踏んだ。
+    expect(
+      /min\(tenant_id\)/.test(all),
+      "min(uuid) は存在しません。(array_agg(tenant_id))[1] を使ってください。",
+    ).toBe(false);
+    expect(all, "所有ジムを1件に決める処理がありません").toMatch(/array_agg\(tenant_id\)/);
+  });
+
+  it("🔴 複数のジムを持つ人には、選ばずに落とす", () => {
+    // LIMIT 1 で1つ選ぶと、2つ持つ人が「意図していないほうのジム」を
+    // 消す・引き継ぐ事故になる。いまは兼任者がいないが、そこに依存しない。
+    expect(all, "曖昧なときに落としていません").toMatch(/ambiguous_tenant/);
+    // ⚠️ 関数名は COMMENT / REVOKE / GRANT にも出るので、名前で split すると
+    //    細切れになる（最初こう書いて 5 分割になった）。CREATE の位置で切る。
+    const iTransfer = all.indexOf("CREATE OR REPLACE FUNCTION public.transfer_gym_ownership");
+    const iDelete = all.indexOf("CREATE OR REPLACE FUNCTION public.delete_my_gym");
+    expect(iTransfer, "引き継ぎ関数が見つかりません").toBeGreaterThan(-1);
+    expect(iDelete, "削除関数が見つかりません").toBeGreaterThan(iTransfer);
+    const bodies = {
+      transfer_gym_ownership: all.slice(iTransfer, iDelete),
+      delete_my_gym: all.slice(iDelete),
+    };
+    for (const [name, body] of Object.entries(bodies)) {
+      expect(body, `${name} に曖昧判定がありません`).toMatch(/v_owned > 1/);
+      expect(body, `${name} が LIMIT 1 で1つ選んでいます`).not.toMatch(
+        /role = 'owner' AND status = 'active'\s*\n\s*LIMIT 1/,
+      );
+    }
+  });
+
+  it("🔴 役割変更のガードを弱めていない", () => {
+    // tenant_members には BEFORE UPDATE の guard_tenant_member_identity があり、
+    // **クライアントが自分を昇格させるのを防いでいる**。引き継ぎのために
+    // このガードごと外すと、お客様が自分を trainer にできてしまう。
+    expect(all, "ガードを作り直していません").toMatch(
+      /FUNCTION public\.guard_tenant_member_identity/,
+    );
+    // 3つの検査（user_id / tenant_id / role）が残っていること
+    for (const col of ["user_id", "tenant_id", "role"]) {
+      expect(all, `ガードから ${col} の検査が消えています`).toMatch(
+        new RegExp(`NEW\\.${col} IS DISTINCT FROM OLD\\.${col}`),
+      );
+    }
+    // role だけは「引き継ぎ RPC からの印」がある時に限って通す
+    expect(all, "role の例外が無条件になっています").toMatch(
+      /NEW\.role IS DISTINCT FROM OLD\.role[\s\S]{0,160}app\.owner_transfer/,
+    );
+  });
+
+  it("🔴 印はトランザクション内だけ／使い終わったら下ろす", () => {
+    // set_config の第3引数 true が local。false にすると**セッション全体**に残り、
+    // 以後どの UPDATE でも role を書き換えられるようになる。
+    expect(all, "印がトランザクション内に限定されていません").toMatch(
+      /set_config\('app\.owner_transfer',\s*'1',\s*true\)/,
+    );
+    expect(all, "使い終わった印を下ろしていません").toMatch(
+      /set_config\('app\.owner_transfer',\s*'',\s*true\)/,
+    );
+  });
+});

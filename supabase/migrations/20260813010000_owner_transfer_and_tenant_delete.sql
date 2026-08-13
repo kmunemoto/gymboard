@@ -41,6 +41,51 @@
 -- 在籍者がいる状態で閉じたい場合は、先に退会処理をしてもらう。
 -- そのほうが「気づいたらジムごと消えていた」より確実に安全。
 
+-- ── 0. 役割変更のガードに「信頼できる経路」を開ける ────────────────────
+--
+-- `tenant_members` には BEFORE UPDATE の `guard_tenant_member_identity()` があり、
+-- **role の変更を一律で禁止**している。目的は正しい:
+-- クライアントが直接 UPDATE して**自分を customer → trainer に昇格させる**のを防ぐ。
+-- （`auth.uid()` がある時だけ効く＝サーバー内部の処理は素通りする作り）
+--
+-- 🔴 **このガードは弱めない。** 引き継ぎ RPC は SECURITY DEFINER でも
+--    JWT はそのままなので `auth.uid()` があり、ガードに引っかかる（本番検証で踏んだ）。
+--
+-- そこで「この UPDATE は信頼できる RPC が出したもの」という印を
+-- **トランザクション内だけ有効な設定**で渡し、ガードはその時だけ role の変更を許す。
+--
+-- クライアントはこの印を立てられない: PostgREST が呼べるのは public スキーマに
+-- 公開された関数だけで、`pg_catalog.set_config` は呼べない。
+CREATE OR REPLACE FUNCTION public.guard_tenant_member_identity()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.user_id IS DISTINCT FROM OLD.user_id THEN
+    RAISE EXCEPTION '所属の user_id は変更できません' USING ERRCODE = 'check_violation';
+  END IF;
+
+  IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id THEN
+    RAISE EXCEPTION '所属の tenant_id は変更できません' USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- 🔴 role の変更は、オーナー引き継ぎ RPC からのものだけ通す。
+  --    それ以外（＝クライアントの直接 UPDATE）は今までどおり禁止。
+  IF NEW.role IS DISTINCT FROM OLD.role
+     AND coalesce(current_setting('app.owner_transfer', true), '') <> '1' THEN
+    RAISE EXCEPTION '所属の role は変更できません' USING ERRCODE = 'check_violation';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
 -- ── 1. 引き継ぎ ─────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.transfer_gym_ownership(_to_user_id UUID)
@@ -53,19 +98,27 @@ DECLARE
   v_uid       UUID := auth.uid();
   v_tenant_id UUID;
   v_target    public.tenant_members%ROWTYPE;
+  v_owned     INT;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'not_authenticated' USING ERRCODE = 'insufficient_privilege';
   END IF;
 
-  -- 自分が active な owner であるジムを取る
-  SELECT tenant_id INTO v_tenant_id
+  -- 自分が active な owner であるジムを取る。
+  --
+  -- 🔴 **複数所有なら選ばずに落とす。** LIMIT 1 で1つ選ぶと、2つのジムを持つ人が
+  --    「意図していないほうのジム」を消す・引き継ぐ事故が起きる。
+  --    いまは兼任者がいない（2026-08-13 に本番で確認）が、そこに依存しない。
+  -- ⚠️ min(uuid) は存在しない（本番検証で踏んだ）。array_agg で1件目を取る。
+  SELECT count(*), (array_agg(tenant_id))[1] INTO v_owned, v_tenant_id
     FROM public.tenant_members
-   WHERE user_id = v_uid AND role = 'owner' AND status = 'active'
-   LIMIT 1;
+   WHERE user_id = v_uid AND role = 'owner' AND status = 'active';
 
-  IF v_tenant_id IS NULL THEN
+  IF v_owned = 0 THEN
     RAISE EXCEPTION 'not_owner' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  IF v_owned > 1 THEN
+    RAISE EXCEPTION 'ambiguous_tenant:%', v_owned USING ERRCODE = 'check_violation';
   END IF;
 
   IF _to_user_id = v_uid THEN
@@ -88,6 +141,9 @@ BEGIN
 
   -- 入れ替え。**先に新オーナーを立てる**（途中で失敗しても無主にしない）。
   -- 関数全体が1トランザクションなので、どちらか片方だけ残ることはない。
+  -- ガードに「信頼できる経路だ」と伝える。**トランザクション内だけ**有効（第3引数 true）。
+  PERFORM set_config('app.owner_transfer', '1', true);
+
   UPDATE public.tenant_members
      SET role = 'owner'
    WHERE tenant_id = v_tenant_id AND user_id = _to_user_id;
@@ -95,6 +151,9 @@ BEGIN
   UPDATE public.tenant_members
      SET role = 'trainer'
    WHERE tenant_id = v_tenant_id AND user_id = v_uid;
+
+  -- 同じトランザクションで別の UPDATE が続いても素通りしないよう、すぐ下ろす。
+  PERFORM set_config('app.owner_transfer', '', true);
 
   -- グローバルロール。新オーナーが trainer 権限を持っていないと、
   -- has_role(trainer) を見ている画面が一斉に閉じる。
@@ -135,18 +194,23 @@ DECLARE
   v_uid       UUID := auth.uid();
   v_tenant_id UUID;
   v_others    INT;
+  v_owned     INT;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'not_authenticated' USING ERRCODE = 'insufficient_privilege';
   END IF;
 
-  SELECT tenant_id INTO v_tenant_id
+  -- 🔴 引き継ぎと同じ理由で、複数所有なら選ばずに落とす（消す対象を取り違えない）。
+  -- ⚠️ min(uuid) は存在しない（本番検証で踏んだ）。array_agg で1件目を取る。
+  SELECT count(*), (array_agg(tenant_id))[1] INTO v_owned, v_tenant_id
     FROM public.tenant_members
-   WHERE user_id = v_uid AND role = 'owner' AND status = 'active'
-   LIMIT 1;
+   WHERE user_id = v_uid AND role = 'owner' AND status = 'active';
 
-  IF v_tenant_id IS NULL THEN
+  IF v_owned = 0 THEN
     RAISE EXCEPTION 'not_owner' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  IF v_owned > 1 THEN
+    RAISE EXCEPTION 'ambiguous_tenant:%', v_owned USING ERRCODE = 'check_violation';
   END IF;
 
   -- 🔴 自分以外の在籍者がいたら閉じさせない。

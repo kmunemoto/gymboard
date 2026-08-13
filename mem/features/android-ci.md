@@ -67,6 +67,19 @@ Android 5.0 (API 21) 以降、ステータスバーのアイコンは
 
 ## いま実際にやっているリリース手順（Android）
 
+0. コマンドプロンプトを開いて、**`cd /d C:\dev\gymboard`**（宗本さんの Windows での置き場）→ `git checkout main`
+
+   > ⚠️ `cd /d` を省いてパスだけ打つと、cmd がそれを**実行するプログラムとして探して**
+   > 「内部コマンドまたは外部コマンド…として認識されていません」で失敗する
+   > （2026-08-13 に実際に踏んだ）。フォルダが無いときと**同じ見た目のエラー**なので、
+   > 「場所が違うのかも」と探し始めてしまいやすい。`cd /d` を付ければよいだけ。
+   >
+   > エクスプローラーで gymboard を開いてアドレスバーに `cmd` と打つのが確実
+   > （そのフォルダにいる状態で開くので `cd` が要らない）。
+   >
+   > 鍵は `C:\dev\gymboard-keys\`（`patch-android.mjs` の既定値。
+   > 別の場所なら環境変数 `GOOGLE_SERVICES_JSON` で指す）
+
 1. `scripts\build-android.bat`
    （git pull → npm install → build → `cap sync` → `patch-android.mjs`）
    最後に `android/app/build.gradle` の現在の `versionCode` / `versionName` を**表示する**

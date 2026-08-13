@@ -1,5 +1,5 @@
-import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js'
-import { WebhookError, verifyWebhookRequest } from 'npm:@lovable.dev/webhooks-js'
+import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js@0.1.2'
+import { WebhookError, verifyWebhookRequest } from 'npm:@lovable.dev/webhooks-js@0.0.2'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { wrapEmailHtml } from '../_shared/email-encoding.ts'
 // ⚠️ 認証メールは6種別すべて素の文字列で組み立てる。React・ストリーミング描画は通さない。

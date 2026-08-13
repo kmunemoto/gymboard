@@ -95,6 +95,8 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
     vi.doMock("@/components/trainer/TrainerBilling", () => stub("billing"));
     vi.doMock("@/components/trainer/TrainerHelpGuide", () => stub("help-guide"));
     vi.doMock("@/components/DeleteAccountButton", () => stub("delete-account"));
+    // 同上（useTenantStaff の .in がモックに無いと effect で投げる）
+    vi.doMock("@/components/trainer/GymOwnershipActions", () => stub("gym-ownership"));
     vi.doMock("@/components/LanguageSwitcher", () => stub("language-switcher"));
     vi.doMock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
     vi.doMock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

@@ -19,6 +19,7 @@ import TrialLinkCard from "./TrialLinkCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
+import GymOwnershipActions from "@/components/trainer/GymOwnershipActions";
 import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
@@ -61,7 +62,7 @@ const BUSINESS_CAPACITY_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10];
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const { t } = useTranslation();
-  const { tenant, refetch: refetchTenant } = useTenant();
+  const { tenant, role, refetch: refetchTenant } = useTenant();
   const { user } = useAuth();
   const { profile } = useProfile();
   const [uploading, setUploading] = useState(false);
@@ -1069,6 +1070,16 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           <LogOut className="w-4 h-4 mr-2" />
           {t("settings.logout")}
         </Button>
+        {/* オーナーは、引き継ぐか閉じるかしないとアカウントを削除できない。
+            2026-08-13 まで**その手段が無く行き止まり**だった（GymOwnershipActions の冒頭）。 */}
+        {role === "owner" && (
+          <GymOwnershipActions
+            gymName={tenant?.gym_name ?? null}
+            onChanged={() => {
+              void refetchTenant();
+            }}
+          />
+        )}
         <DeleteAccountButton />
       </section>
     </div>

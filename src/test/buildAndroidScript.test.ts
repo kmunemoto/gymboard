@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 // scripts/build-android.bat の回帰テスト。
 //
@@ -77,5 +78,80 @@ describe("build-android.bat: pull を止める生成物を先に捨てる", () =
     // 版数の更新は Windows での手作業（mem/features/android-ci.md）。
     // ここで自動化すると、Play Console の実績とずれても気づけない。
     expect(script).not.toMatch(/versionCode\s*=|versionName\s*=/);
+  });
+});
+
+// **版数はリポジトリで管理しない**（2026-08-13 にそう決めた）。
+//
+// ── なぜやめたか ─────────────────────────────────────────────
+// 2026-08-05〜08-13 は `android-version.json` に版数を持ち、
+// `scripts/set-android-version.mjs` が build.gradle に書いていた。
+// だが **Play の実態とは自動同期しない**ので、8/11 に 86/9.5 へ進めたのに
+// アップロードはせず、リポジトリだけが「9.5 を出した」ように見える状態が2日続いた。
+// 同期しない記録を2つ持つより、Play Console だけを正にするほうが安全と判断した。
+//
+// ── なぜテストにするか ────────────────────────────────────────
+// .bat は CI でも vitest でも実行されない。**Windows で人が叩くまで誰も気づけない。**
+// 消したはずのスクリプトを呼ぶ行が戻ると、そこで `goto :err` してビルドが止まる。
+describe("版数はリポジトリに持たない（2026-08-13〜）", () => {
+  const REMOVED = ["android-version.json", "scripts/set-android-version.mjs"];
+
+  for (const path of REMOVED) {
+    it(`${path} が復活していない`, () => {
+      expect(
+        existsSync(path),
+        `${path} が戻っています。版数は Android Studio で build.gradle を直接編集する ` +
+          `運用にしました（mem/ops/release-signal.md）。二重管理に戻さないこと。`,
+      ).toBe(false);
+    });
+  }
+
+  it("build-android.bat が消えたスクリプトを呼んでいない", () => {
+    // 呼ぶ行が残っていると `|| goto :err` でビルドが必ず失敗する。
+    expect(
+      script,
+      "build-android.bat が set-android-version.mjs を呼んでいます（このファイルは削除済み）",
+    ).not.toMatch(/set-android-version/);
+    expect(script).not.toMatch(/android-version\.json/);
+  });
+
+  it("ワークフローも消えたスクリプトを呼んでいない", () => {
+    const dir = ".github/workflows";
+    const ymls = readdirSync(dir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+    expect(ymls.length, "ワークフローが1つも読めていません").toBeGreaterThan(0);
+    for (const f of ymls) {
+      const body = readFileSync(join(dir, f), "utf8");
+      expect(body, `${f} が set-android-version.mjs を呼んでいます`).not.toMatch(
+        /set-android-version/,
+      );
+      expect(body, `${f} が android-version.json を読んでいます`).not.toMatch(
+        /android-version\.json/,
+      );
+    }
+  });
+
+  it("ビルドの最後に build.gradle の現在値を表示する", () => {
+    // 版数はこの PC にしか無く、上げ忘れても Play にアップロードするまで気づけない。
+    // せめてビルド直後に目に入るようにしておく（`cap add android` で 1 に戻った
+    // ことにも、ここで気づける）。
+    expect(
+      script,
+      "build-android.bat が build.gradle の versionCode を表示していません",
+    ).toMatch(/findstr[^\n]*versionCode[^\n]*build\.gradle/);
+  });
+
+  it("表示に失敗してもビルドを止めない", () => {
+    // あくまで参考表示。ここで止めると、android/ がまだ無い等の理由で
+    // 手順全体が失敗するようになってしまう。
+    const line = script.split("\n").find((l) => l.startsWith("findstr")) ?? "";
+    expect(line, "findstr の行が見つかりません").not.toBe("");
+    expect(line, "表示のために goto :err してはいけない").not.toMatch(/goto :err/);
+  });
+
+  it("CLAUDE.md が Android Studio で上げる運用だと書いてある（説明と実装の一致）", () => {
+    // ここが食い違うと、次に読む人が android-version.json を作り直しかねない。
+    const claude = readFileSync("CLAUDE.md", "utf8");
+    expect(claude).toMatch(/版数（versionCode \/ versionName）はリポジトリで管理しない/);
+    expect(claude).toMatch(/Android Studio で直接編集/);
   });
 });

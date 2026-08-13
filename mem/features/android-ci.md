@@ -67,50 +67,52 @@ Android 5.0 (API 21) 以降、ステータスバーのアイコンは
 
 ## いま実際にやっているリリース手順（Android）
 
-1. **`android-version.json` の `versionCode` を +1、`versionName` を更新してコミット**
-2. `scripts\build-android.bat`
-   （git pull → npm install → build → `cap sync` → `patch-android.mjs` → `set-android-version.mjs`）
-3. Android Studio でクリーンビルド → 実機で確認
-4. 「Generate Signed App Bundle」で署名付きAABを生成
-5. Play Console へアップロード
-6. **下の「リリース実績」に記録する**（下記）
+1. `scripts\build-android.bat`
+   （git pull → npm install → build → `cap sync` → `patch-android.mjs`）
+   最後に `android/app/build.gradle` の現在の `versionCode` / `versionName` を**表示する**
+2. **Play Console で最後に出した `versionCode` を確認する**
+3. **Android Studio で `android/app/build.gradle` の `versionCode` を +1、`versionName` を更新**
+4. クリーンビルド → 実機で確認
+5. 「Generate Signed App Bundle」で署名付きAABを生成
+6. Play Console へアップロード
+7. **下の「リリース実績」に記録する**（下記）
 
-### 版数は `android-version.json`（リポジトリ管理）が唯一の記録（2026-08-05 から）
+### 🔴 版数はリポジトリで管理しない（2026-08-13 にそう決めた）
 
-以前は手順2で **`android/app/build.gradle` を手で書き換えていた**。
-`android/` は `.gitignore` 済みなので、**現在値がリポジトリのどこからも読めなかった。**
+2026-08-05 から 2026-08-13 まで、`android-version.json`（＋ `scripts/set-android-version.mjs`）で
+版数をリポジトリに持っていた。**この3ファイルは削除した**
+（`android-version.json` / `scripts/set-android-version.mjs` / `src/test/androidVersion.test.ts`）。
 
-そのせいで:
+理由: **Play の実態と同期しない記録は、正しく見えるぶんかえって危ない。**
+実際 8/11 に `android-version.json` を 86/9.5 に進めたが、Play へのアップロードは
+結局しなかった。リポジトリだけが「9.5 を出した」ように見える状態が2日続いた
+（下のリリース実績表にも「未確認」の行が残っている）。
+版数を Android Studio で直接持てば、**唯一の記録は Play Console だけ**になり、
+二重管理が消える。
 
-- 「バージョンを1つ上げて」と言われても**上げようがない**
-  （Play Console か Windows の `build.gradle` を見るまで分からない。実際にそうなった）
-- `npx cap add android` で作り直すと Capacitor 既定値（`versionCode 1` / `"1.0"`）に戻る
-- 上げ忘れも上げたつもりも、**Play にアップロードするまで気づけない**
+**その代わり、以下は失われた。受け入れたうえで削除している:**
 
-いまは `android-version.json` に持ち、`scripts/set-android-version.mjs` が
-`build.gradle` へ書き込む。**上げるときはこのファイルを編集してコミットする。**
-「バージョンを上げた」がコミットとして履歴に残る
-（iOS が `ios-build.yml` に `MARKETING_VERSION` を直書きしているのと同じ発想）。
+- **セッションから現在の版数が読めない。** 「バージョンを1つ上げて」には応えられない。
+  `android/` は `.gitignore` 済みで、値は宗本さんの Windows にしか無い。
+  **推測で書かないこと。** 聞かれたら Play Console か Android Studio を見てもらう
+- **「版を上げた」がコミット履歴に残らない**
+- `npx cap add android` で `android/` を作り直すと Capacitor 既定値
+  （`versionCode 1` / `"1.0"`）に戻る。**そのときは Play Console の最新値より
+  大きい値を手で入れ直す**（`build-android.bat` が最後に現在値を出すので、
+  1 に戻っていればそこで気づける）
 
-`src/test/androidVersion.test.ts` が、実際にスクリプトを走らせて検証している
-（置換・冪等性・不正値で止まること・`.bat` が呼んでいること。変異8種で確認済み）。
+`versionCode` は **二度と下げられない**。上げ忘れは
+`Version code N has already been used` で Play に弾かれる（弾かれるだけで害はない）。
 
-> ⚠️ **`android-version.json` は Play Console の実態とは自動では同期しない。**
-> アップロード前に Play Console の最新 `versionCode` を確認すること。
-> 既存の `build.gradle` より下げようとした場合はスクリプトが警告を出すが、
-> **Play に上がっている値までは見に行けない。**
-
-3つのスクリプトの棲み分け:
+2つのスクリプトの棲み分け:
 
 | スクリプト | 役割 |
 |---|---|
 | `patch-android.mjs` | Gradle / Manifest / google-services.json / 通知アイコン。**版数は触らない**（`src/test/patchAndroid.test.ts` が固定） |
-| `set-android-version.mjs` | **手作業経路専用。** `android-version.json` を `build.gradle` に書く |
-| `prepare-android-release.mjs` | **CI専用。** 環境変数から版数と署名設定を書く（`BASE(10000) + run_number`） |
+| `prepare-android-release.mjs` | **CI専用（使っていない）。** 環境変数から版数と署名設定を書く（`BASE(10000) + run_number`） |
 
-手作業側は 82 から1ずつ、CI 側は 10000 以上。**ぶつからない**ので、
-将来 CI に移行しても `versionCode` は単調増加のまま
-（`androidVersion.test.ts` がこの関係を見張っている）。
+CI 側の `versionCode` は 10000 以上から始まる。手作業側は 86 前後なので、
+将来 CI に移行しても**ぶつからない**（`prepare-android-release.mjs` の下駄がその担保）。
 
 ### ⚠️ 2回目以降の `git pull` が止まる問題（2026-08-04 に修正）
 
@@ -142,13 +144,15 @@ Please commit your changes or stash them before you merge.
 
 ## リリース実績（手で更新すること）
 
-**次に出す版数は `android-version.json` を見ること**（2026-08-05 から、そこが唯一の記録）。
-この表は「実際に Play へ上がったもの」の履歴として残す。
+🔴 **次に出す Android の版数は Play Console で見ること**（2026-08-13 から、そこが唯一の正）。
+リポジトリには版数を持っていない。この表は「実際に Play へ上がったもの」の履歴として残すが、
+**手で書く記録なので、これを信じて版数を決めないこと。**
 
 > **いつ更新するか**: 宗本さんから `リリースノート書いて` と言われたとき。
 > **それがリリース完了を知る唯一の信号**で、別途の報告は来ない
 > （`mem/ops/release-signal.md`）。言われたらこの表に実績を書き、
-> `android-version.json` を1つ進めてから、新しい版のノートを書く。
+> iOS の `MARKETING_VERSION` を上げてから、新しい版のノートを書く。
+> **Android の版数はセッションからは上げられない**（Android Studio での手作業）。
 > **「リリースしましたか？」と聞き返さないこと。**
 
 | 日付 | versionCode | versionName | 備考 |
@@ -160,7 +164,7 @@ Please commit your changes or stash them before you merge.
 | 2026-08-10 | **85** | **9.4** | 「リリースノート書いて」の合図で実績化。会員のお金・契約・在籍状態（入金の記録・売上の実績化・休会/退会・電話番号/ふりがな・同意の記録）＋ソーシャルログインがアプリに戻らない不具合の修正（iOS の URLスキーム登録・PKCE 化）（8/9分、iOS は `MARKETING_VERSION 1.5.0` に対応。ビルドは 8/9 19:07 の Actions **#124** = `90f1947`）。⚠️ **Android を実際に Play へ上げたかは未確認**（`android-version.json` が 85/9.4 になったのは 8/10。それ以前にビルドしたなら 84/9.3）。次回アップロード前に Play Console で現物を見ること |
 | 2026-08-12 | **86** | **9.5**（予定） | 「リリースノート書いて」の合図。**ただし今回は iOS だけが出た。** iOS は `MARKETING_VERSION 1.5.3`、Actions **#127** = `76dad87`（8/12 04:00Z）でアップロード成功。中身は**チャットの全面改修**（写真・動画の添付／定型文／予約の引用／共有受信箱＋通知・既読・在籍の不具合修正）。⚠️ **Android 86/9.5 はまだ Play に上げていない**（8/11 に `android-version.json` を 86/9.5 に進めたまま、ビルドは未実施）。なので**版数は上げていない**。上げる前に Play Console の実物を見ること |
 | 2026-08-13 | — | — | **iOS `MARKETING_VERSION 1.5.4` = Actions #129（`1f302db`）が承認・公開済み**（宗本さんが App Store Connect で確認、2026-08-13）。中身は **PR #302＝チャットの LINE 化**（引用返信・会話内検索・送信取り消し・リアクション・日付区切り・URL のリンク化・画像の全画面表示）＋**受信者が本文を書き換えられた穴の修正**。1.5.4 は2回上がっていて（ビルド **128**＝`4dfc0f8`＝PR #301 までとビルド **129**）、**出荷されたのは 129 のほう**。判明の経緯は Actions #130 の 409（`The train version '1.5.4' is closed` / `previously approved version [1.5.4]`）→ そこで `MARKETING_VERSION` を 1.5.5 に上げた（PR #304 = `716aaa5`）。⚠️ **`612811b`（PR #303）はこの版に入っていない＝未出荷** |
-| （未リリース） | 86 | 9.5 | `android-version.json` の現在値。**Android は 9.5 をまだ Play に上げていない**（8/11 に版数だけ進めたまま、ビルド未実施）。iOS の次は **1.5.5**（main は既に 1.5.5）。**1.5.5 に載るのは PR #303 だけ**＝オーナーのアカウント削除（引き継ぐ／ジムを閉じる）と Edge Function の npm import 固定。#302 は 1.5.4 で出荷済み。🔴 **#303 は Apple 5.1.1(v)「アプリ内でアカウントを削除できること」に触れる修正なので、出荷までためないこと** |
+| （次回） | **Play Console で確認** | **Play Console で確認** | 2026-08-13 に `android-version.json` を削除したので、**リポジトリからは現在値が読めない**。Android Studio で `android/app/build.gradle` を直接上げる。最後に Play へ上げた実績はこの表では **84 / 9.3（2026-08-09）まで確実**、85 / 86 は未確認（上の行の⚠️を参照）。iOS の次は **1.5.5**（main は既に 1.5.5）。**1.5.5 に載るのは PR #303 だけ**＝オーナーのアカウント削除（引き継ぐ／ジムを閉じる）と Edge Function の npm import 固定。#302 は 1.5.4（ビルド129）で出荷済み。🔴 **#303 は Apple 5.1.1(v)「アプリ内でアカウントを削除できること」に触れる修正なので、出荷までためないこと** |
 
 ### 🔴 iOS 1.5.1 は「合図」を待たずに実績が判明した（2026-08-10）
 
@@ -182,9 +186,10 @@ Validation failed (409) This bundle is invalid. The value for key
 > Play Console → リリース → 製品版を見ること。
 > **この記録を信じて版数を決めない。** 上げる前に必ず現物を確認する。
 >
-> `android-version.json` も同じで、**Play の実態とは自動では同期しない。**
-> 82 は「2026-08-02 の実績 81 の次」として置いた値なので、
-> **それ以降にリリースしていたら足りない。** アップロード前に確認すること。
+> 2026-08-05〜08-13 は `android-version.json` にも版数を持っていたが、**それも
+> Play の実態とは自動同期しなかった**（8/11 に 86/9.5 へ進めたのに Play へは上げず、
+> リポジトリだけが「出した」ように見える状態が2日続いた）。
+> **同期しない記録を2つ持つほうが危ない**と判断して削除した。いまは Play Console が唯一の正。
 
 ---
 

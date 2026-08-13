@@ -275,8 +275,10 @@ fi
 ```
 
 いちばん多い原因は **「そのバージョン番号が既に審査を通っている」**。
-`MARKETING_VERSION` を上げれば直る。`android-version.json` と同じで、
+`MARKETING_VERSION` を上げれば直る。
 **ワークフローに書いた版数は App Store Connect の実態と自動同期しない。**
+（Android は 2026-08-13 に `android-version.json` を捨てて、Play Console を唯一の正にした。
+同期しない記録を持つくらいならストアだけを見る、という判断。`mem/ops/release-signal.md`）
 
 ### ⚠️ 中身を覗いて調べようとしないこと
 

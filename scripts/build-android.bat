@@ -35,19 +35,28 @@ call npm run build || goto :err
 echo [4/5] npx cap sync android
 call npx cap sync android || goto :err
 
-echo [5/6] patch android/ (Gradle + Manifest + google-services.json)
+echo [5/5] patch android/ (Gradle + Manifest + google-services.json)
 node scripts/patch-android.mjs || goto :err
-
-echo [6/6] set version from android-version.json
-REM versionCode / versionName は android-version.json（リポジトリ管理）が唯一の記録。
-REM android\ は .gitignore 済みなので、ここに持たないと現在値がどこからも読めない。
-REM 上げるときは android-version.json を編集してコミットすること。
-node scripts/set-android-version.mjs || goto :err
 
 echo.
 echo ============================================================
+echo  Current version in android\app\build.gradle:
+REM 版数は Android Studio で手で設定する（2026-08-13 にそう決めた）。
+REM リポジトリには持たないので、ここは**表示するだけ**。書き換えない。
+REM
+REM なぜ表示するか: android\ は .gitignore 済みで、この値はこの PC にしか無い。
+REM 上げ忘れても Play にアップロードするまで気づけないので、
+REM せめてビルド直後に現在値が目に入るようにしておく。
+REM
+REM ⚠️ npx cap add android で android\ を作り直すと Capacitor 既定値
+REM    （versionCode 1 / versionName "1.0"）に戻る。そのときは Play Console の
+REM    最新 versionCode を見て、それより大きい値を手で入れ直すこと。
+REM /C: を2つ並べると「どちらかを含む行」。エラーでも止めない（参考表示なので）。
+findstr /C:"versionCode" /C:"versionName" android\app\build.gradle
+echo ============================================================
 echo  DONE. Next manual steps:
-echo   - Verify versionCode in Play Console (must be higher than the last release)
+echo   - Check Play Console for the last released versionCode
+echo   - Android Studio: bump versionCode (+1) and versionName in app/build.gradle
 echo   - npx cap open android
 echo   - Android Studio: Build ^> Generate Signed App Bundle
 echo   - Upload AAB to Google Play Console

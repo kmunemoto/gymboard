@@ -20,12 +20,13 @@
 - **iOS のリリースは GitHub Actions**（.github/workflows/ios-build.yml、workflow_dispatch）。
   バージョンは同ファイルの MARKETING_VERSION を書き換える。
 - **Android のリリースは Windows + Android Studio で手作業**（2026-08-03 に現状維持と決定）。
-  `android-version.json` の versionCode を +1 / versionName を更新してコミット →
   `scripts\build-android.bat` → Android Studio で署名付きAAB → Play Console へアップロード。
-  **版数は `android-version.json`（リポジトリ管理）が唯一の記録**。
-  `scripts/set-android-version.mjs` が `android/app/build.gradle` に書き込む
-  （android/ は .gitignore 済みなので、以前は現在値がどこからも読めなかった）。
-  **ただし Play の実態とは自動同期しない。** アップロード前に Play Console を確認すること。
+  🔴 **版数（versionCode / versionName）はリポジトリで管理しない**（2026-08-13 にそう決めた）。
+  `android/app/build.gradle` を **Android Studio で直接編集する**。
+  以前あった `android-version.json` / `scripts/set-android-version.mjs` は削除済み。
+  **したがってセッションから現在の版数は読めない。聞かれても推測で答えないこと。**
+  `build-android.bat` は最後に build.gradle の現在値を表示するだけ（書き換えない）。
+  **アップロード前に必ず Play Console の実物を確認する**（そこが唯一の正）。
   リリースしたら `mem/features/android-ci.md` の「リリース実績」に記録すること。
 - `.github/workflows/android-build.yml` は作ってあるが**使っていない**
   （Secrets 6種の準備コストが見合わないため見送り。workflow_dispatch なので放置しても動かない）。
@@ -80,13 +81,16 @@ Android Studio の手作業）。そのため、**「リリースノート書い
 
 ```
 1. リリース実績の記録（mem/features/android-ci.md）に、いま出ていた版を書く
-2. android-version.json の versionCode を +1 / versionName を更新してコミット
-3. iOS 側のバージョン表記（ios-build.yml の MARKETING_VERSION）も更新する
-4. そのうえで新しい版のリリースノートを書く
+2. iOS 側のバージョン表記（ios-build.yml の MARKETING_VERSION）を更新する
+3. そのうえで新しい版のリリースノートを書く
 ```
 
-同じ版のノートを直したいだけ（内容の訂正等）と判断できるときは版を上げない。
-迷ったら上げる方を選ぶ（余分に上げても無害、上げ足りないと Play に弾かれる）。
+**Android の版数はここでは上げない**（2026-08-13 以降）。リポジトリに版数を持っていないので、
+`android/app/build.gradle` を Android Studio で直接上げる＝宗本さんの手元の作業になる。
+セッションからは現在値が読めないため、**Android の版数を書いたり推測したりしないこと。**
+
+iOS は同じ版数を使い回せない。同じ版のノートを直したいだけ（内容の訂正等）と
+判断できるときは上げない。迷ったら上げる方を選ぶ（余分に上げても無害）。
 アップロード直前には必ず Play Console / App Store Connect の実物を確認すること
 （この取り決めは実態と自動同期しない）。詳細は `mem/ops/release-signal.md`。
 

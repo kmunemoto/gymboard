@@ -2520,5 +2520,22 @@
       "check": "Got it",
       "smile": "Thanks"
     }
+  },
+  "gymOwnership": {
+    "transferButton": "Transfer ownership",
+    "transferTitle": "Transfer ownership?",
+    "transferDesc": "Choose a staff member. You will become a staff member. The gym and customer data remain.",
+    "transferConfirm": "Transfer",
+    "transferred": "Ownership transferred",
+    "transferFailed": "Could not transfer ownership. Please try again.",
+    "noCandidates": "No staff available to transfer to. Add a staff member first (customers cannot become owners).",
+    "closeButton": "Close this gym",
+    "closeTitle": "Close this gym?",
+    "closeDesc": "All data for \"{{name}}\" (bookings, records, messages) will be deleted. This cannot be undone. Type the gym name to continue.",
+    "closeTypeName": "Gym name",
+    "closeConfirm": "Close gym",
+    "closed": "Gym closed",
+    "closeFailed": "Could not close the gym. Please try again.",
+    "closeBlockedMembers": "There are still active members. Transfer ownership first, or withdraw the members."
   }
 }

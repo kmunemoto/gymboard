@@ -72,6 +72,10 @@ vi.mock("@/components/trainer/TrainerPlanManager", () => stub("plan-manager"));
 vi.mock("@/components/trainer/TrainerBilling", () => stub("billing"));
 vi.mock("@/components/trainer/TrainerHelpGuide", () => stub("help-guide"));
 vi.mock("@/components/DeleteAccountButton", () => stub("delete-account"));
+// オーナー用の引き継ぎ／閉店は useTenantStaff を引く（.in を使う）。
+// stub しないと **effect の中で TypeError が投げられ**、vitest は
+//「Tests は全部 passed、Errors N件」で exit 1 になる（CLAUDE.md 参照）。
+vi.mock("@/components/trainer/GymOwnershipActions", () => stub("gym-ownership"));
 vi.mock("@/components/LanguageSwitcher", () => stub("language-switcher"));
 vi.mock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
 vi.mock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

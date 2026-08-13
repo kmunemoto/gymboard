@@ -1,4 +1,4 @@
-import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
+import { sendLovableEmail } from 'npm:@lovable.dev/email-js@0.1.2'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const MAX_RETRIES = 5
@@ -264,9 +264,19 @@ Deno.serve(async (req) => {
             unsubscribe_token: payload.unsubscribe_token,
             message_id: payload.message_id,
           },
-          // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
-          // falls back to the default Lovable API endpoint (https://api.lovable.dev).
-          // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
+          // 🔴 LOVABLE_SEND_URL は **完全なURL**。ベースURLではない（2026-08-13 に実物で確認）。
+          //
+          // ライブラリの中身:
+          //   const DEFAULT_SEND_PATH = "/v1/messaging/email/send";
+          //   const url = options.sendUrl || `${resolveApiBaseUrl(options.apiBaseUrl)}${DEFAULT_SEND_PATH}`;
+          //
+          // つまり sendUrl を渡すと**そのまま叩かれ、パスは足されない**。
+          // ここに https://api.lovable.dev だけ入れると、パス無しで POST して失敗する。
+          // 上書きするなら末尾まで:
+          //   https://api.lovable.dev/v1/messaging/email/send
+          // ベースURLだけ差し替えたいなら sendUrl ではなく apiBaseUrl を使うこと。
+          //
+          // 未設定なら既定（https://api.lovable.dev + 上のパス）に落ちる。通常は未設定でよい。
           { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
         )
 

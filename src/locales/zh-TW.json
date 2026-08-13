@@ -2520,5 +2520,22 @@
       "check": "已確認",
       "smile": "謝謝"
     }
+  },
+  "gymOwnership": {
+    "transferButton": "移交老闆",
+    "transferTitle": "要移交老闆嗎？",
+    "transferDesc": "請選擇要移交的員工。您將成為員工。健身房與客戶資料會保留。",
+    "transferConfirm": "移交",
+    "transferred": "已移交老闆",
+    "transferFailed": "移交失敗，請再試一次。",
+    "noCandidates": "沒有可移交的員工。請先新增員工（無法移交給客戶）。",
+    "closeButton": "關閉健身房",
+    "closeTitle": "確定要關閉健身房嗎？",
+    "closeDesc": "「{{name}}」的所有資料（預約、記錄、訊息）將被刪除，且無法復原。請輸入健身房名稱以繼續。",
+    "closeTypeName": "健身房名稱",
+    "closeConfirm": "關閉健身房",
+    "closed": "已關閉健身房",
+    "closeFailed": "無法關閉健身房，請再試一次。",
+    "closeBlockedMembers": "仍有在籍會員，無法關閉。請先移交老闆，或為在籍會員辦理退會。"
   }
 }

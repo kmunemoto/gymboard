@@ -4031,6 +4031,8 @@ export type Database = {
         Args: { p_stage_key: string; p_user_id: string }
         Returns: Json
       }
+      transfer_gym_ownership: { Args: { _to_user_id: string }; Returns: undefined }
+      delete_my_gym: { Args: Record<PropertyKey, never>; Returns: undefined }
       unsend_message: { Args: { _message_id: string }; Returns: string }
       update_event_progress: { Args: { _user_id: string }; Returns: Json }
       update_event_progress_unchecked: {

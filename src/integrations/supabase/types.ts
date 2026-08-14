@@ -1624,6 +1624,30 @@ export type Database = {
         }
         Relationships: []
       }
+      operator_feedback: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_skills: {
         Row: {
           buff_multiplier: number | null

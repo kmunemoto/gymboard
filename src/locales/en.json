@@ -37,6 +37,15 @@
     "unknownError": "Unknown error",
     "messageRead": "Read"
   },
+  "operatorFeedback": {
+    "title": "Feedback to the developer",
+    "desc": "Send requests or suggestions about the app directly to the developer. We use them to improve the app.",
+    "placeholder": "e.g. It would help if I could do ... on the ... screen",
+    "send": "Send",
+    "sent": "Sent. Thank you!",
+    "sendFailed": "Failed to send. Please try again later.",
+    "history": "Your submitted feedback"
+  },
   "settings": {
     "title": "Settings",
     "profile": "Profile",

@@ -37,6 +37,15 @@
     "unknownError": "不明なエラー",
     "messageRead": "既読"
   },
+  "operatorFeedback": {
+    "title": "運営への要望",
+    "desc": "アプリのご要望やお気づきの点を、開発元へ直接送れます。今後の改善の参考にさせていただきます。",
+    "placeholder": "例: ◯◯の画面で△△ができると助かります",
+    "send": "送信",
+    "sent": "送信しました。ありがとうございます",
+    "sendFailed": "送信に失敗しました。時間をおいてもう一度お試しください",
+    "history": "送信した要望"
+  },
   "settings": {
     "title": "設定",
     "profile": "プロフィール",

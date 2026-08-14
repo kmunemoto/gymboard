@@ -20,6 +20,7 @@ import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import GymOwnershipActions from "@/components/trainer/GymOwnershipActions";
+import OperatorFeedback from "@/components/trainer/OperatorFeedback";
 import TrainerHelpGuide from "./TrainerHelpGuide";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeColorSwitcher from "@/components/ThemeColorSwitcher";
@@ -1051,6 +1052,15 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      <Separator />
+
+      {/* === 運営への要望 ===
+          店側の声を開発元に直接届けてもらう欄（2026-08-14）。
+          メール通知は DB トリガー側の仕事。ここは INSERT するだけ。 */}
+      <section className="space-y-3">
+        <OperatorFeedback tenantId={tenant?.id ?? null} />
       </section>
 
       <Separator />

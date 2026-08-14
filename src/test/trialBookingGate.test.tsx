@@ -97,6 +97,8 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
     vi.doMock("@/components/DeleteAccountButton", () => stub("delete-account"));
     // 同上（useTenantStaff の .in がモックに無いと effect で投げる）
     vi.doMock("@/components/trainer/GymOwnershipActions", () => stub("gym-ownership"));
+    // 同上（operator_feedback の .order/.limit がモックに無いと effect で投げる）
+    vi.doMock("@/components/trainer/OperatorFeedback", () => stub("operator-feedback"));
     vi.doMock("@/components/LanguageSwitcher", () => stub("language-switcher"));
     vi.doMock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
     vi.doMock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

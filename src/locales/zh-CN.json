@@ -37,6 +37,15 @@
     "unknownError": "未知错误",
     "messageRead": "已读"
   },
+  "operatorFeedback": {
+    "title": "向运营方提出建议",
+    "desc": "可以将对应用的建议或意见直接发送给开发方，供今后改进时参考。",
+    "placeholder": "例：如果在◯◯页面能进行△△就好了",
+    "send": "发送",
+    "sent": "已发送，感谢您的反馈",
+    "sendFailed": "发送失败，请稍后重试",
+    "history": "已发送的建议"
+  },
   "settings": {
     "title": "设置",
     "profile": "个人资料",

@@ -2489,6 +2489,132 @@ export type Database = {
           },
         ]
       }
+      member_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          environment: string
+          id: string
+          paid_at: string | null
+          plan_id: string | null
+          plan_name: string
+          status: string
+          stripe_account_id: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          environment: string
+          id?: string
+          paid_at?: string | null
+          plan_id?: string | null
+          plan_name: string
+          status?: string
+          stripe_account_id: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          environment?: string
+          id?: string
+          paid_at?: string | null
+          plan_id?: string | null
+          plan_name?: string
+          status?: string
+          stripe_account_id?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tenant_plan_prices: {
+        Row: {
+          created_at: string
+          environment: string
+          id: string
+          is_active: boolean
+          plan_id: string
+          stripe_price_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          id?: string
+          is_active?: boolean
+          plan_id: string
+          stripe_price_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          id?: string
+          is_active?: boolean
+          plan_id?: string
+          stripe_price_id?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      tenant_stripe_accounts: {
+        Row: {
+          charges_enabled: boolean
+          connected_at: string
+          country: string | null
+          default_currency: string | null
+          details_submitted: boolean
+          environment: string
+          id: string
+          payouts_enabled: boolean
+          requirements: Json | null
+          stripe_account_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          connected_at?: string
+          country?: string | null
+          default_currency?: string | null
+          details_submitted?: boolean
+          environment: string
+          id?: string
+          payouts_enabled?: boolean
+          requirements?: Json | null
+          stripe_account_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          connected_at?: string
+          country?: string | null
+          default_currency?: string | null
+          details_submitted?: boolean
+          environment?: string
+          id?: string
+          payouts_enabled?: boolean
+          requirements?: Json | null
+          stripe_account_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tenants: {
         Row: {
           address: string | null
@@ -2516,6 +2642,8 @@ export type Database = {
           operating_hours: Json | null
           owner_user_id: string | null
           phone: string | null
+          payment_terms_url: string | null
+          payments_enabled: boolean
           primary_color: string | null
           same_day_cancel_penalty_enabled: boolean
           show_counseling_responses: boolean
@@ -2537,6 +2665,7 @@ export type Database = {
           show_utilization_heatmap: boolean
           slot_duration_minutes: number | null
           status: string | null
+          stripe_charges_enabled: boolean
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
@@ -2572,6 +2701,8 @@ export type Database = {
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
+          payment_terms_url?: string | null
+          payments_enabled?: boolean
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_counseling_responses?: boolean
@@ -2593,6 +2724,7 @@ export type Database = {
           show_utilization_heatmap?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
+          stripe_charges_enabled?: boolean
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -2628,6 +2760,8 @@ export type Database = {
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
+          payment_terms_url?: string | null
+          payments_enabled?: boolean
           primary_color?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_counseling_responses?: boolean
@@ -2649,6 +2783,7 @@ export type Database = {
           show_utilization_heatmap?: boolean
           slot_duration_minutes?: number | null
           status?: string | null
+          stripe_charges_enabled?: boolean
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null

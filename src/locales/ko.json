@@ -37,6 +37,15 @@
     "unknownError": "알 수 없는 오류",
     "messageRead": "읽음"
   },
+  "operatorFeedback": {
+    "title": "운영팀에 요청 보내기",
+    "desc": "앱에 대한 요청이나 의견을 개발사에 직접 보낼 수 있습니다. 앞으로의 개선에 참고하겠습니다.",
+    "placeholder": "예: ◯◯ 화면에서 △△를 할 수 있으면 좋겠습니다",
+    "send": "보내기",
+    "sent": "전송했습니다. 감사합니다",
+    "sendFailed": "전송에 실패했습니다. 잠시 후 다시 시도해 주세요",
+    "history": "보낸 요청"
+  },
   "settings": {
     "title": "설정",
     "profile": "프로필",

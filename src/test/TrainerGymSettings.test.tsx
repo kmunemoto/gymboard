@@ -76,6 +76,9 @@ vi.mock("@/components/DeleteAccountButton", () => stub("delete-account"));
 // stub しないと **effect の中で TypeError が投げられ**、vitest は
 //「Tests は全部 passed、Errors N件」で exit 1 になる（CLAUDE.md 参照）。
 vi.mock("@/components/trainer/GymOwnershipActions", () => stub("gym-ownership"));
+// 運営への要望はマウント時に operator_feedback を読む（.order/.limit を使う）。
+// stub しないと同じ形で Errors N件 / exit 1 になる。
+vi.mock("@/components/trainer/OperatorFeedback", () => stub("operator-feedback"));
 vi.mock("@/components/LanguageSwitcher", () => stub("language-switcher"));
 vi.mock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
 vi.mock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

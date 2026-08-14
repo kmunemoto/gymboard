@@ -37,6 +37,15 @@
     "unknownError": "未知錯誤",
     "messageRead": "已讀"
   },
+  "operatorFeedback": {
+    "title": "向營運方提出建議",
+    "desc": "可以將對應用程式的建議或意見直接傳送給開發方，作為日後改進的參考。",
+    "placeholder": "例：如果在◯◯頁面能進行△△就好了",
+    "send": "傳送",
+    "sent": "已傳送，感謝您的意見",
+    "sendFailed": "傳送失敗，請稍後再試",
+    "history": "已傳送的建議"
+  },
   "settings": {
     "title": "設定",
     "profile": "個人資料",

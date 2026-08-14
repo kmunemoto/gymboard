@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import PushNotificationSection from "./PushNotificationSection";
-import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_CUSTOMER_ENABLED, APPLE_CONNECTION_ENABLED, LANGUAGE_SWITCHER_ENABLED } from "@/lib/featureFlags";
+import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_CUSTOMER_ENABLED, APPLE_CONNECTION_ENABLED, LANGUAGE_SWITCHER_ENABLED, POSTURE_ENABLED } from "@/lib/featureFlags";
 
 const CustomerSettings = () => {
   const { t } = useTranslation();
@@ -511,10 +511,15 @@ const CustomerSettings = () => {
         })()}
       </section>
 
-      {/* 骨格診断履歴（遅延読込。本体は常にヘッダ＋ローダーを描くため高さを確保） */}
-      <LazyBoundary fallback={<div className="h-24" aria-hidden />}>
-        <DiagnosisHistorySection userId={user?.id} />
-      </LazyBoundary>
+      {/* 骨格診断履歴（遅延読込。本体は常にヘッダ＋ローダーを描くため高さを確保）。
+          姿勢分析を切った業種では新しい診断が増えないので、履歴も出さない。
+          ⚠️ DiagnosisHistorySection は0件でもヘッダとカードを描くため、
+             フラグで包まないと**空のセクションが出っぱなしになる**。 */}
+      {POSTURE_ENABLED && (
+        <LazyBoundary fallback={<div className="h-24" aria-hidden />}>
+          <DiagnosisHistorySection userId={user?.id} />
+        </LazyBoundary>
+      )}
 
       {/* Logout */}
       <section className="pt-2 space-y-3">

@@ -1,6 +1,6 @@
 import type { Tenant } from "@/hooks/useTenant";
 import type { TrainerTab } from "@/components/trainer/TrainerView";
-import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
+import { TRIAL_BOOKING_ENABLED, WORKOUT_LOG_ENABLED } from "@/lib/featureFlags";
 
 /**
  * ジム側（トレーナー画面）の表示ON/OFF設定の定義を1箇所に集約する。
@@ -161,11 +161,18 @@ export const isDisplayOn = (tenant: Tenant | null | undefined, column: GymDispla
  * そのタブをメニューに出すか。
  * NAV_TAB_TOGGLES に無いタブ（ホーム・顧客・予約・設定）は常に表示する。
  *
- * trial-followups だけはビルド時フラグ（TRIAL_BOOKING_ENABLED）とジムごとの
- * トグルの AND で決まる（featureFlags.ts の「FLAG && tenant.show_xxx で合成する」方針）。
+ * ビルド時フラグを持つタブは、フラグとジムごとのトグルの AND で決まる
+ * （featureFlags.ts の「FLAG && tenant.show_xxx で合成する」方針。
+ *  **下の層はOFFにできるだけで、OFFをONに戻せない**）。
+ *
+ * - trial-followups … TRIAL_BOOKING_ENABLED
+ * - exercises … WORKOUT_LOG_ENABLED。種目マスタ（exercises テーブル）を読むのは
+ *   トレーニング記録タブ・部位バランス・アバターだけなので、記録を切った業種では
+ *   **編集しても誰も見ない設定**になる。
  */
 export const isNavTabVisible = (tenant: Tenant | null | undefined, tab: TrainerTab): boolean => {
   if (tab === "trial-followups" && !TRIAL_BOOKING_ENABLED) return false;
+  if (tab === "exercises" && !WORKOUT_LOG_ENABLED) return false;
   const entry = NAV_TAB_TOGGLES.find((n) => n.tab === tab);
   if (!entry) return true;
   return isDisplayOn(tenant, entry.column);

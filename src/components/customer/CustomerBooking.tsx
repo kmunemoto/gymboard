@@ -24,7 +24,7 @@ import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type Boo
 import PlanUsageCard from "./PlanUsageCard";
 import { formatDate } from "@/lib/dateFormat";
 import { useWaitlist } from "@/hooks/useWaitlist";
-import { WAITLIST_ENABLED } from "@/lib/featureFlags";
+import { WAITLIST_ENABLED, GAMIFICATION_ENABLED } from "@/lib/featureFlags";
 import CourseProgressBadge from "@/components/trainer/CourseProgressBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
@@ -88,9 +88,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean }[]>([]);
 
   // Active raid boss periods (not defeated). Map of yyyy-MM-dd → { isStart, isEnd }
+  // ゲーミフィケーションOFFなら空のまま＝カレンダーに帯も剣も出ない。
   const [raidDates, setRaidDates] = useState<Map<string, { isStart: boolean; isEnd: boolean }>>(new Map());
 
   useEffect(() => {
+    // ⚠️ フラグを見ずに投げると、レイドを使わない店でも**予約画面を開くたびに
+    //    raid_bosses を1回問い合わせる**（表示されないので誰も気づけない）。
+    if (!GAMIFICATION_ENABLED) return;
     supabase
       .from("raid_bosses")
       .select("start_date, end_date, defeated")

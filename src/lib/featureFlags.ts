@@ -190,3 +190,28 @@ export const GOOGLE_REVIEW_ENABLED = true;
  * （mem/ops/vertical-fork.md）。UIを隠すだけで、実質的に単一言語で出荷できる。
  */
 export const LANGUAGE_SWITCHER_ENABLED = true;
+
+/**
+ * お客様がアプリ内で月謝・回数券を払えるようにする（Stripe Connect / Direct charges）。
+ *
+ * ⚠️ **既定 false。** `SOCIAL_LOGIN_ENABLED` と同じ扱い。
+ *
+ * 【なぜ false か】
+ * 1. **検証できない領域が本体。** Connect の接続・実決済・Connect webhook の到達は
+ *    クラウドセッションからは1つも確かめられない。他の機能は「本番DBでロールを演じて
+ *    検証済み」と書けたが、これは書けない。
+ * 2. **間違いが金になる。** 他の機能の最悪は「予約が取れない」だが、ここは
+ *    二重課金・未着金・返金漏れ。
+ *
+ * 【true にする前に必ず】
+ *   - Stripe ダッシュボードで Connect（プラットフォームプロフィール）を有効化する
+ *   - `STRIPE_SANDBOX_API_KEY` / `STRIPE_LIVE_API_KEY` と Connect 用の webhook secret を入れる
+ *   - **sandbox で1件通し**（接続 → 購入 → webhook で member_payments に行が立つ）
+ *   - 各店に特商法の表記URL（`tenants.payment_terms_url`）を入れてもらう
+ *     （**売主は各ジムであってジムボードではない**）
+ *
+ * 🔴 **既存の `create-checkout` / `payments-webhook` は使わないこと。**
+ *    src/ に呼び出し元が0件の死んだ足場で、テナントの概念が無く
+ *    **プラットフォーム口座に課金する**（＝お客様のお金がジムではなくジムボードに入る）。
+ */
+export const MEMBER_PAYMENTS_ENABLED = false;

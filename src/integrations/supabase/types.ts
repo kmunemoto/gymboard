@@ -3921,6 +3921,7 @@ export type Database = {
           gym_name_short: string
           id: string
           logo_url: string
+          operating_hours: Json
           primary_color: string
           slot_duration_minutes: number
           trial_info_body: string

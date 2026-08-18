@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
+import { bookingSlotMinutes, minutesToTime, resolveBusinessMinutes } from "@/lib/businessHours";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Clock, Check, User, CalendarPlus, Sparkles } from "lucide-react";
@@ -45,6 +46,8 @@ interface PublicTenant {
   trial_info_body: string | null;
   booking_buffer_minutes: number | null;
   slot_duration_minutes: number | null;
+  /** 営業時間。get_tenant_public が返す（2026-08-15 追加）。null/未設定は既定 10:00-21:00。 */
+  operating_hours: { start?: string | null; end?: string | null } | null;
   /** 同時に受けられる予約数（ベッド数・施術者数）。null/未設定は既定1。 */
   booking_capacity: number | null;
   /** 予約の締切種別（'prev_day' / 'hours_before'）。null/未設定は prev_day。 */
@@ -124,6 +127,8 @@ const DropInBooking = () => {
 
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
+  // その日にまだ取れる枠があるかの判定に使う、最後の開始時刻（以前は 1260 が直書き）。
+  const lastBookableStart = resolveBusinessMinutes(tenant?.operating_hours).close - sessionMinutes;
   // 同時に受けられる予約数。未ロード時は安全側の1。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
@@ -153,10 +158,10 @@ const DropInBooking = () => {
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
-    for (let totalMin = 600; totalMin <= 1260; totalMin += 15) {
-      const h = Math.floor(totalMin / 60);
-      const m = totalMin % 60;
-      const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    // 営業時間から作る（以前は 600→1260＝10:00-21:00 が直書きされていて、
+    // ジムが何時まで営業していても 21:00 で止まっていた）。
+    for (const totalMin of bookingSlotMinutes(tenant?.operating_hours, sessionMinutes)) {
+      const time = minutesToTime(totalMin);
       // hours_before は枠の開始時刻が基準なので、枠ごとに判定する
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
       const blocked = isSlotBlocked(dateKey, time);
@@ -489,7 +494,7 @@ const DropInBooking = () => {
                 locale={enUS}
                 disabled={(date) => {
                   const yyyyMMdd = format(date, "yyyy-MM-dd");
-                  if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), 1260)) return true;
+                  if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), lastBookableStart)) return true;
                   const maxDate = new Date();
                   maxDate.setDate(maxDate.getDate() + DROP_IN_BOOKING_MAX_DAYS_AHEAD);
                   return date.getTime() > maxDate.getTime();

@@ -8,6 +8,7 @@ import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBooking
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
+import { blockEndMinutes, bookingSlotMinutes, businessGridMinutes, minutesToTime } from "@/lib/businessHours";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
@@ -114,15 +115,9 @@ const TrainerSchedule = () => {
   };
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const timeSlots = (() => {
-    const slots: string[] = [];
-    for (let min = 600; min <= 1335; min += 15) {
-      const h = Math.floor(min / 60);
-      const m = min % 60;
-      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    }
-    return slots;
-  })();
+  // 週表示の行は営業時間そのもの（施術の長さは引かない）。
+  // 以前は 600→1335（10:00-22:15）が直書きで、営業時間と無関係だった。
+  const timeSlots = businessGridMinutes(tenant?.operating_hours).map(minutesToTime);
 
   const getSession = (day: Date, time: string) => {
     const dateStr = format(day, "yyyy-MM-dd");
@@ -749,10 +744,10 @@ const TrainerSchedule = () => {
                 <div className="grid grid-cols-4 gap-1.5 max-h-48 overflow-y-auto">
                   {(() => {
                     const slots: { time: string; blocked: boolean }[] = [];
-                    for (let totalMin = 600; totalMin <= 1260; totalMin += 15) {
-                      const h = Math.floor(totalMin / 60);
-                      const m = totalMin % 60;
-                      const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                    // 予約枠なので終業から枠の長さを引く。以前は 600→1260（10:00-21:00）が
+                    // 直書きで、営業時間を延ばしても 21:00 で止まっていた。
+                    for (const totalMin of bookingSlotMinutes(tenant?.operating_hours, sessionMinutes)) {
+                      const time = minutesToTime(totalMin);
                       const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null);
                       slots.push({ time, blocked });
                     }
@@ -945,10 +940,9 @@ const TrainerSchedule = () => {
                     {(() => {
                       const blockDateKey = format(blockDate, "yyyy-MM-dd");
                       const slots: { time: string; blocked: boolean }[] = [];
-                      for (let totalMin = 600; totalMin <= 1335; totalMin += 15) {
-                        const h = Math.floor(totalMin / 60);
-                        const m = totalMin % 60;
-                        const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                      // ブロック枠（休憩・設営）は施術ではないので、終業まで置ける。
+                      for (const totalMin of businessGridMinutes(tenant?.operating_hours)) {
+                        const time = minutesToTime(totalMin);
                       const blocked = checkSlotBlocked(bookings, blockDateKey, time, undefined, bookingBufferMinutes, sessionMinutes);
                         slots.push({ time, blocked });
                       }
@@ -981,10 +975,9 @@ const TrainerSchedule = () => {
                         const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
                         const startMin = toMin(blockStartTime);
                         const slots: { time: string; label: string }[] = [];
-                        for (let totalMin = startMin + 15; totalMin <= 1290; totalMin += 15) {
-                          const h = Math.floor(totalMin / 60);
-                          const m = totalMin % 60;
-                          const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                        // 終業ちょうどで終われる。以前は 1290（22:30）が直書きだった。
+                        for (const totalMin of blockEndMinutes(tenant?.operating_hours, startMin)) {
+                          const time = minutesToTime(totalMin);
                           const dur = totalMin - startMin;
                           const durH = Math.floor(dur / 60);
                           const durM = dur % 60;

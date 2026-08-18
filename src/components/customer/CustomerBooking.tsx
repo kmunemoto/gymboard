@@ -30,6 +30,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
+import { bookingSlotMinutes, minutesToTime, resolveBusinessMinutes } from "@/lib/businessHours";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { canSelectStaff, isStaffConflictError } from "@/lib/tenantStaff";
@@ -57,18 +58,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     return m;
   }, [tenantPlans]);
 
-  // Tenant operating hours and slot duration (with sensible fallbacks)
-  const parseHour = (t?: string) => {
-    if (!t) return null;
-    const [h] = t.split(":").map(Number);
-    return Number.isFinite(h) ? h : null;
-  };
-  const openHour = parseHour(tenant?.operating_hours?.start) ?? 10;
-  const closeHour = parseHour(tenant?.operating_hours?.end) ?? 21;
+  // 営業時間は src/lib/businessHours.ts が唯一の解釈者。
+  // 以前はここで `"22:30".split(":")[0]` として**分を捨てていた**（22:00 扱いになる）。
+  const businessHours = tenant?.operating_hours;
   // お客様ごとに契約プラン（profile.plan）は1つだけなので、この画面全体を通じて
   // 「このお客様の予約が占有する時間」はプランごとの設定を解決した1つの値でよい
   // （プランに未設定ならジムの既定値を継承。resolvePlanSlotMinutes 参照）。
   const slotMinutes = resolvePlanSlotMinutes(profile?.plan, tenantPlans, tenant?.slot_duration_minutes ?? 60);
+  // 「当日はもう1枠も取れない日か」の判定に使う、最後に予約できる開始時刻。
+  const lastBookableStart = resolveBusinessMinutes(businessHours).close - slotMinutes;
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -221,17 +219,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 今日(JST)で、かつ締切を過ぎていて1枠も取れない日か。「空き状況の閲覧のみ」の案内を出す対象。
   // hours_before の店では当日でも取れる枠が残るので、その場合は案内を出さない。
   const isViewOnlyDay = (date: string): boolean =>
-    !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), closeHour * 60 - slotMinutes);
+    !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), lastBookableStart);
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
-    const startMin = openHour * 60;
-    // last bookable slot starts so the session ends by closing time
-    const lastStart = closeHour * 60 - slotMinutes;
-    for (let totalMin = startMin; totalMin <= lastStart; totalMin += 15) {
-      const h = Math.floor(totalMin / 60);
-      const m = totalMin % 60;
-      const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    for (const totalMin of bookingSlotMinutes(businessHours, slotMinutes)) {
+      const time = minutesToTime(totalMin);
       const blocked = isSlotBlocked(dateKey, time);
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
       slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon, blocked, tooSoon });

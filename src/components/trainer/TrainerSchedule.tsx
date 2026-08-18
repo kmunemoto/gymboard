@@ -436,6 +436,7 @@ const TrainerSchedule = () => {
           weekStart={weekStart}
           bookings={bookings}
           tenantPlans={plans}
+          operatingHours={tenant?.operating_hours}
           profiles={profiles.map((p) => ({
             user_id: p.user_id,
             plan: p.plan ?? null,

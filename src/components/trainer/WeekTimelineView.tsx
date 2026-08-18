@@ -5,6 +5,7 @@ import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import { BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
+import { timelineHourRange } from "@/lib/businessHours";
 
 export interface ProfileLite {
   user_id: string;
@@ -21,10 +22,13 @@ interface WeekTimelineViewProps {
   profiles?: ProfileLite[];
   /** サイクル月数の解決用（プランごとの利用期間）。 */
   tenantPlans?: ReadonlyArray<{ plan_name: string; cycle_months?: number | null }>;
+  /** 営業時間（tenants.operating_hours）。時間軸の範囲に使う。 */
+  operatingHours?: { start?: string | null; end?: string | null } | null;
 }
 
-const START_HOUR = 9;
-const END_HOUR = 22; // 22:00 まで（最終予約終了想定）
+// 🔴 以前は START_HOUR = 9 / END_HOUR = 22 が直書きされていて、
+// 営業時間を何時にしても 9:00〜22:00 の外はスクロールできなかった
+// （2026-08-18 に宗本さんが実機で発見）。営業時間から求めること。
 const SLOT_MIN = 30; // グリッドの単位（30分）
 const PX_PER_HOUR = 56; // 1時間 = 56px
 const PX_PER_MIN = PX_PER_HOUR / 60;
@@ -34,7 +38,7 @@ const timeToMin = (t: string) => {
   return h * 60 + m;
 };
 
-const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [] }: WeekTimelineViewProps) => {
+const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [], operatingHours }: WeekTimelineViewProps) => {
   const { t } = useTranslation();
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -51,6 +55,15 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
       });
       bookingsByUser.set(b.user_id, rows);
     });
+  // 営業時間から時間軸を作る。表示中の予約が営業時間の外にあっても、
+  // 軸を広げて必ず見えるようにする（狭めた途端に予約が消えるのを防ぐ）。
+  const visible = bookings.filter(
+    (b) => b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS,
+  );
+  const { startHour: START_HOUR, endHour: END_HOUR } = timelineHourRange(
+    operatingHours,
+    visible.map((b) => ({ start: timeToMin(b.startTime), end: timeToMin(b.endTime) })),
+  );
   const totalMinutes = (END_HOUR - START_HOUR) * 60;
   const totalHeight = totalMinutes * PX_PER_MIN;
 

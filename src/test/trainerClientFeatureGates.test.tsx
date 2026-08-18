@@ -100,6 +100,14 @@ const tabLabels = () =>
   Array.from(document.querySelectorAll('[role="tab"]')).map((el) => el.textContent?.trim() ?? "");
 
 describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
+  // ⚠️ このファイルの**最初の1件だけ**が既定の5秒に乗ることがある。
+  //    TrainerClientDetail は recharts など重いモジュールを引くので、
+  //    初回レンダリングだけモジュール読み込みのコストを払う（2件目以降は約150ms）。
+  //    単独実行なら約1.3秒だが、全体実行の負荷下やキャッシュが冷えているときに
+  //    5秒を超えてタイムアウトし、しかも**そのあと mock が中途半端に残って
+  //    次のテストまで巻き添えで落ちる**（2026-08-18 に2回踏んだ）。
+  //    遅いのは初回のモジュール読み込みであって、検査対象の挙動ではないので、
+  //    この1件だけ余裕を持たせる。
   it("全ONなら記録・食事タブが出る", async () => {
     vi.doMock("@/lib/featureFlags", async (orig) => ({
       ...(await orig<Record<string, unknown>>()),
@@ -118,7 +126,7 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
     expect(labels).toContain(i18n.t("clientDetail.tabBookings"));
     expect(labels).toContain(i18n.t("clientDetail.tabSkeletal"));
     expect(labels).toContain(i18n.t("clientDetail.tabChat"));
-  });
+  }, 20_000);
 
   it("WORKOUT_LOG_ENABLED=false で記録タブが消える", async () => {
     vi.doMock("@/lib/featureFlags", async (orig) => ({

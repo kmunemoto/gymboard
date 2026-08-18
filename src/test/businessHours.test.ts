@@ -7,6 +7,7 @@ import {
   bookingSlotMinutes,
   businessGridMinutes,
   blockEndMinutes,
+  timelineHourRange,
   minutesToTime,
   DEFAULT_OPEN_MINUTES,
   DEFAULT_CLOSE_MINUTES,
@@ -188,5 +189,82 @@ describe("公開ページが営業時間を受け取れる", () => {
     const types = readFileSync("src/integrations/supabase/types.ts", "utf8");
     const block = types.slice(types.indexOf("get_tenant_public: {"), types.indexOf("get_trainer_ids: {"));
     expect(block).toMatch(/operating_hours: Json/);
+  });
+});
+
+describe("timelineHourRange（週タイムラインの時間軸）", () => {
+  it("🔴 報告された不具合: 営業23:00なら軸も23:00まで伸びる（22:00で止まらない）", () => {
+    // 以前は START_HOUR=9 / END_HOUR=22 が直書きで、営業時間を何時にしても
+    // 9:00〜22:00 の外はスクロールできなかった。
+    expect(timelineHourRange({ start: "10:00", end: "23:00" })).toEqual({ startHour: 10, endHour: 23 });
+  });
+
+  it("開店は切り捨て・閉店は切り上げ（営業時間が丸ごと収まる）", () => {
+    expect(timelineHourRange({ start: "10:30", end: "22:30" })).toEqual({ startHour: 10, endHour: 23 });
+  });
+
+  it("営業時間の外にある予約も軸に含める（予約が画面から消えない）", () => {
+    // 営業を 10:00-18:00 に狭めても、9:00 に入っていた予約は見えなければならない。
+    const r = timelineHourRange({ start: "10:00", end: "18:00" }, [
+      { start: 9 * 60, end: 10 * 60 },
+      { start: 20 * 60, end: 21 * 60 + 30 },
+    ]);
+    expect(r).toEqual({ startHour: 9, endHour: 22 });
+  });
+
+  it("予約が営業時間内なら軸は広がらない", () => {
+    const r = timelineHourRange({ start: "10:00", end: "23:00" }, [
+      { start: 11 * 60, end: 12 * 60 },
+    ]);
+    expect(r).toEqual({ startHour: 10, endHour: 23 });
+  });
+
+  it("24時を超えない", () => {
+    const r = timelineHourRange({ start: "10:00", end: "23:00" }, [
+      { start: 23 * 60, end: 25 * 60 },
+    ]);
+    expect(r.endHour).toBeLessThanOrEqual(24);
+  });
+
+  it("どんな入力でも必ず endHour > startHour（高さ0にならない）", () => {
+    // 短い営業時間・分刻み・営業時間外の予約を混ぜて総当たりで確かめる。
+    // ここが破れると軸の高さが0になり、表が丸ごと消える。
+    const cands = ["00:00", "09:30", "10:00", "10:20", "22:45", "23:00", "23:59", "", "あ"];
+    for (const start of cands) {
+      for (const end of cands) {
+        for (const bk of [[], [{ start: 0, end: 30 }], [{ start: 23 * 60, end: 25 * 60 }]]) {
+          const r = timelineHourRange({ start, end }, bk);
+          expect(r.endHour, `start=${start} end=${end} で高さ0`).toBeGreaterThan(r.startHour);
+          expect(r.endHour).toBeLessThanOrEqual(24);
+        }
+      }
+    }
+  });
+
+  it("壊れた値でも既定の 10:00-21:00 に落ちる", () => {
+    expect(timelineHourRange(null)).toEqual({ startHour: 10, endHour: 21 });
+  });
+});
+
+describe("WeekTimelineView が営業時間を受け取っている", () => {
+  const view = readFileSync("src/components/trainer/WeekTimelineView.tsx", "utf8");
+  const schedule = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
+
+  it("直書きの START_HOUR / END_HOUR が無い", () => {
+    const code = view.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+    expect(code, "START_HOUR が直書きに戻っています").not.toMatch(/const START_HOUR\s*=\s*\d/);
+    expect(code, "END_HOUR が直書きに戻っています").not.toMatch(/const END_HOUR\s*=\s*\d/);
+  });
+
+  it("共有関数から軸を取っている", () => {
+    expect(view).toMatch(/timelineHourRange\(/);
+    expect(view).toMatch(/from "@\/lib\/businessHours"/);
+  });
+
+  it("呼び出し元が営業時間を渡している", () => {
+    // 渡し忘れると既定の 10:00-21:00 になり、症状が半分だけ戻る（型では防げない）。
+    expect(schedule, "TrainerSchedule が operatingHours を渡していません").toMatch(
+      /<WeekTimelineView[\s\S]{0,400}operatingHours=\{tenant\?\.operating_hours\}/,
+    );
   });
 });

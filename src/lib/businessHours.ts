@@ -119,3 +119,35 @@ export const minutesToTime = (total: number): string => {
   const m = total % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
+
+/**
+ * **タイムライン表示（週表示）の時間軸**を求める。
+ *
+ * 軸は「時」単位の目盛りなので、開店は切り捨て・閉店は切り上げて、
+ * 営業時間が丸ごと収まるようにする（10:30-22:30 なら 10:00-23:00 の軸）。
+ *
+ * 🔴 **営業時間の外にある予約も必ず軸に含める。**
+ * 営業時間を狭めると、それ以前に入っていた予約が軸からはみ出して
+ * **画面から消える**（負の座標に描かれてスクロールしても出てこない）。
+ * 予約が消えたように見えるのは実害が大きいので、軸のほうを広げる。
+ *
+ * @param bookingMinutes 表示対象の予約の開始・終了（分）。空でよい。
+ */
+export const timelineHourRange = (
+  hours: OperatingHours | null | undefined,
+  bookingMinutes: ReadonlyArray<{ start: number; end: number }> = [],
+): { startHour: number; endHour: number } => {
+  const { open, close } = resolveBusinessMinutes(hours);
+  let startHour = Math.floor(open / 60);
+  let endHour = Math.ceil(close / 60);
+  for (const b of bookingMinutes) {
+    if (!Number.isFinite(b.start) || !Number.isFinite(b.end)) continue;
+    startHour = Math.min(startHour, Math.floor(b.start / 60));
+    endHour = Math.max(endHour, Math.ceil(b.end / 60));
+  }
+  // endHour > startHour は常に成り立つ（resolveBusinessMinutes が close > open を
+  // 保証し、endHour は切り上げ・startHour は切り捨てのため）。
+  // 保険の分岐を書いたが到達できず、変異検証で「消しても赤くならない」＝死んだコードだと
+  // 分かったので置いていない。不変条件はテスト側で検査する。
+  return { startHour, endHour: Math.min(endHour, 24) };
+};

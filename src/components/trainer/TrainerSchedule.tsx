@@ -794,6 +794,10 @@ const TrainerSchedule = () => {
                 locale={ja}
                 disabled={(date) => {
                   const key = format(date, "yyyy-MM-dd");
+                  // ⚠️ 受付期間（tenants.booking_window_days）は**わざと見ていない**。
+                  //    あれは「お客様に向けた受付の制限」であって、店が自分で入れる
+                  //    予約の制限ではない（電話で3ヶ月先を押さえたい、はあり得る）。
+                  //    見落としではないので、後から足さないこと。
                   // 定休日。店側の代理予約でも、閉めている日に枠は出せない
                   // （どうしても入れたいなら営業時間の設定を直すのが筋）。
                   if (isClosedDate(tenant?.operating_hours, key)) return true;

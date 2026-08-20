@@ -141,6 +141,19 @@ describe("🔴 画面がこの関数を使っている（直書きが戻って�
     }
   });
 
+  it("🔴 店側の代理予約には受付期間をかけていない（意図的）", () => {
+    // 「何日先まで受け付けるか」はお客様に向けた制限であって、店が自分で入れる
+    // 予約の制限ではない（電話で3ヶ月先を押さえたい、はあり得る）。
+    // ここが将来「効かせ忘れ」と誤解されて足されると、店の運用が黙って狭まる。
+    const src = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
+    expect(src, "代理予約に受付期間の制限が入りました。意図的に外してあります").not.toMatch(
+      /isBeyondBookingWindow\(/,
+    );
+    // ただし定休日とシフトは塞ぐ（実際に営業していない・出勤していないため）
+    expect(src).toMatch(/isClosedDate\(tenant\?\.operating_hours,/);
+    expect(src).toMatch(/staffWorksOnWeekday\(/);
+  });
+
   it("走査対象が実在する（空振りしていない）", () => {
     for (const f of [
       "src/components/customer/CustomerBooking.tsx",
@@ -188,7 +201,12 @@ describe("設定が公開ページまで届く", () => {
   it("types.ts と公開ページの型が揃っている", () => {
     const types = readFileSync("src/integrations/supabase/types.ts", "utf8");
     const block = types.slice(types.indexOf("get_tenant_public: {"), types.indexOf("get_trainer_ids: {"));
-    expect(block).toMatch(/booking_window_days: number \| null/);
+    // ⚠️ 列の**有無**だけを見る。`| null` を書くかどうかは types.ts の**生成器の都合**で、
+    //    RETURNS TABLE の列に生成器は nullability を付けない（既存の address / trial_price_yen も
+    //    同じく非 null になっている）。手で書いた形を固定すると、Lovable が本番DBから
+    //    再生成した瞬間に落ちる（2026-08-20 に実際に落ちた）。
+    //    実際の NULL 可能性は公開ページ側の PublicTenant が `| null` で受けている。
+    expect(block).toMatch(/booking_window_days: number/);
     for (const f of ["src/pages/TrialBooking.tsx", "src/pages/DropInBooking.tsx"]) {
       expect(readFileSync(f, "utf8"), `${f} の PublicTenant に列がありません`).toMatch(
         /booking_window_days: number \| null;/,

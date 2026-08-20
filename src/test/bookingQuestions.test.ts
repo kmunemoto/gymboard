@@ -299,6 +299,22 @@ describe("🔴 画面が質問を出している", () => {
     expect(src).toMatch(/booking\.customAnswers/);
   });
 
+  it("🔴 予約が成立したら回答を消す（2件目に持ち越さない）", () => {
+    // 「本日の体調」のような質問は予約ごとに聞き直す前提。残すと2件目に
+    // **前回の回答が黙って付いてくる**（店は今日の回答だと思って読む）。
+    for (const f of [
+      "src/components/customer/CustomerBooking.tsx",
+      "src/pages/TrialBooking.tsx",
+      "src/pages/DropInBooking.tsx",
+    ]) {
+      expect(readFileSync(f, "utf8"), `${f} が回答を消していません`).toMatch(/setAnswers\(\{\}\)/);
+    }
+    // 代理予約はダイアログを閉じるときに消す
+    expect(readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8")).toMatch(
+      /setProxyAnswers\(\{\}\)/,
+    );
+  });
+
   it("質問が読めないときは空配列＝聞かずに予約させる", () => {
     const hook = readFileSync("src/hooks/useBookingQuestions.ts", "utf8");
     expect(hook).toMatch(/if \(error \|\| !data\) \{\s*setQuestions\(\[\]\);/);

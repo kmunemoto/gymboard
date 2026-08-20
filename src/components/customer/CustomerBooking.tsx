@@ -377,6 +377,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     setSelectedSlot(null);
     setSelectedDate(undefined);
     setRepeatWeeks(1);
+    // 事前アンケートの回答は**必ず消す**。「本日の体調」のような質問は予約ごとに
+    // 聞き直す前提なので、残すと2件目に前回の回答が黙って付いてくる。
+    setAnswers({});
+    setMissingAnswerIds([]);
     // plan is auto-assigned, no need to reset
     setSubmitting(false);
     refetch();

@@ -68,6 +68,15 @@ export const DEFAULT_CLOSE_MINUTES = 21 * 60; // 21:00
 /** 枠を並べる刻み（分）。営業時間とは独立した表示上の粒度。 */
 export const SLOT_STEP_MINUTES = 15;
 
+/**
+ * 1日の終わり（分）。**終業だけに使える特別な値** `"24:00"` に対応する。
+ *
+ * 24時間営業のジムは珍しくないので、終業として「その日いっぱい」を表せる必要がある。
+ * `"23:59"` で代用すると枠の計算に半端な1分が混ざるため、`24:00 = 1440` を正とする。
+ * 開店側には使わない（`"24:00"` に開店する店は無い）。
+ */
+export const DAY_END_MINUTES = 24 * 60;
+
 /** 曜日（JS の `Date.getDay()` と同じ。0=日曜 … 6=土曜）。 */
 export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
@@ -97,7 +106,11 @@ export interface OperatingHours {
  */
 export const parseTimeToMinutes = (t?: string | null): number | null => {
   if (!t) return null;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(t.trim());
+  const trimmed = t.trim();
+  // 🔴 "24:00" だけは特別扱い（終業＝その日いっぱい。24時間営業のため）。
+  //    "24:30" や "25:00" は下の h > 23 で従来どおり弾く。
+  if (trimmed === "24:00") return DAY_END_MINUTES;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
   if (!m) return null;
   const h = Number(m[1]);
   const min = Number(m[2]);
@@ -262,6 +275,13 @@ export const businessGridMinutes = (
 /**
  * ブロック枠の**終了**時刻を並べる（開始より後、終業まで）。
  * 終業ちょうどで終われる。
+ *
+ * 🔴 **ただし 24:00 は出さない（`24:00 − 刻み` で打ち切る）。**
+ * ブロック枠は `blocked_slots.end_blocked_date` に
+ * `` `${日付}T${時刻}:00+09:00` `` の形で保存される。`"24:00"` を入れると
+ * **翌日の 00:00 として保存され、読み戻したときに `endTime` が `"00:00"` になる**。
+ * すると重なり判定（`開始 < 終了`）が成立せず、**そのブロックが何も塞がなくなる**。
+ * 24時間営業の店でも、最後の1刻みは別の手段（営業時間の設定）で塞ぐこと。
  */
 export const blockEndMinutes = (
   hours: OperatingHours | null | undefined,
@@ -271,8 +291,9 @@ export const blockEndMinutes = (
 ): number[] => {
   const day = resolveDayBusinessMinutes(hours, weekday);
   if (!day) return [];
+  const last = Math.min(day.close, DAY_END_MINUTES - step);
   const out: number[] = [];
-  for (let m = startMinutes + step; m <= day.close; m += step) out.push(m);
+  for (let m = startMinutes + step; m <= last; m += step) out.push(m);
   return out;
 };
 

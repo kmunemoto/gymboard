@@ -1325,39 +1325,6 @@ export type Database = {
         }
         Relationships: []
       }
-      message_templates: {
-        Row: {
-          body: string
-          created_at: string
-          created_by: string | null
-          id: string
-          sort_order: number
-          tenant_id: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          body: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          sort_order?: number
-          tenant_id: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          sort_order?: number
-          tenant_id?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       message_reactions: {
         Row: {
           created_at: string
@@ -1399,6 +1366,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      message_templates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          sort_order: number
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sort_order?: number
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sort_order?: number
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -1646,7 +1646,15 @@ export type Database = {
           tenant_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "operator_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_skills: {
         Row: {
@@ -3825,6 +3833,7 @@ export type Database = {
         Returns: boolean
       }
       delete_my_account: { Args: never; Returns: undefined }
+      delete_my_gym: { Args: never; Returns: undefined }
       distribute_raid_rewards: {
         Args: { p_raid_boss_id: string }
         Returns: Json
@@ -4056,8 +4065,10 @@ export type Database = {
         Args: { p_stage_key: string; p_user_id: string }
         Returns: Json
       }
-      transfer_gym_ownership: { Args: { _to_user_id: string }; Returns: undefined }
-      delete_my_gym: { Args: Record<PropertyKey, never>; Returns: undefined }
+      transfer_gym_ownership: {
+        Args: { _to_user_id: string }
+        Returns: undefined
+      }
       unsend_message: { Args: { _message_id: string }; Returns: string }
       update_event_progress: { Args: { _user_id: string }; Returns: Json }
       update_event_progress_unchecked: {

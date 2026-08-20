@@ -30,8 +30,10 @@ const hourOption = (baseHour: number, i: number) => {
   const totalMin = baseHour * 60 + i * 30;
   return `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
 };
-const START_HOURS = Array.from({ length: 11 }, (_, i) => hourOption(7, i));
-const END_HOURS = Array.from({ length: 13 }, (_, i) => hourOption(17, i));
+// 開店・閉店とも1日の全域から選べる（30分刻み）。設定画面と同じ範囲にすること。
+// 開店 00:00〜23:30 / 閉店 00:30〜24:00（24:00 は「その日いっぱい」＝24時間営業）。
+const START_HOURS = Array.from({ length: 48 }, (_, i) => hourOption(0, i));
+const END_HOURS = Array.from({ length: 48 }, (_, i) => hourOption(0, i + 1));
 const SLOT_OPTIONS = [30, 45, 60, 90, 120];
 // 同時に受けられる予約数（tenants.booking_capacity）。
 // 既定1のまま放置されると「2人同時に見ているのに満枠と出る」ので、開店時に必ず聞く。

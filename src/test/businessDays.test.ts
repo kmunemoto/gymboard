@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
+  DAY_END_MINUTES,
   DEFAULT_CLOSE_MINUTES,
   DEFAULT_OPEN_MINUTES,
   blockEndMinutes,
@@ -12,6 +13,8 @@ import {
   hasPerDayHours,
   isClosedDate,
   isClosedWeekday,
+  minutesToTime,
+  parseTimeToMinutes,
   resolveBusinessMinutes,
   resolveDayBusinessMinutes,
   weekdayOfDateKey,
@@ -162,6 +165,74 @@ describe("曜日別の営業時間と定休日", () => {
     // 壊れた日付では閉めない（カレンダーが全部グレーアウトするより安全）
     expect(isClosedDate(hours, "あ")).toBe(false);
     expect(isClosedDate(hours, null)).toBe(false);
+  });
+});
+
+describe("🔴 24時間営業と、1日の全域から選べる営業時間（2026-08-20）", () => {
+  // 「選べる時間の範囲が狭い」と実店舗から指摘されて広げた。
+  // 早朝のパーソナル・深夜営業・24時間営業はどれも珍しくない。
+  const h24 = { start: "00:00", end: "24:00" };
+
+  it('終業の "24:00" は「その日いっぱい」として解釈する', () => {
+    expect(DAY_END_MINUTES).toBe(1440);
+    expect(parseTimeToMinutes("24:00")).toBe(1440);
+    expect(resolveBusinessMinutes(h24)).toEqual({ open: 0, close: 1440 });
+    // 往復できること（envelopeFromDays が "24:00" を書き戻せる）
+    expect(minutesToTime(1440)).toBe("24:00");
+  });
+
+  it('"24:00" 以外の 24時台・25時台は今までどおり無効', () => {
+    // ここを緩めると "24:30" のような値が営業時間に入り込む。
+    for (const bad of ["24:01", "24:30", "25:00", "24:60", "240:0"]) {
+      expect(parseTimeToMinutes(bad), `${bad} が通った`).toBeNull();
+    }
+  });
+
+  it("24時間営業でも枠が正しく並ぶ", () => {
+    const slots = bookingSlotMinutes(h24, 60);
+    expect(slots[0]).toBe(0); // 00:00 から
+    expect(slots[slots.length - 1]).toBe(23 * 60); // 23:00 開始で 24:00 終わり
+    const grid = businessGridMinutes(h24);
+    expect(grid[grid.length - 1]).toBe(1440 - 15); // 23:45
+  });
+
+  it("早朝・深夜の営業時間が既定値に落ちない", () => {
+    // 以前は選択肢が 07:00〜12:00 / 17:00〜23:00 しか無かった。
+    expect(resolveBusinessMinutes({ start: "05:30", end: "09:00" })).toEqual({ open: 330, close: 540 });
+    expect(resolveBusinessMinutes({ start: "13:00", end: "23:30" })).toEqual({ open: 780, close: 1410 });
+  });
+
+  it("🔴 ブロック枠の終了に 24:00 は出さない", () => {
+    // blocked_slots は `${日付}T${時刻}:00+09:00` で保存する。"24:00" は
+    // **翌日の 00:00 として保存され、読み戻すと endTime が "00:00" になる**ため、
+    // 重なり判定（開始 < 終了）が成立せず、そのブロックが何も塞がなくなる。
+    const ends = blockEndMinutes(h24, 22 * 60);
+    expect(ends).not.toContain(1440);
+    expect(ends[ends.length - 1]).toBe(1440 - 15); // 23:45
+    // 通常の店（21:00 閉店）は終業ちょうどまで出る（従来どおり）
+    const normal = blockEndMinutes({ start: "10:00", end: "21:00" }, 10 * 60);
+    expect(normal[normal.length - 1]).toBe(21 * 60);
+  });
+
+  it("設定画面と初回設定が1日の全域から選べる", () => {
+    for (const f of ["src/components/trainer/TrainerGymSettings.tsx", "src/pages/Onboarding.tsx"]) {
+      const src = readFileSync(f, "utf8");
+      // 開店 48個（00:00〜23:30）／閉店 48個（00:30〜24:00）
+      expect(src, `${f} の開店の選択肢が狭いままです`).toMatch(
+        /(BUSINESS_)?START_HOURS = Array\.from\(\{ length: 48 \}, \(_, i\) => hourOption\(0, i\)\)/,
+      );
+      expect(src, `${f} の閉店の選択肢が狭いままです`).toMatch(
+        /(BUSINESS_)?END_HOURS = Array\.from\(\{ length: 48 \}, \(_, i\) => hourOption\(0, i \+ 1\)\)/,
+      );
+      // 以前の狭い範囲（7時起点 / 17時起点）が戻っていないこと
+      expect(src, `${f} に狭い選択肢が戻っています`).not.toMatch(/hourOption\(7, i\)|hourOption\(17, i\)/);
+    }
+  });
+
+  it("曜日別も同じ選択肢を使っている（片方だけ広げない）", () => {
+    const src = readFileSync("src/components/trainer/TrainerGymSettings.tsx", "utf8");
+    expect(src).toMatch(/const DAY_START_OPTIONS = BUSINESS_START_HOURS;/);
+    expect(src).toMatch(/const DAY_END_OPTIONS = BUSINESS_END_HOURS;/);
   });
 });
 

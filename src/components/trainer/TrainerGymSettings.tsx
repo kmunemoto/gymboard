@@ -58,17 +58,29 @@ const hourOption = (baseHour: number, i: number) => {
   const totalMin = baseHour * 60 + i * 30;
   return `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
 };
-const BUSINESS_START_HOURS = Array.from({ length: 11 }, (_, i) => hourOption(7, i)); // 07:00〜12:00
-const BUSINESS_END_HOURS = Array.from({ length: 13 }, (_, i) => hourOption(17, i)); // 17:00〜23:00
+// 🔴 開店・閉店とも**1日の全域**から選べる（30分刻み）。
+//
+// 2026-08-20 まで開店 07:00〜12:00 / 閉店 17:00〜23:00 に絞っていたが、
+// 「選べる時間の範囲が狭い」と実店舗から指摘された。早朝のパーソナル、
+// 深夜まで開ける店、24時間営業のジムはどれも珍しくないので、絞る理由が無い。
+//
+//   開店 … 00:00〜23:30（48個）
+//   閉店 … 00:30〜24:00（48個）。**最後の 24:00 は「その日いっぱい」**で、
+//          24時間営業（00:00〜24:00）を表せるようにするためにある。
+//
+// 「終了は開始より後」の検査は残してある（深夜またぎの営業には未対応）。
+const BUSINESS_START_HOURS = Array.from({ length: 48 }, (_, i) => hourOption(0, i));
+const BUSINESS_END_HOURS = Array.from({ length: 48 }, (_, i) => hourOption(0, i + 1));
 const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
 // 予約と予約の間に必ず空ける時間（分）。15分刻み。
 const BUSINESS_BUFFER_OPTIONS = [0, 15, 30, 45, 60];
 // 同じ時間帯に受けられる予約の数（ベッド数・施術者数など）。1＝従来どおり同時1件のみ。
 const BUSINESS_CAPACITY_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10];
-// 曜日別の営業時間は 30分刻みで、開店・閉店とも1日の全域から選べるようにする
-// （全曜日共通のほうは 07:00-12:00 / 17:00-23:00 に絞ってあるが、曜日別を使う店は
-//  「日曜だけ午前で終わる」のような設定をしたいので、絞ると足りなくなる）。
-const DAY_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => hourOption(0, i));
+// 曜日別も全曜日共通と同じ選択肢を使う（開店 00:00〜23:30 / 閉店 00:30〜24:00）。
+// 別々の配列にしていると、片方だけ広げたときに「共通では選べるのに曜日別では選べない」
+// というズレが静かに入る。
+const DAY_START_OPTIONS = BUSINESS_START_HOURS;
+const DAY_END_OPTIONS = BUSINESS_END_HOURS;
 // 週の表示順（月曜始まり。日本のビジネス慣習に合わせる）。値は JS の getDay() と同じ。
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 
@@ -884,7 +896,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                           >
                             <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {DAY_TIME_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                              {DAY_START_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           <span className="text-xs text-muted-foreground shrink-0">–</span>
@@ -894,7 +906,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                           >
                             <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {DAY_TIME_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                              {DAY_END_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>

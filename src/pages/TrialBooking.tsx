@@ -309,6 +309,9 @@ const TrialBooking = () => {
       rawEndTime: endTime,
     });
     setCompleted(true);
+    // 回答は完了画面に移る前に消す（同じ端末で続けて予約されたときに持ち越さない）。
+    setAnswers({});
+    setMissingAnswerIds([]);
     setSubmitting(false);
   };
 

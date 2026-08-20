@@ -188,7 +188,12 @@ describe("設定が公開ページまで届く", () => {
   it("types.ts と公開ページの型が揃っている", () => {
     const types = readFileSync("src/integrations/supabase/types.ts", "utf8");
     const block = types.slice(types.indexOf("get_tenant_public: {"), types.indexOf("get_trainer_ids: {"));
-    expect(block).toMatch(/booking_window_days: number \| null/);
+    // ⚠️ 列の**有無**だけを見る。`| null` を書くかどうかは types.ts の**生成器の都合**で、
+    //    RETURNS TABLE の列に生成器は nullability を付けない（既存の address / trial_price_yen も
+    //    同じく非 null になっている）。手で書いた形を固定すると、Lovable が本番DBから
+    //    再生成した瞬間に落ちる（2026-08-20 に実際に落ちた）。
+    //    実際の NULL 可能性は公開ページ側の PublicTenant が `| null` で受けている。
+    expect(block).toMatch(/booking_window_days: number/);
     for (const f of ["src/pages/TrialBooking.tsx", "src/pages/DropInBooking.tsx"]) {
       expect(readFileSync(f, "utf8"), `${f} の PublicTenant に列がありません`).toMatch(
         /booking_window_days: number \| null;/,

@@ -294,6 +294,9 @@ const DropInBooking = () => {
       rawEndTime: endTime,
     });
     setCompleted(true);
+    // 回答は持ち越さない（CustomerBooking / TrialBooking と同じ）。
+    setAnswers({});
+    setMissingAnswerIds([]);
     setSubmitting(false);
   };
 

@@ -148,6 +148,22 @@ isBeyondBookingWindow(dateKey, tenant?.booking_window_days ?? null, { days: LEGA
 変異検証は 2026-08-20 に 11件（businessDays 6 / bookingWindow 5）実施し、
 **すべて赤になることを確認**した。詳細は各テストファイル冒頭のコメント。
 
+## ⚠️ types.ts のテストで `| null` を固定しない（2026-08-20 に踏んだ）
+
+`bookingWindow.test.ts` に
+
+```ts
+expect(block).toMatch(/booking_window_days: number \| null/);
+```
+
+と書いたら、**Lovable が本番DBから types.ts を再生成した直後に CI が落ちた**。
+生成器は `RETURNS TABLE` の列に nullability を付けない
+（既存の `address: string` / `trial_price_yen: number` も同じく非 null）。
+手で書いた形を固定すると、再生成のたびに落ちる。
+
+**列の有無だけを見ること。** 実際の NULL 可能性は公開ページ側の
+`PublicTenant` が `| null` で受けているので、そちらで守られている。
+
 ## 本番適用（2026-08-20）
 
 適用済み。3段構えで検証:

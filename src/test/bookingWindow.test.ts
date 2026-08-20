@@ -141,6 +141,19 @@ describe("🔴 画面がこの関数を使っている（直書きが戻って�
     }
   });
 
+  it("🔴 店側の代理予約には受付期間をかけていない（意図的）", () => {
+    // 「何日先まで受け付けるか」はお客様に向けた制限であって、店が自分で入れる
+    // 予約の制限ではない（電話で3ヶ月先を押さえたい、はあり得る）。
+    // ここが将来「効かせ忘れ」と誤解されて足されると、店の運用が黙って狭まる。
+    const src = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
+    expect(src, "代理予約に受付期間の制限が入りました。意図的に外してあります").not.toMatch(
+      /isBeyondBookingWindow\(/,
+    );
+    // ただし定休日とシフトは塞ぐ（実際に営業していない・出勤していないため）
+    expect(src).toMatch(/isClosedDate\(tenant\?\.operating_hours,/);
+    expect(src).toMatch(/staffWorksOnWeekday\(/);
+  });
+
   it("走査対象が実在する（空振りしていない）", () => {
     for (const f of [
       "src/components/customer/CustomerBooking.tsx",

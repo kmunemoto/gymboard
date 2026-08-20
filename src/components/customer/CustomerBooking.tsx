@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound } from "lucide-react";
+import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound, ClipboardList } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMyBookings, createBooking, createRecurringBookings, cancelBooking, rescheduleBooking, BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
-import { format, addMonths, startOfDay } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
 import { trialLabel } from "@/lib/dummyData";
@@ -30,9 +30,23 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
-import { bookingSlotMinutes, minutesToTime, resolveBusinessMinutes } from "@/lib/businessHours";
+import { isClosedDate, minutesToTime, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
+import { bookingWindowEnd, isBeyondBookingWindow, LEGACY_MEMBER_WINDOW_MONTHS } from "@/lib/bookingWindow";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
+import { useStaffSchedules } from "@/hooks/useStaffSchedules";
+import { useBookingQuestions } from "@/hooks/useBookingQuestions";
+import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
+import {
+  buildAnswerSnapshot,
+  missingRequiredQuestions,
+  questionsForSurface,
+} from "@/lib/bookingQuestions";
+import {
+  isStaffOffShiftError,
+  staffBookingSlotMinutes,
+  staffWorksOnWeekday,
+} from "@/lib/staffSchedule";
 import { canSelectStaff, isStaffConflictError } from "@/lib/tenantStaff";
 import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
@@ -49,6 +63,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 担当スタッフ。2人以上いるジムでだけ選択UIを出す（一人ジムには無用な一手になる）。
   const { staff } = useTenantStaff();
   const staffSelectable = canSelectStaff(staff);
+  // スタッフのシフト。読めなければ空＝「全員シフト未設定」＝営業時間どおり（従来の挙動）。
+  const { schedules: staffSchedules } = useStaffSchedules();
+  // 予約時のカスタム質問（事前アンケート）。
+  const { questions: allQuestions } = useBookingQuestions();
 
   // Build plan name → label / max sessions maps from tenant_plans
   const planLabelMap = useMemo(() => {
@@ -65,8 +83,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 「このお客様の予約が占有する時間」はプランごとの設定を解決した1つの値でよい
   // （プランに未設定ならジムの既定値を継承。resolvePlanSlotMinutes 参照）。
   const slotMinutes = resolvePlanSlotMinutes(profile?.plan, tenantPlans, tenant?.slot_duration_minutes ?? 60);
-  // 「当日はもう1枠も取れない日か」の判定に使う、最後に予約できる開始時刻。
-  const lastBookableStart = resolveBusinessMinutes(businessHours).close - slotMinutes;
+  // 何日先まで受け付けるか。null=未設定なら従来どおり「1ヶ月先まで」。
+  const bookingWindowDays = tenant?.booking_window_days ?? null;
+  const maxBookableDate = bookingWindowEnd(bookingWindowDays, { months: LEGACY_MEMBER_WINDOW_MONTHS });
+  // 会員の予約で聞く質問だけ（体験専用の質問は出さない）。
+  const memberQuestions = useMemo(() => questionsForSurface(allQuestions, "member"), [allQuestions]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [missingAnswerIds, setMissingAnswerIds] = useState<string[]>([]);
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -216,14 +239,27 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // 過去日（今日より前）か。カレンダーで選択不可にする対象。
   const isPastDay = (date: string): boolean => !!date && date < getJSTToday();
+  // その日にまだ取れる枠があるかの判定に使う「最後に予約できる開始時刻」。
+  // 曜日別の営業時間があるので**日付ごとに変わる**（定休日は取れる枠が無い＝0扱い）。
+  const lastBookableStartOn = (date: string): number => {
+    const day = resolveDayBusinessMinutes(businessHours, weekdayOfDateKey(date));
+    if (!day) return 0;
+    return day.close - slotMinutes;
+  };
+
   // 今日(JST)で、かつ締切を過ぎていて1枠も取れない日か。「空き状況の閲覧のみ」の案内を出す対象。
   // hours_before の店では当日でも取れる枠が残るので、その場合は案内を出さない。
   const isViewOnlyDay = (date: string): boolean =>
-    !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), lastBookableStart);
+    !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), lastBookableStartOn(date));
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
-    for (const totalMin of bookingSlotMinutes(businessHours, slotMinutes)) {
+    // 曜日別の営業時間・定休日、さらに指名した担当のシフトまで反映する。
+    // 指名なし／シフト未設定なら、結果は店の営業時間そのもの（従来どおり）。
+    const weekday = weekdayOfDateKey(dateKey);
+    for (const totalMin of staffBookingSlotMinutes(
+      businessHours, slotMinutes, weekday, staffSchedules, selectedStaffId,
+    )) {
       const time = minutesToTime(totalMin);
       const blocked = isSlotBlocked(dateKey, time);
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
@@ -264,19 +300,30 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       return;
     }
 
+    // 事前アンケートの必須項目。空のまま送らせない（DB は必須を強制しないので、
+    // ここが唯一の関門。店が「必須」にした意味を守る）。
+    const missing = missingRequiredQuestions(memberQuestions, answers);
+    if (missing.length > 0) {
+      setMissingAnswerIds(missing.map((q) => q.id));
+      toast.error(t("bookingQuestions.errorRequired", { label: missing[0].label }));
+      return;
+    }
+    setMissingAnswerIds([]);
+    const answerSnapshot = buildAnswerSnapshot(memberQuestions, answers);
+
     setSubmitting(true);
 
     // 定期予約: repeatWeeks > 1 なら毎週同じ曜日・時間でまとめて作成。
     // 満枠の週はスキップされる（結果はトーストで通知）。
     // 念のため、予約可能期間（1ヶ月先まで）を超える回数が紛れ込んでいないか送信直前にも
     // 絞り込む（UI側の自動絞り込みと合わせた二重防御。日付選択後に日をまたいだ等のケース向け）。
-    const effectiveRepeatWeeks = Math.min(repeatWeeks, maxRepeatWeeksFor(selectedDate));
+    const effectiveRepeatWeeks = Math.min(repeatWeeks, maxRepeatWeeksFor(selectedDate, maxBookableDate));
     // 作成できた予約は全件保持する。メールは1件ずつ送るため、ここで取りこぼすと
     // 定期予約の2回目以降に受付メールが届かなくなる（実際にそうなっていた）。
     let createdBookings: { id: string; date: string }[];
     if (effectiveRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
-        user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks, false, selectedStaffId,
+        user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks, false, selectedStaffId, answerSnapshot,
       );
       if (booked.length === 0) {
         toast.error(t("booking.errorBookingFailed"));
@@ -293,11 +340,17 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       }
     } else {
       const { data, error } = await createBooking(
-        user.id, dateKey, slot.time, selectedPlan, false, { staffUserId: selectedStaffId },
+        user.id, dateKey, slot.time, selectedPlan, false,
+        { staffUserId: selectedStaffId, customAnswers: answerSnapshot },
       );
       if (error) {
         // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
-        toast.error(isStaffConflictError(error) ? t("staff.errorStaffBusy") : t("booking.errorBookingFailed"));
+        // シフト外（GB002）は「別の時間」ではなく「別の担当か別の曜日」なので文言を分ける。
+        toast.error(
+          isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
+            : isStaffConflictError(error) ? t("staff.errorStaffBusy")
+            : t("booking.errorBookingFailed"),
+        );
         setSubmitting(false);
         return;
       }
@@ -343,7 +396,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
     // Fire-and-forget notification email to trainer + confirmation to customer.
     // 定期予約では作成できた全件を渡す（1件目だけ渡すと2回目以降にメールが届かない）。
-    sendBookingNotifications(createdBookings, profile?.display_name || t("booking.customerFallback"), slot.time, endTime, selectedPlan, user.id, user.email);
+    sendBookingNotifications(createdBookings, profile?.display_name || t("booking.customerFallback"), slot.time, endTime, selectedPlan, user.id, user.email, tenant?.booking_email_note ?? null);
 
     // Fire-and-forget LINE message to customer
     // Gated by feature flag — customer LINE booking notifications are currently disabled
@@ -714,7 +767,16 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     <button
                       key={s.user_id}
                       type="button"
-                      onClick={() => { setSelectedStaffId(s.user_id); setSelectedSlot(null); }}
+                      onClick={() => {
+                        setSelectedStaffId(s.user_id);
+                        setSelectedSlot(null);
+                        // その担当が選択中の日に出勤していないなら、日付ごと外す。
+                        // 残しておくと「日付は選ばれているのに枠が0件」になり、
+                        // 空きが無いのか担当が休みなのか区別できない。
+                        if (dateKey && !staffWorksOnWeekday(businessHours, weekdayOfDateKey(dateKey), staffSchedules, s.user_id)) {
+                          setSelectedDate(undefined);
+                        }
+                      }}
                       aria-pressed={selectedStaffId === s.user_id}
                       className={`px-3 py-2 rounded-lg text-xs font-bold transition-all min-h-[44px] ${
                         selectedStaffId === s.user_id
@@ -747,9 +809,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                           .join("、");
                         toast.info(t("booking.alreadyBookedThisDay", { times }));
                       }
-                      // 定期予約の回数が、新しく選んだ日の予約可能期間（1ヶ月先まで）に
-                      // 収まらなくなった場合は、選べる上限まで自動的に絞り込む。
-                      const cap = maxRepeatWeeksFor(d);
+                      // 定期予約の回数が、新しく選んだ日の予約可能期間（店の設定。
+                      // 未設定なら従来どおり1ヶ月先まで）に収まらなくなった場合は、
+                      // 選べる上限まで自動的に絞り込む。
+                      const cap = maxRepeatWeeksFor(d, maxBookableDate);
                       if (repeatWeeks > cap) setRepeatWeeks(cap);
                     }
                     setSelectedDate(d);
@@ -762,14 +825,21 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   }}
                   locale={ja}
                   fromDate={startOfDay(getJSTNow())}
-                  toDate={addMonths(startOfDay(getJSTNow()), 1)}
+                  toDate={maxBookableDate}
                   disabled={(date) => {
                     const yyyyMMdd = format(date, "yyyy-MM-dd");
                     // 当日は選択可能にする。締切の判定は枠ごとに isSlotPastCutoff が行う
                     // （prev_day の店なら全枠が不可＝従来どおり「閲覧のみ」、
                     //  hours_before の店なら締切前の枠だけ予約できる）ので、
-                    // ここで塞ぐのは過去日だけでよい。
-                    return isPastDay(yyyyMMdd);
+                    // ここで塞ぐのは過去日と、店が閉まっている日だけでよい。
+                    if (isPastDay(yyyyMMdd)) return true;
+                    // 定休日。toDate があっても、その間の定休日は個別に塞ぐ必要がある。
+                    if (isClosedDate(businessHours, yyyyMMdd)) return true;
+                    // 指名した担当が出勤していない曜日。指名なしなら常に false。
+                    if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
+                      return true;
+                    }
+                    return isBeyondBookingWindow(yyyyMMdd, bookingWindowDays, { months: LEGACY_MEMBER_WINDOW_MONTHS });
                   }}
                   className="pointer-events-auto"
                   components={{
@@ -951,10 +1021,29 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                       </span>
                       （{t("booking.slotMinutes", { count: slotMinutes })}）
                     </p>
+                    {/* 事前アンケート（店が設定した質問）。1つも無ければ何も出ない。
+                        予約変更モードでは聞かない（元の予約の回答を引き継ぐため）。 */}
+                    {!rescheduleTarget && memberQuestions.length > 0 && (
+                      <div className="mb-3 text-left rounded-xl bg-background/60 p-3">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-2 flex items-center gap-1">
+                          <ClipboardList className="w-3 h-3" />
+                          {t("bookingQuestions.sectionTitle")}
+                        </p>
+                        <BookingQuestionFields
+                          questions={memberQuestions}
+                          values={answers}
+                          onChange={(id, value) => setAnswers((prev) => ({ ...prev, [id]: value }))}
+                          missingIds={missingAnswerIds}
+                          requiredLabel={t("bookingQuestions.required")}
+                          checkedValue={t("bookingQuestions.checked")}
+                          disabled={submitting}
+                        />
+                      </div>
+                    )}
                     {/* 定期予約: 毎週同じ曜日・時間でまとめて予約（変更モードでは非表示） */}
                     {!rescheduleTarget && selectedDate && (() => {
                       // 選択中の日から、予約可能期間（1ヶ月先まで）に収まる回数の上限
-                      const repeatCap = maxRepeatWeeksFor(selectedDate);
+                      const repeatCap = maxRepeatWeeksFor(selectedDate, maxBookableDate);
                       return (
                       <div className="mb-3 text-left">
                         <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">

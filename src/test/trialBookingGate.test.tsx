@@ -99,6 +99,11 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
     vi.doMock("@/components/trainer/GymOwnershipActions", () => stub("gym-ownership"));
     // 同上（operator_feedback の .order/.limit がモックに無いと effect で投げる）
     vi.doMock("@/components/trainer/OperatorFeedback", () => stub("operator-feedback"));
+    // シフト（useTenantStaff の .in）とアンケート（booking_questions の .order）も
+    // マウント時に Supabase を叩く。stub しないと effect 内の TypeError が
+    //「Tests は全部 passed、Errors N件」→ exit 1 になる。
+    vi.doMock("@/components/trainer/TrainerStaffSchedule", () => stub("staff-schedule"));
+    vi.doMock("@/components/trainer/TrainerBookingQuestions", () => stub("booking-questions"));
     vi.doMock("@/components/LanguageSwitcher", () => stub("language-switcher"));
     vi.doMock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
     vi.doMock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

@@ -4,6 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import { trialPriceLine } from '../trial-pricing.ts'
 import type { TemplateEntry } from './registry.ts'
+import { GymNoteSection } from './gym-note.tsx'
 
 // 以前はジム名・住所・連絡先が Salute御所南 で固定されていたため、他ジムのお客様に
 // 送ると「別のジムの住所」が書かれたメールになってしまい、送信側(send-trial-reminders)を
@@ -73,6 +74,8 @@ interface Props {
    *    料金と設備は無関係なので分けてある。
    */
   showAmenities?: boolean
+  /** リマインドメールに足す、店からのご案内（tenants.reminder_email_note）。空なら何も出さない。 */
+  gymNote?: string | null
 }
 
 const TrialBookingReminderEmail = ({
@@ -86,6 +89,7 @@ const TrialBookingReminderEmail = ({
   gymWebsiteUrl = '',
   trialPriceYen = null,
   showAmenities = false,
+  gymNote = null,
 }: Props) => {
   const addressLines = splitAddressLines(gymAddress)
   // 呼称は全ジム共通。**料金を含めないこと**（金額はジムごとに違う）。
@@ -166,6 +170,7 @@ const TrialBookingReminderEmail = ({
 
           <Hr style={hr} />
           <SafeText style={text}>お会いできることを楽しみにしております！</SafeText>
+          <GymNoteSection note={gymNote} />
           <Hr style={hr} />
           <SafeText style={footer}>{gymName}</SafeText>
           {addressLines.length > 0 && <AddressBlock style={footer} lines={addressLines} />}
@@ -184,6 +189,7 @@ export const template = {
     '【明日のご予約】体験トレーニングのリマインド',
   displayName: '体験予約 前日リマインド',
   previewData: {
+    gymNote: 'お飲み物はこちらでご用意しています。',
     guestName: '山田 太郎',
     bookingDate: '5月18日（月）',
     bookingTime: '15:00',

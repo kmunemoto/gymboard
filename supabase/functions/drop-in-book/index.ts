@@ -61,7 +61,37 @@ type Payload = {
   guest_name?: unknown;
   guest_contact?: unknown;
   booking_date?: unknown;
+  custom_answers?: unknown;
 };
+
+/**
+ * 予約時のカスタム質問（booking_questions）への回答スナップショット。
+ *
+ * 🔴 **クライアントから来た値をそのまま信用して保存しない。**
+ * 公開ページ（未ログイン）から届くので、形・件数・長さをここで削る。
+ * DB 側にも CHECK があるが、そこで落ちると予約自体が失敗する。
+ * 「回答が壊れているせいで予約が取れない」のは筋が悪いので、**黙って捨てる**。
+ *
+ * 制限値は src/lib/bookingQuestions.ts と揃えてある
+ * （ANSWER_MAX_LENGTH=500 / 1予約あたり10件）。
+ */
+function sanitizeCustomAnswers(raw: unknown): { question_id: string; label: string; value: string }[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: { question_id: string; label: string; value: string }[] = [];
+  for (const item of raw.slice(0, 10)) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const label = typeof rec.label === "string" ? rec.label.trim().slice(0, 120) : "";
+    const value = typeof rec.value === "string" ? rec.value.trim().slice(0, 500) : "";
+    if (!label || !value) continue;
+    out.push({
+      question_id: typeof rec.question_id === "string" ? rec.question_id.slice(0, 64) : "",
+      label,
+      value,
+    });
+  }
+  return out.length > 0 ? out : null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -82,6 +112,7 @@ Deno.serve(async (req) => {
     const guestName = String(body.guest_name ?? "").trim();
     const guestContact = String(body.guest_contact ?? "").trim();
     const bookingDateRaw = String(body.booking_date ?? "").trim();
+    const customAnswers = sanitizeCustomAnswers(body.custom_answers);
 
     if (!UUID_RE.test(tenantId)) return reject("validation", "This booking link is invalid.");
     if (!guestName || guestName.length > 100) return reject("validation", "Please enter your name.");
@@ -129,7 +160,7 @@ Deno.serve(async (req) => {
     // ===== テナント確認 =====
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes")
+      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, booking_email_note")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -173,6 +204,7 @@ Deno.serve(async (req) => {
         guest_name: guestName,
         guest_contact: guestContact,
         booking_date: bookingDateRaw,
+        ...(customAnswers ? { custom_answers: customAnswers } : {}),
         booking_type: BOOKING_TYPE_LABEL,
         booking_kind: "drop_in",
       })
@@ -264,6 +296,8 @@ Deno.serve(async (req) => {
           gymAddress,
           gymContactEmail,
           gymWebsiteUrl,
+          // 確認メールに足す、店からのご案内。空/未設定ならブロックごと出さない。
+          gymNote: ((tenant.booking_email_note as string | null | undefined) ?? "").trim() || null,
         },
       }).then((ok) => { notify.customer_email = ok; }),
     );

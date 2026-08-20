@@ -1,6 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
-import { bookingSlotMinutes, minutesToTime, resolveBusinessMinutes } from "@/lib/businessHours";
+import { bookingSlotMinutes, isClosedDate, minutesToTime, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
+import { isBeyondBookingWindow, LEGACY_GUEST_WINDOW_DAYS } from "@/lib/bookingWindow";
+import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
+import {
+  buildAnswerSnapshot,
+  missingRequiredQuestions,
+  type BookingQuestion,
+} from "@/lib/bookingQuestions";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Clock, Check, User, CalendarPlus, Sparkles, JapaneseYen } from "lucide-react";
@@ -53,16 +60,14 @@ interface PublicTenant {
   booking_cutoff_type: string | null;
   /** hours_before のときの時間数。null/未設定は 24。 */
   booking_cutoff_hours: number | null;
+  /** 何日先まで受け付けるか。null/未設定は従来どおり10日先まで。 */
+  booking_window_days: number | null;
 }
 
 // テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
 // 撤去手順は legacyDefaultTenant.ts のコメントを参照。
 const DEFAULT_TENANT_ID = LEGACY_DEFAULT_TENANT_ID;
 
-// 予約可能な最大先日数。先すぎる日程は予約時点の意欲が薄れ、当日キャンセルが
-// 増えやすいため、心理的に近い期間に寄せる（旧: 1ヶ月先まで）。
-// サーバー側 trial-book の MAX_AHEAD_MS と対で管理する値（サーバー側は余裕を持たせた日数）。
-const TRIAL_BOOKING_MAX_DAYS_AHEAD = 10;
 
 const TrialBooking = () => {
   const { t } = useTranslation();
@@ -81,6 +86,11 @@ const TrialBooking = () => {
   const [completed, setCompleted] = useState(false);
   const [completedInfo, setCompletedInfo] = useState<{ date: string; time: string; rawDate: string; rawStartTime: string; rawEndTime: string } | null>(null);
   const [existingBookings, setExistingBookings] = useState<TrialSlotBooking[]>([]);
+  // 店が設定した事前アンケート。未ログインなので RPC 経由で読む
+  // （booking_questions テーブルに anon の口は開けていない）。
+  const [questions, setQuestions] = useState<BookingQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [missingAnswerIds, setMissingAnswerIds] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -93,6 +103,27 @@ const TrialBooking = () => {
       if (error) { console.error("Failed to load tenant:", error); return; }
       const row = Array.isArray(data) ? data[0] : data;
       if (row) setTenant(row as PublicTenant);
+
+      // 事前アンケート。読めなくても予約自体は続けられるようにする
+      // （質問が読めないせいで予約できなくなるほうが実害が大きい）。
+      const { data: qs, error: qErr } = await supabase.rpc("get_tenant_booking_questions", {
+        p_tenant_id: resolveId,
+      });
+      if (qErr || !Array.isArray(qs)) return;
+      setQuestions(
+        qs.map((q) => ({
+          id: String(q.id),
+          label: String(q.label ?? ""),
+          help_text: q.help_text ?? null,
+          input_type: String(q.input_type ?? "text"),
+          options: Array.isArray(q.options) ? (q.options as string[]) : null,
+          required: q.required === true,
+          sort_order: typeof q.sort_order === "number" ? q.sort_order : 0,
+          is_active: true,
+          ask_on_member: false,
+          ask_on_trial: true,
+        })),
+      );
     })();
   }, [tenantId]);
 
@@ -145,7 +176,12 @@ const TrialBooking = () => {
   // ジムごとに変更可能（tenants.slot_duration_minutes）。未ロード時のみ既定60分。
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   // その日にまだ取れる枠があるかの判定に使う、最後の開始時刻（以前は 1260 が直書き）。
-  const lastBookableStart = resolveBusinessMinutes(tenant?.operating_hours).close - sessionMinutes;
+  // 曜日別の営業時間を持てるので**日付ごとに変わる**（定休日は 0＝取れる枠が無い）。
+  const lastBookableStartOn = (date: string): number => {
+    const day = resolveDayBusinessMinutes(tenant?.operating_hours, weekdayOfDateKey(date));
+    if (!day) return 0;
+    return day.close - sessionMinutes;
+  };
   // 同時に受けられる予約数。未ロード時は安全側の1。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
@@ -182,7 +218,7 @@ const TrialBooking = () => {
     // 日付選択後に日付が変わった場合の保険として枠側でも判定する。
     // 営業時間から作る（以前は 600→1260＝10:00-21:00 が直書きされていて、
     // ジムが何時まで営業していても 21:00 で止まっていた）。
-    for (const totalMin of bookingSlotMinutes(tenant?.operating_hours, sessionMinutes)) {
+    for (const totalMin of bookingSlotMinutes(tenant?.operating_hours, sessionMinutes, weekdayOfDateKey(dateKey))) {
       const time = minutesToTime(totalMin);
       // hours_before は枠の開始時刻が基準なので、枠ごとに判定する
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
@@ -210,6 +246,15 @@ const TrialBooking = () => {
     const slot = slots.find((s) => s.id === selectedSlot);
     if (!slot) return;
 
+    // 事前アンケートの必須項目。空のまま送らせない。
+    const missing = missingRequiredQuestions(questions, answers);
+    if (missing.length > 0) {
+      setMissingAnswerIds(missing.map((q) => q.id));
+      toast.error(t("bookingQuestions.errorRequired", { label: missing[0].label }));
+      return;
+    }
+    setMissingAnswerIds([]);
+
     setSubmitting(true);
 
     const bookingDate = `${dateKey}T${slot.time}:00+09:00`;
@@ -231,6 +276,7 @@ const TrialBooking = () => {
           guest_name: guestName.trim(),
           guest_contact: guestEmail.trim(),
           booking_date: bookingDate,
+          custom_answers: buildAnswerSnapshot(questions, answers),
         },
       });
       const result = data as { ok?: boolean; error?: string; code?: string } | null;
@@ -545,10 +591,13 @@ const TrialBooking = () => {
                 disabled={(date) => {
                   const yyyyMMdd = format(date, "yyyy-MM-dd");
                   // 前日まで: 予約日の0:00 JST を過ぎたら（＝当日・過去）選べない
-                  if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), lastBookableStart)) return true;
-                  const maxDate = new Date();
-                  maxDate.setDate(maxDate.getDate() + TRIAL_BOOKING_MAX_DAYS_AHEAD);
-                  return date.getTime() > maxDate.getTime();
+                  if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), lastBookableStartOn(yyyyMMdd))) return true;
+                  // 定休日（曜日別の営業時間で閉めている日）。
+                  if (isClosedDate(tenant?.operating_hours, yyyyMMdd)) return true;
+                  // 何日先まで受けるか。店が未設定なら従来どおり10日先まで。
+                  return isBeyondBookingWindow(
+                    yyyyMMdd, tenant?.booking_window_days ?? null, { days: LEGACY_GUEST_WINDOW_DAYS },
+                  );
                 }}
                 className="pointer-events-auto"
               />
@@ -610,6 +659,22 @@ const TrialBooking = () => {
                     </span>
                     {t("booking.slotMinutes", { count: sessionMinutes })}
                   </p>
+                  {questions.length > 0 && (
+                    <div className="mb-3 text-left rounded-xl bg-background/60 p-3">
+                      <p className="text-[11px] font-bold text-muted-foreground mb-2">
+                        {t("bookingQuestions.sectionTitle")}
+                      </p>
+                      <BookingQuestionFields
+                        questions={questions}
+                        values={answers}
+                        onChange={(id, value) => setAnswers((prev) => ({ ...prev, [id]: value }))}
+                        missingIds={missingAnswerIds}
+                        requiredLabel={t("bookingQuestions.required")}
+                        checkedValue={t("bookingQuestions.checked")}
+                        disabled={submitting}
+                      />
+                    </div>
+                  )}
                   <Button
                     variant="accent"
                     size="lg"

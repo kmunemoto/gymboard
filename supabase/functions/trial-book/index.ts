@@ -86,7 +86,37 @@ type Payload = {
   guest_name?: unknown;
   guest_contact?: unknown;
   booking_date?: unknown;
+  custom_answers?: unknown;
 };
+
+/**
+ * 予約時のカスタム質問（booking_questions）への回答スナップショット。
+ *
+ * 🔴 **クライアントから来た値をそのまま信用して保存しない。**
+ * 公開ページ（未ログイン）から届くので、形・件数・長さをここで削る。
+ * DB 側にも CHECK があるが、そこで落ちると予約自体が失敗する。
+ * 「回答が壊れているせいで予約が取れない」のは筋が悪いので、**黙って捨てる**。
+ *
+ * 制限値は src/lib/bookingQuestions.ts と揃えてある
+ * （ANSWER_MAX_LENGTH=500 / 1予約あたり10件）。
+ */
+function sanitizeCustomAnswers(raw: unknown): { question_id: string; label: string; value: string }[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: { question_id: string; label: string; value: string }[] = [];
+  for (const item of raw.slice(0, 10)) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const label = typeof rec.label === "string" ? rec.label.trim().slice(0, 120) : "";
+    const value = typeof rec.value === "string" ? rec.value.trim().slice(0, 500) : "";
+    if (!label || !value) continue;
+    out.push({
+      question_id: typeof rec.question_id === "string" ? rec.question_id.slice(0, 64) : "",
+      label,
+      value,
+    });
+  }
+  return out.length > 0 ? out : null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -107,6 +137,7 @@ Deno.serve(async (req) => {
     const guestName = String(body.guest_name ?? "").trim();
     const guestContact = String(body.guest_contact ?? "").trim();
     const bookingDateRaw = String(body.booking_date ?? "").trim();
+    const customAnswers = sanitizeCustomAnswers(body.custom_answers);
 
     if (!UUID_RE.test(tenantId)) return reject("validation", "ジムの指定が正しくありません。");
     if (!guestName || guestName.length > 100) return reject("validation", "お名前を入力してください。");
@@ -147,7 +178,7 @@ Deno.serve(async (req) => {
     // (ジムごとに正しい情報を載せる。旧実装は Salute 固定だったため他ジムには送っていなかった)。
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen")
+      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen, booking_email_note")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -161,6 +192,9 @@ Deno.serve(async (req) => {
     // 体験の料金（税込・円）。ジムごとの設定。null は「料金を書かない」で 0 とは別。
     // 列がまだ無い環境（マイグレーション未適用）では undefined になり、料金行は出ない。
     const trialPriceYen = (tenant.trial_price_yen as number | null | undefined) ?? null;
+    // 確認メールに足す、店からのご案内。空/未設定ならメールにブロックごと出さない。
+    // 列がまだ無い環境では undefined になり、同じく何も出ない（安全側）。
+    const gymNote = ((tenant.booking_email_note as string | null | undefined) ?? "").trim() || null;
 
     // ===== 連続予約ガード =====
     // (1) 同一メール 24時間で3件まで (ジム側でキャンセルして取り直すケースは数えない)
@@ -196,6 +230,7 @@ Deno.serve(async (req) => {
         guest_name: guestName,
         guest_contact: guestContact,
         booking_date: bookingDateRaw,
+        ...(customAnswers ? { custom_answers: customAnswers } : {}),
         // booking_type / status は DB デフォルト ('初回無料体験' / '予約済み')。
         // '予約済み' で入れることで send-trial-reminders の前日リマインドも対象になる。
       })
@@ -285,6 +320,7 @@ Deno.serve(async (req) => {
           gymWebsiteUrl,
           // 呼称は全ジム共通「体験トレーニング」。金額だけジムごとに出す。
           trialPriceYen,
+          gymNote,
           // cancelUrl は渡さない。テンプレートは gymContactEmail（＝登録したジムのアカウントの
           // メールアドレス tenants.email）へのメール連絡案内をフォールバック表示する。
         },

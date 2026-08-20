@@ -262,7 +262,25 @@
       "cancelPolicyPlaceholder": "例：預約的變更與取消可隨時透過App進行。當天取消也不收取費用、不扣次數。",
       "cancelPolicyUnset": "未設定（不向會員顯示任何內容）",
       "cancelPolicySaved": "已儲存取消說明",
-      "cancelPolicySaveFailed": "取消說明儲存失敗"
+      "cancelPolicySaveFailed": "取消說明儲存失敗",
+      "businessDaysTitle": "依星期設定不同的營業時間",
+      "businessDaysDesc": "開啟後可依星期分別設定營業時間與公休日。維持關閉則所有星期都使用相同時間。",
+      "businessDaysClosed": "公休日",
+      "businessDaysInvalidRange": "{{day}} 的結束時間必須晚於開始時間",
+      "businessDaysAllClosed": "無法將所有星期都設為公休日",
+      "bookingWindowLabel": "開放預約到幾天後",
+      "bookingWindowDesc": "超過這個範圍的日期，客人在預約畫面上將無法選擇。若未設定則維持原本的方式。",
+      "bookingWindowUnset": "未設定（維持原本的方式）",
+      "bookingWindowDays": "開放至 {{count}} 天後",
+      "emailNoteSection": "郵件的補充說明",
+      "emailNoteDesc": "可在預約確認信與提醒信的下方，加上一段來自店家的說明。日期時間與取消相關的資訊會自動帶入，請填寫其他想傳達的內容。",
+      "bookingEmailNoteLabel": "加在預約確認信的內容",
+      "bookingEmailNotePlaceholder": "例：當天請提前 5 分鐘抵達。停車場位於建築物後方。",
+      "reminderEmailNoteLabel": "加在提醒信的內容",
+      "reminderEmailNotePlaceholder": "例：現場備有飲品，歡迎自由取用。",
+      "emailNoteUnset": "留白則不會在郵件中加上任何內容。",
+      "emailNoteUpdated": "已更新郵件的補充說明",
+      "emailNoteSaveFailed": "郵件補充說明儲存失敗"
     },
     "notification": {
       "title": "通知設定",
@@ -1998,7 +2016,8 @@
     "joinButton": "以員工身分加入",
     "joinFailed": "加入失敗",
     "joinedTitle": "已以員工身分加入「{{name}}」",
-    "joinedNote": "今後可以被指定為預約的負責人。"
+    "joinedNote": "今後可以被指定為預約的負責人。",
+    "errorStaffOffShift": "該教練在這個時段沒有排班。請改選其他教練或其他日期。"
   },
   "hooks": {
     "loginInfoNotFound": "找不到登入資訊",
@@ -2546,5 +2565,50 @@
     "closed": "已關閉健身房",
     "closeFailed": "無法關閉健身房，請再試一次。",
     "closeBlockedMembers": "仍有在籍會員，無法關閉。請先移交老闆，或為在籍會員辦理退會。"
+  },
+  "bookingQuestions": {
+    "sectionTitle": "預約前問卷",
+    "required": "必填",
+    "checked": "是",
+    "errorRequired": "請回答「{{label}}」",
+    "answersTitle": "預約前問卷的回答",
+    "section": "預約時的提問（預約前問卷）",
+    "desc": "可以設定預約時想詢問客人的問題。會員預約與體驗預約可以分別選擇是否詢問。",
+    "empty": "目前還沒有任何問題。請從「新增問題」開始建立。",
+    "addQuestion": "新增問題",
+    "limitReached": "問題最多只能設定 {{count}} 題",
+    "newQuestionLabel": "新問題",
+    "labelField": "問題內容",
+    "helpField": "補充說明",
+    "helpPlaceholder": "例：當天身體狀況若有任何不適，請在此說明",
+    "typeField": "回答方式",
+    "optionsField": "選項",
+    "optionsHint": "請用「、」分隔輸入（例：第一次、有經驗、很久沒運動了）",
+    "requiredToggle": "設為必填",
+    "askOnMemberToggle": "會員預約時詢問",
+    "askOnTrialToggle": "體驗預約時詢問",
+    "activeToggle": "啟用這個問題",
+    "saved": "已儲存問題",
+    "saveFailed": "問題儲存失敗",
+    "deleted": "已刪除問題",
+    "errorEmptyLabel": "請輸入問題內容",
+    "errorNoOptions": "請至少輸入一個選項",
+    "type": {
+      "text": "單行文字",
+      "textarea": "多行文字",
+      "select": "從選項中選擇",
+      "checkbox": "核取方塊"
+    }
+  },
+  "staffSchedule": {
+    "section": "教練班表",
+    "desc": "可依教練設定上班的星期與時段。若一天都沒有設定，則會依照營業時間開放指名。",
+    "staffLabel": "教練",
+    "off": "休息",
+    "unsetHint": "由於尚未設定任何星期，這位教練會依照營業時間開放指名。",
+    "saved": "已儲存班表",
+    "saveFailed": "班表儲存失敗",
+    "clearedToBusinessHours": "已解除班表設定（將依照營業時間開放指名）",
+    "invalidRange": "{{day}} 的結束時間必須晚於開始時間"
   }
 }

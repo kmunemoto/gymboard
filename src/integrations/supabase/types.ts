@@ -338,6 +338,62 @@ export type Database = {
           },
         ]
       }
+      booking_questions: {
+        Row: {
+          ask_on_member: boolean
+          ask_on_trial: boolean
+          created_at: string
+          help_text: string | null
+          id: string
+          input_type: string
+          is_active: boolean
+          label: string
+          options: Json | null
+          required: boolean
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          ask_on_member?: boolean
+          ask_on_trial?: boolean
+          created_at?: string
+          help_text?: string | null
+          id?: string
+          input_type?: string
+          is_active?: boolean
+          label: string
+          options?: Json | null
+          required?: boolean
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          ask_on_member?: boolean
+          ask_on_trial?: boolean
+          created_at?: string
+          help_text?: string | null
+          id?: string
+          input_type?: string
+          is_active?: boolean
+          label?: string
+          options?: Json | null
+          required?: boolean
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_questions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_waitlist: {
         Row: {
           booking_date: string
@@ -370,6 +426,7 @@ export type Database = {
           booking_date: string
           booking_type: string
           created_at: string
+          custom_answers: Json | null
           google_event_id: string | null
           id: string
           source: string | null
@@ -383,6 +440,7 @@ export type Database = {
           booking_date: string
           booking_type?: string
           created_at?: string
+          custom_answers?: Json | null
           google_event_id?: string | null
           id?: string
           source?: string | null
@@ -396,6 +454,7 @@ export type Database = {
           booking_date?: string
           booking_type?: string
           created_at?: string
+          custom_answers?: Json | null
           google_event_id?: string | null
           id?: string
           source?: string | null
@@ -2514,6 +2573,47 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_schedules: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          start_time: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          start_time: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -2709,6 +2809,8 @@ export type Database = {
           booking_capacity_confirmed_at: string | null
           booking_cutoff_hours: number | null
           booking_cutoff_type: string | null
+          booking_email_note: string | null
+          booking_window_days: number | null
           business_type: string
           cancel_policy_body: string | null
           created_at: string
@@ -2731,6 +2833,7 @@ export type Database = {
           owner_user_id: string | null
           phone: string | null
           primary_color: string | null
+          reminder_email_note: string | null
           same_day_cancel_penalty_enabled: boolean
           show_counseling_responses: boolean
           show_nav_announcements: boolean
@@ -2769,6 +2872,8 @@ export type Database = {
           booking_capacity_confirmed_at?: string | null
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
+          booking_email_note?: string | null
+          booking_window_days?: number | null
           business_type?: string
           cancel_policy_body?: string | null
           created_at?: string
@@ -2791,6 +2896,7 @@ export type Database = {
           owner_user_id?: string | null
           phone?: string | null
           primary_color?: string | null
+          reminder_email_note?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_counseling_responses?: boolean
           show_nav_announcements?: boolean
@@ -2829,6 +2935,8 @@ export type Database = {
           booking_capacity_confirmed_at?: string | null
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
+          booking_email_note?: string | null
+          booking_window_days?: number | null
           business_type?: string
           cancel_policy_body?: string | null
           created_at?: string
@@ -2851,6 +2959,7 @@ export type Database = {
           owner_user_id?: string | null
           phone?: string | null
           primary_color?: string | null
+          reminder_email_note?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_counseling_responses?: boolean
           show_nav_announcements?: boolean
@@ -2927,6 +3036,7 @@ export type Database = {
           booking_type: string
           cancel_token: string
           created_at: string
+          custom_answers: Json | null
           follow_up_note: string | null
           follow_up_status: string
           google_event_id: string | null
@@ -2943,6 +3053,7 @@ export type Database = {
           booking_type?: string
           cancel_token?: string
           created_at?: string
+          custom_answers?: Json | null
           follow_up_note?: string | null
           follow_up_status?: string
           google_event_id?: string | null
@@ -2959,6 +3070,7 @@ export type Database = {
           booking_type?: string
           cancel_token?: string
           created_at?: string
+          custom_answers?: Json | null
           follow_up_note?: string | null
           follow_up_status?: string
           google_event_id?: string | null
@@ -3918,6 +4030,18 @@ export type Database = {
         }[]
       }
       get_tenant_limit_status: { Args: { p_tenant_id: string }; Returns: Json }
+      get_tenant_booking_questions: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          help_text: string | null
+          id: string
+          input_type: string
+          label: string
+          options: Json | null
+          required: boolean
+          sort_order: number
+        }[]
+      }
       get_tenant_public: {
         Args: { p_id: string }
         Returns: {
@@ -3926,6 +4050,7 @@ export type Database = {
           booking_capacity: number
           booking_cutoff_hours: number
           booking_cutoff_type: string
+          booking_window_days: number | null
           gym_name: string
           gym_name_short: string
           id: string

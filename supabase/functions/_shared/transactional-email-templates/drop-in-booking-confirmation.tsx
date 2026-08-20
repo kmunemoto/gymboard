@@ -3,6 +3,7 @@ import {
   Body, Container, Head, Heading, Html, Text, Hr, Section, Link,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { GymNoteSection } from './gym-note.tsx'
 
 // trial-booking-confirmation.tsx と同じ理由でエンティティエンコードする。英語本文でも
 // ¥ 記号や住所内の日本語地名はマルチバイトのため、同じストリーミング分断対策が要る。
@@ -44,6 +45,8 @@ interface DropInBookingConfirmationProps {
   gymAddress?: string
   gymContactEmail?: string
   gymWebsiteUrl?: string
+  /** 予約確認メールに足す、店からのご案内（tenants.booking_email_note）。空なら何も出さない。 */
+  gymNote?: string | null
 }
 
 const DropInBookingConfirmationEmail = ({
@@ -54,6 +57,7 @@ const DropInBookingConfirmationEmail = ({
   gymAddress = '',
   gymContactEmail = '',
   gymWebsiteUrl = '',
+  gymNote = null,
 }: DropInBookingConfirmationProps) => {
   const addressLines = splitAddressLines(gymAddress)
   return (
@@ -102,6 +106,7 @@ const DropInBookingConfirmationEmail = ({
 
           <Hr style={hr} />
           <SafeText style={text}>We look forward to seeing you!</SafeText>
+          <GymNoteSection note={gymNote} title="A note from the gym" />
           <Hr style={hr} />
           <SafeText style={footer}>{gymName}</SafeText>
           {addressLines.length > 0 && <AddressBlock style={footer} lines={addressLines} />}
@@ -120,6 +125,7 @@ export const template = {
     `[${(data?.gymName as string) || 'the gym'}] Your Drop-in Session is Confirmed`,
   displayName: 'ドロップイン予約 確認（顧客向け・英語）',
   previewData: {
+    gymNote: 'Please arrive 5 minutes early.',
     customerName: 'John Smith',
     bookingDate: 'Jul 25 (Sat)',
     bookingTime: '2:00 PM - 3:00 PM',

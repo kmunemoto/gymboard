@@ -13,6 +13,7 @@ import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { devLog } from "@/lib/devLog";
+import { parseAnswerSnapshot, type BookingAnswer } from "@/lib/bookingQuestions";
 
 export interface BookingRow {
   id: string;
@@ -24,6 +25,8 @@ export interface BookingRow {
   display_name?: string;
   /** 担当スタッフ。null＝指名なし／未割当（src/lib/tenantStaff.ts 参照） */
   staff_user_id?: string | null;
+  /** 事前アンケートの回答スナップショット（src/lib/bookingQuestions.ts 参照） */
+  custom_answers?: unknown;
 }
 
 // Feature flag: customer-side LINE notifications for booking creation/cancellation.
@@ -66,6 +69,8 @@ export interface BookingWithTime {
   isBlocked?: boolean;
   /** 担当スタッフ。null＝指名なし／未割当 */
   staff_user_id?: string | null;
+  /** 事前アンケートの回答（読み出し済み）。無ければ空配列。 */
+  customAnswers?: BookingAnswer[];
 }
 
 // tenantDefaultMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
@@ -96,6 +101,7 @@ function parseBooking(
     status: row.status,
     booking_type: row.booking_type,
     staff_user_id: row.staff_user_id ?? null,
+    customAnswers: parseAnswerSnapshot(row.custom_answers),
   };
 }
 
@@ -218,6 +224,7 @@ export const useAllBookings = () => {
         // 「無料」はジムによるため、表示上は "体験予約" に統一する（体験行は user_id
         // === "trial-guest" で判定するため、この表示値変更はロジックに影響しない）。
         booking_type: "体験予約",
+        customAnswers: parseAnswerSnapshot((t as { custom_answers?: unknown }).custom_answers),
       });
     });
 
@@ -401,7 +408,12 @@ export const createBooking = async (
   isProxyBooking = false,
   // staffUserId: 担当スタッフ（null/未指定＝指名なし）。DB 側のトリガーが
   // 「そのジムの現役スタッフか」を検証するので、不正な値は insert が落ちる。
-  opts: { silent?: boolean; staffUserId?: string | null } = {},
+  // customAnswers: 予約時のカスタム質問（booking_questions）への回答スナップショット。
+  opts: {
+    silent?: boolean;
+    staffUserId?: string | null;
+    customAnswers?: BookingAnswer[] | null;
+  } = {},
 ) => {
   const bookingDate = `${date}T${startTime}:00+09:00`;
   const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
@@ -412,6 +424,9 @@ export const createBooking = async (
   // リポジトリにコミット済み＝本番DBに適用済み、ではない（mem/ops/schema-drift.md）ので、
   // 適用までの間も従来どおり予約できる形にしておく。
   const staffUserId = opts.staffUserId ?? null;
+  // custom_answers も同じ理由で「回答があるときだけ」入れる（未適用のDBで
+  // PGRST204 になり、全予約が作れなくなるのを避ける）。
+  const customAnswers = opts.customAnswers?.length ? opts.customAnswers : null;
   const { data, error } = await supabase
     .from("bookings")
     .insert(withTenant({
@@ -420,6 +435,7 @@ export const createBooking = async (
       booking_type: bookingType,
       source: "gymboard",
       ...(staffUserId ? { staff_user_id: staffUserId } : {}),
+      ...(customAnswers ? { custom_answers: customAnswers } : {}),
     }, tenantId) as any)
     .select()
     .single();
@@ -477,6 +493,9 @@ export const createRecurringBookings = async (
   // 全回に同じ担当を割り当てる。担当が埋まっている週は skipped に入る
   // （DB の check_booking_overlap が担当者単位でも拒否するため）。
   staffUserId: string | null = null,
+  // 事前アンケートの回答は全回に同じものを付ける（1回の操作でまとめて取る予約なので、
+  // 回ごとに聞き直すと入力が4回に増える）。
+  customAnswers: BookingAnswer[] | null = null,
 ): Promise<{ booked: { id: string; date: string }[]; skipped: string[] }> => {
   const booked: { id: string; date: string }[] = [];
   const skipped: string[] = [];
@@ -485,7 +504,7 @@ export const createRecurringBookings = async (
     // ローカル日付で +7日ずつ（時刻を持たない日付演算のためTZずれ無し）
     const d = new Date(y, mo - 1, da + i * 7);
     const dateKey = format(d, "yyyy-MM-dd");
-    const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, { staffUserId });
+    const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, { staffUserId, customAnswers });
     if (error || !data) {
       skipped.push(dateKey);
     } else {

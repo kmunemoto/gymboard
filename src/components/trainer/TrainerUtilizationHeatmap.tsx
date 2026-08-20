@@ -7,6 +7,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
 import { format, subDays } from "date-fns";
 import { formatWeekdayShort } from "@/lib/dateFormat";
+import { isClosedWeekday, timelineHourRange } from "@/lib/businessHours";
 
 // 稼働率ヒートマップ: 曜日×時間帯で、過去28日間のうちその枠に予約が入っていた日の割合を出す。
 // 厳密な「枠の埋まり率」（slot_duration_minutes/booking_buffer_minutes を厳密に反映した
@@ -16,12 +17,6 @@ import { formatWeekdayShort } from "@/lib/dateFormat";
 const LOOKBACK_DAYS = 28;
 // 月曜始まりで表示（日本のビジネス慣習に合わせる）。JS の Date.getDay() は日曜=0。
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
-
-const parseHour = (hhmm: string | undefined, fallback: number): number => {
-  if (!hhmm) return fallback;
-  const [h] = hhmm.split(":").map(Number);
-  return Number.isFinite(h) ? h : fallback;
-};
 
 const cellClass = (rate: number | null): string => {
   if (rate === null) return "bg-transparent";
@@ -37,8 +32,10 @@ const TrainerUtilizationHeatmap = () => {
   const { bookings, loading } = useAllBookings();
   const { tenant } = useTenant();
 
-  const startHour = parseHour(tenant?.operating_hours?.start, 10);
-  const endHour = parseHour(tenant?.operating_hours?.end, 21);
+  // 営業時間の解釈は businessHours.ts に一本化してある。
+  // ここは曜日×時間の1枚の表なので、**曜日別の営業時間があっても包絡線**で軸を作る
+  // （曜日ごとに行数が変わると表として読めない）。定休日の列は下で空欄にする。
+  const { startHour, endHour } = timelineHourRange(tenant?.operating_hours);
   const hours = useMemo(
     () => Array.from({ length: Math.max(0, endHour - startHour) }, (_, i) => startHour + i),
     [startHour, endHour],
@@ -121,7 +118,11 @@ const TrainerUtilizationHeatmap = () => {
                         {formatWeekdayShort(dow)}
                       </td>
                       {hours.map((h) => {
-                        const rate = grid[dow]?.[h] ?? null;
+                        // 定休日はそもそも予約が取れないので、0% と書くと
+                        // 「暇な曜日」に見えてしまう。空欄にして区別する。
+                        const rate = isClosedWeekday(tenant?.operating_hours, dow)
+                          ? null
+                          : grid[dow]?.[h] ?? null;
                         return (
                           <td key={h}>
                             <div

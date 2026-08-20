@@ -262,7 +262,25 @@
       "cancelPolicyPlaceholder": "e.g. You can change or cancel a booking from the app at any time. Same-day cancellations incur no fee and use no session.",
       "cancelPolicyUnset": "Not set (nothing is shown to members)",
       "cancelPolicySaved": "Cancellation notice saved",
-      "cancelPolicySaveFailed": "Failed to save the cancellation notice"
+      "cancelPolicySaveFailed": "Failed to save the cancellation notice",
+      "businessDaysTitle": "Set business hours by day of the week",
+      "businessDaysDesc": "Turn this on to set business hours and closed days for each day of the week. Leave it off to use the same hours every day.",
+      "businessDaysClosed": "Closed",
+      "businessDaysInvalidRange": "End time for {{day}} must be later than the start time",
+      "businessDaysAllClosed": "You can't set every day as a closed day",
+      "bookingWindowLabel": "How far ahead bookings can be made",
+      "bookingWindowDesc": "Dates beyond this won't be selectable on the customer booking screen. Leave it unset to keep things as they are.",
+      "bookingWindowUnset": "Not set (no limit change)",
+      "bookingWindowDays": "Up to {{count}} days ahead",
+      "emailNoteSection": "Extra note in emails",
+      "emailNoteDesc": "Add one block of your own message below the booking confirmation and reminder emails. Date, time, and cancellation details are included automatically, so use this for anything else.",
+      "bookingEmailNoteLabel": "Note added to confirmation emails",
+      "bookingEmailNotePlaceholder": "e.g. Please arrive 5 minutes early. Parking is behind the building.",
+      "reminderEmailNoteLabel": "Note added to reminder emails",
+      "reminderEmailNotePlaceholder": "e.g. Drinks are provided here at the studio.",
+      "emailNoteUnset": "Leave blank to add nothing to your emails.",
+      "emailNoteUpdated": "Email note updated",
+      "emailNoteSaveFailed": "Couldn't save the email note"
     },
     "notification": {
       "title": "Notification Settings",
@@ -1998,7 +2016,8 @@
     "joinButton": "Join as staff",
     "joinFailed": "Could not join",
     "joinedTitle": "You joined {{name}} as staff",
-    "joinedNote": "You can now be assigned to bookings."
+    "joinedNote": "You can now be assigned to bookings.",
+    "errorStaffOffShift": "That trainer isn't on shift at that time. Please choose another trainer or another day."
   },
   "hooks": {
     "loginInfoNotFound": "Login information not found",
@@ -2546,5 +2565,50 @@
     "closed": "Gym closed",
     "closeFailed": "Could not close the gym. Please try again.",
     "closeBlockedMembers": "There are still active members. Transfer ownership first, or withdraw the members."
+  },
+  "bookingQuestions": {
+    "sectionTitle": "Pre-visit questions",
+    "required": "Required",
+    "checked": "Yes",
+    "errorRequired": "Please answer \"{{label}}\"",
+    "answersTitle": "Pre-visit question answers",
+    "section": "Booking questions (pre-visit questions)",
+    "desc": "Set up the questions you want to ask customers when they book. You can choose whether to ask them on member bookings and on trial bookings separately.",
+    "empty": "No questions yet. Use \"Add question\" to create one.",
+    "addQuestion": "Add question",
+    "limitReached": "You can add up to {{count}} questions",
+    "newQuestionLabel": "New question",
+    "labelField": "Question",
+    "helpField": "Help text",
+    "helpPlaceholder": "e.g. Let us know if you have any health concerns on the day",
+    "typeField": "Answer type",
+    "optionsField": "Options",
+    "optionsHint": "Separate options with commas (e.g. First time, Some experience, Coming back after a while)",
+    "requiredToggle": "Make this answer required",
+    "askOnMemberToggle": "Ask on member bookings",
+    "askOnTrialToggle": "Ask on trial bookings",
+    "activeToggle": "Use this question",
+    "saved": "Question saved",
+    "saveFailed": "Couldn't save the question",
+    "deleted": "Question deleted",
+    "errorEmptyLabel": "Enter a question",
+    "errorNoOptions": "Enter at least one option",
+    "type": {
+      "text": "Single-line text",
+      "textarea": "Multi-line text",
+      "select": "Choose from options",
+      "checkbox": "Checkbox"
+    }
+  },
+  "staffSchedule": {
+    "section": "Staff shifts",
+    "desc": "Set the days and hours each staff member works. If no days are set, they can be booked during your regular business hours.",
+    "staffLabel": "Staff",
+    "off": "Off",
+    "unsetHint": "No days are set, so this staff member can be booked during your regular business hours.",
+    "saved": "Shifts saved",
+    "saveFailed": "Couldn't save the shifts",
+    "clearedToBusinessHours": "Shifts cleared (this staff member can be booked during business hours)",
+    "invalidRange": "End time for {{day}} must be later than the start time"
   }
 }

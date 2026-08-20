@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Ban, Repeat, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Plus, Trash2, Ban, Repeat, UserRound } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
-import { blockEndMinutes, bookingSlotMinutes, businessGridMinutes, minutesToTime } from "@/lib/businessHours";
+import { blockEndMinutes, businessGridMinutes, isClosedDate, minutesToTime, weekdayOfDateKey } from "@/lib/businessHours";
+import { useStaffSchedules } from "@/hooks/useStaffSchedules";
+import { useBookingQuestions } from "@/hooks/useBookingQuestions";
+import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
+import {
+  buildAnswerSnapshot,
+  missingRequiredQuestions,
+  questionsForSurface,
+} from "@/lib/bookingQuestions";
+import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
@@ -61,6 +70,13 @@ const TrainerSchedule = () => {
   const { profiles } = useAllCustomerProfiles();
   const { tenant, plans } = useTenant();
   const { staff } = useTenantStaff();
+  // スタッフのシフト。読めなければ空＝全員シフト未設定＝営業時間どおり（従来の挙動）。
+  const { schedules: staffSchedules } = useStaffSchedules();
+  // 予約時のカスタム質問。代理予約でも同じ内容を聞く（店が代わりに入力する）。
+  const { questions: allQuestions } = useBookingQuestions();
+  const proxyQuestions = useMemo(() => questionsForSurface(allQuestions, "member"), [allQuestions]);
+  const [proxyAnswers, setProxyAnswers] = useState<Record<string, string>>({});
+  const [missingProxyAnswerIds, setMissingProxyAnswerIds] = useState<string[]>([]);
   const staffSelectable = canSelectStaff(staff);
   const staffNames = staffNameMap(staff);
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
@@ -133,6 +149,21 @@ const TrainerSchedule = () => {
       toast.error(t("schedule.errorSelectAll"));
       return;
     }
+    // 指名した担当がその曜日に出勤していないなら、DB に届く前にここで止める
+    // （届いても GB002 で落ちるが、理由が分かる文言で止めたほうが親切）。
+    if (proxyStaffId && !staffWorksOnWeekday(tenant?.operating_hours, weekdayOfDateKey(proxyDateKey), staffSchedules, proxyStaffId)) {
+      toast.error(t("staff.errorStaffOffShift"));
+      return;
+    }
+    // 事前アンケートの必須項目。
+    const missingProxy = missingRequiredQuestions(proxyQuestions, proxyAnswers);
+    if (missingProxy.length > 0) {
+      setMissingProxyAnswerIds(missingProxy.map((q) => q.id));
+      toast.error(t("bookingQuestions.errorRequired", { label: missingProxy[0].label }));
+      return;
+    }
+    setMissingProxyAnswerIds([]);
+    const proxyAnswerSnapshot = buildAnswerSnapshot(proxyQuestions, proxyAnswers);
     if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null)) {
       // 同時に受けられる予約数が既定の1のままだと、実際は2人同時に見られる店でも
       // ここで弾かれる。設定があること自体を知らないまま「アプリが対応していない」と
@@ -152,7 +183,8 @@ const TrainerSchedule = () => {
     const client = profiles.find((p) => p.user_id === proxyClient);
     if (proxyRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
-        proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true, proxyStaffId || null,
+        proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true,
+        proxyStaffId || null, proxyAnswerSnapshot,
       );
       if (booked.length === 0) {
         toast.error(t("schedule.errorAddFailed"));
@@ -169,11 +201,17 @@ const TrainerSchedule = () => {
       }
     } else {
       const { data: bookingData, error } = await createBooking(
-        proxyClient, proxyDateKey, proxyTime, proxyBookingType, true, { staffUserId: proxyStaffId || null },
+        proxyClient, proxyDateKey, proxyTime, proxyBookingType, true,
+        { staffUserId: proxyStaffId || null, customAnswers: proxyAnswerSnapshot },
       );
       if (error) {
         // 店に空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
-        toast.error(isStaffConflictError(error) ? t("staff.errorStaffBusy") : t("schedule.errorAddFailed"));
+        // シフト外（GB002）は別の曜日か別の担当なら取れるので文言を分ける。
+        toast.error(
+          isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
+            : isStaffConflictError(error) ? t("staff.errorStaffBusy")
+            : t("schedule.errorAddFailed"),
+        );
         setSubmitting(false);
         return;
       }
@@ -187,6 +225,8 @@ const TrainerSchedule = () => {
 
     setProxyDialogOpen(false);
     setProxyDate(undefined);
+    setProxyAnswers({});
+    setMissingProxyAnswerIds([]);
     setProxyTime("");
     setProxyClient("");
     setProxyBookingType("");
@@ -196,7 +236,7 @@ const TrainerSchedule = () => {
     void refetch();
 
     // 定期予約では作成できた全件を渡す（1件目だけ渡すと2回目以降にメールが届かない）。
-    sendBookingNotifications(createdBookings, client?.display_name || t("schedule.clientFallback"), proxyTime, proxyEndTime, proxyBookingType, proxyClient);
+    sendBookingNotifications(createdBookings, client?.display_name || t("schedule.clientFallback"), proxyTime, proxyEndTime, proxyBookingType, proxyClient, undefined, tenant?.booking_email_note ?? null);
   };
 
   // 既存予約の担当を差し替える。空欄なら「指名なし」に戻す。
@@ -601,6 +641,22 @@ const TrainerSchedule = () => {
                               })()}
                             </div>
                           </div>
+                          {/* 事前アンケートの回答。無い予約には何も出さない（既存の見た目は変わらない）。
+                              質問を後から直しても、ここには「聞いたときの文言」が出る。 */}
+                          {!booking.isBlocked && (booking.customAnswers?.length ?? 0) > 0 && (
+                            <div className="mt-2 rounded-lg bg-muted/40 p-2 space-y-1">
+                              <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                                <ClipboardList className="w-3 h-3" />
+                                {t("bookingQuestions.answersTitle")}
+                              </p>
+                              {booking.customAnswers!.map((a, i) => (
+                                <p key={`${a.question_id}-${i}`} className="text-[11px] leading-snug">
+                                  <span className="text-muted-foreground">{a.label}：</span>
+                                  <span className="font-medium">{a.value}</span>
+                                </p>
+                              ))}
+                            </div>
+                          )}
                           <div className="mt-3 flex justify-end gap-2">
                             {/* 体験予約（user_id が trial-guest）は担当を持たないので変更ボタンを出さない */}
                             {!booking.isBlocked && staffSelectable && booking.user_id !== "trial-guest" && (
@@ -736,6 +792,16 @@ const TrainerSchedule = () => {
                   }
                 }}
                 locale={ja}
+                disabled={(date) => {
+                  const key = format(date, "yyyy-MM-dd");
+                  // 定休日。店側の代理予約でも、閉めている日に枠は出せない
+                  // （どうしても入れたいなら営業時間の設定を直すのが筋）。
+                  if (isClosedDate(tenant?.operating_hours, key)) return true;
+                  // 指名した担当が出勤していない曜日。指名なしなら常に false。
+                  return !staffWorksOnWeekday(
+                    tenant?.operating_hours, weekdayOfDateKey(key), staffSchedules, proxyStaffId || null,
+                  );
+                }}
                 className="pointer-events-auto border rounded-lg mx-auto"
               />
             </div>
@@ -747,7 +813,11 @@ const TrainerSchedule = () => {
                     const slots: { time: string; blocked: boolean }[] = [];
                     // 予約枠なので終業から枠の長さを引く。以前は 600→1260（10:00-21:00）が
                     // 直書きで、営業時間を延ばしても 21:00 で止まっていた。
-                    for (const totalMin of bookingSlotMinutes(tenant?.operating_hours, sessionMinutes)) {
+                    // 曜日別の営業時間と、指名した担当のシフトまで反映する。
+                    for (const totalMin of staffBookingSlotMinutes(
+                      tenant?.operating_hours, sessionMinutes, weekdayOfDateKey(proxyDateKey),
+                      staffSchedules, proxyStaffId || null,
+                    )) {
                       const time = minutesToTime(totalMin);
                       const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null);
                       slots.push({ time, blocked });
@@ -772,6 +842,24 @@ const TrainerSchedule = () => {
                     ));
                   })()}
                 </div>
+              </div>
+            )}
+            {/* 事前アンケート（店が設定した質問）。店が代わりに入力する。 */}
+            {proxyDate && proxyTime && proxyQuestions.length > 0 && (
+              <div className="rounded-xl bg-muted/30 p-3">
+                <p className="text-[11px] font-bold text-muted-foreground mb-2 flex items-center gap-1">
+                  <ClipboardList className="w-3 h-3" />
+                  {t("bookingQuestions.sectionTitle")}
+                </p>
+                <BookingQuestionFields
+                  questions={proxyQuestions}
+                  values={proxyAnswers}
+                  onChange={(id, value) => setProxyAnswers((prev) => ({ ...prev, [id]: value }))}
+                  missingIds={missingProxyAnswerIds}
+                  requiredLabel={t("bookingQuestions.required")}
+                  checkedValue={t("bookingQuestions.checked")}
+                  disabled={submitting}
+                />
               </div>
             )}
             {/* 定期予約: 毎週同じ曜日・時間でまとめて予約 */}
@@ -942,6 +1030,8 @@ const TrainerSchedule = () => {
                       const blockDateKey = format(blockDate, "yyyy-MM-dd");
                       const slots: { time: string; blocked: boolean }[] = [];
                       // ブロック枠（休憩・設営）は施術ではないので、終業まで置ける。
+                      // 曜日を渡さないのは意図的。**定休日にもブロック枠を置けるようにする**
+                      // （棚卸し・研修など、閉めている日に予定を書きたい要望がある）。
                       for (const totalMin of businessGridMinutes(tenant?.operating_hours)) {
                         const time = minutesToTime(totalMin);
                       const blocked = checkSlotBlocked(bookings, blockDateKey, time, undefined, bookingBufferMinutes, sessionMinutes);

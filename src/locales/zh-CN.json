@@ -262,7 +262,25 @@
       "cancelPolicyPlaceholder": "例：预约的更改和取消可随时通过App进行。当天取消也不收取费用、不扣次数。",
       "cancelPolicyUnset": "未设置（不向会员显示任何内容）",
       "cancelPolicySaved": "已保存取消说明",
-      "cancelPolicySaveFailed": "取消说明保存失败"
+      "cancelPolicySaveFailed": "取消说明保存失败",
+      "businessDaysTitle": "按星期设置不同的营业时间",
+      "businessDaysDesc": "开启后可按星期分别设置营业时间和固定休息日。保持关闭则所有星期使用相同时间。",
+      "businessDaysClosed": "固定休息日",
+      "businessDaysInvalidRange": "{{day}}的结束时间必须晚于开始时间",
+      "businessDaysAllClosed": "不能将所有星期都设为休息日",
+      "bookingWindowLabel": "最多可预约多少天以后",
+      "bookingWindowDesc": "超过该范围的日期，顾客在预约页面将无法选择。未设置则与此前一样。",
+      "bookingWindowUnset": "未设置（与此前一样）",
+      "bookingWindowDays": "最多 {{count}} 天以后",
+      "emailNoteSection": "邮件中附加的说明",
+      "emailNoteDesc": "可在预约确认邮件和提醒邮件的下方，附加一段来自店铺的说明。日期时间和取消相关的说明会自动写入，请填写其他内容。",
+      "bookingEmailNoteLabel": "预约确认邮件中附加的文字",
+      "bookingEmailNotePlaceholder": "例：当天请提前 5 分钟到店。停车场在大楼后方。",
+      "reminderEmailNoteLabel": "提醒邮件中附加的文字",
+      "reminderEmailNotePlaceholder": "例：店内已为您备好饮品。",
+      "emailNoteUnset": "留空则邮件中不附加任何内容。",
+      "emailNoteUpdated": "邮件说明已更新",
+      "emailNoteSaveFailed": "邮件说明保存失败"
     },
     "notification": {
       "title": "通知设置",
@@ -1998,7 +2016,8 @@
     "joinButton": "作为员工加入",
     "joinFailed": "加入失败",
     "joinedTitle": "已作为员工加入“{{name}}”",
-    "joinedNote": "今后可以被指定为预约的负责人。"
+    "joinedNote": "今后可以被指定为预约的负责人。",
+    "errorStaffOffShift": "该教练在这个时间段没有排班。请选择其他教练或其他日期。"
   },
   "hooks": {
     "loginInfoNotFound": "未找到登录信息",
@@ -2546,5 +2565,50 @@
     "closed": "已关闭健身房",
     "closeFailed": "无法关闭健身房，请重试。",
     "closeBlockedMembers": "仍有在籍会员，无法关闭。请先移交老板，或为在籍会员办理退会。"
+  },
+  "bookingQuestions": {
+    "sectionTitle": "预约前问卷",
+    "required": "必填",
+    "checked": "是",
+    "errorRequired": "请回答「{{label}}」",
+    "answersTitle": "预约前问卷的回答",
+    "section": "预约时的提问（预约前问卷）",
+    "desc": "可以设置预约时想向顾客了解的内容。会员预约和体验预约可以分别选择是否询问。",
+    "empty": "还没有任何问题。请点击「添加问题」来创建。",
+    "addQuestion": "添加问题",
+    "limitReached": "最多只能添加 {{count}} 个问题",
+    "newQuestionLabel": "新问题",
+    "labelField": "问题内容",
+    "helpField": "补充说明",
+    "helpPlaceholder": "例：当天身体状况如有不适请在此填写",
+    "typeField": "回答形式",
+    "optionsField": "选项",
+    "optionsHint": "请用「、」分隔输入（例：第一次、有经验、很久没练了）",
+    "requiredToggle": "设为必答",
+    "askOnMemberToggle": "在会员预约时询问",
+    "askOnTrialToggle": "在体验预约时询问",
+    "activeToggle": "启用此问题",
+    "saved": "问题已保存",
+    "saveFailed": "问题保存失败",
+    "deleted": "问题已删除",
+    "errorEmptyLabel": "请输入问题内容",
+    "errorNoOptions": "请至少输入一个选项",
+    "type": {
+      "text": "单行文本",
+      "textarea": "多行文本",
+      "select": "从选项中选择",
+      "checkbox": "复选框"
+    }
+  },
+  "staffSchedule": {
+    "section": "员工排班",
+    "desc": "为每位员工设置上班的星期和时间段。若一天都未设置，则可按营业时间正常被指定。",
+    "staffLabel": "员工",
+    "off": "休息",
+    "unsetHint": "由于未设置任何星期，这位员工可按营业时间正常被指定。",
+    "saved": "排班已保存",
+    "saveFailed": "排班保存失败",
+    "clearedToBusinessHours": "已取消排班（将按营业时间正常被指定）",
+    "invalidRange": "{{day}}的结束时间必须晚于开始时间"
   }
 }

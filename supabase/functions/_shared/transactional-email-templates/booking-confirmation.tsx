@@ -3,6 +3,7 @@ import {
   Body, Container, Head, Heading, Html, Preview, Text, Hr, Section, Link, Button,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { GymNoteSection } from './gym-note.tsx'
 
 // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
 // 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。SITE_URL(gymboard.app)は
@@ -15,6 +16,8 @@ interface BookingConfirmationProps {
   bookingDate?: string
   bookingTime?: string
   planName?: string
+  /** 予約確認メールに足す、店からのご案内（tenants.booking_email_note）。空なら何も出さない。 */
+  gymNote?: string | null
 }
 
 const BookingConfirmationEmail = ({
@@ -22,6 +25,7 @@ const BookingConfirmationEmail = ({
   bookingDate = '',
   bookingTime = '',
   planName = '',
+  gymNote = null,
 }: BookingConfirmationProps) => (
   <Html lang="ja" dir="ltr">
     <Head>
@@ -47,6 +51,7 @@ const BookingConfirmationEmail = ({
           <Text style={text}>アプリからキャンセル・変更が可能です。</Text>
           <Button href={APP_URL} style={button}>▼ アプリを開く</Button>
         </Section>
+        <GymNoteSection note={gymNote} />
         <Hr style={hr} />
         <Text style={footer}>ジムボード</Text>
         <Link href={SITE_URL} style={footerLink}>{SITE_URL}</Link>
@@ -60,6 +65,7 @@ export const template = {
   subject: '【ジムボード】ご予約を承りました',
   displayName: 'ご予約を承りました（顧客向け）',
   previewData: {
+    gymNote: '当日は5分前にお越しください。駐車場は建物の裏手にあります。',
     customerName: '山田 太郎',
     bookingDate: '4月15日（火）',
     bookingTime: '14:00〜15:00',

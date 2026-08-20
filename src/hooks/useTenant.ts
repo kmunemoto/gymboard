@@ -14,7 +14,12 @@ export interface Tenant {
   phone: string | null;
   email: string | null;
   website_url: string | null;
-  operating_hours: { start: string; end: string };
+  /**
+   * 営業時間。曜日別（`days`）と定休日を持てる。解釈は `src/lib/businessHours.ts`。
+   * `start`/`end` は**開いている曜日全体を包む包絡線**（`days` を知らない古いアプリ版が
+   * 端末に残るため、そこを狭めると取れるはずの枠が消える）。
+   */
+  operating_hours: import("@/lib/businessHours").OperatingHours;
   slot_duration_minutes: number;
   /** 予約と予約の間に必ず空ける時間（分）。既定15分。予約の重複判定に使う（60分セッション+この値）*/
   booking_buffer_minutes: number;
@@ -73,6 +78,15 @@ export interface Tenant {
    * null/空なら**何も表示しない**（既定文は持たない。店ごとに方針が違うため）。
    */
   cancel_policy_body: string | null;
+  /**
+   * 何日先まで予約を受け付けるか。null = 未設定で、画面ごとの従来の上限に従う
+   * （会員は1ヶ月・公開ページは10日）。解釈は `src/lib/bookingWindow.ts`。
+   */
+  booking_window_days: number | null;
+  /** 予約確認メールに足す、店からの案内。null/空なら何も足さない。 */
+  booking_email_note: string | null;
+  /** 前日リマインドメールに足す、店からの案内。null/空なら何も足さない。 */
+  reminder_email_note: string | null;
   invite_code?: string;
   status: string;
   gymboard_plan: string;

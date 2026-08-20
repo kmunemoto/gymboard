@@ -3,6 +3,7 @@ import {
   Body, Container, Head, Heading, Html, Preview, Text, Hr, Section,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { GymNoteSection } from './gym-note.tsx'
 
 const SITE_NAME = "ジムボード"
 
@@ -12,6 +13,8 @@ interface Props {
   bookingTimes?: string
   planName?: string
   gymName?: string
+  /** リマインドメールに足す、店からのご案内（tenants.reminder_email_note）。空なら何も出さない。 */
+  gymNote?: string | null
 }
 
 const BookingReminderEmail = ({
@@ -20,6 +23,7 @@ const BookingReminderEmail = ({
   bookingTimes = '',
   planName = '',
   gymName = '',
+  gymNote = null,
 }: Props) => (
   <Html lang="ja" dir="ltr">
     <Head>
@@ -63,6 +67,7 @@ const BookingReminderEmail = ({
           お気をつけてお越しください。お会いできることを楽しみにしております。
         </Text>
 
+        <GymNoteSection note={gymNote} />
         <Hr style={hr} />
         <Text style={footer}>{SITE_NAME}</Text>
       </Container>
@@ -76,6 +81,7 @@ export const template = {
   displayName: '通常予約 前日リマインド',
   to: '_resolve_user_',
   previewData: {
+    gymNote: 'お飲み物はこちらでご用意しています。',
     customerName: '山田 太郎',
     bookingDate: '5月30日（土）',
     bookingTimes: '10:00、14:00',

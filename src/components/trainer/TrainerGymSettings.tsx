@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Upload, Trash2, Image, User, Save, LogOut, Settings } from "lucide-react";
+import { Upload, Trash2, Image, User, Save, LogOut, Settings, CalendarOff } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerStaffManager from "./TrainerStaffManager";
@@ -28,6 +28,15 @@ import BackgroundImagePicker from "@/components/BackgroundImagePicker";
 import { resizeImageToJpeg } from "@/lib/imageResize";
 import { useTranslation } from "react-i18next";
 import { BILLING_ENABLED, GOOGLE_REVIEW_ENABLED, LANGUAGE_SWITCHER_ENABLED, TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
+import { envelopeFromDays, minutesToTime, parseTimeToMinutes, type DayHours } from "@/lib/businessHours";
+import {
+  BOOKING_WINDOW_OPTIONS,
+  normalizeBookingWindowDays,
+} from "@/lib/bookingWindow";
+import { EMAIL_NOTE_MAX_LENGTH, normalizeEmailNote } from "@/lib/emailNotes";
+import TrainerStaffSchedule from "./TrainerStaffSchedule";
+import TrainerBookingQuestions from "./TrainerBookingQuestions";
+import { formatWeekdayShort } from "@/lib/dateFormat";
 import {
   DASHBOARD_STAT_TOGGLES,
   DASHBOARD_SECTION_TOGGLES,
@@ -56,6 +65,12 @@ const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
 const BUSINESS_BUFFER_OPTIONS = [0, 15, 30, 45, 60];
 // 同じ時間帯に受けられる予約の数（ベッド数・施術者数など）。1＝従来どおり同時1件のみ。
 const BUSINESS_CAPACITY_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10];
+// 曜日別の営業時間は 30分刻みで、開店・閉店とも1日の全域から選べるようにする
+// （全曜日共通のほうは 07:00-12:00 / 17:00-23:00 に絞ってあるが、曜日別を使う店は
+//  「日曜だけ午前で終わる」のような設定をしたいので、絞ると足りなくなる）。
+const DAY_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => hourOption(0, i));
+// 週の表示順（月曜始まり。日本のビジネス慣習に合わせる）。値は JS の getDay() と同じ。
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 
 // 表示ON/OFFの項目定義は src/lib/gymDisplaySettings.ts に集約している
 // （実際に表示を出し分ける TrainerSidebar / TrainerDashboard と同じ定義を参照し、
@@ -113,6 +128,17 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [businessBufferMinutes, setBusinessBufferMinutes] = useState(15);
   const [businessCapacity, setBusinessCapacity] = useState(1);
   const [savingBusinessHours, setSavingBusinessHours] = useState(false);
+  // 曜日別の営業時間・定休日。
+  // `perDayEnabled = false` なら全曜日共通（従来どおり）で、保存時に `days` を書かない。
+  const [perDayEnabled, setPerDayEnabled] = useState(false);
+  // 曜日 → { start, end } または null（定休日）。
+  const [dayHours, setDayHours] = useState<Record<number, DayHours | null>>({});
+  // 何日先まで受け付けるか。"" は未設定（画面ごとの従来の上限に従う）。
+  const [bookingWindow, setBookingWindow] = useState("");
+  // 予約確認メール／リマインドメールに足す、店からの案内。
+  const [bookingEmailNote, setBookingEmailNote] = useState("");
+  const [reminderEmailNote, setReminderEmailNote] = useState("");
+  const [savingEmailNotes, setSavingEmailNotes] = useState(false);
 
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
@@ -149,12 +175,42 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   }, [tenant?.google_review_url]);
 
   useEffect(() => {
+    // 曜日別を「今まで通り」から始めるときの初期値。全曜日共通の値を敷く。
+    const fallbackDay: DayHours = {
+      start: tenant?.operating_hours?.start ?? "10:00",
+      end: tenant?.operating_hours?.end ?? "21:00",
+    };
     if (tenant?.operating_hours?.start) setBusinessStart(tenant.operating_hours.start);
     if (tenant?.operating_hours?.end) setBusinessEnd(tenant.operating_hours.end);
+    // 曜日別。キーが1つでもあれば「曜日別を使っている」とみなす。
+    const days = tenant?.operating_hours?.days;
+    if (days && typeof days === "object" && Object.keys(days).length > 0) {
+      const next: Record<number, DayHours | null> = {};
+      for (const d of WEEKDAY_ORDER) {
+        const entry = days[String(d)];
+        next[d] = entry === null || entry === undefined
+          ? (Object.prototype.hasOwnProperty.call(days, String(d)) ? null : { ...fallbackDay })
+          : { start: entry.start ?? fallbackDay.start, end: entry.end ?? fallbackDay.end };
+      }
+      setDayHours(next);
+      setPerDayEnabled(true);
+    } else {
+      setPerDayEnabled(false);
+      setDayHours({});
+    }
     if (tenant?.slot_duration_minutes) setBusinessSlotMinutes(tenant.slot_duration_minutes);
     if (tenant?.booking_buffer_minutes != null) setBusinessBufferMinutes(tenant.booking_buffer_minutes);
     if (tenant?.booking_capacity != null) setBusinessCapacity(tenant.booking_capacity);
-  }, [tenant?.operating_hours?.start, tenant?.operating_hours?.end, tenant?.slot_duration_minutes, tenant?.booking_buffer_minutes, tenant?.booking_capacity]);
+  }, [tenant?.operating_hours, tenant?.slot_duration_minutes, tenant?.booking_buffer_minutes, tenant?.booking_capacity]);
+
+  useEffect(() => {
+    setBookingWindow(tenant?.booking_window_days == null ? "" : String(tenant.booking_window_days));
+  }, [tenant?.booking_window_days]);
+
+  useEffect(() => {
+    setBookingEmailNote(tenant?.booking_email_note ?? "");
+    setReminderEmailNote(tenant?.reminder_email_note ?? "");
+  }, [tenant?.booking_email_note, tenant?.reminder_email_note]);
 
   // --- Handlers ---
   const handleSaveName = async () => {
@@ -399,21 +455,80 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     setSavingGoogleReviewUrl(false);
   };
 
+  const handleSaveEmailNotes = async () => {
+    if (!tenant) return;
+    setSavingEmailNotes(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({
+        // 空欄は NULL で保存する（ブロックごと出さない）。既定文は持たせない。
+        booking_email_note: normalizeEmailNote(bookingEmailNote),
+        reminder_email_note: normalizeEmailNote(reminderEmailNote),
+      } as never)
+      .eq("id", tenant.id);
+    if (error) {
+      console.error("メール文言の保存に失敗:", error);
+      toast.error(t("settings.trainer.emailNoteSaveFailed"), { description: error.message });
+    } else {
+      toast.success(t("settings.trainer.emailNoteUpdated"));
+      refetchTenant();
+    }
+    setSavingEmailNotes(false);
+  };
+
   const handleSaveBusinessHours = async () => {
     if (!tenant) return;
-    if (businessStart >= businessEnd) {
-      toast.error(t("settings.trainer.businessHoursInvalidRange"));
-      return;
+
+    // 曜日別を使わない店（従来どおり）は、今までと1バイトも変わらない形で保存する。
+    let operatingHours: { start: string; end: string; days?: Record<string, DayHours | null> };
+    if (!perDayEnabled) {
+      if (businessStart >= businessEnd) {
+        toast.error(t("settings.trainer.businessHoursInvalidRange"));
+        return;
+      }
+      operatingHours = { start: businessStart, end: businessEnd };
+    } else {
+      const days: Record<string, DayHours | null> = {};
+      let openDays = 0;
+      for (const d of WEEKDAY_ORDER) {
+        const entry = dayHours[d];
+        if (entry === null || entry === undefined) {
+          days[String(d)] = null; // 定休日
+          continue;
+        }
+        const open = parseTimeToMinutes(entry.start);
+        const close = parseTimeToMinutes(entry.end);
+        if (open === null || close === null || close <= open) {
+          toast.error(t("settings.trainer.businessDaysInvalidRange", { day: formatWeekdayShort(d) }));
+          return;
+        }
+        days[String(d)] = { start: entry.start, end: entry.end };
+        openDays++;
+      }
+      if (openDays === 0) {
+        // 全曜日が定休日だと、その店は永久に予約を受けられない。設定ミスとして止める。
+        toast.error(t("settings.trainer.businessDaysAllClosed"));
+        return;
+      }
+      // 🔴 start/end には包絡線を入れる。`days` を知らない古いアプリ版が端末に残るため、
+      //    ここを狭めると、その版から取れるはずの枠が消える（businessHours.ts の設計メモ）。
+      const envelope = envelopeFromDays(days);
+      operatingHours = { ...envelope, days };
+      setBusinessStart(envelope.start);
+      setBusinessEnd(envelope.end);
     }
+
     setSavingBusinessHours(true);
     const { error } = await supabase
       .from("tenants")
       .update({
-        operating_hours: { start: businessStart, end: businessEnd },
+        operating_hours: operatingHours,
         slot_duration_minutes: businessSlotMinutes,
         booking_buffer_minutes: businessBufferMinutes,
         booking_capacity: businessCapacity,
-      })
+        // "" は未設定＝NULL。normalize が範囲外を弾く。
+        booking_window_days: normalizeBookingWindowDays(Number(bookingWindow)),
+      } as never)
       .eq("id", tenant.id);
     if (error) {
       console.error("営業時間の保存に失敗:", error);
@@ -716,6 +831,79 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         <Card>
           <CardContent className="p-4 space-y-3">
             <p className="text-xs text-muted-foreground">{t("settings.trainer.businessHoursDesc")}</p>
+            {/* 曜日別の営業時間を使うか。OFF なら従来どおり全曜日共通（保存内容も従来と同じ）。 */}
+            <div className="flex items-start justify-between gap-3 rounded-lg bg-muted/30 p-3">
+              <div className="flex-1">
+                <Label className="text-sm font-bold flex items-center gap-1.5">
+                  <CalendarOff className="w-3.5 h-3.5" />
+                  {t("settings.trainer.businessDaysTitle")}
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">{t("settings.trainer.businessDaysDesc")}</p>
+              </div>
+              <Switch
+                checked={perDayEnabled}
+                onCheckedChange={(on) => {
+                  setPerDayEnabled(on);
+                  if (on && Object.keys(dayHours).length === 0) {
+                    // 全曜日を「今の共通の時間」で埋めてから編集させる。
+                    const seeded: Record<number, DayHours | null> = {};
+                    for (const d of WEEKDAY_ORDER) seeded[d] = { start: businessStart, end: businessEnd };
+                    setDayHours(seeded);
+                  }
+                }}
+              />
+            </div>
+
+            {perDayEnabled ? (
+              <div className="space-y-2">
+                {WEEKDAY_ORDER.map((d) => {
+                  const entry = dayHours[d] ?? null;
+                  const closed = entry === null;
+                  return (
+                    <div key={d} className="flex items-center gap-2">
+                      <span className="w-6 text-xs font-bold text-muted-foreground shrink-0">
+                        {formatWeekdayShort(d)}
+                      </span>
+                      <Switch
+                        checked={!closed}
+                        aria-label={formatWeekdayShort(d)}
+                        onCheckedChange={(open) =>
+                          setDayHours((prev) => ({
+                            ...prev,
+                            [d]: open ? { start: businessStart, end: businessEnd } : null,
+                          }))
+                        }
+                      />
+                      {closed ? (
+                        <span className="text-xs text-muted-foreground">{t("settings.trainer.businessDaysClosed")}</span>
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <Select
+                            value={entry.start ?? ""}
+                            onValueChange={(v) => setDayHours((prev) => ({ ...prev, [d]: { ...entry, start: v } }))}
+                          >
+                            <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {DAY_TIME_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-xs text-muted-foreground shrink-0">–</span>
+                          <Select
+                            value={entry.end ?? ""}
+                            onValueChange={(v) => setDayHours((prev) => ({ ...prev, [d]: { ...entry, end: v } }))}
+                          >
+                            <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {DAY_TIME_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold">{t("settings.trainer.businessHoursStart")}</Label>
@@ -743,6 +931,22 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.bookingWindowLabel")}</Label>
+              <p className="text-xs text-muted-foreground">{t("settings.trainer.bookingWindowDesc")}</p>
+              <Select value={bookingWindow || "unset"} onValueChange={(v) => setBookingWindow(v === "unset" ? "" : v)}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">{t("settings.trainer.bookingWindowUnset")}</SelectItem>
+                  {BOOKING_WINDOW_OPTIONS.map((d) => (
+                    <SelectItem key={d} value={String(d)}>{t("settings.trainer.bookingWindowDays", { count: d })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold">{t("settings.trainer.businessHoursSlotDuration")}</Label>
@@ -788,6 +992,59 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             <Button onClick={handleSaveBusinessHours} disabled={savingBusinessHours || !tenant} size="sm" className="h-10">
               <Save className="w-4 h-4 mr-1" />
               {savingBusinessHours ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* === スタッフ別のシフト === 担当を指名する店だけに関係する。2人以上のジムでのみ描画される */}
+      <section className="space-y-3">
+        <TrainerStaffSchedule />
+      </section>
+
+      <Separator />
+
+      {/* === 予約時のカスタム質問（事前アンケート） === */}
+      <section className="space-y-3">
+        <TrainerBookingQuestions />
+      </section>
+
+      <Separator />
+
+      {/* === 予約確認メール・リマインドメールに足す、店からの案内 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          {t("settings.trainer.emailNoteSection")}
+        </h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.emailNoteDesc")}</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.bookingEmailNoteLabel")}</Label>
+              <Textarea
+                value={bookingEmailNote}
+                onChange={(e) => setBookingEmailNote(e.target.value)}
+                maxLength={EMAIL_NOTE_MAX_LENGTH}
+                rows={3}
+                placeholder={t("settings.trainer.bookingEmailNotePlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.reminderEmailNoteLabel")}</Label>
+              <Textarea
+                value={reminderEmailNote}
+                onChange={(e) => setReminderEmailNote(e.target.value)}
+                maxLength={EMAIL_NOTE_MAX_LENGTH}
+                rows={3}
+                placeholder={t("settings.trainer.reminderEmailNotePlaceholder")}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.emailNoteUnset")}</p>
+            <Button onClick={handleSaveEmailNotes} disabled={savingEmailNotes || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingEmailNotes ? t("common.saving") : t("common.save")}
             </Button>
           </CardContent>
         </Card>

@@ -55,6 +55,11 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "trial_price_yen",
   // お客様に見せるキャンセルについての案内。NULL/空なら何も出さない。
   "cancel_policy_body",
+  // 何日先まで予約を受け付けるか。NULL = 未設定で、画面ごとの従来の上限に従う
+  // （src/lib/bookingWindow.ts）。0 を「当日のみ」と解釈しないこと。
+  "booking_window_days",
+  // 予約確認メール／リマインドメールに足す、店からの案内。NULL/空なら何も足さない。
+  "booking_email_note, reminder_email_note",
 ];
 
 /**
@@ -121,6 +126,12 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   trial_price_yen: null,
   // 既定文は持たせない。ペナルティの有無は店ごとに違うので、上流が代弁しない。
   cancel_policy_body: null,
+  // 未適用の環境では「未設定」＝画面ごとの従来の上限（会員1ヶ月・公開ページ10日）。
+  // ここに数字を置くと、列が読めない環境で全店の受付範囲が勝手に変わる。
+  booking_window_days: null,
+  // 既定文は持たせない（cancel_policy_body と同じ理由）。
+  booking_email_note: null,
+  reminder_email_note: null,
 };
 
 /**

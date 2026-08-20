@@ -4,6 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import { trialPriceLine } from '../trial-pricing.ts'
 import type { TemplateEntry } from './registry.ts'
+import { GymNoteSection } from './gym-note.tsx'
 
 // 本文の表示テキストは事前に ASCII 数値文字参照へエンコードして dangerouslySetInnerHTML で描画する。
 // 理由: react-email の renderAsync（Deno のストリーミング描画）が、UTF-8 チャンク境界で
@@ -60,6 +61,8 @@ interface TrialBookingConfirmationProps {
    * null/未指定は「料金を書かない」。**0 は「¥0」と明示する**ので別物。
    */
   trialPriceYen?: number | null
+  /** 予約確認メールに足す、店からのご案内（tenants.booking_email_note）。空なら何も出さない。 */
+  gymNote?: string | null
 }
 
 const TrialBookingConfirmationEmail = ({
@@ -72,6 +75,7 @@ const TrialBookingConfirmationEmail = ({
   gymContactEmail = '',
   gymWebsiteUrl = '',
   trialPriceYen = null,
+  gymNote = null,
 }: TrialBookingConfirmationProps) => {
   const addressLines = splitAddressLines(gymAddress)
   // 呼称は全ジム共通。**料金を含めないこと**（金額はジムごとに違う）。
@@ -143,6 +147,7 @@ const TrialBookingConfirmationEmail = ({
 
           <Hr style={hr} />
           <SafeText style={text}>お会いできることを楽しみにしております！</SafeText>
+          <GymNoteSection note={gymNote} />
           <Hr style={hr} />
           <SafeText style={footer}>{gymName}</SafeText>
           {addressLines.length > 0 && <AddressBlock style={footer} lines={addressLines} />}
@@ -161,6 +166,7 @@ export const template = {
     `【${(data?.gymName as string) || 'ジム'}】体験トレーニングのご予約を承りました`,
   displayName: '体験予約 確認（顧客向け）',
   previewData: {
+    gymNote: '当日は5分前にお越しください。',
     customerName: '山田 太郎',
     bookingDate: '4月15日（火）',
     bookingTime: '14:00〜15:00',

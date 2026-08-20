@@ -173,8 +173,15 @@ describe("実際に飛んでいる4本が、この規則で通ること", () => 
     const customer = readFileSync("src/components/customer/CustomerBooking.tsx", "utf8");
     const trainer = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
     // 引数に t("…") が入るので `[^)]*` では途中の `)` で切れる。範囲を限って読む。
-    expect(customer).toMatch(/sendBookingNotifications\([\s\S]{0,200}?user\.id,\s*user\.email\)/);
-    // proxyClient が**最後の引数**＝メールを渡していない（_resolve_user_ に落ちる）。
-    expect(trainer).toMatch(/sendBookingNotifications\([\s\S]{0,200}?proxyBookingType,\s*proxyClient\)/);
+    //
+    // ⚠️ 2026-08-20 に末尾へ gymNote（メールに足す店からの案内）を足したので、
+    //    どちらも「メールアドレスの引数の直後がカンマ」になった。見ているのは
+    //    **メールアドレスの位置に何が入っているか**であって、引数の個数ではない。
+    expect(customer).toMatch(/sendBookingNotifications\([\s\S]{0,300}?user\.id,\s*user\.email\s*,/);
+    // トレーナーの代理予約は**メールの位置に undefined** を渡す（_resolve_user_ に落ちる）。
+    // ここに proxyClient のメールが入ると、店が顧客のアドレスを直接指定できてしまう。
+    expect(trainer).toMatch(/sendBookingNotifications\([\s\S]{0,300}?proxyBookingType,\s*proxyClient,\s*undefined\s*,/);
+    // 念のため逆側も固定する: トレーナー側に「生のメールらしき引数」が現れていないこと。
+    expect(trainer).not.toMatch(/sendBookingNotifications\([\s\S]{0,300}?\.email\b/);
   });
 });

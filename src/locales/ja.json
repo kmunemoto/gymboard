@@ -262,7 +262,25 @@
       "cancelPolicyPlaceholder": "例: 予約の変更・キャンセルはアプリからいつでも可能です。当日のキャンセルでもキャンセル料や回数の消費はありません。",
       "cancelPolicyUnset": "未設定（お客様には何も表示しません）",
       "cancelPolicySaved": "キャンセルについての案内を保存しました",
-      "cancelPolicySaveFailed": "キャンセルについての案内の保存に失敗しました"
+      "cancelPolicySaveFailed": "キャンセルについての案内の保存に失敗しました",
+      "businessDaysTitle": "曜日ごとに営業時間を変える",
+      "businessDaysDesc": "オンにすると曜日ごとの営業時間と定休日を設定できます。オフのままなら全曜日が同じ時間です。",
+      "businessDaysClosed": "定休日",
+      "businessDaysInvalidRange": "{{day}}曜の終了時刻は開始時刻より後にしてください",
+      "businessDaysAllClosed": "すべての曜日を定休日にはできません",
+      "bookingWindowLabel": "何日先まで予約を受け付けるか",
+      "bookingWindowDesc": "これより先の日付はお客様の予約画面で選べなくなります。未設定なら今までどおりです。",
+      "bookingWindowUnset": "未設定（今までどおり）",
+      "bookingWindowDays": "{{count}}日先まで",
+      "emailNoteSection": "メールに足すご案内",
+      "emailNoteDesc": "予約確認メールとリマインドメールの下に、お店からのご案内を1ブロック足せます。日時やキャンセルの案内は自動で入るので、それ以外のことを書いてください。",
+      "bookingEmailNoteLabel": "予約確認メールに足す文",
+      "bookingEmailNotePlaceholder": "例：当日は5分前にお越しください。駐車場は建物の裏手にあります。",
+      "reminderEmailNoteLabel": "リマインドメールに足す文",
+      "reminderEmailNotePlaceholder": "例：お飲み物はこちらでご用意しています。",
+      "emailNoteUnset": "空欄にすると、メールには何も足しません。",
+      "emailNoteUpdated": "メールのご案内を更新しました",
+      "emailNoteSaveFailed": "メールのご案内の保存に失敗しました"
     },
     "notification": {
       "title": "通知設定",
@@ -1998,7 +2016,8 @@
     "joinButton": "スタッフとして参加する",
     "joinFailed": "参加できませんでした",
     "joinedTitle": "「{{name}}」にスタッフとして参加しました",
-    "joinedNote": "予約の担当として選ばれるようになります。"
+    "joinedNote": "予約の担当として選ばれるようになります。",
+    "errorStaffOffShift": "そのトレーナーはその時間帯のシフトに入っていません。別のトレーナーか別の曜日をお選びください。"
   },
   "hooks": {
     "loginInfoNotFound": "ログイン情報が見つかりません",
@@ -2546,5 +2565,50 @@
     "closed": "ジムを閉じました",
     "closeFailed": "ジムを閉じられませんでした。もう一度お試しください。",
     "closeBlockedMembers": "在籍中の方がいるため閉じられません。先にオーナーを引き継ぐか、在籍者の退会処理をしてください。"
+  },
+  "bookingQuestions": {
+    "sectionTitle": "事前アンケート",
+    "required": "必須",
+    "checked": "はい",
+    "errorRequired": "「{{label}}」にお答えください",
+    "answersTitle": "事前アンケートの回答",
+    "section": "予約時の質問（事前アンケート）",
+    "desc": "予約のときにお客様へ聞きたいことを設定できます。会員の予約と体験予約で、それぞれ聞くかどうかを選べます。",
+    "empty": "まだ質問がありません。「質問を追加」から作成してください。",
+    "addQuestion": "質問を追加",
+    "limitReached": "質問は{{count}}個までです",
+    "newQuestionLabel": "新しい質問",
+    "labelField": "質問文",
+    "helpField": "補足説明",
+    "helpPlaceholder": "例：当日の体調に不安があればお書きください",
+    "typeField": "回答の形式",
+    "optionsField": "選択肢",
+    "optionsHint": "「、」で区切って入力してください（例：初めて、経験あり、久しぶり）",
+    "requiredToggle": "必ず答えてもらう",
+    "askOnMemberToggle": "会員の予約で聞く",
+    "askOnTrialToggle": "体験予約で聞く",
+    "activeToggle": "この質問を使う",
+    "saved": "質問を保存しました",
+    "saveFailed": "質問の保存に失敗しました",
+    "deleted": "質問を削除しました",
+    "errorEmptyLabel": "質問文を入力してください",
+    "errorNoOptions": "選択肢を1つ以上入力してください",
+    "type": {
+      "text": "1行のテキスト",
+      "textarea": "複数行のテキスト",
+      "select": "選択肢から選ぶ",
+      "checkbox": "チェックボックス"
+    }
+  },
+  "staffSchedule": {
+    "section": "スタッフのシフト",
+    "desc": "スタッフごとに、働く曜日と時間帯を設定します。1曜日も設定しない場合は営業時間どおりに指名できます。",
+    "staffLabel": "スタッフ",
+    "off": "休み",
+    "unsetHint": "1曜日も設定していないため、このスタッフは営業時間どおりに指名できます。",
+    "saved": "シフトを保存しました",
+    "saveFailed": "シフトの保存に失敗しました",
+    "clearedToBusinessHours": "シフトを解除しました（営業時間どおりに指名できます）",
+    "invalidRange": "{{day}}曜の終了時刻は開始時刻より後にしてください"
   }
 }

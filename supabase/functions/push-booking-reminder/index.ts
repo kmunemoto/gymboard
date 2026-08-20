@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       supabase.from("profiles").select("user_id, display_name, plan, tenant_id" as any).in("user_id", userIds),
       supabase.from("notification_preferences").select("user_id, reminder_day_before").in("user_id", userIds),
       tenantIds.length
-        ? supabase.from("tenants").select("id, gym_name").in("id", tenantIds)
+        ? supabase.from("tenants").select("id, gym_name, reminder_email_note").in("id", tenantIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
@@ -116,6 +116,10 @@ Deno.serve(async (req) => {
       const planName: string = profile?.plan || sorted[0].booking_type || "";
       const tenantId = sorted[0].tenant_id as string | null;
       const gymName = tenantId ? (tenantMap.get(tenantId) as any)?.gym_name ?? "" : "";
+      // リマインドに足す、店からのご案内。空/未設定ならブロックごと出さない。
+      const gymNote = tenantId
+        ? String((tenantMap.get(tenantId) as any)?.reminder_email_note ?? "").trim() || null
+        : null;
 
       // (A) Push — sent via send-push-notification (covers Web Push + native FCM)
       //     Skip if the customer opted out of the day-before reminder.
@@ -152,6 +156,7 @@ Deno.serve(async (req) => {
               bookingTimes: times,
               planName,
               gymName,
+              gymNote,
             },
           },
         });

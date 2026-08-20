@@ -1,18 +1,27 @@
 # 営業時間と予約枠の連動
 
-最終更新: 2026-08-15
+最終更新: 2026-08-20
+
+> **2026-08-20 追記**: 曜日別の営業時間と定休日、および「何日先まで予約を受けるか」を足した。
+> このファイルは**全曜日共通だった時代の経緯**を残したもので、いまの仕様は
+> `mem/features/business-days-and-booking-window.md` が正。
+> 下の関数はすべて `weekday` を受け取れるようになっている（省略時は従来どおり）。
 
 ## 唯一の解釈者は `src/lib/businessHours.ts`
 
-`tenants.operating_hours`（`{ start, end }`）から予約枠の範囲を作るのは、この1ファイルだけ。
+`tenants.operating_hours` から予約枠の範囲を作るのは、この1ファイルだけ。
 画面側で `600` や `1260` のような分の数値を書かないこと。
 `src/test/businessHours.test.ts` が直書きの再発を検査する（変異16種で確認済み）。
+曜日別・定休日ぶんの検査は `src/test/businessDays.test.ts`（変異6種）。
 
 | 関数 | 用途 | 終端 |
 |---|---|---|
-| `bookingSlotMinutes(hours, slotMinutes)` | **予約枠**（お客様・予約を追加・体験・ドロップイン） | `終業 − 枠の長さ` |
-| `businessGridMinutes(hours)` | 週表示の行・ブロック枠の**開始** | `終業 − 15分` |
-| `blockEndMinutes(hours, startMin)` | ブロック枠の**終了** | `終業`ちょうど |
+| `bookingSlotMinutes(hours, slotMinutes, weekday?)` | **予約枠**（お客様・予約を追加・体験・ドロップイン） | `終業 − 枠の長さ` |
+| `businessGridMinutes(hours, weekday?)` | 週表示の行・ブロック枠の**開始** | `終業 − 15分` |
+| `blockEndMinutes(hours, startMin, weekday?)` | ブロック枠の**終了** | `終業`ちょうど |
+
+`weekday` を渡すとその曜日の営業時間で並ぶ（定休日なら空配列）。
+省略すると `start`/`end`（＝開いている曜日全体を包む**包絡線**）で並ぶ。
 
 予約枠だけ枠の長さを引くのは、**施術が終業までに終わる必要がある**から。
 ブロック枠（休憩・設営）は施術ではないので終業まで置ける。

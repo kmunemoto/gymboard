@@ -79,6 +79,11 @@ vi.mock("@/components/trainer/GymOwnershipActions", () => stub("gym-ownership"))
 // 運営への要望はマウント時に operator_feedback を読む（.order/.limit を使う）。
 // stub しないと同じ形で Errors N件 / exit 1 になる。
 vi.mock("@/components/trainer/OperatorFeedback", () => stub("operator-feedback"));
+// スタッフのシフトは useTenantStaff（.in を使う）と staff_schedules を読む。
+// 事前アンケートは booking_questions を読む（.order を使う）。どちらも stub しないと
+// 同じ形で「Tests は全部 passed、Errors N件」→ exit 1 になる。
+vi.mock("@/components/trainer/TrainerStaffSchedule", () => stub("staff-schedule"));
+vi.mock("@/components/trainer/TrainerBookingQuestions", () => stub("booking-questions"));
 vi.mock("@/components/LanguageSwitcher", () => stub("language-switcher"));
 vi.mock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
 vi.mock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

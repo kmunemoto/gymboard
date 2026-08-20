@@ -47,6 +47,11 @@ export const sendBookingNotifications = async (
   planName: string,
   customerUserId?: string,
   customerEmail?: string,
+  /**
+   * 予約確認メールに足す、店からのご案内（tenants.booking_email_note）。
+   * 空/未指定ならメールにブロックごと出さない。
+   */
+  gymNote?: string | null,
 ) => {
   if (bookings.length === 0) return;
   try {
@@ -105,6 +110,7 @@ export const sendBookingNotifications = async (
               bookingTime,
               planName,
               gymName: gymName ?? undefined,
+              gymNote: gymNote ?? null,
               resolveUserId: customerUserId,
             },
           },

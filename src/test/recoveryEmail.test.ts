@@ -43,7 +43,10 @@ describe("recovery-plain（素のテンプレート文字列・文字化けし�
     expect(html).not.toContain("のパスワード再設定リクエスト");
     expect(html).toContain("&#12497;"); // パ
     expect(html).toContain("&#12540;"); // ー
-    expect(html).toContain("<!--\n-->");
+    // 🔴 以前は「長い行を <!--\n--> で折る」方式で、ここでその存在を固定していた。
+    //    そのコメントが一部のメールクライアントで可視化されたため反転した
+    //    （2026-08-18、予約確認メールの「キ??ンセル」）。
+    expect(html, "本文に HTML コメントが挿入されています").not.toContain("<!--");
   });
 
   it("プレーンテキストも文字化けせず日本語が正しい", () => {

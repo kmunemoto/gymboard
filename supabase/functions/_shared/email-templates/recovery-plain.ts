@@ -14,7 +14,6 @@ function escapeHtmlAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 }
 
-const MAX_SAFE_HTML_LINE_CHARS = 48;
 
 function escapeAsciiHtmlText(ch: string): string {
   switch (ch) {
@@ -31,23 +30,21 @@ function escapeAsciiHtmlText(ch: string): string {
   }
 }
 
+/**
+ * 表示テキストを ASCII だけにする。
+ *
+ * 🔴 **本文に文字を挿入しない。** 以前は長い行を `<!--\n-->` で折っていたが、
+ * このコメントが一部のメールクライアントで**可視化される**
+ * （2026-08-18、予約確認メールで「キ??ンセル」として発覚）。
+ * ASCII 化した時点で quoted-printable は本文を壊せないので折る必要が無い。
+ * 詳細は `_shared/email-encoding.ts` の冒頭。
+ */
 function encodeHtmlTextSafely(text: string): string {
   let out = "";
-  let lineChars = 0;
-
   for (const ch of text) {
     const codePoint = ch.codePointAt(0)!;
-    const encoded = codePoint > 0x7f ? `&#${codePoint};` : escapeAsciiHtmlText(ch);
-
-    if (lineChars > 0 && lineChars + encoded.length > MAX_SAFE_HTML_LINE_CHARS) {
-      out += "<!--\n-->";
-      lineChars = 3; // 新しい物理行の先頭 "-->" の分
-    }
-
-    out += encoded;
-    lineChars += encoded.length;
+    out += codePoint > 0x7f ? `&#${codePoint};` : escapeAsciiHtmlText(ch);
   }
-
   return out;
 }
 

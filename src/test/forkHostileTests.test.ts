@@ -53,8 +53,10 @@ const ASSERTION_PATTERNS = [
 const ALLOWED: Record<string, string> = {
   // Edge Function のメールテンプレートは i18n を経由しない（フロントの設定を読まない）。
   // ここでのリテラルは「文字化けせずにこの文字列が出ること」を見るための検査対象そのもの。
-  "src/test/emailEncoding.test.ts": "Edge Function のメール本文の文字化け検査。i18n 非経由",
-  "src/test/recoveryEmail.test.ts": "同上（パスワード再設定メール）",
+  //
+  // emailEncoding.test.ts は 2026-08-18 に書き換えて ja.json と重なるリテラルが
+  // 無くなったので、この番人の指摘に従って許可リストから外した。
+  "src/test/recoveryEmail.test.ts": "Edge Function のメール本文の文字化け検査。i18n 非経由（パスワード再設定メール）",
   // 独立した i18next インスタンスに偽データを流し込む機構テスト。
   // 実ロケールを読まないので、フォークのオーバーレイの影響を受けない。
   "src/test/verticalOverlay.test.ts": "独立インスタンス＋偽データでの深いマージの機構テスト",

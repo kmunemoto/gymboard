@@ -1,120 +1,57 @@
 // 共有: メール本文 HTML を送信経路の行折り返しで文字化けさせないための整形。
 // （auth-email-hook / send-transactional-email 共通）
 //
-// 背景:
-//   パスワード再設定メール等で本文の「パスワード」が「パスワ???ード」と化けていた。
-//   本文の長い 1 行が送信経路の固定幅折り返し（多くは 76）の途中でマルチバイト文字を
-//   割っていたのが原因。見出し・ボタンは短い行のため無事だった。
+// ## 何が起きていたか（第1章・2026-07）
 //
-// 重要な実測（消去法）:
-//   - base64 送信なら長い行でも安全 → だが化ける → base64 ではない。
-//   - 8bit で「76バイト」折り返しなら 1 行 48 バイトに抑えれば安全 → だが化ける → これも違う。
-//   - 残るは quoted-printable (QP)。QP は非 ASCII の各バイトを =XX（3 倍）に展開してから
-//     76 桁で折り返す。つまり「生 48 バイト/行」は QP 後に約 144 文字となり、再び 76 桁で
-//     折り返されてマルチバイトの途中で割れていた。これが全ての辻褄に合う。
+// パスワード再設定メールの「パスワード」が「パスワ???ード」と化けていた。
+// 本文の長い1行が送信経路の固定幅折り返し（quoted-printable の76桁）の途中で
+// マルチバイト文字を割っていた。見出し・ボタンは短い行のため無事だった。
 //
-// 方針（仮説に依存しない二重防御）:
-//   1. 本文は「生の UTF-8」のまま送る（数値文字参照化＝ASCII 化はしない）。base64 経路でも
-//      そのまま安全で、生 UTF-8 はラップ安全な base64 を選ばせやすい。
-//   2. その上で、各行を「QP 展開を見込んで」十分短く保つ。1 文字最大 3 バイト→QP 9 文字なので、
-//      行の生バイト長を MAX_LINE_BYTES(=20) 以下にすれば QP 後も約 60 文字 + 余白で 76 未満に収まり、
-//      QP/8bit のどの折り返しでもマルチバイトの途中で割れない。
-//   3. 折り返しはテキスト中の「文字と文字の間（タグの外側）」でのみ行い、文字・タグ・URL の
-//      途中では絶対に改行しない。挿入する改行は HTML コメント (<!--\n-->) で包むため、
-//      どのメールクライアントでも余分な空白として描画されない。
-
-// 折り返し境界（76）を QP 展開後も超えないよう、生バイト長で十分小さく刻む。
-// （1 文字 = 最大 3 バイト → QP 9 文字。20 バイト ≒ QP 60 文字 + 余白 < 76）
-// 24 バイト × QP 3 倍 + 折り返し先頭 "-->" (3 バイト) = 75 で 76 未満に収まる。
-// 20 だと 6 字ちょうどの短い日本語（例:「京都市中京区」）でも折り返しが 1 回発生し、
-// 挿入された <!--\n--> が Gmail iOS ダークモード等で豆腐化して見えることがあった。
-const MAX_LINE_BYTES = 24;
-
-function utf8ByteLength(codePoint: number): number {
-  if (codePoint <= 0x7f) return 1;
-  if (codePoint <= 0x7ff) return 2;
-  if (codePoint <= 0xffff) return 3;
-  return 4;
-}
+// ## 🔴 その対策自体が第2の不具合になった（2026-08-18）
+//
+// 対策として「長い行を HTML コメント `<!--\n-->` で折る」方式にしたが、
+// **このコメントが一部のメールクライアントで可視化される。**
+//
+//   予約確認メール: 「アプリからキ??ンセル・変更が可能です。」
+//   （「ャ」の両側に入った `<!--\n-->` が ?? として描画された）
+//
+// 当時から「Gmail iOS ダークモード等で豆腐化して見えることがあった」と分かっていて、
+// 折り返し幅を 20→24 バイトに広げて**頻度を下げただけ**だった。根治していなかった。
+//
+// ## いまの方針: 折り返しをやめる
+//
+// **表示テキストを数値文字参照にすれば、本文は純 ASCII になる。**
+// quoted-printable は ASCII をそのまま通し、必要ならソフト改行 `=\n` を入れるが、
+// **これは受信側で完全に元へ戻る**（`&#125=\n15;` は `&#12515;` に復元される）。
+// つまり ASCII 化した時点で、こちらが行を折る必要は無い。
+//
+// 唯一やるのは「**元からある空白を改行に置き換える**」ことだけ。
+// HTML では空白も改行も同じ空白として畳まれるので、見た目は一切変わらない。
+// **新しい文字を本文に挿入しない**のが今回の要点。
+//
+// > 以前あった `wrapEmailHtml`（生 UTF-8 のまま行を折る関数）は削除した。
+// > 呼び出し元は2つとも ASCII 化を通るようになったので不要で、
+// > 残しておくと「コメントを挿入する方式」が再び使われてしまう。
 
 /**
- * メール本文 HTML を、送信経路の行折り返し（特に quoted-printable）で文字化けしないよう整形する。
- * 生の UTF-8 を保ちつつ、各行の生バイト長を MAX_LINE_BYTES 以下に抑える
- * （QP で 3 倍に展開されても 76 を超えないようにするため）。
- * 折り返しは「文字と文字の間」かつ「タグの外側」でのみ行い、
- * 文字・タグ・URL の途中では絶対に改行しない。挿入する改行は HTML コメントで
- * 包むため描画上は無（余分な空白も出ない）。
+ * 元からある空白を改行に替えてよい桁数の目安。
+ * 純 ASCII なので QP のソフト改行に任せても壊れないが、
+ * 行が極端に長いと一部の MTA が扱いを誤るため、余裕があるところでは折っておく。
  */
-export function wrapEmailHtml(html: string): string {
-  let out = "";
-  let lineBytes = 0;
-  let insideTag = false;
+const SOFT_WRAP_AT = 72;
 
-  for (const ch of html) {
-    // タグ文脈を追跡（タグ内では折り返さない＝URL/属性を壊さない）。
-    if (ch === "<") insideTag = true;
-
-    // 既存の改行はそのまま。行長カウンタをリセット。
-    if (ch === "\n") {
-      out += "\n";
-      lineBytes = 0;
-      continue;
-    }
-
-    const code = ch.codePointAt(0)!;
-    const bytes = utf8ByteLength(code);
-    const isMultibyte = bytes > 1;
-
-    // マルチバイト文字の手前で、行が長くなりすぎる前に安全に折り返す。
-    // （タグ内では折らない。ASCII 語中では折らない＝半角語・URL の分断防止）
-    if (
-      isMultibyte &&
-      !insideTag &&
-      lineBytes > 0 &&
-      lineBytes + bytes > MAX_LINE_BYTES
-    ) {
-      out += "<!--\n-->";
-      lineBytes = 3; // 新しい物理行の先頭 "-->" の分
-    }
-
-    out += ch; // 生の文字のまま（数値文字参照化しない）
-    lineBytes += bytes;
-
-    // タグ外の半角スペース／タブは QP のソフト改行境界として安全に折り返せるため、
-    // ここで論理行の桁カウンタをリセットする。こうしないと pretty:true が挿入する
-    // 各要素前のインデント（20 スペース前後）が桁を食いつぶし、直後の短い日本語
-    // テキストの中で <!--\n--> が挿入され、Gmail iOS ダークモード等で豆腐化する。
-    if (!insideTag && (ch === " " || ch === "\t")) {
-      lineBytes = 0;
-    }
-
-    if (ch === ">") insideTag = false;
-  }
-
-  return out;
-}
-
-const MAX_ASCII_HTML_LINE_CHARS = 48;
 const ENTITY_RE = /^&(?:#\d+|#x[0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]+);/;
-
-function appendAsciiHtmlToken(out: string, token: string, lineChars: number) {
-  if (lineChars > 0 && lineChars + token.length > MAX_ASCII_HTML_LINE_CHARS) {
-    out += "<!--\n-->";
-    lineChars = 3; // 新しい物理行の先頭 "-->" の分
-  }
-
-  out += token;
-  lineChars += token.length;
-  return { out, lineChars };
-}
 
 /**
  * HTML の表示テキストだけを ASCII 安全な数値文字参照へ変換する。
  *
- * 予約確認メールで「・」「▼」など一部記号が iOS Mail 上で U+FFFD に
- * 化けるケースが残っていたため、HTML パートはタグ/属性を壊さず、テキスト
- * ノードだけを ASCII 化する。見た目はメールクライアント側で通常の日本語に
- * デコードされるが、送信経路がどこで折り返しても UTF-8 バイト列は分断されない。
+ * タグ・属性（href の URL 等）は一切変えない。テキストノードだけを ASCII 化するので、
+ * 送信経路がどこで折り返してもマルチバイトが分断されない。
+ * 見た目はメールクライアント側で通常の日本語にデコードされる。
+ *
+ * **本文に新しい文字を挿入しない。** 改行するのは「元から空白だった位置」だけ
+ * （HTML では空白と改行は等価なので描画に影響しない）。
+ * 既に `&#...;` になっている入力に対しては何もしない（冪等）。
  */
 export function makeEmailHtmlAsciiSafe(html: string): string {
   let out = "";
@@ -139,9 +76,7 @@ export function makeEmailHtmlAsciiSafe(html: string): string {
       if (ch === ">") {
         insideTag = false;
         // タグを抜けたらテキスト用の桁カウンタをリセットする。
-        // こうしないと <p style="..."> のようなタグ内 ASCII が桁を食いつぶし、
-        // 直後の短い日本語テキストの途中で <!--\n--> が挿入されてしまう。
-        // Gmail iOS ダークモード等でそのコメントが豆腐化して見える事象を避ける。
+        // タグ内の ASCII（style 属性など）で桁を食いつぶさないため。
         lineChars = 0;
       }
       i += width;
@@ -156,10 +91,21 @@ export function makeEmailHtmlAsciiSafe(html: string): string {
       continue;
     }
 
+    // 🔴 元からある空白だけを改行に替えてよい。
+    //    ここで新しい文字（HTML コメント等）を入れると、メールクライアントに
+    //    よっては可視化される（2026-08-18 の「キ??ンセル」）。
+    if ((ch === " " || ch === "\t") && lineChars >= SOFT_WRAP_AT) {
+      out += "\n";
+      lineChars = 0;
+      i += width;
+      continue;
+    }
+
     let token: string;
     if (ch === "&") {
       const entity = html.slice(i).match(ENTITY_RE)?.[0];
       if (entity) {
+        // 既に実体参照ならそのまま通す（二重エンコードしない＝冪等）
         token = entity;
         i += entity.length;
       } else {
@@ -174,9 +120,8 @@ export function makeEmailHtmlAsciiSafe(html: string): string {
       i += width;
     }
 
-    const next = appendAsciiHtmlToken(out, token, lineChars);
-    out = next.out;
-    lineChars = next.lineChars;
+    out += token;
+    lineChars += token.length;
   }
 
   return out;

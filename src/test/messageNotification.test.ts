@@ -187,7 +187,11 @@ describe("DB の INSERT が通知の起点になっている", () => {
       .filter((f) => /[a-z0-9]{20}\.supabase\.co/.test(readFileSync(`${MIGRATION_DIR}/${f}`, "utf8")));
     expect(
       offenders,
-      "マイグレーションに Supabase の project ref を直書きしています。vault から読んでください。",
+      "マイグレーションに Supabase の project ref を直書きしています。vault から読んでください。\n" +
+        "**Lovable が置いていった使い捨ての診断用SQLなら、許可リストに足さずに削除すること**\n" +
+        "（2026-08-20、デプロイ確認用の _probe_deploy が残って CI が赤くなった。\n" +
+        "  一度実行して DROP まで済んでいる SQL がマイグレーションとして残ると、\n" +
+        "  新しい環境でマイグレーションを流し直したときに本番へ HTTP を撃つ）。",
     ).toEqual([]);
   });
 });

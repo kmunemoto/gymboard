@@ -4029,19 +4029,19 @@ export type Database = {
           status: string
         }[]
       }
-      get_tenant_limit_status: { Args: { p_tenant_id: string }; Returns: Json }
       get_tenant_booking_questions: {
         Args: { p_tenant_id: string }
         Returns: {
-          help_text: string | null
+          help_text: string
           id: string
           input_type: string
           label: string
-          options: Json | null
+          options: Json
           required: boolean
           sort_order: number
         }[]
       }
+      get_tenant_limit_status: { Args: { p_tenant_id: string }; Returns: Json }
       get_tenant_public: {
         Args: { p_id: string }
         Returns: {
@@ -4050,7 +4050,7 @@ export type Database = {
           booking_capacity: number
           booking_cutoff_hours: number
           booking_cutoff_type: string
-          booking_window_days: number | null
+          booking_window_days: number
           gym_name: string
           gym_name_short: string
           id: string

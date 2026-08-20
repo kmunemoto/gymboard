@@ -1,7 +1,7 @@
 import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js@0.1.2'
 import { WebhookError, verifyWebhookRequest } from 'npm:@lovable.dev/webhooks-js@0.0.2'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { wrapEmailHtml } from '../_shared/email-encoding.ts'
+import { makeEmailHtmlAsciiSafe } from '../_shared/email-encoding.ts'
 // ⚠️ 認証メールは6種別すべて素の文字列で組み立てる。React・ストリーミング描画は通さない。
 //    種別ごとに逃がすと必ず取りこぼす（2026-06 recovery → 2026-08 signup で再発）。
 //    理由は auth-plain.ts の冒頭。
@@ -281,7 +281,9 @@ async function handleWebhook(req: Request): Promise<Response> {
   // 種別ごとに逃がすと必ず取りこぼすので、分岐そのものを無くした。詳細は auth-plain.ts。
   const rawHtml = renderAuthHtml(emailType, templateProps as any)
   const text = renderAuthText(emailType, templateProps as any)
-  const html = wrapEmailHtml(rawHtml)
+  // renderAuthHtml の enc() が既に ASCII 化しているので通常は素通りだが、
+  // テンプレートに生の日本語が紛れても拾えるよう最後に通す（冪等）。
+  const html = makeEmailHtmlAsciiSafe(rawHtml)
 
   // Enqueue email for async processing by the dispatcher (process-email-queue).
   const supabase = createClient(

@@ -2,7 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import { render } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
-import { makeEmailHtmlAsciiSafe, wrapEmailHtml } from '../_shared/email-encoding.ts'
+import { makeEmailHtmlAsciiSafe } from '../_shared/email-encoding.ts'
 
 // この関数は _shared/transactional-email-templates のメールテンプレートを
 // デプロイ時にバンドルする。テンプレートを更新したら、必ず本関数を再デプロイして
@@ -506,14 +506,19 @@ Deno.serve(async (req) => {
   //
   // 同期の `render` は `renderToStaticMarkup` を使いストリームを通らない。
   //
-  // その後の wrapEmailHtml / makeEmailHtmlAsciiSafe は**送信経路**（quoted-printable の
+  // その後の makeEmailHtmlAsciiSafe は**送信経路**（quoted-printable の
   // 76バイト折り返し）に対する第2層。描画側が壊した文字は直せないので、
   // 上の `render` が第1層として要る。
+  //
+  // 🔴 以前はここで wrapEmailHtml も通していたが、それが本文に挿入する
+  //    `<!--\n-->` が一部のメールクライアントで可視化された
+  //    （2026-08-18「アプリからキ??ンセル」）。ASCII 化すれば QP は本文を
+  //    壊せないので、折り返し自体が不要だった。
   const rawHtml = render(
     React.createElement(template.component, templateData),
     { pretty: true }
   )
-  const html = makeEmailHtmlAsciiSafe(wrapEmailHtml(rawHtml))
+  const html = makeEmailHtmlAsciiSafe(rawHtml)
   const plainText = render(
     React.createElement(template.component, templateData),
     { plainText: true }

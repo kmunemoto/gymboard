@@ -1,15 +1,30 @@
 #!/usr/bin/env python3
-"""アプリアイコン一式を生成する（冬の雪山を背景にしたデザイン）。
+"""アプリアイコン一式を生成する（ブランドのティール1色を背景にしたデザイン）。
 
     python3 scripts/generate-app-icon.py
 
 必要: Python 3 + numpy + Pillow  (pip install numpy pillow)
 プロジェクト直下で実行すること。
 
+## デザイン（2026-08 更新）
+
+**背景は「アプリ内と同じティールのグラデーション」だけ。** 絵は描かない。
+
+以前は冬の雪山（空・稜線・積雪・粉雪）を描いていたが、**16〜24px のホーム画面で
+何が描いてあるか判別できなくなっていた**（山の稜線と盾の輪郭が同じ明度で混ざる）。
+アイコンが実際に見られるのはほぼその大きさなので、背景の絵は情報を運んでいなかった。
+
+配色は製品の `--primary` / `--accent`（`src/index.css` の `hsl(174 60% 45%)` 系）と
+同じティールで、角度も `.gradient-primary` と同じ 135°。**アイコンと製品画面が
+同じ色の系統に見える**ようにしている。深さは「白い盾が 16px で沈まない」ことを
+基準に決めた（明るすぎると盾の輪郭が背景に溶ける）。
+
+盾と GB モノグラムは**従来のまま**。ブランドマークなので触らない。
+
 ## なぜスクリプトなのか
 
-背景を季節ごとに差し替えられるようにするため。配色や山の形はすべて定数なので、
-このファイルを編集して流し直せば一式が揃う。固定シードなので出力は毎回同じ。
+配色を変えられるようにするため。色は下の定数だけなので、編集して流し直せば一式が揃う。
+固定シードなので出力は毎回同じ。
 
 ## 素材について
 
@@ -32,7 +47,7 @@
     public/icon-192.png / icon-512.png     PWA / Play Console 掲載アイコン
     public/apple-touch-icon.png            iOS Safari
     public/favicon.png / favicon.ico       favicon
-    src/assets/gymboard-loader.png         アプリ内ローディング表示（角丸・透過）
+    src/assets/gymboard-loader.png         アプリ内ローディング表示（透過・盾のみ）
     gymboard-feature-graphic-1024x500.png  Play Console のフィーチャーグラフィック
 
 反映には別途ネイティブビルドが必要（詳細は mem/features/app-icon-splash-assets.md）。
@@ -44,8 +59,25 @@ EMBLEM_SRC = "assets/icon-emblem-src.png"      # 盾とGBの抽出元（出力�
 TEXT_SRC = "assets/feature-text-src.png"       # 「ジムボード」の抽出元
 BASE = 1024
 S = 3                                          # スーパーサンプリング倍率
-SEED = 20260727
+SEED = 20260821
 CX = 511.5                                     # 盾の中心x（抽出元から実測した値）
+
+# --- 配色 -----------------------------------------------------------------
+# 135° のティール。明るい側は製品の --primary（hsl(174 60% 45%) ≒ #2EB8AA）より
+# 少し落として、白い盾が 16px でも背景から分離するようにしている。
+GRAD_FROM = (0x18, 0xA0, 0x8E)                 # 左上（明るい側）
+GRAD_TO = (0x06, 0x59, 0x50)                   # 右下（暗い側）
+# 左上のごく弱い光。真っ平らなグラデーションは 1024px 以上で「塗り忘れ」に見えるため。
+LIGHT_AT = (0.24, 0.18)                        # 光源の位置（0-1）
+LIGHT_RADIUS = 0.85
+LIGHT_AMOUNT = 16                              # 加算する明るさ（0-255）
+# 盾を座らせる影。背景が静かになったぶん、雪山版より大幅に弱くしている
+# （強くすると 16px で盾の下に黒い輪が出る）。色は無彩色ではなく深いティール。
+SHADOW_INK = (0x04, 0x33, 0x2E)
+SHADOW_ALPHA = 0.16
+SHADOW_BLUR = 18
+SHADOW_DROP = 8
+GRAIN = 1.2                                    # バンディング防止（2732pxのスプラッシュで出る）
 
 
 class Canvas:
@@ -73,29 +105,10 @@ class Canvas:
     def solid(self, c):
         return np.zeros((self.nh, self.nw, 3), np.float32) + np.array(c, np.float32)
 
-    def radial(self, cx, cy, r, inner=1.0, outer=0.0):
+    def falloff(self, cx, cy, r, power=1.6):
+        """(cx, cy) で 1、半径 r で 0 になる減衰（0-1 の正規化座標）"""
         d = np.sqrt((self.XX / self.nw - cx) ** 2 + (self.YY / self.nh - cy) ** 2) / r
-        return np.clip(inner + (outer - inner) * np.clip(d, 0, 1), 0, 1)
-
-    def vgrad(self, stops):
-        ys = np.linspace(0, 1, self.nh)
-        out = np.empty((self.nh, self.nw, 3), np.float32)
-        for i in range(3):
-            out[:, :, i] = np.interp(ys, [p for p, _ in stops],
-                                     [c[i] for _, c in stops])[:, None]
-        return out
-
-    def ridge_line(self, peaks, rough, seed):
-        """peaks=[(x, y), ...] を折れ線で結び、列ごとの稜線の高さ配列を返す（論理px指定）"""
-        xs = np.array([p[0] for p in peaks], np.float32) * self.s
-        ys = np.array([p[1] for p in peaks], np.float32) * self.s
-        ry = np.interp(np.arange(self.nw), xs, ys).astype(np.float32)
-        g = np.random.default_rng(seed)
-        for wave, amp in ((60, 1.0), (22, 0.5), (8, 0.25)):     # 複数スケールの凹凸
-            n = g.normal(0, 1, self.nw // wave + 2)
-            ry += np.interp(np.linspace(0, len(n) - 1, self.nw),
-                            np.arange(len(n)), n) * rough * amp * self.s
-        return ry
+        return np.clip(1.0 - d, 0, 1) ** power
 
 
 def over(dst, rgb, a):
@@ -105,74 +118,17 @@ def over(dst, rgb, a):
     return dst
 
 
-def draw_range(c, canvas, ry, rock, snow_line, fade, thick, shadow, haze, seed,
-               haze_drop=150):
-    """山脈を1つ描く。
+def brand_background(c, grad_from=GRAD_FROM, grad_to=GRAD_TO):
+    """ティールの 135° グラデーション。アスペクト比に依らず対角に流れる。
 
-    snow_line: これより高い（=yが小さい）列に雪が乗る（論理px）
-    fade:      雪が乗り始めてから最大量になるまでの標高差（論理px）
-    thick:     最大の積雪の厚み（稜線からの距離・論理px）
-
-    雪の量は「稜線から一定幅」ではなく「その列の標高」で決めている。
-    一定幅にすると雪が輪郭に沿った帯に見えて山にならない。
+    x と y をそれぞれ 0-1 に正規化してから足すので、正方形のアイコンでも
+    横長のフィーチャーグラフィックでも同じ「左上→右下」の流れになる。
     """
-    body = (c.YY >= ry[None, :]).astype(np.float32)
-    over(canvas, c.solid(rock), body)
-
-    # ry は拡大後の座標なので、論理pxで与えた値は S 倍して比べる。
-    alt = np.clip((snow_line * c.s - ry) / (fade * c.s), 0, 1) ** 1.3
-    # 雪の下端は列ごとに揺らす。面全体に2次元ノイズを掛ける方法も試したが、
-    # 深さの切り口が鋭いため氷柱のような細かい垂れになってしまった。
-    # wave は制御点1つあたりのピクセル数で、小さいほど細かく垂れる。
-    g = np.random.default_rng(seed)
-    wobble = np.ones(c.nw, np.float32)
-    for wave, amp in ((300, 0.22), (110, 0.10)):
-        n = g.normal(0, 1, c.nw // wave + 2)
-        wobble += np.interp(np.linspace(0, len(n) - 1, c.nw),
-                            np.arange(len(n)), n).astype(np.float32) * amp
-    depth = (alt * thick * c.s * np.clip(wobble, 0.35, 1.8))[None, :]
-    snow = np.clip((depth - (c.YY - ry[None, :])) / (22 * c.s), 0, 1) * body
-    over(canvas, c.solid((0xFC, 0xFE, 0xFF)), c.blur(snow, 1.0))
-
-    # 影は寒色に転ぶよう、赤を強めに落とす（光源は右上）
-    sh = (np.clip(1.0 - c.XX / c.nw * 1.4, 0, 1) ** 1.3 * body * shadow)[:, :, None]
-    canvas *= (1 - sh * np.array([1.25, 1.05, 0.72], np.float32))
-
-    # 裾の冷たい霞（空気遠近）
-    over(canvas, c.solid((0xDD, 0xEA, 0xF4)),
-         c.blur(np.clip(c.shift(body, 0, haze_drop), 0, 1), 45) * haze)
-    return canvas
-
-
-def winter_background(c, sky, sun, ranges, flakes, vig, grain=1.8, haze_drop=150):
-    """冬の雪山の背景を描いて返す"""
-    canvas = c.vgrad(sky)
-    # 冬の陽は淡く拡散する（金色にしない）
-    canvas += (c.radial(*sun[0]) ** 2.0)[:, :, None] * np.array(sun[1], np.float32)
-    canvas = np.clip(canvas, 0, 255)
-
-    for r in ranges:                       # 遠景 → 近景（遠いほど淡くコントラストが低い）
-        canvas = draw_range(c, canvas, c.ridge_line(*r["ridge"]), haze_drop=haze_drop,
-                            **{k: v for k, v in r.items() if k != "ridge"})
-    canvas = np.clip(canvas, 0, 255)
-
-    # 粉雪。盾より奥に描くのでロゴには掛からない。
-    layer = Image.new("L", (c.nw, c.nh), 0)
-    fd = ImageDraw.Draw(layer)
-    for _ in range(flakes):
-        fx = c.rng.uniform(0, c.w)
-        fy = c.rng.uniform(0, c.h) ** 0.85 / c.h ** 0.85 * c.h      # 上のほうに多く
-        r = c.rng.uniform(1.2, 5.2) ** 1.15
-        fd.ellipse([(fx - r) * c.s, (fy - r) * c.s, (fx + r) * c.s, (fy + r) * c.s],
-                   fill=int(c.rng.uniform(45, 210)))
-    over(canvas, c.solid((255, 255, 255)),
-         c.blur(np.asarray(layer, np.float32) / 255.0, 0.7) * 0.9)
-
-    # 粒状感（のっぺりしないように）
-    canvas = np.clip(canvas + c.rng.normal(0, grain, (c.nh, c.nw, 1)).astype(np.float32),
-                     0, 255)
-    # 周辺減光（盾に視線を集める）。寒色を残すため青は落としすぎない。
-    canvas *= (1 - (c.radial(*vig[0]) ** 1.8)[:, :, None] * np.array(vig[1], np.float32))
+    t = np.clip((c.XX / c.nw + c.YY / c.nh) / 2.0, 0, 1)[:, :, None]
+    canvas = np.array(grad_from, np.float32) * (1 - t) + np.array(grad_to, np.float32) * t
+    canvas += c.falloff(*LIGHT_AT, LIGHT_RADIUS)[:, :, None] * LIGHT_AMOUNT
+    # 純粋なグラデーションは 8bit では帯が見える。わずかな粒でディザリングする。
+    canvas += c.rng.normal(0, GRAIN, (c.nh, c.nw, 1)).astype(np.float32)
     return np.clip(canvas, 0, 255)
 
 
@@ -210,9 +166,9 @@ def load_emblem(c):
 
 
 def place_shield(c, canvas, emblem, mask):
-    """雪山は白いので、盾が埋もれないよう寒色の影で浮かせてから載せる"""
-    over(canvas, c.solid((0x0E, 0x2A, 0x48)), c.blur(c.shift(mask, 2, 13), 17) * 0.46)
-    over(canvas, c.solid((0x0E, 0x2A, 0x48)), c.blur(c.shift(mask, 0, 4), 5) * 0.26)
+    """盾を載せる。影は「浮かせる」ためではなく座らせるためなので、ごく弱く。"""
+    over(canvas, c.solid(SHADOW_INK),
+         c.blur(c.shift(mask, 0, SHADOW_DROP), SHADOW_BLUR) * SHADOW_ALPHA)
     over(canvas, emblem, mask)
     return canvas
 
@@ -225,33 +181,8 @@ def to_image(arr, w, h):
 # =========================================================================
 # 1) 正方形のアイコン
 # =========================================================================
-ICON_SKY = [
-    (0.00, (0x2A, 0x59, 0x8E)),      # 高いところの濃い冬空
-    (0.22, (0x4C, 0x80, 0xB2)),
-    (0.42, (0x92, 0xB7, 0xD4)),
-    (0.58, (0xC6, 0xDB, 0xE9)),
-    (0.70, (0xE9, 0xF1, 0xF6)),      # 地平近くは白く霞む
-    (1.00, (0xF5, 0xF9, 0xFB)),
-]
-ICON_RANGES = [
-    dict(ridge=([(-30, 648), (110, 548), (250, 620), (400, 534), (560, 606),
-                 (720, 540), (880, 614), (1054, 558)], 3.0, 21),
-         rock=(0xB4, 0xC8, 0xDA), snow_line=650, fade=60, thick=58,
-         shadow=0.06, haze=0.42, seed=101),
-    dict(ridge=([(-30, 712), (95, 574), (230, 676), (360, 544), (500, 654),
-                 (650, 562), (810, 672), (935, 584), (1054, 676)], 4.5, 5),
-         rock=(0x86, 0xA4, 0xC0), snow_line=710, fade=70, thick=86,
-         shadow=0.12, haze=0.32, seed=202),
-    dict(ridge=([(-30, 880), (75, 540), (200, 760), (330, 652), (470, 808),
-                 (620, 720), (760, 656), (905, 514), (1054, 788)], 6.5, 31),
-         rock=(0x56, 0x74, 0x94), snow_line=820, fade=95, thick=140,
-         shadow=0.18, haze=0.16, seed=303),
-]
-
 c = Canvas(BASE, BASE)
-background = winter_background(
-    c, ICON_SKY, ((0.74, 0.12, 0.70), (52, 56, 60)), ICON_RANGES,
-    flakes=210, vig=((0.5, 0.44, 1.12, 0.0, 1.0), (0.26, 0.22, 0.15)))
+background = brand_background(c)
 emblem, shield = load_emblem(c)
 icon = to_image(place_shield(c, background.copy(), emblem, shield), BASE, BASE)
 
@@ -269,11 +200,21 @@ sheet.paste(scaled, ((BASE - scaled.width) // 2, (BASE - scaled.height) // 2), s
 sheet.save("assets/icon-foreground.png")
 
 # スプラッシュ（アイコンを中央に置く。背景色は capacitor.config.ts と揃える）
+#
+# 角を丸めてから貼る。背景が単色のティールになったので、直角のまま貼ると
+# 白い画面に「切り抜き忘れた四角」が浮いて見える（雪山版は裾が白く霞んでいたため
+# 目立たなかった）。半径は iOS のホーム画面のマスクに近い 22%。
+SPLASH_ICON_SIDE = 1100
+SPLASH_CORNER = 0.22
+_mask = Image.new("L", (SPLASH_ICON_SIDE, SPLASH_ICON_SIDE), 0)
+ImageDraw.Draw(_mask).rounded_rectangle(
+    [0, 0, SPLASH_ICON_SIDE - 1, SPLASH_ICON_SIDE - 1],
+    radius=int(SPLASH_ICON_SIDE * SPLASH_CORNER), fill=255)
+_splash_icon = icon.resize((SPLASH_ICON_SIDE, SPLASH_ICON_SIDE), Image.LANCZOS)
 for name, bg in (("splash", (0xFF, 0xFF, 0xFF)), ("splash-dark", (0x0E, 0x1C, 0x2A))):
     sp = Image.new("RGB", (2732, 2732), bg)
-    side = 1100
-    sp.paste(icon.resize((side, side), Image.LANCZOS),
-             ((2732 - side) // 2, (2732 - side) // 2))
+    off = (2732 - SPLASH_ICON_SIDE) // 2
+    sp.paste(_splash_icon, (off, off), _mask)
     sp.save(f"assets/{name}.png")
 
 # Web/PWA も同じ絵柄に揃える
@@ -287,7 +228,7 @@ rgba.resize((256, 256), Image.LANCZOS).save("public/favicon.ico", sizes=[(256, 2
 # =========================================================================
 # 2) アプリ内ローディング表示（盾とGBだけ・透過）
 # =========================================================================
-# 背景（雪山）は入れず、ブランドロゴ src/assets/gymboard-logo.png の
+# 背景は入れず、ブランドロゴ src/assets/gymboard-logo.png の
 # 「ティールの輪郭の盾＋GB」をそのまま使う（オーナーの指定）。
 #
 # 白背景に沈まないのは、盾が白ベタではなくティールの輪郭で描かれているため。
@@ -325,40 +266,20 @@ loader.save("src/assets/gymboard-loader.png")
 # =========================================================================
 # 3) Play Console のフィーチャーグラフィック（1024×500）
 # =========================================================================
-# 横長なので山と空を別に組み直す。白文字を載せるため、空は中ほどまで濃いまま保つ。
+# 同じ 135° のグラデーション。左上（盾を置く側）が明るく、右下（白文字を置く側）が
+# 暗くなるので、白文字のコントラストは対角の流れがそのまま担保する。
 FW, FH = 1024, 500
-FEATURE_SKY = [
-    (0.00, (0x14, 0x3A, 0x68)),
-    (0.34, (0x22, 0x54, 0x8C)),
-    (0.60, (0x35, 0x6E, 0xA6)),      # ここに白文字が乗る
-    (0.80, (0x7C, 0xA8, 0xCE)),
-    (1.00, (0xD8, 0xE8, 0xF2)),
-]
-FEATURE_RANGES = [
-    dict(ridge=([(-30, 396), (150, 334), (320, 384), (500, 326), (680, 378),
-                 (860, 330), (1054, 382)], 2.2, 21),
-         rock=(0x8E, 0xAC, 0xC8), snow_line=396, fade=40, thick=34,
-         shadow=0.06, haze=0.30, seed=401),
-    dict(ridge=([(-30, 470), (120, 340), (300, 436), (480, 378), (660, 446),
-                 (845, 332), (1054, 458)], 3.4, 31),
-         rock=(0x4A, 0x68, 0x8A), snow_line=470, fade=55, thick=70,
-         shadow=0.16, haze=0.14, seed=402),
-]
-
 fc = Canvas(FW, FH)
-feature = to_image(winter_background(
-    fc, FEATURE_SKY, ((0.80, 0.14, 0.62), (44, 48, 54)), FEATURE_RANGES,
-    flakes=130, vig=((0.5, 0.5, 1.30, 0.0, 1.0), (0.16, 0.13, 0.09)),
-    haze_drop=70), FW, FH).convert("RGBA")
+feature = to_image(brand_background(fc), FW, FH).convert("RGBA")
 
 # 盾は元のレイアウトと同じ位置・大きさに置く（旧グラフィックからの実測値）
 SX0, SY0, SX1, SY1 = 82, 57, 382, 439
 crop = shield_rgba.crop(shield_rgba.getbbox()).resize((SX1 - SX0, SY1 - SY0), Image.LANCZOS)
 drop = Image.new("RGBA", (FW, FH), (0, 0, 0, 0))
-drop.paste(crop, (SX0 + 3, SY0 + 10), crop)
-drop = drop.filter(ImageFilter.GaussianBlur(9))
-tint = Image.new("RGBA", (FW, FH), (0x0E, 0x2A, 0x48, 0))
-tint.putalpha(drop.getchannel("A").point(lambda v: int(v * 0.5)))
+drop.paste(crop, (SX0, SY0 + SHADOW_DROP), crop)
+drop = drop.filter(ImageFilter.GaussianBlur(SHADOW_BLUR))
+tint = Image.new("RGBA", (FW, FH), (*SHADOW_INK, 0))
+tint.putalpha(drop.getchannel("A").point(lambda v: int(v * SHADOW_ALPHA)))
 feature = Image.alpha_composite(feature, tint)
 feature.paste(crop, (SX0, SY0), crop)
 

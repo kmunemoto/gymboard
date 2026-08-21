@@ -338,6 +338,47 @@ export type Database = {
           },
         ]
       }
+      booking_blocked_windows: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          end_time: string
+          id: string
+          start_time: string
+          tenant_id: string
+          updated_at: string
+          weekdays: number[]
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          id?: string
+          start_time?: string
+          tenant_id: string
+          updated_at?: string
+          weekdays: number[]
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          id?: string
+          start_time?: string
+          tenant_id?: string
+          updated_at?: string
+          weekdays?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_blocked_windows_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_capacity_windows: {
         Row: {
           capacity: number

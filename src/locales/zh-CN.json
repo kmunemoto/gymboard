@@ -2668,5 +2668,26 @@
     "saveFailed": "排班保存失败",
     "clearedToBusinessHours": "已取消排班（将按营业时间正常被指定）",
     "invalidRange": "{{day}}的结束时间必须晚于开始时间"
+  },
+  "blockedWindows": {
+    "section": "不受理的时段",
+    "desc": "用于统一开始时间、确保时段数量的设置（例如：工作日只保留 18:15 和 19:30 两个场次）。不受理在这两个时刻之间开始的预约。恰好在两端时刻开始的预约照常受理。",
+    "empty": "没有不受理的时段。所有时段均可预约。",
+    "loadFailed": "无法读取设置。",
+    "reload": "重新加载",
+    "enabledLabel": "启用",
+    "disabledLabel": "停用",
+    "addWindow": "添加时段",
+    "invalidWeekdays": "请至少选择一个星期。",
+    "invalidRange": "结束时刻必须晚于开始时刻。",
+    "saveFailed": "保存失败，请稍后再试。",
+    "saved": "已保存不受理的时段。",
+    "cleared": "已解除所有不受理的时段。",
+    "proxyNote": "此设置仅对会员自行预约生效。健身房从日程表代为添加的预约以及设有豁免的会员不受影响。",
+    "rowHint": "恰好在 {{start}} 和 {{end}} 开始的预约照常受理（仅不受理在两者之间开始的预约）。",
+    "slotNotAccepting": "不受理",
+    "errorNotAccepting": "该时段不受理预约。请选择前后其他时间。",
+    "errorNotAcceptingProxy": "该时段已设为不受理（将自己选为顾客时会按本人预约处理。可在 健身房设置 → 不受理的时段 中修改）。",
+    "repeatSkippedBlocked": "有 {{count}} 次预约因该时段不受理而被跳过（{{dates}}）。"
   }
 }

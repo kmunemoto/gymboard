@@ -2668,5 +2668,26 @@
     "saveFailed": "Couldn't save the shifts",
     "clearedToBusinessHours": "Shifts cleared (this staff member can be booked during business hours)",
     "invalidRange": "End time for {{day}} must be later than the start time"
+  },
+  "blockedWindows": {
+    "section": "Non-accepting time windows",
+    "desc": "Align start times to protect your slot count (e.g. keep only the 18:15 and 19:30 sessions on weekdays). Bookings starting between the two times are not accepted. Bookings starting exactly at either time are accepted.",
+    "empty": "No non-accepting windows. All slots are open for booking.",
+    "loadFailed": "Failed to load the settings.",
+    "reload": "Reload",
+    "enabledLabel": "Enabled",
+    "disabledLabel": "Disabled",
+    "addWindow": "Add window",
+    "invalidWeekdays": "Select at least one weekday.",
+    "invalidRange": "End time must be after the start time.",
+    "saveFailed": "Failed to save. Please try again later.",
+    "saved": "Non-accepting windows saved.",
+    "cleared": "All non-accepting windows removed.",
+    "proxyNote": "This only applies to bookings members make themselves. Bookings the gym adds from the schedule, and members with an exemption, are not affected.",
+    "rowHint": "Bookings starting exactly at {{start}} or {{end}} are accepted (only starts between them are not).",
+    "slotNotAccepting": "N/A",
+    "errorNotAccepting": "Bookings are not accepted in this time window. Please pick an earlier or later time.",
+    "errorNotAcceptingProxy": "This window is set to not accept bookings (selecting yourself as the customer makes it a self-booking; change it in Gym Settings → Non-accepting time windows).",
+    "repeatSkippedBlocked": "{{count}} booking(s) were skipped because that time window is not accepting bookings ({{dates}})."
   }
 }

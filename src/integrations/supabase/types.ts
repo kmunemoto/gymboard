@@ -476,54 +476,6 @@ export type Database = {
           },
         ]
       }
-      booking_notify_log: {
-        Row: {
-          actor_user_id: string | null
-          booking_date: string
-          booking_id: string
-          booking_type: string | null
-          created_at: string
-          dispatched_at: string | null
-          event: string
-          http_request_id: number | null
-          id: string
-          last_error: string | null
-          skip_reason: string | null
-          tenant_id: string | null
-          user_id: string
-        }
-        Insert: {
-          actor_user_id?: string | null
-          booking_date: string
-          booking_id: string
-          booking_type?: string | null
-          created_at?: string
-          dispatched_at?: string | null
-          event: string
-          http_request_id?: number | null
-          id?: string
-          last_error?: string | null
-          skip_reason?: string | null
-          tenant_id?: string | null
-          user_id: string
-        }
-        Update: {
-          actor_user_id?: string | null
-          booking_date?: string
-          booking_id?: string
-          booking_type?: string | null
-          created_at?: string
-          dispatched_at?: string | null
-          event?: string
-          http_request_id?: number | null
-          id?: string
-          last_error?: string | null
-          skip_reason?: string | null
-          tenant_id?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       booking_questions: {
         Row: {
           ask_on_member: boolean
@@ -612,7 +564,6 @@ export type Database = {
           booking_date: string
           booking_type: string
           created_at: string
-          created_via: string | null
           custom_answers: Json | null
           google_event_id: string | null
           id: string
@@ -627,7 +578,6 @@ export type Database = {
           booking_date: string
           booking_type?: string
           created_at?: string
-          created_via?: string | null
           custom_answers?: Json | null
           google_event_id?: string | null
           id?: string
@@ -642,7 +592,6 @@ export type Database = {
           booking_date?: string
           booking_type?: string
           created_at?: string
-          created_via?: string | null
           custom_answers?: Json | null
           google_event_id?: string | null
           id?: string

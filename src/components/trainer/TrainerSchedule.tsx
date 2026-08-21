@@ -19,6 +19,7 @@ import {
 } from "@/lib/bookingQuestions";
 import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
 import { isBookingLimitError } from "@/lib/bookingLimits";
+import { isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { isPlanLimitError } from "@/lib/planSessionLimit";
 import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { matchedWindowCapacity, resolveSlotCapacity } from "@/lib/bookingCapacity";
@@ -234,6 +235,7 @@ const TrainerSchedule = () => {
         // 選んだときだけ（auth.uid() = user_id になり自己予約扱い）。設定で調整できると案内する。
         toast.error(
           isPlanLimitError(error) ? t("planSessions.errorReachedProxy")
+            : isBlockedWindowError(error) ? t("blockedWindows.errorNotAcceptingProxy")
             : isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
             : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")

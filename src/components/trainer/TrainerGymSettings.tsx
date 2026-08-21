@@ -38,6 +38,7 @@ import TrainerStaffSchedule from "./TrainerStaffSchedule";
 import TrainerBookingQuestions from "./TrainerBookingQuestions";
 import TrainerBookingLimits from "./TrainerBookingLimits";
 import TrainerCapacityWindows from "./TrainerCapacityWindows";
+import TrainerBlockedWindows from "./TrainerBlockedWindows";
 import { formatWeekdayShort } from "@/lib/dateFormat";
 import {
   DASHBOARD_STAT_TOGGLES,
@@ -1030,6 +1031,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       {/* === 予約回数の制限 === 混み合う時間帯に、お一人が取れる回数を絞る */}
       <section className="space-y-3">
         <TrainerBookingLimits />
+      </section>
+
+      <Separator />
+
+      {/* === 受付しない時間帯 === 開始時刻を揃えて夜の枠数を確保する（両端の時刻は受け付ける） */}
+      <section className="space-y-3">
+        <TrainerBlockedWindows />
       </section>
 
       <Separator />

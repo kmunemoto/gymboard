@@ -106,6 +106,7 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
     vi.doMock("@/components/trainer/TrainerBookingQuestions", () => stub("booking-questions"));
     vi.doMock("@/components/trainer/TrainerBookingLimits", () => stub("booking-limits"));
     vi.doMock("@/components/trainer/TrainerCapacityWindows", () => stub("capacity-windows"));
+    vi.doMock("@/components/trainer/TrainerBlockedWindows", () => stub("blocked-windows"));
     vi.doMock("@/components/LanguageSwitcher", () => stub("language-switcher"));
     vi.doMock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
     vi.doMock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

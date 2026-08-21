@@ -2668,5 +2668,26 @@
     "saveFailed": "班表儲存失敗",
     "clearedToBusinessHours": "已解除班表設定（將依照營業時間開放指名）",
     "invalidRange": "{{day}} 的結束時間必須晚於開始時間"
+  },
+  "blockedWindows": {
+    "section": "不受理的時段",
+    "desc": "用於統一開始時間、確保時段數量的設定（例如：平日只保留 18:15 和 19:30 兩個場次）。不受理在這兩個時刻之間開始的預約。恰好在兩端時刻開始的預約照常受理。",
+    "empty": "沒有不受理的時段。所有時段皆可預約。",
+    "loadFailed": "無法讀取設定。",
+    "reload": "重新載入",
+    "enabledLabel": "啟用",
+    "disabledLabel": "停用",
+    "addWindow": "新增時段",
+    "invalidWeekdays": "請至少選擇一個星期。",
+    "invalidRange": "結束時刻必須晚於開始時刻。",
+    "saveFailed": "儲存失敗，請稍後再試。",
+    "saved": "已儲存不受理的時段。",
+    "cleared": "已解除所有不受理的時段。",
+    "proxyNote": "此設定僅對會員自行預約生效。健身房從行程表代為新增的預約以及設有豁免的會員不受影響。",
+    "rowHint": "恰好在 {{start}} 和 {{end}} 開始的預約照常受理（僅不受理在兩者之間開始的預約）。",
+    "slotNotAccepting": "不受理",
+    "errorNotAccepting": "該時段不受理預約。請選擇前後其他時間。",
+    "errorNotAcceptingProxy": "該時段已設為不受理（將自己選為顧客時會按本人預約處理。可在 健身房設定 → 不受理的時段 中修改）。",
+    "repeatSkippedBlocked": "有 {{count}} 次預約因該時段不受理而被跳過（{{dates}}）。"
   }
 }

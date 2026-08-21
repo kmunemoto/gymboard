@@ -357,10 +357,14 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
     let maxSessions: number | null = null;
     let cycleMonths: number | null = null;
     let graceDays: number | null = null;
+    // 🔴 allow_overflow=false のプランでは「使い切ったら予約日を新起算日にする」ロールを
+    //    永続化しない（shouldRebaseCycleStart 側でゲート）。超過は DB が GB004 で拒否する
+    //    建て付けで、代理予約（素通し）でここが動くと上限が丸ごとリセットされる。
+    let allowOverflow = true;
     if (prof.tenant_id) {
       const { data: tp } = await supabase
         .from("tenant_plans")
-        .select("plan_type, max_sessions, cycle_months, grace_days")
+        .select("plan_type, max_sessions, cycle_months, grace_days, allow_overflow")
         .eq("tenant_id", prof.tenant_id)
         .eq("plan_name", prof.plan)
         .maybeSingle();
@@ -370,6 +374,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
         cycleMonths = tp.cycle_months ?? null;
         // 猶予OFFのお客様（profiles.grace_enabled=false）には猶予を適用しない
         graceDays = (prof as any).grace_enabled === false ? 0 : tp.grace_days ?? null;
+        allowOverflow = (tp as { allow_overflow?: boolean | null }).allow_overflow !== false;
       } else {
         const n = getMonthlySessionCount(prof.plan);
         if (n === null) return; // プラン名から判定できない → 触らない
@@ -390,6 +395,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
       graceDays,
       bookingDateKey: dateKey,
       existingBookings: (rows ?? []).map((r) => ({ id: "", booking_date: r.booking_date, status: r.status })),
+      allowOverflow,
     });
     if (!ok) return;
 

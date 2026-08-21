@@ -347,6 +347,8 @@
       "graceDays": "寬限天數（天）",
       "graceDaysPlaceholder": "例：7",
       "graceDaysHint": "超過期限後，這些天內的預約仍計入上一週期。留空為0（無寬限）。",
+      "blockOverflow": "不允許超出上限的預約",
+      "blockOverflowHint": "開啟後，已用完次數的會員將無法自行預約。門市從行程表代為新增的預約不受影響。",
       "graceDaysSuffix": "寬限{{count}}天",
       "enable": "啟用",
       "enabledLabel": "已啟用",
@@ -1138,7 +1140,8 @@
     "blockDialogDesc": "封鎖所選時段，使其無法被預約。",
     "blockBtn": "封鎖",
     "blockReason": "封鎖（{{start}}〜{{end}}）",
-    "errorSlotTakenCapacityHint": "該時段已有預約。如果可以同時接受多筆預約，請在健身房設定→營業時間中修改「同一時間可接受的預約數」。"
+    "errorSlotTakenCapacityHint": "該時段已有預約。如果可以同時接受多筆預約，請在健身房設定→營業時間中修改「同一時間可接受的預約數」。",
+    "errorSlotTakenWindowHint": "該時段的接待數量已滿。此時段適用「分時段同時接待數」的設定。如需調整，請前往 健身房設定 → 分時段同時接待數。"
   },
   "exercise": {
     "title": "動作管理",
@@ -2602,7 +2605,7 @@
   },
   "bookingLimits": {
     "section": "預約次數限制",
-    "desc": "可以限制每位會員在尖峰時段的預約次數（例如：平日 18:00–19:00 每週最多 1 次）。",
+    "desc": "可以限制每位會員在尖峰時段的預約次數（例如：平日 18:00–19:00 每週最多 1 次）。恰好在結束時刻開始的預約（本例中為 19:00 開始）也在限制範圍內。",
     "empty": "尚未設定限制。可透過「新增限制」建立。",
     "targetLabel": "適用對象",
     "targetAll": "全體會員",
@@ -2625,7 +2628,35 @@
     "repeatSkippedLimit": "有 {{count}} 次因達到預約次數上限而被跳過（{{dates}}）",
     "errorRestoreFailed": "變更失敗，且原有預約也未能還原。請確認預約狀況後重新預約。",
     "loadFailed": "無法載入預約次數限制。請在儲存前重新載入。",
-    "reload": "重新載入"
+    "reload": "重新載入",
+    "kindLabel": "類型",
+    "kindLimit": "進行限制",
+    "kindExempt": "不限制（豁免）",
+    "exemptHint": "該會員在此星期與時段內不受預約次數限制（豁免優先於限制）。",
+    "exemptNeedsCustomer": "豁免請選擇具體會員（無法對全體會員設定豁免）。"
+  },
+  "capacityWindows": {
+    "section": "分時段同時接待數",
+    "desc": "當不同時段可同時接待的預約數不同時使用（例如：平日晚間只有一人，同時 1 件）。若未設定任何時段，營業時間中的「同時可接待的預約數」將適用於全天。",
+    "empty": "尚未設定分時段。可透過「新增時段」建立。",
+    "enabledLabel": "已啟用",
+    "disabledLabel": "已停用",
+    "countUnit": "{{count}} 件",
+    "addWindow": "新增時段",
+    "saved": "已儲存分時段同時接待數",
+    "cleared": "已解除所有分時段設定",
+    "saveFailed": "儲存失敗",
+    "invalidWeekdays": "請至少選擇一個星期",
+    "invalidRange": "結束時間必須晚於開始時間",
+    "loadFailed": "無法載入分時段設定。請在儲存前重新載入。",
+    "reload": "重新載入",
+    "overlapNote": "時段重疊時以最小的數值為準。此設定決定門市可同時接待的預約數，與限制單一會員預約次數的「預約次數限制」不同。"
+  },
+  "planSessions": {
+    "errorReached": "您已用完目前方案週期內的預約次數。請等待下一個週期，或與門市聯繫。",
+    "errorReachedProxy": "該會員已達到方案次數上限（可在方案設定的「不允許超出上限的預約」中變更）。",
+    "repeatSkippedPlan": "有 {{count}} 次預約因超出您簽約方案的次數上限而被跳過（{{dates}}）。請等待下一個使用週期，或與健身房聯絡。",
+    "errorRescheduleForfeitReached": "當天變更會將變更前的預約計為消耗 1 次，因而超出您簽約方案的次數上限。請與健身房聯絡。"
   },
   "staffSchedule": {
     "section": "教練班表",

@@ -8,7 +8,7 @@ import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBooking
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
-import { blockEndMinutes, businessGridMinutes, isClosedDate, minutesToTime, weekdayOfDateKey } from "@/lib/businessHours";
+import { blockEndMinutes, businessGridMinutes, isClosedDate, minutesToTime, parseTimeToMinutes, weekdayOfDateKey } from "@/lib/businessHours";
 import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
@@ -19,6 +19,9 @@ import {
 } from "@/lib/bookingQuestions";
 import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
 import { isBookingLimitError } from "@/lib/bookingLimits";
+import { isPlanLimitError } from "@/lib/planSessionLimit";
+import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
+import { matchedWindowCapacity, resolveSlotCapacity } from "@/lib/bookingCapacity";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
@@ -88,7 +91,12 @@ const TrainerSchedule = () => {
   // 同時に受けられる予約数（ベッド数・施術者数）。未ロード時は安全側の1。
   // 予約を入れるときだけ使う。ブロック枠の作成は「1件でも予約があれば不可」のままにする
   // （ブロックは店全体を閉めるので、空きベッドがあっても既存予約を巻き込むため）。
+  // 店の既定の同時受入数。時間帯の帯があればその枠だけ値が変わる（capacityAt）。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
+  const { windows: capacityWindows } = useBookingCapacityWindows();
+  /** その日時で実際に使う同時受入数（帯が無ければ店の既定値） */
+  const capacityAt = (dateKey: string, time: string) =>
+    resolveSlotCapacity(capacityWindows, weekdayOfDateKey(dateKey), parseTimeToMinutes(time), bookingCapacity);
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
   // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
   // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
@@ -165,12 +173,20 @@ const TrainerSchedule = () => {
     }
     setMissingProxyAnswerIds([]);
     const proxyAnswerSnapshot = buildAnswerSnapshot(proxyQuestions, proxyAnswers);
-    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null)) {
+    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, capacityAt(proxyDateKey, proxyTime), proxyStaffId || null)) {
       // 同時に受けられる予約数が既定の1のままだと、実際は2人同時に見られる店でも
       // ここで弾かれる。設定があること自体を知らないまま「アプリが対応していない」と
       // 諦められてしまうので、詰まったその場で設定の場所を案内する。
-      // 2以上に設定済みの店は本当に埋まっているだけなので、通常の文言のままにする。
-      toast.error(bookingCapacity <= 1 ? t("schedule.errorSlotTakenCapacityHint") : t("schedule.errorSlotTaken"));
+      // 🔴 この枠に時間帯別の帯が当たっているなら、直すべき場所は帯の設定
+      // （既定値の案内を出すと、案内どおり既定値を上げても何も変わらない）。
+      // 帯が無い枠は従来どおり: 既定1なら設定への案内、2以上なら本当に埋まっているだけ。
+      const matchedWindow = matchedWindowCapacity(
+        capacityWindows, weekdayOfDateKey(proxyDateKey), parseTimeToMinutes(proxyTime));
+      toast.error(
+        matchedWindow !== null ? t("schedule.errorSlotTakenWindowHint")
+          : bookingCapacity <= 1 ? t("schedule.errorSlotTakenCapacityHint")
+          : t("schedule.errorSlotTaken"),
+      );
       return;
     }
 
@@ -217,7 +233,8 @@ const TrainerSchedule = () => {
         // GB003（予約回数の制限）が代理予約で出るのは、トレーナーが**自分を**お客様として
         // 選んだときだけ（auth.uid() = user_id になり自己予約扱い）。設定で調整できると案内する。
         toast.error(
-          isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
+          isPlanLimitError(error) ? t("planSessions.errorReachedProxy")
+            : isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
             : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")
             : t("schedule.errorAddFailed"),
@@ -833,7 +850,7 @@ const TrainerSchedule = () => {
                       staffSchedules, proxyStaffId || null,
                     )) {
                       const time = minutesToTime(totalMin);
-                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null);
+                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, capacityAt(proxyDateKey, time), proxyStaffId || null);
                       slots.push({ time, blocked });
                     }
                     return slots.map((slot) => (

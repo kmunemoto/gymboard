@@ -347,6 +347,8 @@
       "graceDays": "Grace period (days)",
       "graceDaysPlaceholder": "e.g. 7",
       "graceDaysHint": "Bookings up to this many days past the deadline still count toward the previous cycle. Blank = 0 (no grace).",
+      "blockOverflow": "Block bookings beyond the limit",
+      "blockOverflowHint": "When on, members who have used all their sessions cannot book for themselves. Bookings the gym adds from the schedule screen are unaffected.",
       "graceDaysSuffix": "{{count}}-day grace",
       "enable": "Enable",
       "enabledLabel": "Enabled",
@@ -1138,7 +1140,8 @@
     "blockDialogDesc": "Block the selected time slot so no bookings can be made.",
     "blockBtn": "Block",
     "blockReason": "Block ({{start}}–{{end}})",
-    "errorSlotTakenCapacityHint": "This slot is already booked. If you can take more than one booking at a time, change \"Bookings at the same time\" under Gym settings → Business hours."
+    "errorSlotTakenCapacityHint": "This slot is already booked. If you can take more than one booking at a time, change \"Bookings at the same time\" under Gym settings → Business hours.",
+    "errorSlotTakenWindowHint": "This time slot has reached its capacity. A time-window capacity setting applies to this slot. To change it, go to Gym Settings → Capacity by time window."
   },
   "exercise": {
     "title": "Exercise Management",
@@ -2602,7 +2605,7 @@
   },
   "bookingLimits": {
     "section": "Booking frequency limits",
-    "desc": "Limit how many bookings each member can make in busy time windows (e.g. weekdays 18:00–19:00, once per week).",
+    "desc": "Limit how many bookings each member can make in busy time windows (e.g. weekdays 18:00–19:00, once per week). Bookings starting exactly at the end time (19:00 in this example) are also covered.",
     "empty": "No limits yet. Use \"Add limit\" to create one.",
     "targetLabel": "Applies to",
     "targetAll": "All members",
@@ -2625,7 +2628,35 @@
     "repeatSkippedLimit": "{{count}} week(s) were skipped because of your booking limit ({{dates}})",
     "errorRestoreFailed": "The change failed and your original booking could not be restored. Please check your bookings and book again.",
     "loadFailed": "Could not load booking limits. Please reload before saving.",
-    "reload": "Reload"
+    "reload": "Reload",
+    "kindLabel": "Type",
+    "kindLimit": "Limit bookings",
+    "kindExempt": "Exempt (no limit)",
+    "exemptHint": "This member is not subject to any booking frequency limit on these days and times (exemptions win over limits).",
+    "exemptNeedsCustomer": "Choose a specific member for an exemption (you cannot exempt everyone)."
+  },
+  "capacityWindows": {
+    "section": "Capacity by time window",
+    "desc": "Set this when the number of bookings you can take at once changes by time of day (e.g. only one at a time on weekday evenings). With no windows, the \"Bookings at the same time\" value from business hours applies all day.",
+    "empty": "No time windows yet. Use \"Add time window\" to create one.",
+    "enabledLabel": "Enabled",
+    "disabledLabel": "Disabled",
+    "countUnit": "{{count}} at a time",
+    "addWindow": "Add time window",
+    "saved": "Capacity windows saved",
+    "cleared": "All capacity windows removed",
+    "saveFailed": "Failed to save",
+    "invalidWeekdays": "Select at least one weekday",
+    "invalidRange": "End time must be after start time",
+    "loadFailed": "Could not load capacity windows. Please reload before saving.",
+    "reload": "Reload",
+    "overlapNote": "When windows overlap, the smallest number wins. This sets how many bookings your gym can take at once — it is different from booking frequency limits, which cap how often one member can book."
+  },
+  "planSessions": {
+    "errorReached": "You have used all sessions in your current plan period. Please wait for the next period or contact the gym.",
+    "errorReachedProxy": "This member has used all sessions in their plan period (change it under plan settings, \"Block bookings beyond the limit\").",
+    "repeatSkippedPlan": "{{count}} booking(s) were skipped because they exceed your plan's session limit ({{dates}}). Please wait for your next period or contact the gym.",
+    "errorRescheduleForfeitReached": "Changing a same-day booking uses up one session, which would exceed your plan's session limit. Please contact the gym."
   },
   "staffSchedule": {
     "section": "Staff shifts",

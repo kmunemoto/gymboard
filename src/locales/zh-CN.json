@@ -347,6 +347,8 @@
       "graceDays": "宽限天数（天）",
       "graceDaysPlaceholder": "例：7",
       "graceDaysHint": "超过期限后，这些天内的预约仍计入上一周期。留空为0（无宽限）。",
+      "blockOverflow": "不允许超出上限的预约",
+      "blockOverflowHint": "开启后，已用完次数的会员将无法自行预约。门店从日程表代为添加的预约不受影响。",
       "graceDaysSuffix": "宽限{{count}}天",
       "enable": "启用",
       "enabledLabel": "已启用",
@@ -1138,7 +1140,8 @@
     "blockDialogDesc": "封锁所选时段，使其无法被预约。",
     "blockBtn": "封锁",
     "blockReason": "封锁（{{start}}〜{{end}}）",
-    "errorSlotTakenCapacityHint": "该时段已有预约。如果可以同时接受多个预约，请在健身房设置→营业时间中修改“同一时间可接受的预约数”。"
+    "errorSlotTakenCapacityHint": "该时段已有预约。如果可以同时接受多个预约，请在健身房设置→营业时间中修改“同一时间可接受的预约数”。",
+    "errorSlotTakenWindowHint": "该时段的接待数量已满。此时段适用「分时段同时接待数」的设置。如需调整，请前往 健身房设置 → 分时段同时接待数。"
   },
   "exercise": {
     "title": "动作管理",
@@ -2602,7 +2605,7 @@
   },
   "bookingLimits": {
     "section": "预约次数限制",
-    "desc": "可以限制每位会员在高峰时段的预约次数（例如：工作日 18:00–19:00 每周最多 1 次）。",
+    "desc": "可以限制每位会员在高峰时段的预约次数（例如：工作日 18:00–19:00 每周最多 1 次）。恰好在结束时刻开始的预约（本例中为 19:00 开始）也在限制范围内。",
     "empty": "还没有限制。可通过“添加限制”创建。",
     "targetLabel": "适用对象",
     "targetAll": "全体会员",
@@ -2625,7 +2628,35 @@
     "repeatSkippedLimit": "有 {{count}} 次因达到预约次数上限而被跳过（{{dates}}）",
     "errorRestoreFailed": "变更失败，且原有预约也未能恢复。请确认预约情况后重新预约。",
     "loadFailed": "无法加载预约次数限制。请在保存前重新加载。",
-    "reload": "重新加载"
+    "reload": "重新加载",
+    "kindLabel": "类型",
+    "kindLimit": "进行限制",
+    "kindExempt": "不限制（豁免）",
+    "exemptHint": "该会员在此星期与时段内不受预约次数限制（豁免优先于限制）。",
+    "exemptNeedsCustomer": "豁免请选择具体会员（无法对全体会员设置豁免）。"
+  },
+  "capacityWindows": {
+    "section": "分时段同时接待数",
+    "desc": "当不同时段可同时接待的预约数不同时使用（例如：工作日晚间只有一人，同时 1 件）。若未设置任何时段，营业时间中的“同时可接待的预约数”将适用于全天。",
+    "empty": "还没有分时段设置。可通过“添加时段”创建。",
+    "enabledLabel": "已启用",
+    "disabledLabel": "已停用",
+    "countUnit": "{{count}} 件",
+    "addWindow": "添加时段",
+    "saved": "已保存分时段同时接待数",
+    "cleared": "已解除所有分时段设置",
+    "saveFailed": "保存失败",
+    "invalidWeekdays": "请至少选择一个星期",
+    "invalidRange": "结束时间必须晚于开始时间",
+    "loadFailed": "无法加载分时段设置。请在保存前重新加载。",
+    "reload": "重新加载",
+    "overlapNote": "时段重叠时以最小的数值为准。此设置决定门店可同时接待的预约数，与限制单个会员预约次数的“预约次数限制”不同。"
+  },
+  "planSessions": {
+    "errorReached": "您已用完当前套餐周期内的预约次数。请等待下一个周期，或与门店联系。",
+    "errorReachedProxy": "该会员已达到套餐次数上限（可在套餐设置的“不允许超出上限的预约”中更改）。",
+    "repeatSkippedPlan": "有 {{count}} 次预约因超出您签约方案的次数上限而被跳过（{{dates}}）。请等待下一个使用周期，或与健身房联系。",
+    "errorRescheduleForfeitReached": "当天变更会将变更前的预约计为消耗 1 次，从而超出您签约方案的次数上限。请与健身房联系。"
   },
   "staffSchedule": {
     "section": "员工排班",

@@ -43,6 +43,8 @@ interface FormState {
   validity_days: string;
   cycle_months: string;
   grace_days: string;
+  /** 上限を超えた予約を許すか（既定 true＝今までどおり超過できる） */
+  allow_overflow: boolean;
   // 空文字列 = 継承（ジムの既定値を使う）。plan_type を問わず全プランで設定可能
   // （cycle_months/grace_days と違い、セッションの長さはサブスク固有の概念ではないため）。
   slot_duration_minutes: string;
@@ -57,6 +59,7 @@ const emptyForm: FormState = {
   validity_days: "",
   cycle_months: "",
   grace_days: "",
+  allow_overflow: true,
   slot_duration_minutes: "",
   is_active: true,
 };
@@ -114,6 +117,8 @@ const TrainerPlanManager = () => {
       validity_days: plan.validity_days != null ? String(plan.validity_days) : "",
       cycle_months: plan.cycle_months != null ? String(plan.cycle_months) : "",
       grace_days: plan.grace_days != null ? String(plan.grace_days) : "",
+      // null（未設定）は既定の true として扱う（今までどおり超過できる）
+      allow_overflow: plan.allow_overflow !== false,
       slot_duration_minutes: plan.slot_duration_minutes != null ? String(plan.slot_duration_minutes) : "",
       is_active: plan.is_active,
     });
@@ -155,6 +160,11 @@ const TrainerPlanManager = () => {
         form.plan_type === "subscription" && form.grace_days
           ? Math.max(0, parseInt(form.grace_days) || 0)
           : null,
+      // 上限を超えた予約を許すか。🔴 **サブスクでだけ**設定できる。
+      // 期間プランは回数無制限、回数券は窓が購入日起算で月次窓と別物
+      // （DB の guard_booking_plan_limit も subscription 以外は強制しない）。
+      // ここで true に倒さないと「設定は保存できるのに何も効かない」無言の無効化になる。
+      allow_overflow: form.plan_type === "subscription" ? form.allow_overflow : true,
       // 空欄（"継承"）は null。plan_type を問わず全プランで設定できる。
       slot_duration_minutes: form.slot_duration_minutes ? parseInt(form.slot_duration_minutes) : null,
       is_active: form.is_active,
@@ -402,6 +412,23 @@ const TrainerPlanManager = () => {
                   placeholder={t("settings.plans.graceDaysPlaceholder")}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">{t("settings.plans.graceDaysHint")}</p>
+              </div>
+            )}
+            {/* 🔴 サブスクでだけ出す。期間プランは回数無制限、回数券は窓が購入日起算で
+                月次窓と別物（DB 側も subscription 以外は強制しない）。出すと
+                「ONにしたのに効かない」を店に踏ませる。 */}
+            {form.plan_type === "subscription" && (
+              <div className="pt-1">
+                <div className="flex items-center justify-between">
+                  <Label>{t("settings.plans.blockOverflow")}</Label>
+                  <Switch
+                    checked={!form.allow_overflow}
+                    onCheckedChange={(v) => setForm({ ...form, allow_overflow: !v })}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {t("settings.plans.blockOverflowHint")}
+                </p>
               </div>
             )}
             <div className="flex items-center justify-between pt-1">

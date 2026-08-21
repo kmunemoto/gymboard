@@ -75,11 +75,27 @@ describe("1. オンボーディングで同時予約数を聞く（新規店が�
 describe("2. 詰まった瞬間に設定の場所を案内する（既存店が気づけるように）", () => {
   const src = readFileSync(SCHEDULE, "utf8");
 
-  it("capacity が既定1のときだけ、設定への案内文言を出す", () => {
-    // 2以上に設定済みの店は本当に埋まっているだけなので、案内を出すとかえって邪魔になる。
+  it("帯が効いた枠は帯の設定へ、既定1の枠は既定値の設定へ案内する", () => {
+    // 案内は「その枠を直すにはどの設定画面か」で分ける:
+    //   帯が当たっている枠 → 時間帯別の同時受け入れ数（既定値を上げても何も変わらない）
+    //   帯なし・既定1     → 営業時間の「同時に受けられる予約数」
+    //   帯なし・既定2以上 → 本当に埋まっているだけ（案内はかえって邪魔）
     expect(src).toMatch(
-      /bookingCapacity <= 1\s*\?\s*t\("schedule\.errorSlotTakenCapacityHint"\)\s*:\s*t\("schedule\.errorSlotTaken"\)/,
+      /matchedWindow !== null \? t\("schedule\.errorSlotTakenWindowHint"\)\s*:\s*bookingCapacity <= 1 \? t\("schedule\.errorSlotTakenCapacityHint"\)\s*:\s*t\("schedule\.errorSlotTaken"\)/,
     );
+    // 帯の有無は判定に使ったのと同じ入力（capacityWindows × 曜日 × 開始時刻）で見る
+    expect(src).toMatch(/matchedWindowCapacity\(\s*\n?\s*capacityWindows, weekdayOfDateKey\(proxyDateKey\), parseTimeToMinutes\(proxyTime\)\)/);
+  });
+
+  it("帯の案内文言にも設定画面までの道順が入っている", () => {
+    const ja = localeOf("ja");
+    const hint = at(ja, "schedule.errorSlotTakenWindowHint");
+    expect(hint, "ja の文言が無い").toBeTruthy();
+    // 設定項目名はハードコードせず、実際の設定画面の見出し（capacityWindows.section）と
+    // 一致していることを見る（フォークが名前を変えても道順が保てる）。
+    const sectionLabel = at(ja, "capacityWindows.section")!;
+    expect(hint).toContain(sectionLabel);
+    expect(hint, "設定画面までの道順が無い").toMatch(/設定/);
   });
 
   it("案内文言には設定画面までの道順が入っている（「別の時間を」で終わらせない）", () => {
@@ -100,6 +116,7 @@ describe("5言語そろい（fallbackLng が ja なので欠けると日本語�
     ["onboarding", "fieldCapacity"],
     ["onboarding", "fieldCapacityHint"],
     ["schedule", "errorSlotTakenCapacityHint"],
+    ["schedule", "errorSlotTakenWindowHint"],
   ];
 
   it("全言語にキーがあり、日本語のままコピーされていない", () => {

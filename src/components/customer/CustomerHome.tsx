@@ -52,7 +52,8 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { t } = useTranslation();
   const { user } = useAuth();
   const { profile, loading } = useProfile();
-  const { plans: tenantPlans, tenant } = useTenant();
+  // allPlans: 非公開プランでも既存会員の契約解決は続ける（useTenant の allPlans コメント参照）
+  const { allPlans: tenantPlans, tenant } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
   const { chartData, latest, loading: metricsLoading, saveMeasurement } = useMeasurements(user?.id);
   const { currentStreak, bestStreak, hasFutureBookingThisWeek, loading: streakLoading } = useStreak(user?.id);

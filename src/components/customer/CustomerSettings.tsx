@@ -35,7 +35,8 @@ const CustomerSettings = () => {
   const { profile, loading, updateDisplayName, updateGameMode, refetch } = useProfile();
   const { user, signOut } = useAuth();
   const { bookings: myBookings, loading: bookingsLoading } = useMyBookings();
-  const { plans: tenantPlans } = useTenant();
+  // allPlans: 非公開プランでも既存会員の契約解決は続ける（useTenant の allPlans コメント参照）
+  const { allPlans: tenantPlans } = useTenant();
   const planLabelMap = useMemo(() => {
     // キー（予約種別の内部値）は "初回無料体験" のまま、表示ラベルだけ "体験予約" にする
     const m: Record<string, string> = { "初回無料体験": "体験予約", "通常": "通常" };

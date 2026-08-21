@@ -36,6 +36,10 @@ import { bookingWindowEnd, isBeyondBookingWindow, LEGACY_MEMBER_WINDOW_MONTHS } 
 import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingFrequencyLimits } from "@/hooks/useBookingFrequencyLimits";
+import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
+import { resolveSlotCapacity } from "@/lib/bookingCapacity";
+import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
+import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
 import { exceededFrequencyLimit, isBookingLimitError } from "@/lib/bookingLimits";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
@@ -61,7 +65,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { user } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const { bookings: myBookings, loading: bookingsLoading, refetch } = useMyBookings();
-  const { tenant, plans: tenantPlans } = useTenant();
+  // 🔴 allPlans（非公開も含む）を使う。プランを非公開にしても既存会員の契約は
+  // その行のまま生きていて、DB 側は is_active を見ずに plan_name で引く。
+  // 有効行だけで解決すると、その会員だけ回数・サイクル・上限設定を見失い、
+  // 「カードは残りありなのに GB004 で拒否され続ける」になる。
+  // お客様の画面にプランの選択肢は無いので、この画面は全部 allPlans でよい。
+  const { tenant, allPlans: tenantPlans } = useTenant();
   // 担当スタッフ。2人以上いるジムでだけ選択UIを出す（一人ジムには無用な一手になる）。
   const { staff } = useTenantStaff();
   const staffSelectable = canSelectStaff(staff);
@@ -71,6 +80,45 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { questions: allQuestions } = useBookingQuestions();
   // 予約回数の制限（例: 平日18-19時は週1回まで）。読めなければ空＝制限なし。
   const { limits: frequencyLimits } = useBookingFrequencyLimits();
+  // 時間帯別の同時受け入れ数。読めなければ空＝店の既定値（従来どおり）。
+  const { windows: capacityWindows } = useBookingCapacityWindows();
+
+  // ご契約プランの回数上限（例: 月8回）。**カードが出しているのと同じ数**で判定する
+  // （別に数え直すと「残1回と出ているのに拒否される」が起きうる）。
+  // allow_overflow が既定(true)のプランでは常に false ＝ 従来どおり超過できる。
+  const currentTenantPlan = tenantPlans?.find((p) => p.plan_name === profile?.plan) ?? null;
+  const planUsageInput = useMemo(() => {
+    const input = resolvePlanUsageInput(profile?.plan, currentTenantPlan, profile?.cycle_start_date);
+    if (input && profile?.grace_enabled === false) input.graceDays = 0;
+    return input;
+  }, [profile?.plan, profile?.cycle_start_date, profile?.grace_enabled, currentTenantPlan]);
+  const planBookingsForUsage = useMemo(
+    () => myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+    [myBookings],
+  );
+  // カード表示用は「今日」基準（今の期間の消化状況を出す。従来どおり）
+  const planUsage = useMemo(
+    () => (planUsageInput ? computePlanUsage(planUsageInput, planBookingsForUsage, getJSTNow()) : null),
+    [planUsageInput, planBookingsForUsage],
+  );
+  // 🔴 判定は「**予約しようとしている日**」の属するサイクルで行う。
+  // DB（guard_booking_plan_limit）は予約日の窓で数えるので、「今日」基準にすると
+  // 今サイクルを使い切ったお客様が、DB なら通る**次サイクルの日付**まで
+  // 画面で塞がれてしまう（応当日が来るまで一切予約できなくなる）。
+  // allow_overflow=false ではロールが止まっているので、予約日を渡せば
+  // plan_cycle_window と同じ暦窓・同じ数になる。
+  const isPlanLimitReachedOn = useCallback(
+    (targetDateKey: string | null | undefined): boolean => {
+      if (!planUsageInput || !targetDateKey) return false;
+      const usage = computePlanUsage(
+        planUsageInput,
+        planBookingsForUsage,
+        toJSTDate(`${targetDateKey}T00:00:00+09:00`),
+      );
+      return isPlanSessionLimitReached(usage, currentTenantPlan?.allow_overflow, currentTenantPlan?.plan_type);
+    },
+    [planUsageInput, planBookingsForUsage, currentTenantPlan?.allow_overflow, currentTenantPlan?.plan_type],
+  );
 
   // Build plan name → label / max sessions maps from tenant_plans
   const planLabelMap = useMemo(() => {
@@ -206,6 +254,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? DEFAULT_BOOKING_BUFFER_MINUTES;
   // 同時に受けられる予約数（ベッド数・施術者数）。未ロード時は安全側の1。
+  // 店の既定の同時受入数。時間帯の帯がある枠では、下の isSlotBlocked が帯の値で上書きする。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
   const isSlotBlocked = (date: string, time: string): boolean => {
@@ -231,7 +280,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     });
     // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定する。
     if (overlapping.some((b) => b.isBlock)) return true;
-    if (overlapping.length >= bookingCapacity) return true;
+    // 同時受入数は時間帯で変わりうる（昼は2人・夜は1人など）。帯が無ければ店の既定値。
+    const capacityHere = resolveSlotCapacity(
+      capacityWindows, weekdayOfDateKey(date), newMin, bookingCapacity,
+    );
+    if (overlapping.length >= capacityHere) return true;
     // 店に空きがあっても、指名した担当がその時間帯に別の予約を持っていれば取れない。
     // 指名なし（selectedStaffId === null）のときはこの判定を通らない＝従来どおり。
     // DB 側 check_booking_overlap も同じ二段構えで最終判定する。
@@ -339,6 +392,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       return;
     }
 
+    // ご契約プランの回数上限（超過を許さないプランのみ）。最終判定は DB（GB004）。
+    // 予約日の属するサイクルで判定する（次サイクルの日付は DB 同様に通す）。
+    if (isPlanLimitReachedOn(dateKey)) {
+      toast.error(t("planSessions.errorReached"));
+      return;
+    }
+
     // 事前アンケートの必須項目。空のまま送らせない（DB は必須を強制しないので、
     // ここが唯一の関門。店が「必須」にした意味を守る）。
     const missing = missingRequiredQuestions(memberQuestions, answers);
@@ -365,29 +425,39 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks, false, selectedStaffId, answerSnapshot,
       );
       if (booked.length === 0) {
-        // 全週スキップ。全部が回数上限（GB003）なら満枠ではないので文言を分ける
-        // （空き待ちしても取れないことを伝える）。
+        // 全週スキップ。全部が回数上限（GB003）／プラン上限（GB004）なら満枠ではない
+        // ので文言を分ける（空き待ちしても取れないことを伝える）。
         toast.error(
-          skipped.every((sk) => isBookingLimitError({ code: sk.code }))
-            ? t("bookingLimits.errorOverLimit")
-            : t("booking.errorBookingFailed"),
+          skipped.every((sk) => isPlanLimitError({ code: sk.code }))
+            ? t("planSessions.errorReached")
+            : skipped.every((sk) => isBookingLimitError({ code: sk.code }))
+              ? t("bookingLimits.errorOverLimit")
+              : t("booking.errorBookingFailed"),
         );
         setSubmitting(false);
         return;
       }
       createdBookings = booked;
       toast.success(t("booking.repeatResult", { count: booked.length }));
-      // スキップ理由で案内を分ける: 満枠（空き待ちすれば取れる）と
-      // 回数上限（待っても自分は取れない）は別の話。
+      // スキップ理由で案内を分ける: 満枠（空き待ちすれば取れる）・時間帯の回数上限
+      // （待っても自分は取れない）・プランの回数上限（今サイクルはもう取れない）は
+      // それぞれ別の話。GB004 を「満枠」と案内すると、空き待ちに登録して待ち続けて
+      // しまう（絶対に取れないのに）。
       const fmtDates = (list: { date: string }[]) =>
         list.map((sk) => formatJST(`${sk.date}T00:00:00+09:00`, "M/d", { locale: ja })).join("、");
+      const planSkipped = skipped.filter((sk) => isPlanLimitError({ code: sk.code }));
       const limitSkipped = skipped.filter((sk) => isBookingLimitError({ code: sk.code }));
-      const otherSkipped = skipped.filter((sk) => !isBookingLimitError({ code: sk.code }));
+      const otherSkipped = skipped.filter(
+        (sk) => !isBookingLimitError({ code: sk.code }) && !isPlanLimitError({ code: sk.code }),
+      );
       if (otherSkipped.length > 0) {
         toast.info(t("booking.repeatSkipped", { count: otherSkipped.length, dates: fmtDates(otherSkipped) }));
       }
       if (limitSkipped.length > 0) {
         toast.info(t("bookingLimits.repeatSkippedLimit", { count: limitSkipped.length, dates: fmtDates(limitSkipped) }));
+      }
+      if (planSkipped.length > 0) {
+        toast.info(t("planSessions.repeatSkippedPlan", { count: planSkipped.length, dates: fmtDates(planSkipped) }));
       }
     } else {
       const { data, error } = await createBooking(
@@ -398,7 +468,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
         // シフト外（GB002）は「別の時間」ではなく「別の担当か別の曜日」なので文言を分ける。
         toast.error(
-          isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
+          isPlanLimitError(error) ? t("planSessions.errorReached")
+            : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
             : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")
             : t("booking.errorBookingFailed"),
@@ -527,6 +598,14 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       setSelectedSlot(null);
       return;
     }
+    // 消化リスケは旧行が「同日キャンセル済み」で残って回数に数えられ続けるため、
+    // 上限ちょうどのお客様は**構造的に必ず GB004 で失敗する**。押させてから
+    // 消化→拒否→復元の往復をさせるより、先に理由を言って止める。
+    // 非消化リスケは旧行が消える（純増ゼロ）ので、ここで止めてはいけない。
+    if (rescheduleTargetForfeits && isPlanLimitReachedOn(dateKey)) {
+      toast.error(t("planSessions.errorRescheduleForfeitReached"));
+      return;
+    }
     // 当日の予約変更（消化対象）は、最初の押下では警告表示に切り替えるだけに留める。
     if (rescheduleTargetForfeits && !rescheduleForfeitPending) {
       setRescheduleForfeitPending(true);
@@ -537,8 +616,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       const { error, restoreFailed } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time, { forfeitOld: rescheduleTargetForfeits });
       if (error) {
         // 復元まで失敗した場合は「変更に失敗」では足りない（元の予約が消えている）。
+        // GB004 は消化リスケ（旧行が数えられ続ける）で他端末とのずれ等から到達しうる。
         toast.error(
           restoreFailed ? t("bookingLimits.errorRestoreFailed")
+            : isPlanLimitError(error)
+              ? (rescheduleTargetForfeits ? t("planSessions.errorRescheduleForfeitReached") : t("planSessions.errorReached"))
             : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
             : t("booking.errorRescheduleFailed"),
         );
@@ -1102,7 +1184,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                           missingIds={missingAnswerIds}
                           requiredLabel={t("bookingQuestions.required")}
                           checkedValue={t("bookingQuestions.checked")}
-                          disabled={submitting}
+                          disabled={submitting || (!rescheduleTarget && !!selectedDate && isPlanLimitReachedOn(format(selectedDate, "yyyy-MM-dd")))}
                         />
                       </div>
                     )}

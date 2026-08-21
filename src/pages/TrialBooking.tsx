@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
 import { bookingSlotMinutes, isClosedDate, minutesToTime, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
+import { resolveSlotCapacity, type BookingCapacityWindow } from "@/lib/bookingCapacity";
 import { isBeyondBookingWindow, LEGACY_GUEST_WINDOW_DAYS } from "@/lib/bookingWindow";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
@@ -182,6 +183,24 @@ const TrialBooking = () => {
     if (!day) return 0;
     return day.close - sessionMinutes;
   };
+  // 時間帯別の同時受け入れ数。表は anon に開けないので RPC 経由で読む。
+  // 読めなければ空＝帯なし＝店の既定値（従来どおり）。
+  const [capacityWindows, setCapacityWindows] = useState<BookingCapacityWindow[]>([]);
+  useEffect(() => {
+    // フラグOFFのときは公開フォームごと出さないので、RPC も呼ばない
+    // （他の取得 effect と同じガード。呼ぶと「案内だけ出す」経路で無駄な通信が出る）。
+    if (!TRIAL_BOOKING_ENABLED || !effectiveTenantId) { setCapacityWindows([]); return; }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase.rpc("get_tenant_capacity_windows", {
+        p_tenant_id: effectiveTenantId,
+      });
+      if (cancelled) return;
+      setCapacityWindows(error || !data ? [] : (data as BookingCapacityWindow[]));
+    })();
+    return () => { cancelled = true; };
+  }, [effectiveTenantId]);
+
   // 同時に受けられる予約数。未ロード時は安全側の1。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
@@ -202,7 +221,10 @@ const TrialBooking = () => {
     });
     // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定。
     if (overlapping.some((b) => b.isBlock)) return true;
-    return overlapping.length >= bookingCapacity;
+    // 同時受入数は時間帯で変わりうる。帯が無ければ店の既定値（会員側と同じ規則）。
+    return overlapping.length >= resolveSlotCapacity(
+      capacityWindows, weekdayOfDateKey(date), newMin, bookingCapacity,
+    );
   };
 
   // 体験予約の締切は会員予約と同じ「前日まで」。予約日の0:00 JST を過ぎたら（＝当日以降）締切。

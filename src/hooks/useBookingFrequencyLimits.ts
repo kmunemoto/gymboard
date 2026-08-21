@@ -29,7 +29,7 @@ export function useBookingFrequencyLimits() {
     setLoading(true);
     const { data, error } = await supabase
       .from("booking_frequency_limits")
-      .select("id, user_id, weekdays, start_time, end_time, period, max_bookings, enabled")
+      .select("id, user_id, weekdays, start_time, end_time, period, max_bookings, enabled, exempt")
       .eq("tenant_id", tenantId);
     if (error || !data) {
       // 列・表が無い環境でも画面を止めない（＝制限なしとして扱う）。

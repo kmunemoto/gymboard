@@ -2600,6 +2600,29 @@
       "checkbox": "复选框"
     }
   },
+  "bookingLimits": {
+      "section": "预约次数限制",
+      "desc": "可以限制每位会员在高峰时段的预约次数（例如：工作日 18:00–19:00 每周最多 1 次）。",
+      "empty": "还没有限制。可通过“添加限制”创建。",
+      "targetLabel": "适用对象",
+      "targetAll": "全体会员",
+      "targetGone": "（已退会的会员）",
+      "enabledLabel": "已启用",
+      "disabledLabel": "已停用",
+      "periodWeek": "每周",
+      "periodDay": "每天",
+      "countUnit": "次为上限",
+      "addRule": "添加限制",
+      "saved": "已保存预约次数限制",
+      "cleared": "已解除所有预约次数限制",
+      "saveFailed": "保存失败",
+      "invalidWeekdays": "请至少选择一个星期",
+      "invalidRange": "结束时间必须晚于开始时间",
+      "proxyNote": "此限制仅适用于会员自行预约。门店从日程表代为添加的预约不受限制。",
+      "errorOverLimit": "该时段的预约次数已达上限，请选择其他时段。",
+      "errorOverLimitProxy": "已达到预约次数限制的上限（可在设置的“预约次数限制”中调整）。",
+      "slotLimitReached": "上限"
+  },
   "staffSchedule": {
     "section": "员工排班",
     "desc": "为每位员工设置上班的星期和时间段。若一天都未设置，则可按营业时间正常被指定。",

@@ -104,6 +104,7 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
     //「Tests は全部 passed、Errors N件」→ exit 1 になる。
     vi.doMock("@/components/trainer/TrainerStaffSchedule", () => stub("staff-schedule"));
     vi.doMock("@/components/trainer/TrainerBookingQuestions", () => stub("booking-questions"));
+    vi.doMock("@/components/trainer/TrainerBookingLimits", () => stub("booking-limits"));
     vi.doMock("@/components/LanguageSwitcher", () => stub("language-switcher"));
     vi.doMock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
     vi.doMock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

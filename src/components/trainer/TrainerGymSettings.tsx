@@ -36,6 +36,7 @@ import {
 import { EMAIL_NOTE_MAX_LENGTH, normalizeEmailNote } from "@/lib/emailNotes";
 import TrainerStaffSchedule from "./TrainerStaffSchedule";
 import TrainerBookingQuestions from "./TrainerBookingQuestions";
+import TrainerBookingLimits from "./TrainerBookingLimits";
 import { formatWeekdayShort } from "@/lib/dateFormat";
 import {
   DASHBOARD_STAT_TOGGLES,
@@ -1014,6 +1015,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       {/* === スタッフ別のシフト === 担当を指名する店だけに関係する。2人以上のジムでのみ描画される */}
       <section className="space-y-3">
         <TrainerStaffSchedule />
+      </section>
+
+      <Separator />
+
+      {/* === 予約回数の制限 === 混み合う時間帯に、お一人が取れる回数を絞る */}
+      <section className="space-y-3">
+        <TrainerBookingLimits />
       </section>
 
       <Separator />

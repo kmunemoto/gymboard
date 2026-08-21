@@ -30,11 +30,13 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
-import { isClosedDate, minutesToTime, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
+import { isClosedDate, minutesToTime, parseTimeToMinutes, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
 import { bookingWindowEnd, isBeyondBookingWindow, LEGACY_MEMBER_WINDOW_MONTHS } from "@/lib/bookingWindow";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { useStaffSchedules } from "@/hooks/useStaffSchedules";
+import { useBookingFrequencyLimits } from "@/hooks/useBookingFrequencyLimits";
+import { exceededFrequencyLimit, isBookingLimitError } from "@/lib/bookingLimits";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
@@ -67,6 +69,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { schedules: staffSchedules } = useStaffSchedules();
   // 予約時のカスタム質問（事前アンケート）。
   const { questions: allQuestions } = useBookingQuestions();
+  // 予約回数の制限（例: 平日18-19時は週1回まで）。読めなければ空＝制限なし。
+  const { limits: frequencyLimits } = useBookingFrequencyLimits();
 
   // Build plan name → label / max sessions maps from tenant_plans
   const planLabelMap = useMemo(() => {
@@ -252,8 +256,23 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const isViewOnlyDay = (date: string): boolean =>
     !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), lastBookableStartOn(date));
 
+  // 予約回数の制限（例: 平日18-19時は週1回まで）に、この枠を取ると達するか。
+  // 数える元は自分の予約一覧（myBookings）。リスケ中は動かしている予約自体を除外する
+  // （自分の1枠を同じ週の中で動かすのは「増える」ではないため）。最終判定は DB（GB003）。
+  const isSlotOverLimit = (date: string, time: string): boolean => {
+    if (!user || frequencyLimits.length === 0) return false;
+    const startMinutes = parseTimeToMinutes(time);
+    if (startMinutes === null) return false;
+    return !!exceededFrequencyLimit(
+      frequencyLimits,
+      { dateKey: date, startMinutes, userId: user.id },
+      myBookings,
+      rescheduleTarget?.id ?? null,
+    );
+  };
+
   const generateSlots = () => {
-    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
+    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean }[] = [];
     // 曜日別の営業時間・定休日、さらに指名した担当のシフトまで反映する。
     // 指名なし／シフト未設定なら、結果は店の営業時間そのもの（従来どおり）。
     const weekday = weekdayOfDateKey(dateKey);
@@ -263,7 +282,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       const time = minutesToTime(totalMin);
       const blocked = isSlotBlocked(dateKey, time);
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
-      slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon, blocked, tooSoon });
+      const overLimit = isSlotOverLimit(dateKey, time);
+      slots.push({ id: `${dateKey}-${time}`, time, available: !blocked && !tooSoon && !overLimit, blocked, tooSoon, overLimit });
     }
     return slots;
   };
@@ -296,6 +316,14 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
     if (isSlotBlocked(dateKey, slot.time)) {
       toast.error(t("booking.errorSlotTaken"));
+      setSelectedSlot(null);
+      return;
+    }
+
+    // 予約回数の制限。枠は押せない表示にしてあるが、他の端末で予約した直後などの
+    // ずれに備えて送信直前にも見る（最終判定は DB のトリガー = GB003）。
+    if (isSlotOverLimit(dateKey, slot.time)) {
+      toast.error(t("bookingLimits.errorOverLimit"));
       setSelectedSlot(null);
       return;
     }
@@ -347,7 +375,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
         // シフト外（GB002）は「別の時間」ではなく「別の担当か別の曜日」なので文言を分ける。
         toast.error(
-          isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
+          isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
+            : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")
             : t("booking.errorBookingFailed"),
         );
@@ -474,6 +503,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       setSelectedSlot(null);
       return;
     }
+    // 予約回数の制限。空いている時間で取ってからピーク帯へ動かす抜け道を塞ぐ
+    // （動かしている予約自体は isSlotOverLimit が除外して数える）。
+    if (isSlotOverLimit(dateKey, slot.time)) {
+      toast.error(t("bookingLimits.errorOverLimit"));
+      setSelectedSlot(null);
+      return;
+    }
     // 当日の予約変更（消化対象）は、最初の押下では警告表示に切り替えるだけに留める。
     if (rescheduleTargetForfeits && !rescheduleForfeitPending) {
       setRescheduleForfeitPending(true);
@@ -483,7 +519,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     try {
       const { error } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time, { forfeitOld: rescheduleTargetForfeits });
       if (error) {
-        toast.error(t("booking.errorRescheduleFailed"));
+        toast.error(
+          isBookingLimitError(error) ? t("bookingLimits.errorOverLimit") : t("booking.errorRescheduleFailed"),
+        );
         return;
       }
       toast.success(t("booking.rescheduleDone"));
@@ -955,7 +993,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 <div className="grid grid-cols-4 gap-1.5">
                   {slots.map((slot) => {
                     // 満枠（他予約で埋まっている＝blocked かつ 締切前）はキャンセル待ち登録可能（フラグON時のみ）。
-                    const waitlistable = WAITLIST_ENABLED && !slot.available && slot.blocked && !slot.tooSoon;
+                    // 回数上限の枠はキャンセル待ちの対象にもしない（空きを待っても自分は取れない）。
+                    const waitlistable = WAITLIST_ENABLED && !slot.available && slot.blocked && !slot.tooSoon && !slot.overLimit;
                     const onWaitlist = waitlistable && isOnWaitlist(dateKey, slot.time);
                     // 当日など締切済みの日の「空いている枠」。予約は不可だが空き状況として区別表示する。
                     const viewOnlyOpen = slot.tooSoon && !slot.blocked;
@@ -989,9 +1028,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                       <span>{slot.time}</span>
                       {!slot.available && (
                         <span className="block text-[9px] font-medium">
-                          {viewOnlyOpen
-                            ? <span className="text-accent">{t("booking.slotOpen")}</span>
-                            : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
+                          {slot.overLimit && !slot.blocked
+                            ? <span className="text-muted-foreground">{t("bookingLimits.slotLimitReached")}</span>
+                            : viewOnlyOpen
+                              ? <span className="text-accent">{t("booking.slotOpen")}</span>
+                              : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
                         </span>
                       )}
                       {/* キャンセル待ち登録済みは満枠の見た目のまま、隅の小さいドットだけで示す

@@ -18,6 +18,7 @@ import {
   questionsForSurface,
 } from "@/lib/bookingQuestions";
 import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
+import { isBookingLimitError } from "@/lib/bookingLimits";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
@@ -207,8 +208,11 @@ const TrainerSchedule = () => {
       if (error) {
         // 店に空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
         // シフト外（GB002）は別の曜日か別の担当なら取れるので文言を分ける。
+        // GB003（予約回数の制限）が代理予約で出るのは、トレーナーが**自分を**お客様として
+        // 選んだときだけ（auth.uid() = user_id になり自己予約扱い）。設定で調整できると案内する。
         toast.error(
-          isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
+          isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
+            : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")
             : t("schedule.errorAddFailed"),
         );

@@ -2600,6 +2600,33 @@
       "checkbox": "Checkbox"
     }
   },
+  "bookingLimits": {
+    "section": "Booking frequency limits",
+    "desc": "Limit how many bookings each member can make in busy time windows (e.g. weekdays 18:00–19:00, once per week).",
+    "empty": "No limits yet. Use \"Add limit\" to create one.",
+    "targetLabel": "Applies to",
+    "targetAll": "All members",
+    "targetGone": "(former member)",
+    "enabledLabel": "Enabled",
+    "disabledLabel": "Disabled",
+    "periodWeek": "Per week",
+    "periodDay": "Per day",
+    "countUnit": "booking(s) max",
+    "addRule": "Add limit",
+    "saved": "Booking limits saved",
+    "cleared": "All booking limits removed",
+    "saveFailed": "Failed to save",
+    "invalidWeekdays": "Select at least one weekday",
+    "invalidRange": "End time must be after start time",
+    "proxyNote": "These limits apply only to bookings members make themselves. Bookings the gym adds from the schedule screen are not restricted.",
+    "errorOverLimit": "You have reached the booking limit for this time window. Please choose another time.",
+    "errorOverLimitProxy": "This booking hits the booking frequency limit (you can adjust it under Settings > Booking frequency limits).",
+    "slotLimitReached": "Limit",
+    "repeatSkippedLimit": "{{count}} week(s) were skipped because of your booking limit ({{dates}})",
+    "errorRestoreFailed": "The change failed and your original booking could not be restored. Please check your bookings and book again.",
+    "loadFailed": "Could not load booking limits. Please reload before saving.",
+    "reload": "Reload"
+  },
   "staffSchedule": {
     "section": "Staff shifts",
     "desc": "Set the days and hours each staff member works. If no days are set, they can be booked during your regular business hours.",

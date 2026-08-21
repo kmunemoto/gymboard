@@ -338,6 +338,56 @@ export type Database = {
           },
         ]
       }
+      booking_frequency_limits: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          end_time: string
+          id: string
+          max_bookings: number
+          period: string
+          start_time: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+          weekdays: number[]
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          id?: string
+          max_bookings?: number
+          period?: string
+          start_time?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+          weekdays: number[]
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          id?: string
+          max_bookings?: number
+          period?: string
+          start_time?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+          weekdays?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_frequency_limits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_questions: {
         Row: {
           ask_on_member: boolean

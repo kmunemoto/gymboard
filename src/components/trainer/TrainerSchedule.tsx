@@ -18,6 +18,7 @@ import {
   questionsForSurface,
 } from "@/lib/bookingQuestions";
 import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
+import { isBookingLimitError } from "@/lib/bookingLimits";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
@@ -193,11 +194,17 @@ const TrainerSchedule = () => {
       }
       createdBookings = booked;
       toast.success(t("booking.repeatResult", { count: booked.length }));
-      if (skipped.length > 0) {
-        const dates = skipped
-          .map((d) => formatJST(`${d}T00:00:00+09:00`, "M/d", { locale: ja }))
-          .join("、");
-        toast.info(t("booking.repeatSkipped", { count: skipped.length, dates }));
+      // 回数上限（GB003）でのスキップは満枠と案内を分ける（代理予約で出るのは
+      // トレーナーが自分自身をお客様として選んだときだけ）。
+      const fmtDates = (list: { date: string }[]) =>
+        list.map((sk) => formatJST(`${sk.date}T00:00:00+09:00`, "M/d", { locale: ja })).join("、");
+      const limitSkipped = skipped.filter((sk) => isBookingLimitError({ code: sk.code }));
+      const otherSkipped = skipped.filter((sk) => !isBookingLimitError({ code: sk.code }));
+      if (otherSkipped.length > 0) {
+        toast.info(t("booking.repeatSkipped", { count: otherSkipped.length, dates: fmtDates(otherSkipped) }));
+      }
+      if (limitSkipped.length > 0) {
+        toast.info(t("bookingLimits.repeatSkippedLimit", { count: limitSkipped.length, dates: fmtDates(limitSkipped) }));
       }
     } else {
       const { data: bookingData, error } = await createBooking(
@@ -207,8 +214,11 @@ const TrainerSchedule = () => {
       if (error) {
         // 店に空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
         // シフト外（GB002）は別の曜日か別の担当なら取れるので文言を分ける。
+        // GB003（予約回数の制限）が代理予約で出るのは、トレーナーが**自分を**お客様として
+        // 選んだときだけ（auth.uid() = user_id になり自己予約扱い）。設定で調整できると案内する。
         toast.error(
-          isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
+          isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
+            : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")
             : t("schedule.errorAddFailed"),
         );

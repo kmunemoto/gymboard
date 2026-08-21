@@ -496,9 +496,12 @@ export const createRecurringBookings = async (
   // 事前アンケートの回答は全回に同じものを付ける（1回の操作でまとめて取る予約なので、
   // 回ごとに聞き直すと入力が4回に増える）。
   customAnswers: BookingAnswer[] | null = null,
-): Promise<{ booked: { id: string; date: string }[]; skipped: string[] }> => {
+): Promise<{ booked: { id: string; date: string }[]; skipped: { date: string; code?: string }[] }> => {
   const booked: { id: string; date: string }[] = [];
-  const skipped: string[] = [];
+  // スキップ理由の code（SQLSTATE）も返す。満枠と回数上限（GB003）では案内が違う
+  // （満枠＝空き待ちすれば取れる / 上限＝待っても自分は取れない）ため、
+  // 日付だけ返すと呼び出し側が「満枠のため」と誤案内するしかなくなる。
+  const skipped: { date: string; code?: string }[] = [];
   const [y, mo, da] = firstDate.split("-").map(Number);
   for (let i = 0; i < weeks; i++) {
     // ローカル日付で +7日ずつ（時刻を持たない日付演算のためTZずれ無し）
@@ -506,7 +509,7 @@ export const createRecurringBookings = async (
     const dateKey = format(d, "yyyy-MM-dd");
     const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, { staffUserId, customAnswers });
     if (error || !data) {
-      skipped.push(dateKey);
+      skipped.push({ date: dateKey, code: (error as { code?: string } | null)?.code });
     } else {
       booked.push({ id: data.id, date: dateKey });
     }
@@ -556,7 +559,7 @@ export const rescheduleBooking = async (
   newDate: string,
   newStartTime: string,
   opts: { forfeitOld?: boolean } = {},
-): Promise<{ data: { id: string } | null; error: unknown }> => {
+): Promise<{ data: { id: string } | null; error: unknown; restoreFailed?: boolean }> => {
   const { data: old, error: fetchError } = await supabase
     .from("bookings")
     // 列を明示列挙すると、マイグレーション適用前のDBでは staff_user_id が
@@ -621,9 +624,20 @@ export const rescheduleBooking = async (
   );
 
   if (createError || !created) {
-    // 失敗（満枠等）→ 旧予約を復元して予約消失を防ぐ
-    await createBooking(old.user_id, oldJstDate, oldJstTime, old.booking_type, false, { silent: true })
-      .catch((e) => console.error("reschedule rollback failed:", e));
+    // 失敗（満枠等）→ 旧予約を復元して予約消失を防ぐ。
+    // 復元も INSERT なので、拒否されうる（旧枠の先取りに加え、予約回数の制限 GB003 でも。
+    // 例: 代理予約も含め既に上限まで埋まっている人が変更に失敗したとき）。
+    // createBooking は throw せず {error} を返すため .catch では決して捕まらない。
+    // 復元に失敗したら restoreFailed で呼び出し側へ明示する（予約を無音で消さない）。
+    // 担当（staffUserId）も引き継ぐ（以前は復元時に担当が静かに外れていた）。
+    const { error: restoreError } = await createBooking(
+      old.user_id, oldJstDate, oldJstTime, old.booking_type, false,
+      { silent: true, staffUserId: oldStaffUserId },
+    );
+    if (restoreError) {
+      console.error("reschedule rollback failed:", restoreError);
+      return { data: null, error: createError ?? new Error("reschedule create failed"), restoreFailed: true };
+    }
     return { data: null, error: createError ?? new Error("reschedule create failed") };
   }
 

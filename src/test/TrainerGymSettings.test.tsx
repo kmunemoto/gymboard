@@ -84,6 +84,7 @@ vi.mock("@/components/trainer/OperatorFeedback", () => stub("operator-feedback")
 // 同じ形で「Tests は全部 passed、Errors N件」→ exit 1 になる。
 vi.mock("@/components/trainer/TrainerStaffSchedule", () => stub("staff-schedule"));
 vi.mock("@/components/trainer/TrainerBookingQuestions", () => stub("booking-questions"));
+vi.mock("@/components/trainer/TrainerBookingLimits", () => stub("booking-limits"));
 vi.mock("@/components/LanguageSwitcher", () => stub("language-switcher"));
 vi.mock("@/components/ThemeColorSwitcher", () => stub("theme-color-switcher"));
 vi.mock("@/components/BackgroundImagePicker", () => stub("background-image-picker"));

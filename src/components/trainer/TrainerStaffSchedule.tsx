@@ -25,10 +25,22 @@ import { canSelectStaff } from "@/lib/tenantStaff";
  *
  * スタッフが1人しかいないジムでは出さない。指名の概念が無いので設定しても効かない。
  */
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+/**
+ * 30分刻みの時刻。**営業時間の設定（TrainerGymSettings）と同じ範囲にすること。**
+ *
+ *   開始 … 00:00〜23:30（48個）
+ *   終了 … 00:30〜24:00（48個）。最後の `"24:00"` は「その日いっぱい」で、
+ *          24時間営業の店の「20:00〜24:00 のスタッフ」を表すためにある。
+ *
+ * ここだけ狭いままだと、**営業時間で選べる終業がシフトで選べない**という
+ * 不整合になる（2026-08-21 に実際そうなっていた）。
+ */
+const shiftTime = (i: number) => {
   const total = i * 30;
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-});
+};
+const SHIFT_START_OPTIONS = Array.from({ length: 48 }, (_, i) => shiftTime(i));
+const SHIFT_END_OPTIONS = Array.from({ length: 48 }, (_, i) => shiftTime(i + 1));
 
 type DayState = { enabled: boolean; start: string; end: string };
 
@@ -164,7 +176,7 @@ const TrainerStaffSchedule = () => {
                       >
                         <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {TIME_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                          {SHIFT_START_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <span className="text-xs text-muted-foreground shrink-0">–</span>
@@ -174,7 +186,7 @@ const TrainerStaffSchedule = () => {
                       >
                         <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {TIME_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                          {SHIFT_END_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

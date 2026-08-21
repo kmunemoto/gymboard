@@ -338,6 +338,50 @@ export type Database = {
           },
         ]
       }
+      booking_capacity_windows: {
+        Row: {
+          capacity: number
+          created_at: string
+          enabled: boolean
+          end_time: string
+          id: string
+          start_time: string
+          tenant_id: string
+          updated_at: string
+          weekdays: number[]
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          id?: string
+          start_time?: string
+          tenant_id: string
+          updated_at?: string
+          weekdays: number[]
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          id?: string
+          start_time?: string
+          tenant_id?: string
+          updated_at?: string
+          weekdays?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_capacity_windows_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_frequency_limits: {
         Row: {
           created_at: string
@@ -4077,6 +4121,15 @@ export type Database = {
           end_booking_date: string
           staff_user_id: string
           status: string
+        }[]
+      }
+      get_tenant_capacity_windows: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          capacity: number
+          end_time: string
+          start_time: string
+          weekdays: number[]
         }[]
       }
       get_tenant_booking_questions: {

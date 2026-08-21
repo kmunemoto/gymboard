@@ -2627,6 +2627,23 @@
     "loadFailed": "Could not load booking limits. Please reload before saving.",
     "reload": "Reload"
   },
+  "capacityWindows": {
+    "section": "Capacity by time window",
+    "desc": "Set this when the number of bookings you can take at once changes by time of day (e.g. only one at a time on weekday evenings). With no windows, the \"Bookings at the same time\" value from business hours applies all day.",
+    "empty": "No time windows yet. Use \"Add time window\" to create one.",
+    "enabledLabel": "Enabled",
+    "disabledLabel": "Disabled",
+    "countUnit": "{{count}} at a time",
+    "addWindow": "Add time window",
+    "saved": "Capacity windows saved",
+    "cleared": "All capacity windows removed",
+    "saveFailed": "Failed to save",
+    "invalidWeekdays": "Select at least one weekday",
+    "invalidRange": "End time must be after start time",
+    "loadFailed": "Could not load capacity windows. Please reload before saving.",
+    "reload": "Reload",
+    "overlapNote": "When windows overlap, the smallest number wins. This sets how many bookings your gym can take at once — it is different from booking frequency limits, which cap how often one member can book."
+  },
   "staffSchedule": {
     "section": "Staff shifts",
     "desc": "Set the days and hours each staff member works. If no days are set, they can be booked during your regular business hours.",

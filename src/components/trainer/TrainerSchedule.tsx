@@ -8,7 +8,7 @@ import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBooking
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
-import { blockEndMinutes, businessGridMinutes, isClosedDate, minutesToTime, weekdayOfDateKey } from "@/lib/businessHours";
+import { blockEndMinutes, businessGridMinutes, isClosedDate, minutesToTime, parseTimeToMinutes, weekdayOfDateKey } from "@/lib/businessHours";
 import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
@@ -19,6 +19,8 @@ import {
 } from "@/lib/bookingQuestions";
 import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
 import { isBookingLimitError } from "@/lib/bookingLimits";
+import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
+import { resolveSlotCapacity } from "@/lib/bookingCapacity";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
@@ -88,7 +90,12 @@ const TrainerSchedule = () => {
   // 同時に受けられる予約数（ベッド数・施術者数）。未ロード時は安全側の1。
   // 予約を入れるときだけ使う。ブロック枠の作成は「1件でも予約があれば不可」のままにする
   // （ブロックは店全体を閉めるので、空きベッドがあっても既存予約を巻き込むため）。
+  // 店の既定の同時受入数。時間帯の帯があればその枠だけ値が変わる（capacityAt）。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
+  const { windows: capacityWindows } = useBookingCapacityWindows();
+  /** その日時で実際に使う同時受入数（帯が無ければ店の既定値） */
+  const capacityAt = (dateKey: string, time: string) =>
+    resolveSlotCapacity(capacityWindows, weekdayOfDateKey(dateKey), parseTimeToMinutes(time), bookingCapacity);
   // 代理予約のプラン選択肢。プラン管理（tenant_plans）で作成したテナント固有プランを反映する。
   // アプリ登録済みのお客様は招待コードで入会済みのため、「初回無料体験」は予約種別として出さない。
   // プラン未割り当てのお客様向けに「プラン未設定」を既定の先頭選択肢として用意する。
@@ -165,7 +172,7 @@ const TrainerSchedule = () => {
     }
     setMissingProxyAnswerIds([]);
     const proxyAnswerSnapshot = buildAnswerSnapshot(proxyQuestions, proxyAnswers);
-    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null)) {
+    if (checkSlotBlocked(bookings, proxyDateKey, proxyTime, undefined, bookingBufferMinutes, proxySessionMinutes, capacityAt(proxyDateKey, proxyTime), proxyStaffId || null)) {
       // 同時に受けられる予約数が既定の1のままだと、実際は2人同時に見られる店でも
       // ここで弾かれる。設定があること自体を知らないまま「アプリが対応していない」と
       // 諦められてしまうので、詰まったその場で設定の場所を案内する。
@@ -833,7 +840,7 @@ const TrainerSchedule = () => {
                       staffSchedules, proxyStaffId || null,
                     )) {
                       const time = minutesToTime(totalMin);
-                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, bookingCapacity, proxyStaffId || null);
+                      const blocked = checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, capacityAt(proxyDateKey, time), proxyStaffId || null);
                       slots.push({ time, blocked });
                     }
                     return slots.map((slot) => (

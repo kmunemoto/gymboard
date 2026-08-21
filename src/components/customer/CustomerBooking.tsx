@@ -36,6 +36,8 @@ import { bookingWindowEnd, isBeyondBookingWindow, LEGACY_MEMBER_WINDOW_MONTHS } 
 import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingFrequencyLimits } from "@/hooks/useBookingFrequencyLimits";
+import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
+import { resolveSlotCapacity } from "@/lib/bookingCapacity";
 import { exceededFrequencyLimit, isBookingLimitError } from "@/lib/bookingLimits";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
@@ -71,6 +73,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { questions: allQuestions } = useBookingQuestions();
   // 予約回数の制限（例: 平日18-19時は週1回まで）。読めなければ空＝制限なし。
   const { limits: frequencyLimits } = useBookingFrequencyLimits();
+  // 時間帯別の同時受け入れ数。読めなければ空＝店の既定値（従来どおり）。
+  const { windows: capacityWindows } = useBookingCapacityWindows();
 
   // Build plan name → label / max sessions maps from tenant_plans
   const planLabelMap = useMemo(() => {
@@ -206,6 +210,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? DEFAULT_BOOKING_BUFFER_MINUTES;
   // 同時に受けられる予約数（ベッド数・施術者数）。未ロード時は安全側の1。
+  // 店の既定の同時受入数。時間帯の帯がある枠では、下の isSlotBlocked が帯の値で上書きする。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
   const isSlotBlocked = (date: string, time: string): boolean => {
@@ -231,7 +236,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     });
     // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定する。
     if (overlapping.some((b) => b.isBlock)) return true;
-    if (overlapping.length >= bookingCapacity) return true;
+    // 同時受入数は時間帯で変わりうる（昼は2人・夜は1人など）。帯が無ければ店の既定値。
+    const capacityHere = resolveSlotCapacity(
+      capacityWindows, weekdayOfDateKey(date), newMin, bookingCapacity,
+    );
+    if (overlapping.length >= capacityHere) return true;
     // 店に空きがあっても、指名した担当がその時間帯に別の予約を持っていれば取れない。
     // 指名なし（selectedStaffId === null）のときはこの判定を通らない＝従来どおり。
     // DB 側 check_booking_overlap も同じ二段構えで最終判定する。

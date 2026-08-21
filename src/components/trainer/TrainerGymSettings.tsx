@@ -37,6 +37,7 @@ import { EMAIL_NOTE_MAX_LENGTH, normalizeEmailNote } from "@/lib/emailNotes";
 import TrainerStaffSchedule from "./TrainerStaffSchedule";
 import TrainerBookingQuestions from "./TrainerBookingQuestions";
 import TrainerBookingLimits from "./TrainerBookingLimits";
+import TrainerCapacityWindows from "./TrainerCapacityWindows";
 import { formatWeekdayShort } from "@/lib/dateFormat";
 import {
   DASHBOARD_STAT_TOGGLES,
@@ -1008,6 +1009,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             </Button>
           </CardContent>
         </Card>
+      </section>
+
+      <Separator />
+
+      {/* === 時間帯別の同時受け入れ数 === 営業時間カードの capacity を時間帯で上書きする */}
+      <section className="space-y-3">
+        <TrainerCapacityWindows />
       </section>
 
       <Separator />

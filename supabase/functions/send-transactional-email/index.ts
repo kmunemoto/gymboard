@@ -147,6 +147,35 @@ async function authorizeClientCall(
     && body.recipientEmail.toLowerCase() === callerEmail.toLowerCase()
 }
 
+/**
+ * 早期 return（認可 403・宛先解決の失敗・テンプレート404）でも email_send_log に
+ * 痕跡を残す（status='rejected'）。以前はこれらの経路が**1行も残さず**消えていたため、
+ * 「クライアントが呼ばなかった」と「呼んだが弾かれた」をログから区別できなかった
+ * （2026-08-21 の予約通知の沈黙故障の調査で判明）。
+ * 未認証の 401 では書かない（anon キーだけで叩ける入口なので、書くと無制限の
+ * 書き込み経路になる）。記録の失敗はレスポンスに影響させない。
+ */
+async function logRejected(
+  templateName: string | undefined,
+  recipientEmail: string | undefined,
+  reason: string,
+) {
+  try {
+    const url = Deno.env.get('SUPABASE_URL')
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!url || !key) return
+    await createClient(url, key).from('email_send_log').insert({
+      message_id: crypto.randomUUID(),
+      template_name: templateName || 'unknown',
+      recipient_email: recipientEmail || 'unknown',
+      status: 'rejected',
+      error_message: reason,
+    })
+  } catch (e) {
+    console.error('logRejected failed', e)
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -200,6 +229,11 @@ Deno.serve(async (req) => {
       ok = false
     }
     if (!ok) {
+      await logRejected(
+        peekedBody?.templateName || peekedBody?.template_name,
+        peekedBody?.recipientEmail || peekedBody?.recipient_email,
+        `authorization failed (caller ${caller.userId})`,
+      )
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -211,6 +245,9 @@ Deno.serve(async (req) => {
   let templateName: string
   let recipientEmail: string
   let idempotencyKey: string
+  // 呼び出し元が明示した冪等キー（fallback の messageId と区別する。
+  // 明示されたキーだけが下の重複排除の対象になる）。
+  let explicitIdempotencyKey: string | null = null
   let messageId: string
   let templateData: Record<string, any> = {}
   try {
@@ -218,7 +255,8 @@ Deno.serve(async (req) => {
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     messageId = crypto.randomUUID()
-    idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
+    explicitIdempotencyKey = body.idempotencyKey || body.idempotency_key || null
+    idempotencyKey = explicitIdempotencyKey || messageId
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
     }
@@ -247,6 +285,7 @@ Deno.serve(async (req) => {
 
   if (!template) {
     console.error('Template not found in registry', { templateName })
+    await logRejected(templateName, recipientEmail, 'template not found')
     return new Response(
       JSON.stringify({
         error: `Template '${templateName}' not found. Available: ${Object.keys(TEMPLATES).join(', ')}`,
@@ -271,6 +310,7 @@ Deno.serve(async (req) => {
       effectiveRecipient = authUser.user.email
     } else {
       console.error('Could not resolve trainer email', { trainerUserId: templateData.trainerUserId })
+      await logRejected(templateName, recipientEmail, `could not resolve trainer email (${templateData.trainerUserId})`)
       return new Response(
         JSON.stringify({ error: 'Could not resolve trainer email' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -286,6 +326,7 @@ Deno.serve(async (req) => {
       effectiveRecipient = authUser.user.email
     } else {
       console.error('Could not resolve user email', { resolveUserId: templateData.resolveUserId })
+      await logRejected(templateName, recipientEmail, `could not resolve user email (${templateData.resolveUserId})`)
       return new Response(
         JSON.stringify({ error: 'Could not resolve user email' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -294,6 +335,7 @@ Deno.serve(async (req) => {
   }
 
   if (!effectiveRecipient || effectiveRecipient === '_resolve_trainer_' || effectiveRecipient === '_resolve_user_') {
+    await logRejected(templateName, recipientEmail, 'recipient missing or unresolved')
     return new Response(
       JSON.stringify({
         error: 'recipientEmail is required (unless the template defines a fixed recipient)',
@@ -535,7 +577,49 @@ Deno.serve(async (req) => {
       ? template.subject(templateData)
       : template.subject
 
-  // 5. Enqueue the pre-rendered email for async processing by the dispatcher.
+  // 5. 冪等キーの重複排除（2026-08-21）。
+  //
+  // 予約の通知はサーバー側（notify-new-booking）へ移したが、公開済みの旧クライアントは
+  // 今までどおり端末からも同じメールを送ってくる。両者は**同じ冪等キー**
+  // （booking-notify-<id> 等）を名乗るので、ここで先勝ちにすれば1通に畳まれる。
+  // 以前は idempotency_key を配送APIへ渡すだけで、**この関数を2回呼べば2通届いていた**。
+  //
+  // - notification_dedupe への INSERT が直列化点。23505 になった側が重複 →
+  //   status='duplicate' を記録して 200 で返す
+  // - 対象は呼び出し元が**明示した**キーだけ（fallback の messageId は毎回ユニークで
+  //   排除の意味が無い）
+  // - dedupe 基盤自体のエラーでは**送信を止めない**（fail-open。予約メールは
+  //   二重に届くほうが、届かないより害が小さい）
+  // - 🔴 予約（INSERT）は enqueue の**直前**に置く。前段（宛先解決・配信停止トークン）の
+  //   失敗パスが予約の後に残っていると、一時エラーでキーだけ焼けて
+  //   「その予約のメールは再試行しても永久に duplicate」になる
+  // - enqueue に失敗したら予約を取り消す（同じ理由）
+  let dedupeReserved = false
+  if (explicitIdempotencyKey) {
+    const { error: dedupeErr } = await supabase
+      .from('notification_dedupe')
+      .insert({ idempotency_key: `email:${explicitIdempotencyKey}` })
+    if (!dedupeErr) {
+      dedupeReserved = true
+    } else if (dedupeErr.code === '23505') {
+      await supabase.from('email_send_log').insert({
+        message_id: messageId,
+        template_name: templateName,
+        recipient_email: effectiveRecipient,
+        status: 'duplicate',
+        error_message: `idempotency key already used: ${explicitIdempotencyKey}`,
+      })
+      console.log('Duplicate send suppressed', { templateName, idempotencyKey: explicitIdempotencyKey })
+      return new Response(
+        JSON.stringify({ success: true, deduped: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    } else {
+      console.error('Dedupe reservation failed — sending anyway', { error: dedupeErr })
+    }
+  }
+
+  // 6. Enqueue the pre-rendered email for async processing by the dispatcher.
   // The dispatcher (process-email-queue) handles sending, retries, and rate-limit backoff.
 
   // Log pending BEFORE enqueue so we have a record even if enqueue crashes
@@ -572,6 +656,14 @@ Deno.serve(async (req) => {
       templateName,
       effectiveRecipient,
     })
+
+    // 冪等キーの予約を取り消す（残すと、この予約の再試行が永久に duplicate 扱いになる）
+    if (dedupeReserved && explicitIdempotencyKey) {
+      await supabase
+        .from('notification_dedupe')
+        .delete()
+        .eq('idempotency_key', `email:${explicitIdempotencyKey}`)
+    }
 
     await supabase.from('email_send_log').insert({
       message_id: messageId,

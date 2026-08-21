@@ -442,6 +442,12 @@ export const createBooking = async (
       source: "gymboard",
       ...(staffUserId ? { staff_user_id: staffUserId } : {}),
       ...(customAnswers ? { custom_answers: customAnswers } : {}),
+      // silent＝予約変更（reschedule）の内部 INSERT。サーバー側の通知トリガー
+      // （notify_booking_created）が「新規予約」通知を出さないようマーカーを付ける
+      // （店には従来どおり「予約日時の変更」プッシュが別途届く）。
+      // 値があるときだけ入れるのは staff_user_id と同じ理由（未適用のDBで PGRST204
+      // になり全予約が作れなくなるのを避ける。mem/ops/schema-drift.md）。
+      ...(opts.silent ? { created_via: "reschedule" } : {}),
     }, tenantId) as any)
     .select()
     .single();

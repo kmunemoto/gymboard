@@ -133,12 +133,15 @@ describe("send-transactional-email: 認可の中身", () => {
 describe("実際に飛んでいる4本が、この規則で通ること", () => {
   // 直したことで**現在の送信が1通も止まらない**ことを、呼び出し元の形で固定する。
   // ここが変わったら、Edge Function 側の規則も見直しが要る。
-  const notif = readFileSync("src/lib/bookingNotification.ts", "utf8");
+  // 予約作成の2本はサーバー側送信へ移行済み（2026-08-21、notify-new-booking。
+  // service_role 呼び出しなので同ジム検査は通らないが、宛先解決に同じキーが要る）。
+  // キャンセルの2本は今もクライアント発＝この認可規則を通る。
+  const notif = readFileSync("supabase/functions/notify-new-booking/index.ts", "utf8");
   const hooks = readFileSync("src/hooks/useBookings.ts", "utf8");
 
   const invocations = [
-    { file: "bookingNotification.ts", src: notif, template: "new-booking-notification", recipient: "_resolve_trainer_", key: "trainerUserId" },
-    { file: "bookingNotification.ts", src: notif, template: "booking-confirmation", recipient: null, key: "resolveUserId" },
+    { file: "notify-new-booking/index.ts", src: notif, template: "new-booking-notification", recipient: "_resolve_trainer_", key: "trainerUserId" },
+    { file: "notify-new-booking/index.ts", src: notif, template: "booking-confirmation", recipient: null, key: "resolveUserId" },
     { file: "useBookings.ts", src: hooks, template: "booking-cancellation", recipient: "_resolve_trainer_", key: "trainerUserId" },
     { file: "useBookings.ts", src: hooks, template: "booking-cancellation", recipient: "_resolve_user_", key: "resolveUserId" },
   ];
@@ -163,25 +166,19 @@ describe("実際に飛んでいる4本が、この規則で通ること", () => 
     // ジム側が代理で予約すると resolveUserId は**呼び出し元ではないお客様**になる。
     // 「自分宛だけ」に絞ると代理予約の確認メールが止まるので、
     // 「自分がスタッフをしているジムの在籍者」まで許している。
-    expect(notif).toMatch(/resolveUserId: customerUserId/);
+    expect(notif).toMatch(/resolveUserId: booking\.user_id/);
     expect(hooks).toMatch(/resolveUserId: booking\.user_id/);
   });
 
-  it("生のメールアドレスを渡すのは、自分の予約をする顧客だけ", () => {
-    // CustomerBooking は user.email（＝呼び出し元自身）を渡す。
-    // TrainerSchedule は渡さない（_resolve_user_ に落ちる）。
+  it("生のメールアドレスは誰も渡さない（宛先解決は必ず Edge Function 側）", () => {
+    // 予約作成の送信はサーバー側（notify-new-booking）に一本化され、
+    // _resolve_trainer_ / _resolve_user_ しか使わない。クライアント（画面2つ）は
+    // 送信自体を持たない。ここに端末発の送信が復活すると、生アドレス直指定の
+    // 経路が再び開きうる（bookingNotifyServerSide.test.ts と二重の見張り）。
     const customer = readFileSync("src/components/customer/CustomerBooking.tsx", "utf8");
     const trainer = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
-    // 引数に t("…") が入るので `[^)]*` では途中の `)` で切れる。範囲を限って読む。
-    //
-    // ⚠️ 2026-08-20 に末尾へ gymNote（メールに足す店からの案内）を足したので、
-    //    どちらも「メールアドレスの引数の直後がカンマ」になった。見ているのは
-    //    **メールアドレスの位置に何が入っているか**であって、引数の個数ではない。
-    expect(customer).toMatch(/sendBookingNotifications\([\s\S]{0,300}?user\.id,\s*user\.email\s*,/);
-    // トレーナーの代理予約は**メールの位置に undefined** を渡す（_resolve_user_ に落ちる）。
-    // ここに proxyClient のメールが入ると、店が顧客のアドレスを直接指定できてしまう。
-    expect(trainer).toMatch(/sendBookingNotifications\([\s\S]{0,300}?proxyBookingType,\s*proxyClient,\s*undefined\s*,/);
-    // 念のため逆側も固定する: トレーナー側に「生のメールらしき引数」が現れていないこと。
-    expect(trainer).not.toMatch(/sendBookingNotifications\([\s\S]{0,300}?\.email\b/);
+    expect(customer).not.toContain("sendBookingNotifications");
+    expect(trainer).not.toContain("sendBookingNotifications");
+    expect(notif).not.toMatch(/recipientEmail: (?!"_resolve_)/);
   });
 });

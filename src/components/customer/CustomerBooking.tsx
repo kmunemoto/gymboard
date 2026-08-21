@@ -15,7 +15,6 @@ import { format, startOfDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
 import { trialLabel } from "@/lib/dummyData";
-import { sendBookingNotifications } from "@/lib/bookingNotification";
 import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
@@ -556,9 +555,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         .then(() => refreshWaitlist());
     }
 
-    // Fire-and-forget notification email to trainer + confirmation to customer.
-    // 定期予約では作成できた全件を渡す（1件目だけ渡すと2回目以降にメールが届かない）。
-    sendBookingNotifications(createdBookings, profile?.display_name || t("booking.customerFallback"), slot.time, endTime, selectedPlan, user.id, user.email, tenant?.booking_email_note ?? null);
+    // 予約の通知（店宛メール・受付確認メール・プッシュ）はサーバー側が送る
+    // （bookings の AFTER INSERT トリガー → notify-new-booking Edge Function）。
+    // 以前はここから端末発で送っていたが、回線の瞬断で**店宛だけが黙って消える**
+    // 沈黙故障が実際に起きた（2026-08-21。mem/features/booking-notify-server-side.md）。
+    // 端末発に戻さないこと。サーバー側はDBの INSERT を起点にするので、この画面が
+    // 直後に閉じられても必ず届く。
 
     // Fire-and-forget LINE message to customer
     // Gated by feature flag — customer LINE booking notifications are currently disabled
@@ -570,23 +572,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         message: `✅ 予約確定\n\n${format(selectedDate!, "M/d", { locale: ja })}（${format(selectedDate!, "E", { locale: ja })}）${slot.time}\n\n${profile?.display_name || "お客"}様、トレーニングのご予約が完了しました。\n\nプラン：${selectedPlan}\n\n${tenant?.gym_name || BRAND_FALLBACK_GYM_NAME}`,
       }, "顧客へ予約確定通知");
     }
-
-    // Fire-and-forget push notification to trainer
-    // 宛先は自テナントのスタッフのみ（get_trainer_ids は全テナント横断のため、
-    // 別ジムのトレーナーに通知が飛ぶ/自ジムに届かない。チャット #141 と同じ対応）。
-    import("@/lib/tenantHelper").then(async ({ fetchMyTenantStaffIds }) => {
-      const staffIds = await fetchMyTenantStaffIds();
-      if (staffIds.length === 0) return;
-      supabase.functions.invoke("send-push-notification", {
-        body: {
-          user_ids: [...new Set([...staffIds, user.id])],
-          title: "新しい予約",
-          body: `${profile?.display_name || "お客様"}が${format(selectedDate!, "M月d日", { locale: ja })} ${slot.time}〜${endTime}を予約しました${repeatWeeks > 1 ? `（毎週同時刻×${repeatWeeks}回の定期予約）` : ""}`,
-          url: "/",
-          tag: `booking-${firstBooking.id}`,
-        },
-      }).catch((e) => console.error("Push notification failed:", e));
-    }).catch((e) => console.error("Push notification failed:", e));
 
   };
 

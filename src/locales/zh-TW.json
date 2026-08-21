@@ -347,6 +347,8 @@
       "graceDays": "寬限天數（天）",
       "graceDaysPlaceholder": "例：7",
       "graceDaysHint": "超過期限後，這些天內的預約仍計入上一週期。留空為0（無寬限）。",
+      "blockOverflow": "不允許超出上限的預約",
+      "blockOverflowHint": "開啟後，已用完次數的會員將無法自行預約。門市從行程表代為新增的預約不受影響。",
       "graceDaysSuffix": "寬限{{count}}天",
       "enable": "啟用",
       "enabledLabel": "已啟用",
@@ -2643,6 +2645,10 @@
     "loadFailed": "無法載入分時段設定。請在儲存前重新載入。",
     "reload": "重新載入",
     "overlapNote": "時段重疊時以最小的數值為準。此設定決定門市可同時接待的預約數，與限制單一會員預約次數的「預約次數限制」不同。"
+  },
+  "planSessions": {
+    "errorReached": "您已用完目前方案週期內的預約次數。請等待下一個週期，或與門市聯繫。",
+    "errorReachedProxy": "該會員已達到方案次數上限（可在方案設定的「不允許超出上限的預約」中變更）。"
   },
   "staffSchedule": {
     "section": "教練班表",

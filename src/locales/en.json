@@ -347,6 +347,8 @@
       "graceDays": "Grace period (days)",
       "graceDaysPlaceholder": "e.g. 7",
       "graceDaysHint": "Bookings up to this many days past the deadline still count toward the previous cycle. Blank = 0 (no grace).",
+      "blockOverflow": "Block bookings beyond the limit",
+      "blockOverflowHint": "When on, members who have used all their sessions cannot book for themselves. Bookings the gym adds from the schedule screen are unaffected.",
       "graceDaysSuffix": "{{count}}-day grace",
       "enable": "Enable",
       "enabledLabel": "Enabled",
@@ -2643,6 +2645,10 @@
     "loadFailed": "Could not load capacity windows. Please reload before saving.",
     "reload": "Reload",
     "overlapNote": "When windows overlap, the smallest number wins. This sets how many bookings your gym can take at once — it is different from booking frequency limits, which cap how often one member can book."
+  },
+  "planSessions": {
+    "errorReached": "You have used all sessions in your current plan period. Please wait for the next period or contact the gym.",
+    "errorReachedProxy": "This member has used all sessions in their plan period (change it under plan settings, \"Block bookings beyond the limit\")."
   },
   "staffSchedule": {
     "section": "Staff shifts",

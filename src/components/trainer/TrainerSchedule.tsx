@@ -19,6 +19,7 @@ import {
 } from "@/lib/bookingQuestions";
 import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
 import { isBookingLimitError } from "@/lib/bookingLimits";
+import { isPlanLimitError } from "@/lib/planSessionLimit";
 import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { resolveSlotCapacity } from "@/lib/bookingCapacity";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
@@ -224,7 +225,8 @@ const TrainerSchedule = () => {
         // GB003（予約回数の制限）が代理予約で出るのは、トレーナーが**自分を**お客様として
         // 選んだときだけ（auth.uid() = user_id になり自己予約扱い）。設定で調整できると案内する。
         toast.error(
-          isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
+          isPlanLimitError(error) ? t("planSessions.errorReachedProxy")
+            : isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
             : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")
             : t("schedule.errorAddFailed"),

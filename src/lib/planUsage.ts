@@ -26,6 +26,11 @@ export interface PlanUsageInput {
   cycleMonths?: number | null;
   /** 猶予日数（tenant_plans.grace_days）。期限を過ぎても前サイクル分として大目に見る日数。null/未設定は0 */
   graceDays?: number | null;
+  /**
+   * 上限を超えた予約を許すか（tenant_plans.allow_overflow）。既定 true＝従来どおり。
+   * false のときはサイクルの自動ロールを止める（DB の GB004 と表示を一致させるため）。
+   */
+  allowOverflow?: boolean | null;
 }
 
 export interface PlanUsageBooking {
@@ -131,6 +136,7 @@ export function computePlanUsage(
       referenceDate: now,
       // 表示は「実際の1回目のトレーニング日から1ヶ月」で見せる（応当日境界ではなく最初の予約日起点）
       anchorToFirstBooking: true,
+      allowOverflow: input.allowOverflow,
     });
     if (!eff) return UNCONFIGURED;
     windowStart = eff.window.start;
@@ -173,7 +179,7 @@ export function computePlanUsage(
 // tenant_plans に該当があればそれを正とし、無ければ名称から推定（旧データ互換）。
 export function resolvePlanUsageInput(
   planName: string | null | undefined,
-  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null; cycle_months?: number | null; grace_days?: number | null } | null | undefined,
+  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null; cycle_months?: number | null; grace_days?: number | null; allow_overflow?: boolean | null } | null | undefined,
   startDate: string | null | undefined,
 ): PlanUsageInput | null {
   if (!planName) return null;
@@ -185,6 +191,9 @@ export function resolvePlanUsageInput(
       startDate: startDate ?? null,
       cycleMonths: tenantPlan.cycle_months ?? null,
       graceDays: tenantPlan.grace_days ?? null,
+      // 超過を許さないプランは、表示側でもサイクルをロールさせない
+      // （DB の拒否と食い違わせないため。courseProgress の allowOverflow 参照）
+      allowOverflow: tenantPlan.allow_overflow ?? true,
     };
   }
   // 旧データ互換: tenant_plans に無い名称

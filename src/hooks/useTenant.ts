@@ -109,6 +109,12 @@ export interface TenantPlan {
   grace_days: number | null;
   /** このプランの予約1件あたりの占有時間（分）。null/未設定はジムの既定値（tenants.slot_duration_minutes）を継承 */
   slot_duration_minutes: number | null;
+  /**
+   * 上限（max_sessions）を超えた予約を許すか。true/null（既定）＝今までどおり超過できる。
+   * false のとき DB の guard_booking_plan_limit が GB004 で拒否し、
+   * 表示側もサイクルの自動ロールを止める（src/lib/planSessionLimit.ts）。
+   */
+  allow_overflow: boolean | null;
   sort_order: number;
   is_active: boolean;
 }

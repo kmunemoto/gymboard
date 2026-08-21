@@ -123,8 +123,18 @@ export const resolveEffectiveCycle = (params: {
   referenceDate: Date;
   /** 表示用: サイクル窓を「実際の1回目のトレーニング日」起点に引き直す（既定 false=暦窓のまま） */
   anchorToFirstBooking?: boolean;
+  /**
+   * 上限を超えた予約を許すか（`tenant_plans.allow_overflow`。既定 true＝従来どおり）。
+   *
+   * 🔴 false のときは**自動ロールを止める**。超過を DB が拒否する設定なのに窓が
+   * ロールすると、設定をONにした時点で既に超過しているお客様に
+   * 「カードは残7回と言うのに予約が拒否される」という食い違いが必ず出る。
+   * DB 側（`guard_booking_plan_limit`）も同じく暦窓のまま数える。
+   */
+  allowOverflow?: boolean;
 }): { cycleStartDate: string; window: CycleWindow; lent: number; used: number } | null => {
   const { maxSessions, cycleMonths, graceDays, bookings, referenceDate, anchorToFirstBooking } = params;
+  const allowOverflow = params.allowOverflow !== false;
   let anchorKey = params.cycleStartDate;
   if (!anchorKey) return null;
   let window = getCycleWindow(anchorKey, startOfDay(parseISO(anchorKey)), cycleMonths);
@@ -174,7 +184,7 @@ export const resolveEffectiveCycle = (params: {
 
   for (let i = 0; i < 240; i++) {
     const { lent, inWindow } = summarize(window, anchorKey);
-    if (maxSessions != null && maxSessions > 0 && inWindow.length - lent > maxSessions) {
+    if (allowOverflow && maxSessions != null && maxSessions > 0 && inWindow.length - lent > maxSessions) {
       // 回数上限を超過 → (上限+1)回目（猶予繰入はスキップ）の予約日を新しい起算日にロール
       const rollDate = inWindow[lent + maxSessions];
       // ただし新ルーティンの1回目がまだ先の日付なら、その日が来るまでは現在の窓のまま表示する

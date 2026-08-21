@@ -38,6 +38,8 @@ import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingFrequencyLimits } from "@/hooks/useBookingFrequencyLimits";
 import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { resolveSlotCapacity } from "@/lib/bookingCapacity";
+import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
+import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
 import { exceededFrequencyLimit, isBookingLimitError } from "@/lib/bookingLimits";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
@@ -75,6 +77,22 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const { limits: frequencyLimits } = useBookingFrequencyLimits();
   // 時間帯別の同時受け入れ数。読めなければ空＝店の既定値（従来どおり）。
   const { windows: capacityWindows } = useBookingCapacityWindows();
+
+  // ご契約プランの回数上限（例: 月8回）。**カードが出しているのと同じ数**で判定する
+  // （別に数え直すと「残1回と出ているのに拒否される」が起きうる）。
+  // allow_overflow が既定(true)のプランでは常に false ＝ 従来どおり超過できる。
+  const currentTenantPlan = tenantPlans?.find((p) => p.plan_name === profile?.plan) ?? null;
+  const planUsage = useMemo(() => {
+    const input = resolvePlanUsageInput(profile?.plan, currentTenantPlan, profile?.cycle_start_date);
+    if (!input) return null;
+    if (profile?.grace_enabled === false) input.graceDays = 0;
+    return computePlanUsage(
+      input,
+      myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+      getJSTNow(),
+    );
+  }, [profile?.plan, profile?.cycle_start_date, profile?.grace_enabled, currentTenantPlan, myBookings]);
+  const planLimitReached = isPlanSessionLimitReached(planUsage, currentTenantPlan?.allow_overflow);
 
   // Build plan name → label / max sessions maps from tenant_plans
   const planLabelMap = useMemo(() => {
@@ -348,6 +366,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       return;
     }
 
+    // ご契約プランの回数上限（超過を許さないプランのみ）。最終判定は DB（GB004）。
+    if (planLimitReached) {
+      toast.error(t("planSessions.errorReached"));
+      return;
+    }
+
     // 事前アンケートの必須項目。空のまま送らせない（DB は必須を強制しないので、
     // ここが唯一の関門。店が「必須」にした意味を守る）。
     const missing = missingRequiredQuestions(memberQuestions, answers);
@@ -407,7 +431,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
         // シフト外（GB002）は「別の時間」ではなく「別の担当か別の曜日」なので文言を分ける。
         toast.error(
-          isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
+          isPlanLimitError(error) ? t("planSessions.errorReached")
+            : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
             : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
             : isStaffConflictError(error) ? t("staff.errorStaffBusy")
             : t("booking.errorBookingFailed"),
@@ -1111,7 +1136,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                           missingIds={missingAnswerIds}
                           requiredLabel={t("bookingQuestions.required")}
                           checkedValue={t("bookingQuestions.checked")}
-                          disabled={submitting}
+                          disabled={submitting || (!rescheduleTarget && planLimitReached)}
                         />
                       </div>
                     )}

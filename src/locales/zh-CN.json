@@ -347,6 +347,8 @@
       "graceDays": "宽限天数（天）",
       "graceDaysPlaceholder": "例：7",
       "graceDaysHint": "超过期限后，这些天内的预约仍计入上一周期。留空为0（无宽限）。",
+      "blockOverflow": "不允许超出上限的预约",
+      "blockOverflowHint": "开启后，已用完次数的会员将无法自行预约。门店从日程表代为添加的预约不受影响。",
       "graceDaysSuffix": "宽限{{count}}天",
       "enable": "启用",
       "enabledLabel": "已启用",
@@ -2643,6 +2645,10 @@
     "loadFailed": "无法加载分时段设置。请在保存前重新加载。",
     "reload": "重新加载",
     "overlapNote": "时段重叠时以最小的数值为准。此设置决定门店可同时接待的预约数，与限制单个会员预约次数的“预约次数限制”不同。"
+  },
+  "planSessions": {
+    "errorReached": "您已用完当前套餐周期内的预约次数。请等待下一个周期，或与门店联系。",
+    "errorReachedProxy": "该会员已达到套餐次数上限（可在套餐设置的“不允许超出上限的预约”中更改）。"
   },
   "staffSchedule": {
     "section": "员工排班",

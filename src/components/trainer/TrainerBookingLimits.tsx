@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Gauge, Plus, Save, Trash2 } from "lucide-react";
+import { Gauge, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
@@ -67,22 +67,27 @@ const defaultRule = (): EditableRule => ({
 const TrainerBookingLimits = () => {
   const { t } = useTranslation();
   const { tenant } = useTenant();
-  const { profiles } = useAllCustomerProfiles();
+  const { profiles, loading: profilesLoading } = useAllCustomerProfiles();
   const [rules, setRules] = useState<EditableRule[]>([]);
   const [loading, setLoading] = useState(true);
+  // 🔴 読み込み失敗を「ルール0件」と区別する。区別しないと、一時的な通信断のあとに
+  // 保存を押しただけで既存ルールを全削除できてしまう（空リスト＝全置換のため）。
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!tenant?.id) return;
     setLoading(true);
+    setLoadFailed(false);
     const { data, error } = await supabase
       .from("booking_frequency_limits")
       .select("id, user_id, weekdays, start_time, end_time, period, max_bookings, enabled")
       .eq("tenant_id", tenant.id)
       .order("created_at", { ascending: true });
     if (error || !data) {
-      // 表が無い環境でも設定画面ごと落とさない（保存しようとした時点で分かる）
+      // 表が無い環境でも設定画面ごと落とさないが、「0件」とは区別して保存を塞ぐ。
       setRules([]);
+      setLoadFailed(true);
     } else {
       setRules(
         data.map((r) => ({
@@ -126,17 +131,10 @@ const TrainerBookingLimits = () => {
       return;
     }
     setSaving(true);
-    // 丸ごと消して入れ直す（スタッフのシフトと同じ。差分より状態がずれない）
-    const { error: delErr } = await supabase
-      .from("booking_frequency_limits")
-      .delete()
-      .eq("tenant_id", tenant.id);
-    if (delErr) {
-      console.error("予約回数の制限の削除に失敗:", delErr);
-      toast.error(t("bookingLimits.saveFailed"), { description: delErr.message });
-      setSaving(false);
-      return;
-    }
+    // 丸ごと入れ替えるが、順序は **挿入 → 残す id 以外を削除**。
+    // 「削除 → 挿入」だと、削除成功後に挿入だけ失敗したとき DB が0件＝制限が全部
+    // 静かに消える（しかもこの画面は消えたことに気づけない）。逆順なら失敗の倒れ方は
+    // 「新旧の重複が残る」= AND 判定なので厳しくなる方向で、次の読み込みで見えて直せる。
     if (rules.length > 0) {
       const rows = rules.map((r) => ({
         tenant_id: tenant.id,
@@ -148,10 +146,38 @@ const TrainerBookingLimits = () => {
         max_bookings: r.max,
         enabled: r.enabled,
       }));
-      const { error } = await supabase.from("booking_frequency_limits").insert(rows as never);
+      const { data: inserted, error } = await supabase
+        .from("booking_frequency_limits")
+        .insert(rows as never)
+        .select("id");
       if (error) {
         console.error("予約回数の制限の保存に失敗:", error);
-        toast.error(t("bookingLimits.saveFailed"), { description: error.message });
+        toast.error(t("bookingLimits.saveFailed"));
+        setSaving(false);
+        return;
+      }
+      const keepIds = (inserted ?? []).map((r: { id: string }) => r.id);
+      const { error: delErr } = await supabase
+        .from("booking_frequency_limits")
+        .delete()
+        .eq("tenant_id", tenant.id)
+        .not("id", "in", `(${keepIds.join(",")})`);
+      if (delErr) {
+        console.error("予約回数の制限の旧ルール削除に失敗:", delErr);
+        toast.error(t("bookingLimits.saveFailed"));
+        setSaving(false);
+        void load();   // 重複が残った実態を画面に反映する
+        return;
+      }
+    } else {
+      // 全解除は明示的な操作（読み込み失敗時は保存ボタン自体が塞がっている）
+      const { error: delErr } = await supabase
+        .from("booking_frequency_limits")
+        .delete()
+        .eq("tenant_id", tenant.id);
+      if (delErr) {
+        console.error("予約回数の制限の削除に失敗:", delErr);
+        toast.error(t("bookingLimits.saveFailed"));
         setSaving(false);
         return;
       }
@@ -170,7 +196,16 @@ const TrainerBookingLimits = () => {
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-muted-foreground">{t("bookingLimits.desc")}</p>
 
-          {rules.length === 0 && !loading && (
+          {loadFailed && !loading && (
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-destructive">{t("bookingLimits.loadFailed")}</p>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => void load()}>
+                <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                {t("bookingLimits.reload")}
+              </Button>
+            </div>
+          )}
+          {rules.length === 0 && !loading && !loadFailed && (
             <p className="text-xs text-muted-foreground flex items-start gap-1.5">
               <Gauge className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               {t("bookingLimits.empty")}
@@ -215,7 +250,9 @@ const TrainerBookingLimits = () => {
                         <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
                       ))}
                       {!knownTarget && (
-                        <SelectItem value={rule.userId}>{t("bookingLimits.targetGone")}</SelectItem>
+                        <SelectItem value={rule.userId}>
+                          {profilesLoading ? t("common.loading") : t("bookingLimits.targetGone")}
+                        </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -246,6 +283,10 @@ const TrainerBookingLimits = () => {
                   <Select value={rule.start} onValueChange={(v) => patchRule(rule.key, { start: v })}>
                     <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      {/* SQL直挿入等で30分刻み外の値が入っていても表示を保つ（黙って丸めない） */}
+                      {!LIMIT_START_OPTIONS.includes(rule.start) && (
+                        <SelectItem value={rule.start}>{rule.start}</SelectItem>
+                      )}
                       {LIMIT_START_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -253,6 +294,9 @@ const TrainerBookingLimits = () => {
                   <Select value={rule.end} onValueChange={(v) => patchRule(rule.key, { end: v })}>
                     <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      {!LIMIT_END_OPTIONS.includes(rule.end) && (
+                        <SelectItem value={rule.end}>{rule.end}</SelectItem>
+                      )}
                       {LIMIT_END_OPTIONS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -275,6 +319,9 @@ const TrainerBookingLimits = () => {
                   >
                     <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      {!MAX_OPTIONS.includes(rule.max) && (
+                        <SelectItem value={String(rule.max)}>{rule.max}</SelectItem>
+                      )}
                       {MAX_OPTIONS.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -296,7 +343,7 @@ const TrainerBookingLimits = () => {
               <Plus className="w-4 h-4 mr-1" />
               {t("bookingLimits.addRule")}
             </Button>
-            <Button onClick={handleSave} disabled={saving || loading} size="sm" className="h-10">
+            <Button onClick={handleSave} disabled={saving || loading || loadFailed} size="sm" className="h-10">
               <Save className="w-4 h-4 mr-1" />
               {saving ? t("common.saving") : t("common.save")}
             </Button>

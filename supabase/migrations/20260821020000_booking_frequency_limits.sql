@@ -87,9 +87,11 @@ CREATE TABLE IF NOT EXISTS public.booking_frequency_limits (
   -- 全予約が止まる値を持てないようにする（booking_window_days の 0 と同じ思想）
   CONSTRAINT booking_frequency_limits_max_check
     CHECK (max_bookings >= 1 AND max_bookings <= 99),
-  -- 曜日は 0-6 のみ・1つ以上（空配列のルールは何にもマッチせず、ただ紛らわしい）
+  -- 曜日は 0-6 のみ・1つ以上（空配列のルールは何にもマッチせず、ただ紛らわしい）。
+  -- ⚠️ array_length('{}', 1) は NULL を返し「NULL >= 1」= NULL で CHECK を素通りする。
+  --    空配列で 0 を返す cardinality を使うこと（レビューで発覚）。
   CONSTRAINT booking_frequency_limits_weekdays_check
-    CHECK (array_length(weekdays, 1) >= 1 AND weekdays <@ ARRAY[0,1,2,3,4,5,6])
+    CHECK (cardinality(weekdays) >= 1 AND weekdays <@ ARRAY[0,1,2,3,4,5,6])
 );
 
 COMMENT ON TABLE public.booking_frequency_limits IS
@@ -203,9 +205,18 @@ BEGIN
   END IF;
 
   -- 日時が変わらない UPDATE（キャンセル・メモ追記・担当変更）は見ない。
-  -- 日時が変わる UPDATE（リスケ）は見る: 空いている時間で取ってから
-  -- ピーク帯へ動かす、という抜け道を塞ぐ。
-  IF TG_OP = 'UPDATE' AND NEW.booking_date IS NOT DISTINCT FROM OLD.booking_date THEN
+  -- 🔴 例外: 'キャンセル済み' からの復活は日時が変わらなくても見る。
+  --    「キャンセル済みの行を先に置く → 別の枠を取る → 復活させる」で
+  --    上限をすり抜けられるため（レビューで発覚した意図的バイパス経路）。
+  --    正規のロールバック（'同日キャンセル済み' → '予約済み'）は OLD.status が
+  --    'キャンセル済み' ではないので、この例外に当たらない。
+  --
+  -- なお実アプリの顧客リスケは UPDATE ではなく「旧行を消して INSERT」
+  -- （useBookings.ts の rescheduleBooking）。この UPDATE 分岐は手で SQL を
+  -- 叩く経路への防御として残している。
+  IF TG_OP = 'UPDATE'
+     AND NEW.booking_date IS NOT DISTINCT FROM OLD.booking_date
+     AND NOT (OLD.status = 'キャンセル済み' AND NEW.status IS DISTINCT FROM 'キャンセル済み') THEN
     RETURN NEW;
   END IF;
 
@@ -213,6 +224,11 @@ BEGIN
   IF NEW.status = 'キャンセル済み' THEN
     RETURN NEW;
   END IF;
+
+  -- 同一人物の同時リクエスト（2端末・並列スクリプト）が両方 count=0 を見て
+  -- 上限をすり抜けるレースを塞ぐ。トランザクション終了で自動解放。
+  -- 素通し判定の後に置くので、代理予約や salute_sync の一括投入は直列化されない。
+  PERFORM pg_advisory_xact_lock(hashtext(NEW.tenant_id::text || NEW.user_id::text));
 
   v_jst := (NEW.booking_date AT TIME ZONE 'Asia/Tokyo');
   v_dow := EXTRACT(DOW FROM v_jst)::int;

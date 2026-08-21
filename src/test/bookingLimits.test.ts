@@ -120,9 +120,13 @@ describe("超過の判定", () => {
   });
 
   it("先週・翌週の予約は数えない（週の境界）", () => {
+    // 🔴 前週側は**ルール対象の曜日**（金曜）で検査する。日曜（対象外の曜日）だと
+    // 週範囲の下限チェックを消しても曜日フィルタだけで除外されてしまい、
+    // 「週の下限」を検査したことにならない（変異検証で発覚）。
+    const prevFriday = booking({ date: "2026-08-14" });   // 前の週の金曜（対象曜日・対象時間帯）
     const prevSunday = booking({ date: "2026-08-16" });   // 前の週の日曜
     const nextMonday = booking({ date: MON_NEXT_WEEK });  // 翌週の月曜
-    expect(exceededFrequencyLimit([PEAK_RULE], candidateFri18, [prevSunday, nextMonday])).toBeNull();
+    expect(exceededFrequencyLimit([PEAK_RULE], candidateFri18, [prevFriday, prevSunday, nextMonday])).toBeNull();
   });
 
   it("🔴 'キャンセル済み' は数えず、'同日キャンセル済み'（消化）は数える", () => {
@@ -181,57 +185,98 @@ describe("エラーの見分け", () => {
 // ---------------------------------------------------------------------------
 // DB 側の規則がクライアントと一致していることを、migrations の SQL から見張る
 // ---------------------------------------------------------------------------
+// 🔴 検査は「連結全体」ではなく**最後の定義**に対して行う。
+// CREATE OR REPLACE は最後の定義しか残らないため、連結全体への肯定形マッチだと
+// 初出のファイルが永久に満たし続け、後発マイグレーションによる骨抜き上書きを
+// 見逃す（レビューで実証された穴）。delete_my_gym の「1回の定義に全テーブル」
+// 事故もこの形でしか捕まえられない。
 const migrationsDir = "supabase/migrations";
 const limitSql = readdirSync(migrationsDir)
   .filter((f) => f.endsWith(".sql"))
+  .sort()   // 適用順 = ファイル名順。readdir の順序保証に依存しない
   .map((f) => readFileSync(`${migrationsDir}/${f}`, "utf8"))
-  .filter((s) => s.includes("booking_frequency_limits"))
+  .filter((sql) =>
+    /booking_frequency_limits|guard_booking_frequency_limit|delete_my_gym/.test(sql))
   .join("\n")
-  // 行コメントを落とす（コメント内の文言にマッチして緑になる事故を防ぐ）
-  .split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+  // 行末コメントも落とす（行頭だけだと「コード削除＋行末コメントに旧コードを残す」
+  // 変異がコメントにマッチして緑のまま通る。gymOwnership.test.ts の stripSql と同じ手法）
+  .split("\n").map((l) => l.replace(/--.*$/, "")).join("\n");
+
+/** 連結の中の「名前 name の最後の CREATE OR REPLACE FUNCTION」の本文を切り出す */
+const lastFunctionDef = (name: string): string => {
+  const marker = `CREATE OR REPLACE FUNCTION public.${name}`;
+  const at = limitSql.lastIndexOf(marker);
+  expect(at, `${name} の定義が見つからない`).toBeGreaterThanOrEqual(0);
+  const rest = limitSql.slice(at);
+  const end = rest.search(/\$(function)?\$;/);
+  return end >= 0 ? rest.slice(0, end) : rest;
+};
 
 describe("🔴 DB 側の規則がクライアントと一致している", () => {
-  it("テーブルとトリガーが定義されている", () => {
+  const guard = lastFunctionDef("guard_booking_frequency_limit");
+
+  it("テーブル・トリガー・関数の結線が定義されている", () => {
     expect(limitSql).toMatch(/CREATE TABLE IF NOT EXISTS public\.booking_frequency_limits/);
-    expect(limitSql).toMatch(/CREATE OR REPLACE FUNCTION public\.guard_booking_frequency_limit\(\)/);
     expect(limitSql).toMatch(/BEFORE INSERT OR UPDATE ON public\.bookings/);
+    // トリガーがこの関数を呼んでいること（関数だけ在って結線が無い、を防ぐ）
+    expect(limitSql).toMatch(/EXECUTE FUNCTION public\.guard_booking_frequency_limit\(\)/);
   });
 
   it("🔴 代理予約とサービスロールは素通しする（自己予約だけを見る）", () => {
-    // auth.uid() が NULL（サービスロール）か user_id と違う（代理）なら RETURN NEW。
-    // この行が消えると、店の代理予約まで制限で止まる。
-    expect(limitSql).toMatch(
+    // v_actor の**代入元**まで固定する（NEW.user_id を代入すると素通し条件が恒偽になり、
+    // IF 行はそのままでも代理予約まで制限される）。
+    expect(guard).toMatch(/v_actor := auth\.uid\(\);/);
+    expect(guard).toMatch(
       /IF v_actor IS NULL OR v_actor IS DISTINCT FROM NEW\.user_id THEN\s*\n\s*RETURN NEW;/,
     );
   });
 
-  it("曜日と時刻は JST で数える", () => {
-    expect(limitSql).toMatch(/AT TIME ZONE 'Asia\/Tokyo'/);
-    expect(limitSql).toMatch(/EXTRACT\(DOW FROM v_jst\)/);
+  it("🔴 'キャンセル済み' からの復活は日時が変わらなくても判定する", () => {
+    // 「キャンセル行を先に置く → 別の枠を取る → 復活」で上限をすり抜ける
+    // バイパスを塞ぐ条件（レビューで発覚し、本番でも実挿入で確認済み）。
+    // 正規のロールバック（'同日キャンセル済み' → '予約済み'）はこの例外に当たらない。
+    expect(guard).toMatch(
+      /AND NOT \(OLD\.status = 'キャンセル済み' AND NEW\.status IS DISTINCT FROM 'キャンセル済み'\)/,
+    );
+    expect(guard).toMatch(/AND NEW\.booking_date IS NOT DISTINCT FROM OLD\.booking_date/);
   });
 
-  it("週は date_trunc('week') = 月曜始まり", () => {
-    expect(limitSql).toMatch(/date_trunc\('week', v_jst\)/);
+  it("同一人物の同時リクエストを直列化する（advisory lock）", () => {
+    // 2端末同時 INSERT が両方 count=0 を見て上限をすり抜けるレースの対策。
+    // 素通し判定の後に置くこと（代理予約・salute_sync まで直列化しない）。
+    expect(guard).toMatch(/pg_advisory_xact_lock\(hashtext\(NEW\.tenant_id::text \|\| NEW\.user_id::text\)\)/);
+  });
+
+  it("マッチ条件: enabled・対象・曜日・[start, end) がすべて効いている", () => {
+    // どれか1つ消えても他のテストは緑のまま通る（変異検証で実証された穴）ので、
+    // FOR ループの WHERE 節を1条件ずつピン留めする。
+    expect(guard).toMatch(/AND l\.enabled\b/);
+    expect(guard).toMatch(/AND \(l\.user_id IS NULL OR l\.user_id = NEW\.user_id\)/);
+    expect(guard).toMatch(/AND v_dow = ANY \(l\.weekdays\)/);
+    expect(guard).toMatch(/AND v_min >= \(split_part\(l\.start_time/);
+    // 終端は排他（<）。<= に変わるとクライアントの [start, end) とずれて、
+    // 画面で押せた 19:00 開始の枠が DB で拒否される。
+    expect(guard).toMatch(/AND v_min < {2}\(split_part\(l\.end_time/);
+  });
+
+  it("曜日と時刻は JST で数え、週は date_trunc('week') = 月曜始まり", () => {
+    expect(guard).toMatch(/AT TIME ZONE 'Asia\/Tokyo'/);
+    expect(guard).toMatch(/EXTRACT\(DOW FROM v_jst\)/);
+    expect(guard).toMatch(/date_trunc\('week', v_jst\)/);
   });
 
   it("数えない予約は 'キャンセル済み' だけ（消化は数える）", () => {
-    expect(limitSql).toMatch(/b\.status <> 'キャンセル済み'/);
-    // '同日キャンセル済み' を除外していないこと
-    expect(limitSql).not.toMatch(/status\s*<>\s*'同日キャンセル済み'/);
+    expect(guard).toMatch(/b\.status <> 'キャンセル済み'/);
+    expect(guard).not.toMatch(/status\s*<>\s*'同日キャンセル済み'/);
   });
 
-  it("リスケ中の行の旧日時を数えない", () => {
-    expect(limitSql).toMatch(/b\.id IS DISTINCT FROM NEW\.id/);
-  });
-
-  it("日時が変わらない UPDATE は見ない（キャンセルを止めない）", () => {
-    expect(limitSql).toMatch(
-      /IF TG_OP = 'UPDATE' AND NEW\.booking_date IS NOT DISTINCT FROM OLD\.booking_date THEN\s*\n\s*RETURN NEW;/,
-    );
+  it("自行を数えない・比較は >= max_bookings", () => {
+    expect(guard).toMatch(/b\.id IS DISTINCT FROM NEW\.id/);
+    expect(guard).toMatch(/IF v_count >= v_limit\.max_bookings THEN/);
   });
 
   it("SQLSTATE は GB003（GB001/GB002 と混ぜない）", () => {
-    expect(limitSql).toMatch(/USING ERRCODE = 'GB003'/);
+    expect(guard).toMatch(/USING ERRCODE = 'GB003'/);
   });
 
   it("RLS: RESTRICTIVE のテナント境界と anon の遮断", () => {
@@ -240,40 +285,47 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
   });
 
   it("🔴 RLS: お客様には「全員向け」と「自分あて」しか見せない", () => {
-    // 他のお客様の個別ルールが見えると「あの人は制限されている」が漏れる
     expect(limitSql).toMatch(
       /user_id IS NULL\s*\n\s*OR user_id = auth\.uid\(\)\s*\n\s*OR public\.has_tenant_role\(tenant_id, auth\.uid\(\), ARRAY\['owner','trainer'\]\)/,
     );
   });
 
   it("書き込みは owner / trainer のみ", () => {
-    const writes = limitSql.match(
-      /CREATE POLICY booking_frequency_limits_(write|update|delete)[\s\S]*?;/g,
-    ) ?? [];
-    expect(writes.length).toBe(3);
-    for (const p of writes) {
-      expect(p).toMatch(/has_tenant_role\(tenant_id, auth\.uid\(\), ARRAY\['owner','trainer'\]\)/);
+    // ポリシーごとに**最後の定義**を見る（後発の DROP+CREATE で作り直されても、
+    // 最新の定義が owner/trainer に絞られていることを確認する）。
+    for (const kind of ["write", "update", "delete"]) {
+      const defs = [...limitSql.matchAll(
+        new RegExp(`CREATE POLICY booking_frequency_limits_${kind}[\\s\\S]*?;`, "g"))];
+      expect(defs.length, `${kind} ポリシーが見つからない`).toBeGreaterThanOrEqual(1);
+      expect(defs[defs.length - 1][0]).toMatch(
+        /has_tenant_role\(tenant_id, auth\.uid\(\), ARRAY\['owner','trainer'\]\)/,
+      );
     }
   });
 
-  it("テナント削除（delete_my_gym）がこの表も消す", () => {
-    expect(limitSql).toMatch(/DELETE FROM public\.booking_frequency_limits WHERE tenant_id = v_tenant_id/);
+  it("テナント削除（delete_my_gym）の**最後の定義**がこの表も消す", () => {
+    // delete_my_gym は「1回の定義に全テーブル」の決まり。次にテーブルを足す人が
+    // 古い版から再定義してこの DELETE を落とす、が最も起きやすい事故で、
+    // 連結全体へのマッチでは検出できない（初出のファイルが満たし続けるため）。
+    const gym = lastFunctionDef("delete_my_gym");
+    expect(gym).toMatch(/DELETE FROM public\.booking_frequency_limits WHERE tenant_id = v_tenant_id/);
   });
 
   it("CHECK: 時刻の形式（実際に正規表現として評価して確かめる）", () => {
     // 文字列に "24:00" が含まれるだけの検査だと、書き方を変えたときに素通りする。
-    // SQL からパターンを抜き出して JS の RegExp として評価する（staffSchedule.test.ts と同じ手法）。
-    const startPattern = /start_time ~ '([^']+)'/.exec(limitSql)?.[1];
-    expect(startPattern, "start_time の CHECK が見つからない").toBeTruthy();
-    const startRe = new RegExp(startPattern!);
+    // SQL からパターンを抜き出して JS の RegExp として評価する。複数定義がありうるので
+    // **最後の**定義を使う。
+    const startMatches = [...limitSql.matchAll(/start_time ~ '([^']+)'/g)];
+    expect(startMatches.length, "start_time の CHECK が見つからない").toBeGreaterThanOrEqual(1);
+    const startRe = new RegExp(startMatches[startMatches.length - 1][1]);
     expect(startRe.test("00:00")).toBe(true);
     expect(startRe.test("23:30")).toBe(true);
     expect(startRe.test("24:00"), "開始に 24:00 は許さない").toBe(false);
     expect(startRe.test("25:00")).toBe(false);
 
-    const endPattern = /end_time ~ '([^']+)'/.exec(limitSql)?.[1];
-    expect(endPattern, "end_time の CHECK が見つからない").toBeTruthy();
-    const endRe = new RegExp(endPattern!);
+    const endMatches = [...limitSql.matchAll(/end_time ~ '([^']+)'/g)];
+    expect(endMatches.length, "end_time の CHECK が見つからない").toBeGreaterThanOrEqual(1);
+    const endRe = new RegExp(endMatches[endMatches.length - 1][1]);
     expect(endRe.test("24:00"), "終了の 24:00（その日いっぱい）は許す").toBe(true);
     expect(endRe.test("19:00")).toBe(true);
     expect(endRe.test("24:30")).toBe(false);
@@ -283,7 +335,8 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
   it("CHECK: period・回数・曜日の範囲", () => {
     expect(limitSql).toMatch(/CHECK \(period IN \('week', 'day'\)\)/);
     expect(limitSql).toMatch(/CHECK \(max_bookings >= 1 AND max_bookings <= 99\)/);
-    expect(limitSql).toMatch(/weekdays <@ ARRAY\[0,1,2,3,4,5,6\]/);
+    // 🔴 cardinality を使うこと。array_length('{}',1) は NULL で CHECK を素通りする
+    expect(limitSql).toMatch(/CHECK \(cardinality\(weekdays\) >= 1 AND weekdays <@ ARRAY\[0,1,2,3,4,5,6\]\)/);
   });
 });
 
@@ -295,10 +348,32 @@ describe("🔴 画面が予約回数の制限を見ている", () => {
   const trainerSchedule = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
   const gymSettings = readFileSync("src/components/trainer/TrainerGymSettings.tsx", "utf8");
 
-  it("お客様の予約画面は枠の生成と送信直前の両方で判定する", () => {
+  it("お客様の予約画面は、枠の生成・送信直前・リスケ直前の3箇所で判定する", () => {
     expect(customerBooking).toContain("exceededFrequencyLimit(");
     expect(customerBooking).toContain("isBookingLimitError(");
     expect(customerBooking).toContain("useBookingFrequencyLimits(");
+    // 「1出現あればよし」だと handleBook / handleReschedule の直前チェックを
+    // 消しても緑のまま（変異検証で実証）。呼び出し箇所数で見張る。
+    const calls = (customerBooking.match(/isSlotOverLimit\(/g) ?? []).length;
+    expect(calls, "isSlotOverLimit の呼び出しが3箇所より少ない").toBeGreaterThanOrEqual(3);
+  });
+
+  it("🔴 リスケ中の除外は消化かどうかで変える（DBと同じ答えになるように）", () => {
+    // 消化リスケでは旧行が「同日キャンセル済み」で残り DB はそれを数える。
+    // クライアントも除外しない（除外すると「空き」と見せた枠が必ず GB003 で拒否される）。
+    expect(customerBooking).toContain(
+      "rescheduleTargetForfeits ? null : (rescheduleTarget?.id ?? null)",
+    );
+  });
+
+  it("復元まで失敗したら「変更に失敗」ではなく専用の文言で知らせる", () => {
+    // 復元失敗＝元の予約が消えている。無音や汎用文言で流さない。
+    expect(customerBooking).toContain("restoreFailed");
+    expect(customerBooking).toContain('t("bookingLimits.errorRestoreFailed")');
+    const useBookings = readFileSync("src/hooks/useBookings.ts", "utf8");
+    expect(useBookings).toContain("restoreFailed: true");
+    // 定期予約のスキップ理由（code）も捨てない（満枠と上限で案内が違う）
+    expect(useBookings).toMatch(/skipped\.push\(\{ date: dateKey, code:/);
   });
 
   it("🔴 店側の代理予約（TrainerSchedule）はクライアント判定を持たない", () => {
@@ -314,9 +389,29 @@ describe("🔴 画面が予約回数の制限を見ている", () => {
     expect(gymSettings).toContain("<TrainerBookingLimits />");
   });
 
+  it("設定画面の保存はテナントに閉じ、失敗が「全消失」に倒れない", () => {
+    const limitsUi = readFileSync("src/components/trainer/TrainerBookingLimits.tsx", "utf8");
+    // 入れ替えの削除・挿入はどちらも tenant_id 付き（他店に及ばない）
+    expect(limitsUi).toContain('.eq("tenant_id", tenant.id)');
+    expect(limitsUi).toContain("tenant_id: tenant.id");
+    // 🔴 挿入 → 差分削除の順（逆だと、削除成功後の挿入失敗で制限が全部静かに消える）
+    const insertAt = limitsUi.indexOf('.insert(rows as never)');
+    const diffDeleteAt = limitsUi.indexOf('.not("id", "in"');
+    expect(insertAt).toBeGreaterThan(-1);
+    expect(diffDeleteAt).toBeGreaterThan(insertAt);
+    // 🔴 読み込み失敗を「0件」と区別して保存を塞ぐ（塞がないと通信断→保存で全削除できる）
+    expect(limitsUi).toContain("loadFailed");
+    expect(limitsUi).toMatch(/disabled=\{saving \|\| loading \|\| loadFailed\}/);
+    // DB の CHECK に当たる前の文言バリデーション
+    expect(limitsUi).toContain('t("bookingLimits.invalidWeekdays")');
+    expect(limitsUi).toContain('t("bookingLimits.invalidRange")');
+  });
+
   it("読めない環境では空配列＝制限なしに倒す（予約を止めない）", () => {
     const hook = readFileSync("src/hooks/useBookingFrequencyLimits.ts", "utf8");
-    expect(hook).toContain("setLimits([])");
+    // 「setLimits([]) がどこかにある」ではなく、エラー分岐の中にあることを見る
+    // （tenantId 無し分岐にも同じ文字列があるため）。
+    expect(hook).toMatch(/if \(error \|\| !data\) \{\s*\n(?:\s*\/\/[^\n]*\n)*\s*setLimits\(\[\]\)/);
   });
 
   it("types.ts に booking_frequency_limits が載っている", () => {

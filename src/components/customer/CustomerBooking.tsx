@@ -256,9 +256,20 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const isViewOnlyDay = (date: string): boolean =>
     !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), lastBookableStartOn(date));
 
+  // このテナントで同日キャンセル消化が有効、かつ「変更対象の予約」が今日(JST)の分か。
+  // 当日の枠を手放す変更なので、当日キャンセルと同じく消化扱いにする。
+  // ⚠️ isSlotOverLimit（下）が参照するので、必ずこの位置（generateSlots より前）に置くこと。
+  const rescheduleTargetForfeits = !!rescheduleTarget
+    && !!tenant?.same_day_cancel_penalty_enabled
+    && rescheduleTarget.date === getJSTToday();
+
   // 予約回数の制限（例: 平日18-19時は週1回まで）に、この枠を取ると達するか。
-  // 数える元は自分の予約一覧（myBookings）。リスケ中は動かしている予約自体を除外する
-  // （自分の1枠を同じ週の中で動かすのは「増える」ではないため）。最終判定は DB（GB003）。
+  // 数える元は自分の予約一覧（myBookings）。最終判定は DB（GB003）。
+  //
+  // リスケ中の除外は経路で変える（DB と同じ答えになるように）:
+  //   非消化リスケ … 旧行は物理削除されてから新枠が INSERT される → 旧枠は数えない（除外）
+  //   消化リスケ   … 旧行は「同日キャンセル済み」で残り、DB はそれを数える → 除外しない。
+  //                  除外すると UI が「空き」と見せた枠が必ず GB003 で拒否される
   const isSlotOverLimit = (date: string, time: string): boolean => {
     if (!user || frequencyLimits.length === 0) return false;
     const startMinutes = parseTimeToMinutes(time);
@@ -267,7 +278,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       frequencyLimits,
       { dateKey: date, startMinutes, userId: user.id },
       myBookings,
-      rescheduleTarget?.id ?? null,
+      rescheduleTargetForfeits ? null : (rescheduleTarget?.id ?? null),
     );
   };
 
@@ -354,17 +365,29 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks, false, selectedStaffId, answerSnapshot,
       );
       if (booked.length === 0) {
-        toast.error(t("booking.errorBookingFailed"));
+        // 全週スキップ。全部が回数上限（GB003）なら満枠ではないので文言を分ける
+        // （空き待ちしても取れないことを伝える）。
+        toast.error(
+          skipped.every((sk) => isBookingLimitError({ code: sk.code }))
+            ? t("bookingLimits.errorOverLimit")
+            : t("booking.errorBookingFailed"),
+        );
         setSubmitting(false);
         return;
       }
       createdBookings = booked;
       toast.success(t("booking.repeatResult", { count: booked.length }));
-      if (skipped.length > 0) {
-        const dates = skipped
-          .map((d) => formatJST(`${d}T00:00:00+09:00`, "M/d", { locale: ja }))
-          .join("、");
-        toast.info(t("booking.repeatSkipped", { count: skipped.length, dates }));
+      // スキップ理由で案内を分ける: 満枠（空き待ちすれば取れる）と
+      // 回数上限（待っても自分は取れない）は別の話。
+      const fmtDates = (list: { date: string }[]) =>
+        list.map((sk) => formatJST(`${sk.date}T00:00:00+09:00`, "M/d", { locale: ja })).join("、");
+      const limitSkipped = skipped.filter((sk) => isBookingLimitError({ code: sk.code }));
+      const otherSkipped = skipped.filter((sk) => !isBookingLimitError({ code: sk.code }));
+      if (otherSkipped.length > 0) {
+        toast.info(t("booking.repeatSkipped", { count: otherSkipped.length, dates: fmtDates(otherSkipped) }));
+      }
+      if (limitSkipped.length > 0) {
+        toast.info(t("bookingLimits.repeatSkippedLimit", { count: limitSkipped.length, dates: fmtDates(limitSkipped) }));
       }
     } else {
       const { data, error } = await createBooking(
@@ -480,12 +503,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     setSelectedSlot(null);
   };
 
-  // このテナントで同日キャンセル消化が有効、かつ「変更対象の予約」が今日(JST)の分か。
-  // 当日の枠を手放す変更なので、当日キャンセルと同じく消化扱いにする。
-  const rescheduleTargetForfeits = !!rescheduleTarget
-    && !!tenant?.same_day_cancel_penalty_enabled
-    && rescheduleTarget.date === getJSTToday();
-
   // 選択した新しい日時へ予約を変更する（旧枠削除→新枠作成、失敗時は旧枠復元）。
   // 当日の変更でジム設定ONのときは、旧枠を消化扱いにして残す（forfeitOld）。
   const handleReschedule = async () => {
@@ -517,11 +534,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     }
     setSubmitting(true);
     try {
-      const { error } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time, { forfeitOld: rescheduleTargetForfeits });
+      const { error, restoreFailed } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time, { forfeitOld: rescheduleTargetForfeits });
       if (error) {
+        // 復元まで失敗した場合は「変更に失敗」では足りない（元の予約が消えている）。
         toast.error(
-          isBookingLimitError(error) ? t("bookingLimits.errorOverLimit") : t("booking.errorRescheduleFailed"),
+          restoreFailed ? t("bookingLimits.errorRestoreFailed")
+            : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
+            : t("booking.errorRescheduleFailed"),
         );
+        if (restoreFailed) refetch();
         return;
       }
       toast.success(t("booking.rescheduleDone"));

@@ -194,11 +194,17 @@ const TrainerSchedule = () => {
       }
       createdBookings = booked;
       toast.success(t("booking.repeatResult", { count: booked.length }));
-      if (skipped.length > 0) {
-        const dates = skipped
-          .map((d) => formatJST(`${d}T00:00:00+09:00`, "M/d", { locale: ja }))
-          .join("、");
-        toast.info(t("booking.repeatSkipped", { count: skipped.length, dates }));
+      // 回数上限（GB003）でのスキップは満枠と案内を分ける（代理予約で出るのは
+      // トレーナーが自分自身をお客様として選んだときだけ）。
+      const fmtDates = (list: { date: string }[]) =>
+        list.map((sk) => formatJST(`${sk.date}T00:00:00+09:00`, "M/d", { locale: ja })).join("、");
+      const limitSkipped = skipped.filter((sk) => isBookingLimitError({ code: sk.code }));
+      const otherSkipped = skipped.filter((sk) => !isBookingLimitError({ code: sk.code }));
+      if (otherSkipped.length > 0) {
+        toast.info(t("booking.repeatSkipped", { count: otherSkipped.length, dates: fmtDates(otherSkipped) }));
+      }
+      if (limitSkipped.length > 0) {
+        toast.info(t("bookingLimits.repeatSkippedLimit", { count: limitSkipped.length, dates: fmtDates(limitSkipped) }));
       }
     } else {
       const { data: bookingData, error } = await createBooking(

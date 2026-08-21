@@ -4167,15 +4167,6 @@ export type Database = {
           status: string
         }[]
       }
-      get_tenant_capacity_windows: {
-        Args: { p_tenant_id: string }
-        Returns: {
-          capacity: number
-          end_time: string
-          start_time: string
-          weekdays: number[]
-        }[]
-      }
       get_tenant_booking_questions: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -4186,6 +4177,15 @@ export type Database = {
           options: Json
           required: boolean
           sort_order: number
+        }[]
+      }
+      get_tenant_capacity_windows: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          capacity: number
+          end_time: string
+          start_time: string
+          weekdays: number[]
         }[]
       }
       get_tenant_limit_status: { Args: { p_tenant_id: string }; Returns: Json }
@@ -4288,6 +4288,17 @@ export type Database = {
         }
         Returns: number
       }
+      plan_cycle_window: {
+        Args: {
+          p_cycle_months: number
+          p_cycle_start: string
+          p_target: string
+        }
+        Returns: {
+          window_end: string
+          window_start: string
+        }[]
+      }
       process_session_rewards: {
         Args: { _user_id: string; _workout_date: string }
         Returns: Json
@@ -4315,6 +4326,10 @@ export type Database = {
       recover_stamina: { Args: { p_user_id: string }; Returns: Json }
       regenerate_staff_invite_code: { Args: never; Returns: string }
       remove_staff_member: { Args: { p_user_id: string }; Returns: undefined }
+      resolve_booking_capacity: {
+        Args: { p_booking_date: string; p_tenant_id: string }
+        Returns: number
+      }
       run_rival_matching: { Args: { p_week_start: string }; Returns: Json }
       set_active_companion: {
         Args: { p_companion_key: string; p_user_id: string }

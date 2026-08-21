@@ -358,8 +358,16 @@ export const shouldRebaseCycleStart = (params: {
   bookingDateKey: string;
   /** その顧客の既存予約（新規作成分は含めない） */
   existingBookings: BookingForProgress[];
+  /**
+   * プランの allow_overflow。false のとき「回数を使い切ったら予約日を新しい起算日にする」
+   * ロール（と、その永続化）を止める。DB が GB004 で超過を拒否するので、ロール条件には
+   * 本来到達しない —— が、**代理予約は素通し**なので、店が上限超えのお客様に1件入れた
+   * だけで起算日が書き換わり上限が丸ごとリセットされる（レビューで発覚）。既定は従来どおり。
+   */
+  allowOverflow?: boolean | null;
 }): boolean => {
   const { cycleStartDate, maxSessions, cycleMonths, bookingDateKey, existingBookings } = params;
+  const allowOverflow = params.allowOverflow !== false;
   if (!cycleStartDate) return true; // 起算日未設定 → 1回目の予約日を起算日に
 
   // 起算日より過去の日付への予約（過去分の記録など）では動かさない
@@ -377,6 +385,7 @@ export const shouldRebaseCycleStart = (params: {
     graceDays,
     bookings: active,
     referenceDate: bookingDate,
+    allowOverflow,
   });
   if (!eff) return false;
   const { window, lent } = eff;
@@ -403,7 +412,11 @@ export const shouldRebaseCycleStart = (params: {
 
   // 回数を使い切った後の期限内予約は「次のルーティンの1回目」→ 予約日を起算日に
   // （期限の終わりを待たずにロール。予約日より前の有効予約が上限に達しているかで判定）
-  if (maxSessions != null && maxSessions > 0) {
+  // 🔴 allow_overflow=false ではこのロールを起こさない。超過は DB が拒否する建て付けで、
+  //    代理予約（素通し）でここが動くと起算日が前へ進み、上限がリセットされてしまう。
+  //    下の「暦窓が自然に進んだ後のロール」（prevCount + lent >= maxSessions）は
+  //    DB の plan_cycle_window と食い違わないのでゲートしない。
+  if (allowOverflow && maxSessions != null && maxSessions > 0) {
     const graceTailEnd = addDays(window.start, graceDays);
     const lentLimit = graceTailEnd < bookingDate ? graceTailEnd : bookingDate;
     const lentBefore = Math.min(lent, countActiveInRange(active, window.start, lentLimit));

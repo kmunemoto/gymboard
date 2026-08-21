@@ -47,6 +47,24 @@
 「終端は含む」参照）。帯は「その時間に居るスタッフの数」なので半開のまま
 （12時に帰る応援の帯を 12:00 開始に効かせてはならない）。
 
+## 帯で塞がれた枠のエラー案内は帯の設定へ誘導する（2026-08-21 レビュー修正）
+
+TrainerSchedule の満枠エラーの出し分けが `tenants.booking_capacity`（既定値）しか
+見ておらず、**帯で塞がれた枠に既定値の設定への案内**が出ていた（案内どおり既定値を
+上げても何も変わらない）。値だけ返す `resolveSlotCapacity` では既定値と同値の帯が
+区別できないので、**出所を返す `matchedWindowCapacity`**（帯にマッチしたら最小値、
+無ければ null）を足して3分岐にした:
+
+```
+帯が当たっている枠 → schedule.errorSlotTakenWindowHint（時間帯別の設定へ）
+帯なし・既定1     → schedule.errorSlotTakenCapacityHint（従来どおり営業時間の設定へ）
+帯なし・既定2以上 → schedule.errorSlotTaken（本当に埋まっているだけ）
+```
+
+文言には `capacityWindows.section` の実ラベルを埋める（フォークが名前を変えても
+道順が保てるよう、テストが一致を見張る）。`resolveSlotCapacity` は
+`matchedWindowCapacity ?? 既定値` に書き換えて規則の二重化を避けた。
+
 ## 1箇所にまとめる
 
 DB は `resolve_booking_capacity(tenant_id, booking_date)` に切り出し、

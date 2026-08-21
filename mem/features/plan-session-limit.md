@@ -123,6 +123,102 @@ GB004 が出る。TrainerSchedule はこのとき専用文言（`planSessions.er
 
 適用後、`allow_overflow` が既定でないプランは **0件**。
 
+## レビューで確定した6件の修正（2026-08-21・同日）
+
+マージ前の敵対的レビュー（20指摘 → 反証を生き延びた15件）のうち、この機能に関わる6グループ:
+
+### 🔴 1. critical: 会員が profiles を書き換えて GB004 を無効化できた
+
+判定材料の `profiles.plan / cycle_start_date / grace_enabled` は**本人が UPDATE できる**
+（「Users can update own profile」）。supabase-js を直接叩けば
+(A) 起算日を NULL に → プラン未確定扱いで素通し
+(B) plan を実在しない名前に → allow_overflow 不明で素通し
+(C) 起算日を今日に → 窓が引き直され再び max_sessions 回取れる。
+
+対策は `guard_profile_plan_fields`（**GB005**・`20260821070000_plan_limit_hardening.sql`）:
+- 対象は**本人の自己更新だけ**（店側・サービスロール・店側人間の自分の行は素通し）
+- plan / grace_enabled は本人には変えさせない（変える正規の画面が無い）
+- cycle_start_date は **NULL→値の初回設定だけ許す**（rebaseCycleStartIfNeeded が
+  会員セッションで走るため。塞ぐと新規のお客様に起算日が入らなくなる）。
+  既存値の変更は **allow_overflow=false のプランでだけ拒否**
+  （既定 true のプランは「使い切ったらロール」の永続化が会員セッションで走る正規動線）
+
+### 🔴 2. 代理予約1件で起算日がロールして上限がリセットされた
+
+`resolveEffectiveCycle`（読む側）にしか allowOverflow を通しておらず、
+**書く側**（`shouldRebaseCycleStart` → `profiles.cycle_start_date` の更新）が
+素通しだった。上限到達後に店が代理で1件入れる（GB004 は代理を素通し）と
+起算日が予約日に書き換わり、窓が引き直されて**もう max_sessions 回取れてしまう**。
+→ `shouldRebaseCycleStart` に `allowOverflow` を追加し「使い切ったらロール」の分岐を
+ゲート（`useBookings` が select に allow_overflow を足して渡す）。
+暦窓が自然に進んだ後のロール（prevCount + lent >= max）は DB と食い違わないので残す。
+
+### 🔴 3. クライアント判定が「今日」基準で、次サイクルの予約まで塞いでいた
+
+DB は**予約日**の属する窓で数える（`v_target := NEW.booking_date`）。クライアントの
+`planLimitReached` は `getJSTNow()` 基準のスカラーだったので、今サイクルを使い切った
+お客様は **DB なら通る次サイクルの日付まで**画面で塞がれ、応当日が来るまで一切
+予約できなかった。→ `isPlanLimitReachedOn(dateKey)`（予約日基準の関数）に変更。
+カード表示（PlanUsageCard）は今までどおり今日基準のまま。
+
+### 4. サブスク以外（回数券・期間）には強制しない
+
+トリガーが plan_type を見ず、回数券（購入日起算の窓）にも月次窓で数えていた。
+月をまたぐと実質強制されず、月内に集中すると期限内なのに拒否される。
+→ トリガー・設定画面・クライアント判定の3箇所すべてで subscription に絞る
+（`COALESCE(v_ptype,'subscription') <> 'subscription'` → RETURN NEW /
+トグルは subscription でだけ表示・他は true 保存 /
+`isPlanSessionLimitReached(usage, allowOverflow, planType)`）。
+
+### 5. 非公開（is_active=false）のプランで判定材料が消えていた
+
+`useTenant().plans` は有効行のみ。DB は is_active を見ずに plan_name で引くので、
+プランを非公開にすると**その会員だけ**クライアントが名称推定に落ち、
+「カードは残りありなのに GB004 で拒否され続ける」になる。
+→ `useTenant` に **allPlans**（全行）を追加し、お客様側の画面
+（CustomerBooking / CustomerHome / CustomerSettings / CustomerMonthlyReport）の
+契約解決を allPlans に切り替え。**DB 側を is_active で絞る方向は採らない**
+（非公開にした瞬間に既存会員の上限が黙って外れるほうが運用上まずい）。
+
+### 6. 定期予約・予約変更で GB004 が「満枠」と誤案内された
+
+スキップ理由の振り分けが GB003 しか見ておらず、GB004 の週が「満枠のため」＝
+空き待ちすれば取れる、と案内されていた（待っても絶対に取れない）。
+→ 3分割（GB003 / GB004 / その他）＋ `planSessions.repeatSkippedPlan`。
+消化リスケは旧行が数えられ続けて**構造的に必ず GB004 で失敗する**ので、
+警告を出す前に `planSessions.errorRescheduleForfeitReached` で止める
+（非消化リスケは旧行が消える＝純増ゼロなので止めない）。
+
+## SQLSTATE 追記
+
+| コード | 意味 |
+|---|---|
+| **GB005** | **契約の中身（plan/起算日/猶予）の自己変更の拒否**（guard_profile_plan_fields） |
+
+### 防御強化の本番適用（2026-08-21・`20260821070000_plan_limit_hardening.sql`）
+
+実書き込み9ケースで確認（すべて ROLLBACK。お客様／オーナーを演じ分け）:
+
+| ケース | 期待 | 結果 |
+|---|---|---|
+| 本人が plan 変更 | GB005 | ok |
+| 本人が grace_enabled 変更 | GB005 | ok |
+| 本人が起算日変更（プラン既定 true） | 通る（ロール永続化の正規動線） | ok |
+| 本人が起算日変更（allow_overflow=false） | GB005 | ok |
+| 本人が起算日を初回設定（NULL→値・false プラン） | 通る（rebase の正規動線） | ok |
+| オーナーが代理で契約変更 | 通る | ok |
+| subscription・上限1 で窓内に既存ありの予約 | GB004 | ok |
+| 同・2件目 | GB004 | ok |
+| **同条件で plan_type='ticket' に変えた予約** | **通る（月次窓で強制しない）** | ok |
+
+⚠️ 検証時の教訓2つ:
+- `auth.uid()` は**ロールではなく `request.jwt.claims` を見る**。RESET ROLE しても
+  クレームが残っていると管理側の UPDATE が「本人の自己更新」に化けてガードに当たる。
+  管理操作の前に `set_config('request.jwt.claims', '', true)` でクレームを消すこと
+- `profiles.tenant_id` は **NULL の会員がいる**（検証に使った会員がそうだった）。
+  ガード内の所属解決は profiles.tenant_id ではなく tenant_members から引いている
+  （profiles.tenant_id は本人が書ける列でもあるので、判定の根拠にしない）
+
 ## 検討したがやらなかったこと
 
 - **新しい列 `max_bookings_per_cycle` を足す**: `max_sessions` と二重管理になる。

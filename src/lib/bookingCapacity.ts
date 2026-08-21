@@ -54,8 +54,24 @@ export const resolveSlotCapacity = (
     typeof fallback === "number" && Number.isFinite(fallback) ? Math.floor(fallback) : FALLBACK_CAPACITY,
     1,
   );
-  if (!windows || windows.length === 0) return base;
-  if (weekday === null || startMinutes === null) return base;
+  return matchedWindowCapacity(windows, weekday, startMinutes) ?? base;
+};
+
+/**
+ * その曜日・開始時刻に**当てはまる帯の値**を返す。当てはまる帯が無ければ null。
+ *
+ * `resolveSlotCapacity` の帯部分そのもの（あちらは `?? 既定値` を足しただけ）。
+ * エラー案内の出し分けに使う: 帯で塞がれた枠と、店の既定値で塞がれた枠では
+ * 「どの設定画面を直すべきか」が違う。値だけ返す `resolveSlotCapacity` では
+ * 既定値と同値の帯が区別できない（直すべき場所は帯なのに、既定値の案内を出してしまう）。
+ */
+export const matchedWindowCapacity = (
+  windows: readonly BookingCapacityWindow[] | null | undefined,
+  weekday: number | null,
+  startMinutes: number | null,
+): number | null => {
+  if (!windows || windows.length === 0) return null;
+  if (weekday === null || startMinutes === null) return null;
 
   let smallest: number | null = null;
   for (const w of windows) {
@@ -68,5 +84,5 @@ export const resolveSlotCapacity = (
     if (!Number.isFinite(cap) || cap < 1) continue;    // 0以下は無視（DBのCHECKで入らないはず）
     if (smallest === null || cap < smallest) smallest = cap;
   }
-  return smallest ?? base;
+  return smallest;
 };

@@ -1140,7 +1140,8 @@
     "blockDialogDesc": "封鎖所選時段，使其無法被預約。",
     "blockBtn": "封鎖",
     "blockReason": "封鎖（{{start}}〜{{end}}）",
-    "errorSlotTakenCapacityHint": "該時段已有預約。如果可以同時接受多筆預約，請在健身房設定→營業時間中修改「同一時間可接受的預約數」。"
+    "errorSlotTakenCapacityHint": "該時段已有預約。如果可以同時接受多筆預約，請在健身房設定→營業時間中修改「同一時間可接受的預約數」。",
+    "errorSlotTakenWindowHint": "該時段的接待數量已滿。此時段適用「分時段同時接待數」的設定。如需調整，請前往 健身房設定 → 分時段同時接待數。"
   },
   "exercise": {
     "title": "動作管理",
@@ -2653,7 +2654,9 @@
   },
   "planSessions": {
     "errorReached": "您已用完目前方案週期內的預約次數。請等待下一個週期，或與門市聯繫。",
-    "errorReachedProxy": "該會員已達到方案次數上限（可在方案設定的「不允許超出上限的預約」中變更）。"
+    "errorReachedProxy": "該會員已達到方案次數上限（可在方案設定的「不允許超出上限的預約」中變更）。",
+    "repeatSkippedPlan": "有 {{count}} 次預約因超出您簽約方案的次數上限而被跳過（{{dates}}）。請等待下一個使用週期，或與健身房聯絡。",
+    "errorRescheduleForfeitReached": "當天變更會將變更前的預約計為消耗 1 次，因而超出您簽約方案的次數上限。請與健身房聯絡。"
   },
   "staffSchedule": {
     "section": "教練班表",

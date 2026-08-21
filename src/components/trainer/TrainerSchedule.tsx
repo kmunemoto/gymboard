@@ -21,7 +21,7 @@ import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } fr
 import { isBookingLimitError } from "@/lib/bookingLimits";
 import { isPlanLimitError } from "@/lib/planSessionLimit";
 import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
-import { resolveSlotCapacity } from "@/lib/bookingCapacity";
+import { matchedWindowCapacity, resolveSlotCapacity } from "@/lib/bookingCapacity";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
@@ -177,8 +177,16 @@ const TrainerSchedule = () => {
       // 同時に受けられる予約数が既定の1のままだと、実際は2人同時に見られる店でも
       // ここで弾かれる。設定があること自体を知らないまま「アプリが対応していない」と
       // 諦められてしまうので、詰まったその場で設定の場所を案内する。
-      // 2以上に設定済みの店は本当に埋まっているだけなので、通常の文言のままにする。
-      toast.error(bookingCapacity <= 1 ? t("schedule.errorSlotTakenCapacityHint") : t("schedule.errorSlotTaken"));
+      // 🔴 この枠に時間帯別の帯が当たっているなら、直すべき場所は帯の設定
+      // （既定値の案内を出すと、案内どおり既定値を上げても何も変わらない）。
+      // 帯が無い枠は従来どおり: 既定1なら設定への案内、2以上なら本当に埋まっているだけ。
+      const matchedWindow = matchedWindowCapacity(
+        capacityWindows, weekdayOfDateKey(proxyDateKey), parseTimeToMinutes(proxyTime));
+      toast.error(
+        matchedWindow !== null ? t("schedule.errorSlotTakenWindowHint")
+          : bookingCapacity <= 1 ? t("schedule.errorSlotTakenCapacityHint")
+          : t("schedule.errorSlotTaken"),
+      );
       return;
     }
 

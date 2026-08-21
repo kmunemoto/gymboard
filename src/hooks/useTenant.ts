@@ -143,10 +143,19 @@ interface TenantStore {
   userId: string | null;
   membership: TenantMembership | null;
   plans: TenantPlan[];
+  /**
+   * 非公開（is_active=false）も含む全プラン。**お客様自身の契約プランの解決**に使う。
+   * プランを非公開にしても既存会員の profiles.plan は旧名のまま残り、DB 側
+   * （guard_booking_plan_limit / check_booking_overlap）は is_active を見ずに
+   * plan_name で引くため、画面だけ `plans`（有効のみ）で解決すると
+   * 「カードは残りありなのに DB が GB004 で拒否し続ける」がその会員にだけ出る。
+   * 選択肢（プランを選ばせる UI）には従来どおり `plans` を使うこと。
+   */
+  allPlans: TenantPlan[];
   loading: boolean;
 }
 
-const store: TenantStore = { userId: null, membership: null, plans: [], loading: true };
+const store: TenantStore = { userId: null, membership: null, plans: [], allPlans: [], loading: true };
 const listeners = new Set<() => void>();
 /** 同時マウント時に同じクエリを何本も投げないための共有Promise */
 let inflight: Promise<void> | null = null;
@@ -187,20 +196,23 @@ async function fetchTenant(userId: string): Promise<void> {
     const raw = mem.tenants as unknown as Record<string, unknown>;
     // 読めなかった列を既定値で埋め、どの段で取れても同じ形にして返す。
     const tenant = normalizeTenantRow(raw) as unknown as Tenant;
+    // is_active では絞らず全行を取り、有効な行だけを plans に分ける
+    // （allPlans の用途は TenantStore のコメント参照）。
     const { data: planRows } = await supabase
       .from("tenant_plans")
       .select("*")
       .eq("tenant_id", tenant.id)
-      .eq("is_active", true)
       .order("sort_order");
     if (store.userId !== userId) return;
+    const all = planRows || [];
     setStore({
       membership: { tenant, role: (mem as any).role, plan_id: (mem as any).plan_id },
-      plans: planRows || [],
+      plans: all.filter((p) => (p as { is_active?: boolean }).is_active !== false),
+      allPlans: all,
       loading: false,
     });
   } else {
-    setStore({ membership: null, plans: [], loading: false });
+    setStore({ membership: null, plans: [], allPlans: [], loading: false });
   }
 }
 
@@ -208,7 +220,7 @@ async function fetchTenant(userId: string): Promise<void> {
 function loadTenant(userId: string | null, force: boolean): Promise<void> {
   if (!userId) {
     inflight = null;
-    setStore({ userId: null, membership: null, plans: [], loading: false });
+    setStore({ userId: null, membership: null, plans: [], allPlans: [], loading: false });
     return Promise.resolve();
   }
   const sameUser = store.userId === userId;
@@ -217,7 +229,7 @@ function loadTenant(userId: string | null, force: boolean): Promise<void> {
     if (inflight) return inflight;
     if (!store.loading) return Promise.resolve();
   }
-  if (!sameUser) setStore({ userId, membership: null, plans: [], loading: true });
+  if (!sameUser) setStore({ userId, membership: null, plans: [], allPlans: [], loading: true });
   else if (force) setStore({ loading: true });
 
   inflight = fetchTenant(userId).finally(() => {
@@ -232,7 +244,7 @@ function loadTenant(userId: string | null, force: boolean): Promise<void> {
  */
 export function __resetTenantStoreForTests() {
   inflight = null;
-  Object.assign(store, { userId: null, membership: null, plans: [], loading: true });
+  Object.assign(store, { userId: null, membership: null, plans: [], allPlans: [], loading: true });
 }
 
 export function useTenant() {
@@ -261,6 +273,8 @@ export function useTenant() {
     tenant: membership?.tenant ?? null,
     role: membership?.role ?? null,
     plans: isCurrentUser ? store.plans : [],
+    /** 非公開も含む全プラン。お客様自身の契約プランの解決はこちら（TenantStore のコメント参照） */
+    allPlans: isCurrentUser ? store.allPlans : [],
     loading: isCurrentUser ? store.loading : true,
     /** 再取得して、useTenant を使っている全てのコンポーネントに反映する */
     refetch: () => loadTenant(user?.id ?? null, true),

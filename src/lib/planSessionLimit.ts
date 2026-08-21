@@ -28,13 +28,22 @@ import type { PlanUsage } from "@/lib/planUsage";
 /**
  * この人はもうこのサイクルで予約を取れないか（＝次の予約が上限を超えるか）。
  *
- * @param usage        `computePlanUsage` の結果（カードが出しているものと同じ）
+ * @param usage        `computePlanUsage` の結果（カードが出しているものと同じ）。
+ *                     🔴 **予約しようとしている日**を基準に計算したものを渡すこと。
+ *                     DB（guard_booking_plan_limit）は予約日の属するサイクル窓で数えるので、
+ *                     「今日」基準だと、DB が通す次サイクルの予約まで画面が塞いでしまう
  * @param allowOverflow `tenant_plans.allow_overflow`。true/null なら常に false（従来どおり）
+ * @param planType     `tenant_plans.plan_type`。**subscription 以外は常に false**。
+ *                     回数券（ticket）は窓が購入日起算で月次窓と別物、期間（period）は
+ *                     回数無制限。DB トリガーも subscription 以外は強制しない。
+ *                     省略時（プラン行が読めない旧データ互換）は subscription 扱い
  */
 export const isPlanSessionLimitReached = (
   usage: PlanUsage | null | undefined,
   allowOverflow: boolean | null | undefined,
+  planType?: string | null,
 ): boolean => {
+  if (planType != null && planType !== "subscription") return false;  // DB トリガーと同じ絞り
   if (allowOverflow !== false) return false;      // 既定は超過を許す＝止めない
   if (!usage) return false;
   if (usage.isUnconfigured) return false;         // プラン未確定は判定しない（カードも出ない）

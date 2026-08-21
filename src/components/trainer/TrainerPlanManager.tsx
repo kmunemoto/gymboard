@@ -160,9 +160,11 @@ const TrainerPlanManager = () => {
         form.plan_type === "subscription" && form.grace_days
           ? Math.max(0, parseInt(form.grace_days) || 0)
           : null,
-      // 上限を超えた予約を許すか。回数上限のあるプランでだけ意味を持つので、
-      // 期間プラン（回数無制限）では常に true にして誤解を防ぐ。
-      allow_overflow: form.plan_type === "period" ? true : form.allow_overflow,
+      // 上限を超えた予約を許すか。🔴 **サブスクでだけ**設定できる。
+      // 期間プランは回数無制限、回数券は窓が購入日起算で月次窓と別物
+      // （DB の guard_booking_plan_limit も subscription 以外は強制しない）。
+      // ここで true に倒さないと「設定は保存できるのに何も効かない」無言の無効化になる。
+      allow_overflow: form.plan_type === "subscription" ? form.allow_overflow : true,
       // 空欄（"継承"）は null。plan_type を問わず全プランで設定できる。
       slot_duration_minutes: form.slot_duration_minutes ? parseInt(form.slot_duration_minutes) : null,
       is_active: form.is_active,
@@ -412,8 +414,10 @@ const TrainerPlanManager = () => {
                 <p className="text-[11px] text-muted-foreground mt-1">{t("settings.plans.graceDaysHint")}</p>
               </div>
             )}
-            {/* 回数上限のあるプランでだけ意味がある（期間プランは回数無制限） */}
-            {form.plan_type !== "period" && (
+            {/* 🔴 サブスクでだけ出す。期間プランは回数無制限、回数券は窓が購入日起算で
+                月次窓と別物（DB 側も subscription 以外は強制しない）。出すと
+                「ONにしたのに効かない」を店に踏ませる。 */}
+            {form.plan_type === "subscription" && (
               <div className="pt-1">
                 <div className="flex items-center justify-between">
                   <Label>{t("settings.plans.blockOverflow")}</Label>

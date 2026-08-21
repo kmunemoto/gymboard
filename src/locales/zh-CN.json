@@ -1140,7 +1140,8 @@
     "blockDialogDesc": "封锁所选时段，使其无法被预约。",
     "blockBtn": "封锁",
     "blockReason": "封锁（{{start}}〜{{end}}）",
-    "errorSlotTakenCapacityHint": "该时段已有预约。如果可以同时接受多个预约，请在健身房设置→营业时间中修改“同一时间可接受的预约数”。"
+    "errorSlotTakenCapacityHint": "该时段已有预约。如果可以同时接受多个预约，请在健身房设置→营业时间中修改“同一时间可接受的预约数”。",
+    "errorSlotTakenWindowHint": "该时段的接待数量已满。此时段适用「分时段同时接待数」的设置。如需调整，请前往 健身房设置 → 分时段同时接待数。"
   },
   "exercise": {
     "title": "动作管理",
@@ -2653,7 +2654,9 @@
   },
   "planSessions": {
     "errorReached": "您已用完当前套餐周期内的预约次数。请等待下一个周期，或与门店联系。",
-    "errorReachedProxy": "该会员已达到套餐次数上限（可在套餐设置的“不允许超出上限的预约”中更改）。"
+    "errorReachedProxy": "该会员已达到套餐次数上限（可在套餐设置的“不允许超出上限的预约”中更改）。",
+    "repeatSkippedPlan": "有 {{count}} 次预约因超出您签约方案的次数上限而被跳过（{{dates}}）。请等待下一个使用周期，或与健身房联系。",
+    "errorRescheduleForfeitReached": "当天变更会将变更前的预约计为消耗 1 次，从而超出您签约方案的次数上限。请与健身房联系。"
   },
   "staffSchedule": {
     "section": "员工排班",

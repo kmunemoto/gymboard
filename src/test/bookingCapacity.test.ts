@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { checkSlotBlocked, type BookingWithTime } from "@/hooks/useBookings";
-import { resolveSlotCapacity, type BookingCapacityWindow } from "@/lib/bookingCapacity";
+import { matchedWindowCapacity, resolveSlotCapacity, type BookingCapacityWindow } from "@/lib/bookingCapacity";
 
 // 同時に受けられる予約数（tenants.booking_capacity）の判定。
 // ベッド2台・施術者2名のような店では、同じ時間に2件まで入れられる必要がある。
@@ -191,6 +191,47 @@ const lastFn = (name: string): string => {
   const end = rest.search(/\$(function)?\$;/);
   return end >= 0 ? rest.slice(0, end) : rest;
 };
+
+describe("matchedWindowCapacity: 帯の出所（エラー案内の出し分け用）", () => {
+  // 値だけ返す resolveSlotCapacity では「既定値と同値の帯」が区別できず、
+  // 帯で塞がれた枠に既定値の設定への案内を出してしまう（直しても何も変わらない案内）。
+  const win = (over: Partial<BookingCapacityWindow> = {}): BookingCapacityWindow => ({
+    weekdays: [1, 2, 3, 4, 5],
+    start_time: "10:00",
+    end_time: "14:00",
+    capacity: 2,
+    ...over,
+  });
+
+  it("帯にマッチしたらその値（複数なら最小値）、マッチしなければ null", () => {
+    expect(matchedWindowCapacity([win()], 1, 10 * 60)).toBe(2);
+    expect(matchedWindowCapacity([win(), win({ capacity: 1 })], 1, 10 * 60)).toBe(1);
+    expect(matchedWindowCapacity([win()], 6, 10 * 60)).toBeNull();        // 曜日外
+    expect(matchedWindowCapacity([win()], 1, 14 * 60)).toBeNull();        // 終端は含まない
+    expect(matchedWindowCapacity([], 1, 10 * 60)).toBeNull();
+    expect(matchedWindowCapacity(null, 1, 10 * 60)).toBeNull();
+  });
+
+  it("🔴 既定値と同値の帯でも「帯あり」と分かる（resolveSlotCapacity では区別できない）", () => {
+    const w = [win({ capacity: 1 })];
+    expect(resolveSlotCapacity(w, 1, 10 * 60, 1)).toBe(1);                 // 値は同じ
+    expect(matchedWindowCapacity(w, 1, 10 * 60)).toBe(1);                  // でも出所は帯
+    expect(matchedWindowCapacity(w, 6, 10 * 60)).toBeNull();               // 帯なしと区別できる
+  });
+
+  it("resolveSlotCapacity は matchedWindowCapacity ?? 既定値（規則が二重化していない）", () => {
+    const src = readFileSync("src/lib/bookingCapacity.ts", "utf8");
+    expect(src).toMatch(/return matchedWindowCapacity\(windows, weekday, startMinutes\) \?\? base;/);
+  });
+});
+
+describe("🔴 帯で塞がれた枠の案内は帯の設定へ誘導する", () => {
+  it("TrainerSchedule は帯の有無で案内を出し分ける", () => {
+    const src = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
+    expect(src).toContain("matchedWindowCapacity(");
+    expect(src).toContain('t("schedule.errorSlotTakenWindowHint")');
+  });
+});
 
 describe("🔴 DB 側の容量の解決がクライアントと一致している", () => {
   const resolver = lastFn("resolve_booking_capacity");

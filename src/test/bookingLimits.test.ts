@@ -346,24 +346,40 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
     expect(guard).toMatch(/pg_advisory_xact_lock\(hashtext\(NEW\.tenant_id::text \|\| NEW\.user_id::text\)\)/);
   });
 
-  it("マッチ条件: enabled・対象・曜日・[start, end] がすべて効いている", () => {
-    // どれか1つ消えても他のテストは緑のまま通る（変異検証で実証された穴）ので、
-    // FOR ループの WHERE 節を1条件ずつピン留めする。
-    expect(guard).toMatch(/AND l\.enabled\b/);
-    expect(guard).toMatch(/AND \(l\.user_id IS NULL OR l\.user_id = NEW\.user_id\)/);
-    expect(guard).toMatch(/AND v_dow = ANY \(l\.weekdays\)/);
-    expect(guard).toMatch(/AND v_min >= \(split_part\(l\.start_time/);
-    // 🔴 終端は**包含（<=）**。2026-08-21 に半開（<）から変更。店の「〜19:00」は
-    //    「19:00 の回まで」の意味で、< だと 19:00 開始が素通りする（実店舗で発生）。
-    //    l.end_time の比較は**免除の EXISTS と制限ループの2箇所**。片方だけ < に
-    //    戻ると、免除したお客様が終端の回だけ拒否される（またはその逆）。
-    const endOps = [...guard.matchAll(/AND v_min <= \(split_part\(l\.end_time/g)];
-    expect(endOps.length, "l.end_time の <= 比較が2箇所（免除・制限）に無い").toBe(2);
+  it("マッチ条件: enabled・対象・曜日・[start, end] が免除と制限の**両方**で効いている", () => {
+    // 🔴 免除の EXISTS と制限の FOR ループは**同じ条件文字列**を持つ。guard 全体への
+    //    toMatch だと片方が生き残るだけで緑になり、ループ側の条件を消した変異を
+    //    見逃す（レビューで実証: FOR ループの WHERE を4行消しても全テスト緑だった）。
+    //    ブロックごとに切り出してから1条件ずつピン留めする。
+    const exemptAt = guard.indexOf("IF EXISTS (");
+    const loopAt = guard.indexOf("FOR v_limit IN");
+    expect(exemptAt, "免除の EXISTS が見つからない").toBeGreaterThan(-1);
+    expect(loopAt, "制限のループが見つからない").toBeGreaterThan(exemptAt);
+    const exemptBlock = guard.slice(exemptAt, loopAt);
+    const loopBlock = guard.slice(loopAt, guard.indexOf("LOOP", loopAt));
+    // アンカーが変わって切り出しが空になると not.toMatch が黙って緑になるので固定
+    expect(exemptBlock.length).toBeGreaterThan(0);
+    expect(loopBlock.length).toBeGreaterThan(0);
+
+    for (const [label, block] of [["制限ループ", loopBlock], ["免除", exemptBlock]] as const) {
+      expect(block, `${label}: enabled`).toMatch(/AND l\.enabled\b/);
+      expect(block, `${label}: 曜日`).toMatch(/AND v_dow = ANY \(l\.weekdays\)/);
+      expect(block, `${label}: 開始`).toMatch(/AND v_min >= \(split_part\(l\.start_time/);
+      // 🔴 終端は**包含（<=）**。2026-08-21 に半開（<）から変更。店の「〜19:00」は
+      //    「19:00 の回まで」の意味で、< だと 19:00 開始が素通りする（実店舗で発生）。
+      //    片方だけ < に戻ると、免除したお客様が終端の回だけ拒否される（またはその逆）。
+      expect(block, `${label}: 終端は包含`).toMatch(/AND v_min <= \(split_part\(l\.end_time/);
+      expect(block, `${label}: 排他の終端が残っている`).not.toMatch(/v_min\s*<\s+\(split_part\(l\.end_time/);
+    }
+    // 対象の絞り方は2つで意味が違う（ループ = 全員向け or 本人あて / 免除 = 本人あてのみ）
+    expect(loopBlock).toMatch(/AND \(l\.user_id IS NULL OR l\.user_id = NEW\.user_id\)/);
+    expect(loopBlock).toMatch(/AND NOT l\.exempt/);
+    expect(exemptBlock).toMatch(/AND l\.exempt\b/);
+    expect(exemptBlock).toMatch(/AND l\.user_id = NEW\.user_id/);
+
     // 既存予約を数えるクエリの終端も包含。ここだけ < だと「19:00 開始は塞ぐのに
     // 既にある 19:00 開始の予約は数えない」で判定が自分と矛盾する。
     expect(guard).toMatch(/<= \(split_part\(v_limit\.end_time/);
-    // 排他（<）の終端比較が残っていないこと
-    expect(guard).not.toMatch(/v_min\s*<\s+\(split_part\(l\.end_time/);
     expect(guard).not.toMatch(/<\s+\(split_part\(v_limit\.end_time/);
   });
 

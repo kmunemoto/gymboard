@@ -35,7 +35,8 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { profile } = useProfile();
-  const { plans: tenantPlans } = useTenant();
+  // allPlans: 非公開プランでも既存会員の契約解決は続ける（useTenant の allPlans コメント参照）
+  const { allPlans: tenantPlans } = useTenant();
   const planMaxMap = useMemo(() => {
     const m: Record<string, number> = {};
     tenantPlans?.forEach((p) => { if (p.max_sessions != null) m[p.plan_name] = p.max_sessions; });

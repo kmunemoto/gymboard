@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { computePlanUsage } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
+import { shouldRebaseCycleStart } from "@/lib/courseProgress";
 
 // プランの回数上限（tenant_plans.max_sessions × allow_overflow）。
 //
@@ -97,6 +98,41 @@ describe("超過を許すか（allow_overflow）", () => {
     expect(isPlanSessionLimitReached(next, false)).toBe(false);
   });
 
+  it("🔴 判定の基準日は「今日」ではなく「予約しようとしている日」（DB は予約日の窓で数える）", () => {
+    // 上のテストは referenceDate ごと動かしているので「今日基準の実装」でも緑になる。
+    // ここでは**今日は 8/20 のまま**、対象日だけを動かして日付非依存性を固定する。
+    // 実際に起きた不具合: 今サイクルを使い切ったお客様が、DB なら通る次サイクルの
+    // 日付まで画面で塞がれ、応当日が来るまで一切予約できなかった（レビューで発覚）。
+    const bookings = ["2026-08-02", "2026-08-05", "2026-08-08", "2026-08-11"].map((d) => bk(d));
+    const reachedOn = (dateKey: string) =>
+      isPlanSessionLimitReached(
+        computePlanUsage(monthly4(false), bookings, new Date(`${dateKey}T00:00:00+09:00`)),
+        false,
+      );
+    expect(reachedOn("2026-08-28"), "今サイクルの日付は止める").toBe(true);
+    expect(reachedOn("2026-09-05"), "次サイクルの日付は止めない（DB も通す）").toBe(false);
+    // 次サイクルに既に上限ぶん入っているなら、次サイクルの日付で止まる
+    const nextFull = [...bookings, ...["2026-09-03", "2026-09-08", "2026-09-15", "2026-09-22"].map((d) => bk(d))];
+    expect(
+      isPlanSessionLimitReached(
+        computePlanUsage(monthly4(false), nextFull, new Date("2026-09-28T00:00:00+09:00")), false),
+    ).toBe(true);
+  });
+
+  it("🔴 サブスク以外（回数券・期間）は plan_type で止めない（DB トリガーと同じ絞り）", () => {
+    // 回数券はクライアントの窓が購入日起算で、月次窓の DB トリガーとは別物。
+    // DB 側は subscription 以外を強制しないので、クライアントだけ塞ぐと
+    // 「DB は通すのに画面だけ拒否する」片側制限になる。
+    const four = ["2026-08-02", "2026-08-05", "2026-08-08", "2026-08-11"].map((d) => bk(d));
+    const usage = computePlanUsage(monthly4(false), four, NOW);
+    expect(isPlanSessionLimitReached(usage, false, "ticket")).toBe(false);
+    expect(isPlanSessionLimitReached(usage, false, "period")).toBe(false);
+    // subscription と未指定（旧データ互換）は従来どおり判定する
+    expect(isPlanSessionLimitReached(usage, false, "subscription")).toBe(true);
+    expect(isPlanSessionLimitReached(usage, false)).toBe(true);
+    expect(isPlanSessionLimitReached(usage, false, null)).toBe(true);
+  });
+
   it("通い放題（maxSessions null）は止めない", () => {
     const unlimited = { ...monthly4(false), maxSessions: null };
     const usage = computePlanUsage(unlimited, ["2026-08-02", "2026-08-05"].map((d) => bk(d)), NOW);
@@ -139,6 +175,47 @@ describe("猶予（grace_days）は超過を許さないプランでも効く", 
   });
 });
 
+describe("🔴 超過を許さないプランでは起算日のロールを永続化しない", () => {
+  // resolveEffectiveCycle（表示）だけロールを止めても足りない。
+  // profiles.cycle_start_date を実際に書き換える shouldRebaseCycleStart が
+  // allow_overflow を見ないと、**代理予約1件**（GB004 素通し）で起算日が予約日に
+  // 書き換わり、窓が引き直されて上限が丸ごとリセットされる（レビューで発覚）。
+  const base = {
+    cycleStartDate: "2026-08-01",
+    maxSessions: 4,
+    cycleMonths: 1,
+    graceDays: 0,
+    bookingDateKey: "2026-08-20",
+    existingBookings: ["2026-08-02", "2026-08-05", "2026-08-08", "2026-08-11"].map((d, i) => ({
+      id: `b-${i}`,
+      booking_date: `${d}T10:00:00+09:00`,
+      status: "予約済み",
+    })),
+  };
+
+  it("allowOverflow=false: 上限到達後の予約（代理含む）でも起算日を動かさない", () => {
+    expect(shouldRebaseCycleStart({ ...base, allowOverflow: false })).toBe(false);
+  });
+
+  it("既定（未指定 / true / null）: 従来どおり「次のルーティンの1回目」としてロールする", () => {
+    expect(shouldRebaseCycleStart(base)).toBe(true);
+    expect(shouldRebaseCycleStart({ ...base, allowOverflow: true })).toBe(true);
+    expect(shouldRebaseCycleStart({ ...base, allowOverflow: null })).toBe(true);
+  });
+
+  it("allowOverflow=false でも、起算日未設定の初回設定は従来どおり動く", () => {
+    expect(shouldRebaseCycleStart({ ...base, allowOverflow: false, cycleStartDate: null })).toBe(true);
+  });
+
+  it("🔴 useBookings が allow_overflow を読んで渡している（ゲートの結線）", () => {
+    // shouldRebaseCycleStart 側のゲートだけテストしても、呼び出し側が渡さなければ
+    // 既定 true のまま＝ゲートが一度も効かない（変異検証で実際に素通りした）。
+    const hook = readFileSync("src/hooks/useBookings.ts", "utf8");
+    expect(hook).toMatch(/\.select\("plan_type, max_sessions, cycle_months, grace_days, allow_overflow"\)/);
+    expect(hook).toMatch(/shouldRebaseCycleStart\(\{[\s\S]*?allowOverflow,[\s\S]*?\}\)/);
+  });
+});
+
 describe("エラーの見分け", () => {
   it("GB004 だけをプランの回数上限と判定する", () => {
     expect(isPlanLimitError({ code: "GB004" })).toBe(true);
@@ -159,7 +236,7 @@ const planSql = readdirSync("supabase/migrations")
   .filter((f) => f.endsWith(".sql"))
   .sort()
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
-  .filter((sql) => /guard_booking_plan_limit|plan_cycle_window/.test(sql))
+  .filter((sql) => /guard_booking_plan_limit|plan_cycle_window|guard_profile_plan_fields/.test(sql))
   .join("\n")
   // 行末コメントも落とす（コード削除＋行末コメントに旧コードを残す変異を通さない）
   .split("\n").map((l) => l.replace(/--.*$/, "")).join("\n");
@@ -252,6 +329,63 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
       /AND NOT \(OLD\.status = 'キャンセル済み' AND NEW\.status IS DISTINCT FROM 'キャンセル済み'\)/,
     );
   });
+
+  it("🔴 subscription 以外（回数券・期間）は強制しない", () => {
+    // 回数券の窓は購入日起算（クライアント）で、この関数の月次窓と別物。
+    // ここで絞らないと「月をまたぐと実質強制されない／月内では期限内なのに拒否」の
+    // 両方向の食い違いになる（レビューで発覚）。
+    expect(guard).toMatch(/SELECT tp\.plan_type, tp\.max_sessions/);
+    expect(guard).toMatch(
+      /IF COALESCE\(v_ptype, 'subscription'\) <> 'subscription' THEN\s*\n\s*RETURN NEW;/,
+    );
+    // 対象外になった行に false が残ると片側制限になるので、既定に戻す掃除も入っている
+    expect(planSql).toMatch(
+      /UPDATE public\.tenant_plans\s*\n\s*SET allow_overflow = true\s*\n\s*WHERE COALESCE\(plan_type, 'subscription'\) <> 'subscription'/,
+    );
+  });
+});
+
+describe("🔴 GB004 の判定材料（profiles の契約3列）を本人が書き換えられない", () => {
+  // guard_booking_plan_limit は profiles.plan / cycle_start_date / grace_enabled を
+  // 判定の根拠にするが、profiles は本人が UPDATE できる。ガードが無いと supabase-js
+  // から (A) 起算日を NULL に（プラン未確定扱いで素通し）、(B) plan を実在しない名前に
+  // （allow_overflow 不明で素通し）、(C) 起算日を今日に（窓が引き直されて再び
+  // max_sessions 回取れる）の3経路で GB004 を完全に無効化できた（レビューで発覚）。
+  const guardProfile = lastFn("guard_profile_plan_fields");
+
+  it("トリガーが profiles に結線されている", () => {
+    expect(planSql).toMatch(/BEFORE UPDATE ON public\.profiles/);
+    expect(planSql).toMatch(/EXECUTE FUNCTION public\.guard_profile_plan_fields\(\)/);
+  });
+
+  it("🔴 対象は本人の自己更新だけ（店側・サービスロールは素通し）", () => {
+    expect(guardProfile).toMatch(/IF v_actor IS NULL OR v_actor IS DISTINCT FROM NEW\.user_id THEN\s*\n\s*RETURN NEW;/);
+    // 店側の人間が自分自身の行を触るのは許す。
+    // ⚠️ 所属は profiles.tenant_id（NULL の会員がいる・本人が書ける）ではなく
+    //    tenant_members から引くこと。
+    expect(guardProfile).toMatch(/tm\.role IN \('owner', 'trainer'\)/);
+    expect(guardProfile).not.toMatch(/has_tenant_role\(NEW\.tenant_id/);
+  });
+
+  it("plan / grace_enabled は本人には変えさせない", () => {
+    expect(guardProfile).toMatch(/NEW\.plan IS DISTINCT FROM OLD\.plan/);
+    expect(guardProfile).toMatch(/NEW\.grace_enabled IS DISTINCT FROM OLD\.grace_enabled/);
+  });
+
+  it("起算日は NULL→値の初回設定だけ許す（既存値の変更は上限強制プランで拒否）", () => {
+    // rebaseCycleStartIfNeeded（1回目の予約日を起算日にする）が会員セッションで
+    // 走るため、初回設定まで塞ぐと新規のお客様に起算日が入らなくなる。
+    expect(guardProfile).toMatch(
+      /IF NEW\.cycle_start_date IS DISTINCT FROM OLD\.cycle_start_date\s*\n\s*AND OLD\.cycle_start_date IS NOT NULL/,
+    );
+    // 上限を強制しているプランの会員かどうかは、本人が書けない tenant_members 経由で見る
+    expect(guardProfile).toMatch(/tp\.allow_overflow = false/);
+    expect(guardProfile).toMatch(/SELECT tm\.tenant_id FROM public\.tenant_members tm/);
+  });
+
+  it("SQLSTATE は GB005（GB001〜GB004 と混ぜない）", () => {
+    expect(guardProfile).toMatch(/USING ERRCODE = 'GB005'/);
+  });
 });
 
 describe("🔴 画面がプランの回数上限を見ている", () => {
@@ -266,6 +400,40 @@ describe("🔴 画面がプランの回数上限を見ている", () => {
     expect(customerBooking).toContain("computePlanUsage(");
   });
 
+  it("🔴 判定は「予約しようとしている日」基準（DB の plan_cycle_window と同じ窓）", () => {
+    // 「今日」基準の planLimitReached スカラーに戻すと、今サイクルを使い切った
+    // お客様が次サイクルの日付まで塞がれる（DB は通すのに）。
+    expect(customerBooking).toMatch(/const isPlanLimitReachedOn = useCallback\(/);
+    expect(customerBooking).toMatch(/if \(isPlanLimitReachedOn\(dateKey\)\)/);
+    // 判定用の基準日は対象日（カード表示用の getJSTNow() とは別）
+    expect(customerBooking).toMatch(/toJSTDate\(`\$\{targetDateKey\}T00:00:00\+09:00`\)/);
+    // plan_type も渡す（サブスク以外は止めない。DB トリガーと同じ絞り）
+    expect(customerBooking).toMatch(/currentTenantPlan\?\.plan_type/);
+  });
+
+  it("🔴 非公開（is_active=false）のプランでも会員自身の契約は解決する（allPlans）", () => {
+    // useTenant().plans は有効行のみ。DB は is_active を見ずに plan_name で引くので、
+    // 有効行だけで解決すると非公開プランの会員だけ上限設定を見失い、
+    // 「カードは残りありなのに GB004 で拒否され続ける」になる。
+    expect(customerBooking).toMatch(/allPlans: tenantPlans/);
+  });
+
+  it("定期予約・予約変更でも GB004 を満枠と混ぜずに案内する", () => {
+    // GB004 を「満枠のためスキップ」と案内すると、お客様は空き待ちに登録して
+    // 待ち続けてしまう（絶対に取れないのに）。
+    expect(customerBooking).toMatch(/const planSkipped = skipped\.filter\(\(sk\) => isPlanLimitError\(\{ code: sk\.code \}\)\)/);
+    expect(customerBooking).toContain('t("planSessions.repeatSkippedPlan"');
+    // 全週スキップ時も GB004 だけなら専用文言
+    expect(customerBooking).toMatch(/skipped\.every\(\(sk\) => isPlanLimitError\(\{ code: sk\.code \}\)\)/);
+    // 予約変更の失敗分岐にも GB004 がある（復元失敗が最優先のまま）
+    expect(customerBooking).toMatch(
+      /restoreFailed \? t\("bookingLimits\.errorRestoreFailed"\)\s*\n\s*: isPlanLimitError\(error\)/,
+    );
+    // 消化リスケは旧行が数えられ続けて構造的に必ず失敗するので、押させる前に止める
+    expect(customerBooking).toMatch(/rescheduleTargetForfeits && isPlanLimitReachedOn\(dateKey\)/);
+    expect(customerBooking).toContain('t("planSessions.errorRescheduleForfeitReached")');
+  });
+
   it("🔴 店側の代理予約はクライアント判定を持たない（GB004 の文言だけ持つ）", () => {
     // 制限しないのは仕様。DB 側の素通しとセットで成立する非対称なので、
     // どちらか片方だけ変えると挙動がねじれる。
@@ -273,11 +441,14 @@ describe("🔴 画面がプランの回数上限を見ている", () => {
     expect(trainerSchedule).toContain("isPlanLimitError(");
   });
 
-  it("プラン設定に「上限を超えた予約を許さない」が出る", () => {
+  it("プラン設定の「上限を超えた予約を許さない」はサブスクだけ", () => {
     expect(planManager).toContain("allow_overflow");
     expect(planManager).toContain('t("settings.plans.blockOverflow")');
-    // 期間プラン（回数無制限）では出さない・常に true で保存する
-    expect(planManager).toMatch(/form\.plan_type === "period" \? true : form\.allow_overflow/);
+    // 🔴 サブスク以外（回数券・期間）では出さない・常に true で保存する。
+    //    DB トリガーも subscription 以外は強制しないので、ここが緩いと
+    //    「設定は保存できるのに何も効かない」無言の無効化になる（レビューで発覚）。
+    expect(planManager).toMatch(/form\.plan_type === "subscription" \? form\.allow_overflow : true/);
+    expect(planManager).toMatch(/\{form\.plan_type === "subscription" && \(/);
   });
 
   it("超過を許さないプランは表示側でもロールしない（allowOverflow を通している）", () => {

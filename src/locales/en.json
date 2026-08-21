@@ -1140,7 +1140,8 @@
     "blockDialogDesc": "Block the selected time slot so no bookings can be made.",
     "blockBtn": "Block",
     "blockReason": "Block ({{start}}–{{end}})",
-    "errorSlotTakenCapacityHint": "This slot is already booked. If you can take more than one booking at a time, change \"Bookings at the same time\" under Gym settings → Business hours."
+    "errorSlotTakenCapacityHint": "This slot is already booked. If you can take more than one booking at a time, change \"Bookings at the same time\" under Gym settings → Business hours.",
+    "errorSlotTakenWindowHint": "This time slot has reached its capacity. A time-window capacity setting applies to this slot. To change it, go to Gym Settings → Capacity by time window."
   },
   "exercise": {
     "title": "Exercise Management",
@@ -2653,7 +2654,9 @@
   },
   "planSessions": {
     "errorReached": "You have used all sessions in your current plan period. Please wait for the next period or contact the gym.",
-    "errorReachedProxy": "This member has used all sessions in their plan period (change it under plan settings, \"Block bookings beyond the limit\")."
+    "errorReachedProxy": "This member has used all sessions in their plan period (change it under plan settings, \"Block bookings beyond the limit\").",
+    "repeatSkippedPlan": "{{count}} booking(s) were skipped because they exceed your plan's session limit ({{dates}}). Please wait for your next period or contact the gym.",
+    "errorRescheduleForfeitReached": "Changing a same-day booking uses up one session, which would exceed your plan's session limit. Please contact the gym."
   },
   "staffSchedule": {
     "section": "Staff shifts",

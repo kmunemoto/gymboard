@@ -55,3 +55,20 @@ webhook に **コンプガード**を追加（`isCompTenant`: max_customers IS N
   状態（コンプ）を混ぜるなら、webhook 側にその状態の概念を教えること**
 - 状態を壊す系の障害は通知が出ない。tenants のプラン列の変更に監査ログか
   通知を足すのは将来の課題（今回はガードで十分と判断）
+
+## デプロイ確認（2026-08-21 完了）
+
+Lovable のエージェントが `supabase--deploy_edge_functions` で
+`gymboard-stripe-webhook` をデプロイ（15:03 UTC、コード変更なし）。
+自分で検証済み:
+
+- DB から `net.http_post` で本体を叩く → **400 "Invalid signature"**（=デプロイ済み。
+  署名なしの空 POST を新コードの署名検査が正しく弾いている）。
+  対照の `send-transactional-email` は 401（デプロイ済みの既知挙動）
+- Lovable 側の同期済みソースに `isCompTenant`＋両ガード（apply / deleted）が
+  入っていることを read_file で確認（デプロイはこのサンドボックスから読む）
+- Salute の行は premium / max_customers NULL / status active のまま維持
+
+⚠️ send_message は MCP の60秒でタイムアウトしたが、依頼自体は accepted で
+登録されており、エージェントは37秒後に完了していた。**タイムアウト＝失敗ではない。
+再送せず list_messages で状態を見ること**（二重送信すると二重デプロイ依頼になる）。

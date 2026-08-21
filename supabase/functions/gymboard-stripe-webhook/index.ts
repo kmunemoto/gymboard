@@ -57,11 +57,36 @@ function getAdmin() {
   );
 }
 
+/**
+ * コンプ（運営が無償で無制限にしているテナント。max_customers IS NULL）は
+ * Stripe のイベントで**一切書き換えない**。
+ *
+ * 2026-08-21 に実際に起きた: 運営自身のジム（Salute御所南・コンプ）に課金テストの
+ * サブスクが紐づいたまま Stripe 側で削除され、customer.subscription.deleted が
+ * コンプ状態を free（上限5名）へ上書き。顧客37名のジムが「上限超過」で
+ * 新規予約・記録を作れなくなった。
+ *
+ * コンプのテナントを本当に課金へ移すときは、先に運営が max_customers に値を入れて
+ * コンプを解除してから checkout する（この順序は意図的な運用）。
+ */
+async function isCompTenant(tenantId: string): Promise<boolean> {
+  const { data } = await getAdmin()
+    .from("tenants")
+    .select("max_customers")
+    .eq("id", tenantId)
+    .maybeSingle();
+  return !!data && (data as { max_customers: number | null }).max_customers === null;
+}
+
 async function applySubscriptionToTenant(
   tenantId: string,
   subscription: any,
   env: StripeEnv,
 ) {
+  if (await isCompTenant(tenantId)) {
+    console.log("skip subscription event for comp tenant", tenantId);
+    return;
+  }
   const admin = getAdmin();
   const stripe = createStripeClient(env);
 
@@ -150,6 +175,11 @@ Deno.serve(async (req) => {
     } else if (type === "customer.subscription.deleted") {
       const tenantId = await resolveTenantId(obj);
       if (!tenantId) return new Response(JSON.stringify({ received: true }), { status: 200 });
+      // コンプ（max_customers IS NULL）は落とさない（isCompTenant のコメント参照）
+      if (await isCompTenant(tenantId)) {
+        console.log("skip subscription.deleted for comp tenant", tenantId);
+        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      }
       await getAdmin().from("tenants").update({
         gymboard_plan: FREE_PLAN.plan,
         gymboard_plan_period: null,

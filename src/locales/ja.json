@@ -2627,7 +2627,12 @@
     "repeatSkippedLimit": "{{count}}件はご予約回数の上限のためスキップしました（{{dates}}）",
     "errorRestoreFailed": "予約の変更に失敗し、元のご予約の復元もできませんでした。お手数ですが、予約状況をご確認のうえ改めてお取りください。",
     "loadFailed": "予約回数の制限を読み込めませんでした。保存する前に再読み込みしてください。",
-    "reload": "再読み込み"
+    "reload": "再読み込み",
+    "kindLabel": "種別",
+    "kindLimit": "制限する",
+    "kindExempt": "制限しない（免除）",
+    "exemptHint": "このお客様は、この曜日・時間帯では回数の制限を受けません（他の制限より優先されます）。",
+    "exemptNeedsCustomer": "免除は特定のお客様を選んでください（全員の免除は作成できません）"
   },
   "capacityWindows": {
     "section": "時間帯別の同時受け入れ数",

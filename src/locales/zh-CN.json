@@ -2627,7 +2627,12 @@
     "repeatSkippedLimit": "有 {{count}} 次因达到预约次数上限而被跳过（{{dates}}）",
     "errorRestoreFailed": "变更失败，且原有预约也未能恢复。请确认预约情况后重新预约。",
     "loadFailed": "无法加载预约次数限制。请在保存前重新加载。",
-    "reload": "重新加载"
+    "reload": "重新加载",
+    "kindLabel": "类型",
+    "kindLimit": "进行限制",
+    "kindExempt": "不限制（豁免）",
+    "exemptHint": "该会员在此星期与时段内不受预约次数限制（豁免优先于限制）。",
+    "exemptNeedsCustomer": "豁免请选择具体会员（无法对全体会员设置豁免）。"
   },
   "capacityWindows": {
     "section": "分时段同时接待数",

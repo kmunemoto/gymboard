@@ -387,6 +387,7 @@ export type Database = {
           created_at: string
           enabled: boolean
           end_time: string
+          exempt: boolean
           id: string
           max_bookings: number
           period: string
@@ -400,6 +401,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           end_time?: string
+          exempt?: boolean
           id?: string
           max_bookings?: number
           period?: string
@@ -413,6 +415,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           end_time?: string
+          exempt?: boolean
           id?: string
           max_bookings?: number
           period?: string

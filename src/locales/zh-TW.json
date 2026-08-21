@@ -2627,7 +2627,12 @@
     "repeatSkippedLimit": "有 {{count}} 次因達到預約次數上限而被跳過（{{dates}}）",
     "errorRestoreFailed": "變更失敗，且原有預約也未能還原。請確認預約狀況後重新預約。",
     "loadFailed": "無法載入預約次數限制。請在儲存前重新載入。",
-    "reload": "重新載入"
+    "reload": "重新載入",
+    "kindLabel": "類型",
+    "kindLimit": "進行限制",
+    "kindExempt": "不限制（豁免）",
+    "exemptHint": "該會員在此星期與時段內不受預約次數限制（豁免優先於限制）。",
+    "exemptNeedsCustomer": "豁免請選擇具體會員（無法對全體會員設定豁免）。"
   },
   "capacityWindows": {
     "section": "分時段同時接待數",

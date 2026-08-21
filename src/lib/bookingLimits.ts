@@ -39,6 +39,12 @@ export interface BookingFrequencyLimitRow {
   period: "week" | "day";
   max_bookings: number;
   enabled: boolean;
+  /**
+   * true = この行は「制限」ではなく **免除**。そのお客様はこの曜日×時間帯で
+   * 他のどのルールも受けない（免除は制限より強い）。
+   * 免除は必ず `user_id` を伴う（全員免除はルールを消すのと同じなので DB の CHECK で禁止）。
+   */
+  exempt?: boolean;
 }
 
 /** 回数に数えない status。トリガー側の `status <> 'キャンセル済み'` と対。 */
@@ -100,12 +106,39 @@ export const matchesFrequencyLimit = (
   userId: string,
 ): boolean => {
   if (!limit.enabled) return false;
+  if (limit.exempt) return false;   // 免除行は「制限」としてはマッチしない（下の isExempt で見る）
   if (limit.user_id !== null && limit.user_id !== userId) return false;
   if (!limit.weekdays.includes(weekday)) return false;
   const start = parseTimeToMinutes(limit.start_time);
   const end = parseTimeToMinutes(limit.end_time);
   if (start === null || end === null) return false;   // 壊れた行は効かせない（DBが正）
   return startMinutes >= start && startMinutes < end;
+};
+
+/**
+ * この予約（曜日・開始時刻・予約者）に当てはまる**免除**があるか。
+ *
+ * 🔴 免除は制限より強い。1件でも当てはまれば、その予約は回数の制限を一切受けない。
+ * 逆（制限が勝つ）にすると免除を作った意味が無くなる。DB のトリガーも
+ * 制限ループの**前**に同じ判定を置いている。
+ */
+export const isExemptFromFrequencyLimits = (
+  limits: readonly BookingFrequencyLimitRow[] | null | undefined,
+  weekday: number,
+  startMinutes: number,
+  userId: string,
+): boolean => {
+  if (!limits) return false;
+  return limits.some((l) => {
+    if (!l.enabled || !l.exempt) return false;
+    // 免除は必ず特定のお客様あて（全員免除は DB の CHECK で作れない）
+    if (l.user_id === null || l.user_id !== userId) return false;
+    if (!l.weekdays.includes(weekday)) return false;
+    const start = parseTimeToMinutes(l.start_time);
+    const end = parseTimeToMinutes(l.end_time);
+    if (start === null || end === null) return false;
+    return startMinutes >= start && startMinutes < end;
+  });
 };
 
 /** ルールの時間帯×曜日×期間に入っている既存予約の件数 */
@@ -144,6 +177,10 @@ export const exceededFrequencyLimit = (
 ): BookingFrequencyLimitRow | null => {
   const weekday = weekdayOfDateKey(candidate.dateKey);
   if (weekday === null) return null;
+  // 🔴 免除が先。当てはまれば制限を一切評価しない（DB のトリガーと同じ順序）。
+  if (isExemptFromFrequencyLimits(limits, weekday, candidate.startMinutes, candidate.userId)) {
+    return null;
+  }
   for (const limit of limits) {
     if (!matchesFrequencyLimit(limit, weekday, candidate.startMinutes, candidate.userId)) continue;
     const range = limitPeriodRange(limit.period, candidate.dateKey);

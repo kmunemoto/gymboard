@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import {
   addDaysToDateKey,
   exceededFrequencyLimit,
+  isExemptFromFrequencyLimits,
   isBookingLimitError,
   limitPeriodRange,
   matchesFrequencyLimit,
@@ -171,6 +172,82 @@ describe("超過の判定", () => {
   });
 });
 
+describe("免除（exempt）: 特定のお客様を制限から外す", () => {
+  // 「平日18-19時は週1回」の全員向けルールがある状態で、常連さんだけ外したい、
+  // という需要への対応。制限（締める）しか書けなかった表に、緩める側を足した。
+  const exemptRow: BookingFrequencyLimitRow = {
+    id: "rule-exempt",
+    user_id: "user-a",
+    weekdays: [1, 2, 3, 4, 5],
+    start_time: "18:00",
+    end_time: "19:00",
+    period: "week",
+    max_bookings: 1,      // 免除行では意味を持たない（列は共有する）
+    enabled: true,
+    exempt: true,
+  };
+
+  it("🔴 免除は制限より強い（当てはまれば制限を一切評価しない）", () => {
+    // 全員向けの週1ルールがあり、既に1件取っている＝本来なら拒否される状況
+    const hit = exceededFrequencyLimit([PEAK_RULE], candidateFri18, [booking({})]);
+    expect(hit?.id).toBe("rule-peak");
+    // 免除を足すと通る
+    expect(exceededFrequencyLimit([PEAK_RULE, exemptRow], candidateFri18, [booking({})])).toBeNull();
+    // 並び順に依らない
+    expect(exceededFrequencyLimit([exemptRow, PEAK_RULE], candidateFri18, [booking({})])).toBeNull();
+  });
+
+  it("免除は本人にだけ効く（他のお客様は従来どおり制限される）", () => {
+    const forB = { ...candidateFri18, userId: "user-b" };
+    expect(exceededFrequencyLimit([PEAK_RULE, exemptRow], forB, [booking({})])?.id).toBe("rule-peak");
+  });
+
+  it("免除の曜日・時間帯の外では効かない", () => {
+    // 土曜（免除の対象曜日ではない）にも効く全曜日ルールを用意して確かめる
+    const allWeek = { ...PEAK_RULE, id: "rule-all", weekdays: [0, 1, 2, 3, 4, 5, 6] };
+    const sat = { dateKey: "2026-08-22", startMinutes: 18 * 60, userId: "user-a" };   // 土曜
+    expect(exceededFrequencyLimit([allWeek, exemptRow], sat, [booking({ date: "2026-08-22" })])?.id)
+      .toBe("rule-all");
+    // 時間帯の外（19:00 開始）でも免除は効かない
+    const fri19 = { ...candidateFri18, startMinutes: 19 * 60 };
+    const evening = { ...PEAK_RULE, id: "rule-eve", start_time: "18:00", end_time: "21:00" };
+    expect(exceededFrequencyLimit([evening, exemptRow], fri19, [booking({ startTime: "19:00" })])?.id)
+      .toBe("rule-eve");
+  });
+
+  it("無効（enabled=false）の免除は効かない", () => {
+    const off = { ...exemptRow, enabled: false };
+    expect(exceededFrequencyLimit([PEAK_RULE, off], candidateFri18, [booking({})])?.id).toBe("rule-peak");
+  });
+
+  it("免除行は「制限」としては数えない（免除だけでは誰も止まらない）", () => {
+    // max_bookings=1 を持っているが exempt なので制限としては働かない
+    expect(exceededFrequencyLimit([exemptRow], candidateFri18, [booking({}), booking({ id: "b-2" })]))
+      .toBeNull();
+    // 🔴 matchesFrequencyLimit のレベルでも「制限としてはマッチしない」こと。
+    //    exceededFrequencyLimit 経由だと、先に免除の早期リターンが効いてしまい
+    //    「制限としても働く」変異を検出できない（変異検証で実際に素通りした）。
+    expect(matchesFrequencyLimit(exemptRow, 5, 18 * 60, "user-a")).toBe(false);
+    // 対照: 同じ形の制限行はマッチする（上の false が「常に false」ではないこと）
+    expect(matchesFrequencyLimit({ ...exemptRow, exempt: false }, 5, 18 * 60, "user-a")).toBe(true);
+  });
+
+  it("isExemptFromFrequencyLimits: user_id が無い免除行は効かない（全員免除は作らせない）", () => {
+    const global = { ...exemptRow, user_id: null };
+    expect(isExemptFromFrequencyLimits([global], 5, 18 * 60, "user-a")).toBe(false);
+    expect(isExemptFromFrequencyLimits([exemptRow], 5, 18 * 60, "user-a")).toBe(true);
+    expect(isExemptFromFrequencyLimits([exemptRow], 5, 18 * 60, "user-b")).toBe(false);
+    expect(isExemptFromFrequencyLimits(null, 5, 18 * 60, "user-a")).toBe(false);
+  });
+
+  it("exempt を持たない既存の行は従来どおり制限として働く", () => {
+    // 列を足す前のデータ（exempt undefined）が「免除」に化けない
+    const legacy = { ...PEAK_RULE };
+    delete (legacy as { exempt?: boolean }).exempt;
+    expect(exceededFrequencyLimit([legacy], candidateFri18, [booking({})])?.id).toBe("rule-peak");
+  });
+});
+
 describe("エラーの見分け", () => {
   it("GB003 だけを予約回数の上限と判定する", () => {
     expect(isBookingLimitError({ code: "GB003", message: "x" })).toBe(true);
@@ -273,6 +350,24 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
   it("自行を数えない・比較は >= max_bookings", () => {
     expect(guard).toMatch(/b\.id IS DISTINCT FROM NEW\.id/);
     expect(guard).toMatch(/IF v_count >= v_limit\.max_bookings THEN/);
+  });
+
+  it("🔴 免除を制限ループの前に評価する（免除が制限より強い）", () => {
+    // 免除の EXISTS が制限の FOR ループより**前**にあること。順序が逆だと
+    // 制限で先に落ちてしまい、免除を作った意味が無くなる。
+    const exemptAt = guard.indexOf("AND l.exempt");
+    const loopAt = guard.indexOf("FOR v_limit IN");
+    expect(exemptAt, "免除の判定が見つからない").toBeGreaterThan(-1);
+    expect(loopAt, "制限のループが見つからない").toBeGreaterThan(-1);
+    expect(exemptAt, "免除の判定が制限ループより後にある").toBeLessThan(loopAt);
+    // 免除は本人あてのみ（全員免除は作れない）
+    expect(guard).toMatch(/AND l\.user_id = NEW\.user_id/);
+    // 制限のループは免除行を除く
+    expect(guard).toMatch(/AND NOT l\.exempt/);
+  });
+
+  it("CHECK: 免除は必ず特定のお客様を伴う", () => {
+    expect(limitSql).toMatch(/CHECK \(NOT exempt OR user_id IS NOT NULL\)/);
   });
 
   it("SQLSTATE は GB003（GB001/GB002 と混ぜない）", () => {
@@ -383,6 +478,21 @@ describe("🔴 画面が予約回数の制限を見ている", () => {
     expect(trainerSchedule).not.toContain("exceededFrequencyLimit(");
     // GB003 の文言分岐だけは持つ（トレーナーが自分をお客様として選んだときに出る）
     expect(trainerSchedule).toContain("isBookingLimitError(");
+  });
+
+  it("設定画面で制限と免除を切り替えられる", () => {
+    const limitsUi = readFileSync("src/components/trainer/TrainerBookingLimits.tsx", "utf8");
+    expect(limitsUi).toContain('t("bookingLimits.kindExempt")');
+    // 全員免除は保存前に文言で弾く（DB の CHECK に当たる前に）
+    expect(limitsUi).toContain('t("bookingLimits.exemptNeedsCustomer")');
+    expect(limitsUi).toMatch(/r\.exempt && r\.userId === TARGET_ALL/);
+    // 免除の行では「全員」を選べない
+    expect(limitsUi).toMatch(/\{!rule\.exempt && \(/);
+  });
+
+  it("フックが exempt 列も読む（読まないと免除が効かない）", () => {
+    const hook = readFileSync("src/hooks/useBookingFrequencyLimits.ts", "utf8");
+    expect(hook).toContain("exempt");
   });
 
   it("設定画面に編集セクションが載っている", () => {

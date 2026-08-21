@@ -2627,7 +2627,12 @@
     "repeatSkippedLimit": "{{count}} week(s) were skipped because of your booking limit ({{dates}})",
     "errorRestoreFailed": "The change failed and your original booking could not be restored. Please check your bookings and book again.",
     "loadFailed": "Could not load booking limits. Please reload before saving.",
-    "reload": "Reload"
+    "reload": "Reload",
+    "kindLabel": "Type",
+    "kindLimit": "Limit bookings",
+    "kindExempt": "Exempt (no limit)",
+    "exemptHint": "This member is not subject to any booking frequency limit on these days and times (exemptions win over limits).",
+    "exemptNeedsCustomer": "Choose a specific member for an exemption (you cannot exempt everyone)."
   },
   "capacityWindows": {
     "section": "Capacity by time window",

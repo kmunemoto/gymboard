@@ -2627,7 +2627,12 @@
     "repeatSkippedLimit": "{{count}}건은 예약 횟수 상한으로 인해 건너뛰었습니다 ({{dates}})",
     "errorRestoreFailed": "변경에 실패했고 원래 예약도 복원하지 못했습니다. 번거로우시겠지만 예약 현황을 확인하신 뒤 다시 예약해 주세요.",
     "loadFailed": "예약 횟수 제한을 불러오지 못했습니다. 저장하기 전에 다시 불러와 주세요.",
-    "reload": "다시 불러오기"
+    "reload": "다시 불러오기",
+    "kindLabel": "종류",
+    "kindLimit": "제한함",
+    "kindExempt": "제한하지 않음(면제)",
+    "exemptHint": "이 회원은 해당 요일·시간대에 예약 횟수 제한을 받지 않습니다(다른 제한보다 우선합니다).",
+    "exemptNeedsCustomer": "면제는 특정 회원을 선택해 주세요(전체 면제는 만들 수 없습니다)."
   },
   "capacityWindows": {
     "section": "시간대별 동시 예약 수",

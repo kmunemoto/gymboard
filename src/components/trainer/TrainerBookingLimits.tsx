@@ -48,6 +48,8 @@ interface EditableRule {
   period: "week" | "day";
   max: number;
   enabled: boolean;
+  /** true = この行は「制限」ではなく免除（そのお客様はこの帯で制限を受けない） */
+  exempt: boolean;
 }
 
 const newRuleKey = () => `r-${Math.random().toString(36).slice(2, 10)}`;
@@ -62,6 +64,7 @@ const defaultRule = (): EditableRule => ({
   period: "week",
   max: 1,
   enabled: true,
+  exempt: false,
 });
 
 const TrainerBookingLimits = () => {
@@ -81,7 +84,7 @@ const TrainerBookingLimits = () => {
     setLoadFailed(false);
     const { data, error } = await supabase
       .from("booking_frequency_limits")
-      .select("id, user_id, weekdays, start_time, end_time, period, max_bookings, enabled")
+      .select("id, user_id, weekdays, start_time, end_time, period, max_bookings, enabled, exempt")
       .eq("tenant_id", tenant.id)
       .order("created_at", { ascending: true });
     if (error || !data) {
@@ -99,6 +102,7 @@ const TrainerBookingLimits = () => {
           period: r.period === "day" ? "day" : "week",
           max: r.max_bookings,
           enabled: r.enabled,
+          exempt: r.exempt === true,
         })),
       );
     }
@@ -130,6 +134,12 @@ const TrainerBookingLimits = () => {
       toast.error(t("bookingLimits.invalidRange"));
       return;
     }
+    // 🔴 全員を免除するルールは作らせない（制限を消すのと同じで、並ぶとどちらが
+    // 効くのか分からなくなる）。DB の CHECK に当たる前に文言で返す。
+    if (rules.some((r) => r.exempt && r.userId === TARGET_ALL)) {
+      toast.error(t("bookingLimits.exemptNeedsCustomer"));
+      return;
+    }
     setSaving(true);
     // 丸ごと入れ替えるが、順序は **挿入 → 残す id 以外を削除**。
     // 「削除 → 挿入」だと、削除成功後に挿入だけ失敗したとき DB が0件＝制限が全部
@@ -145,6 +155,7 @@ const TrainerBookingLimits = () => {
         period: r.period,
         max_bookings: r.max,
         enabled: r.enabled,
+        exempt: r.exempt,
       }));
       const { data: inserted, error } = await supabase
         .from("booking_frequency_limits")
@@ -241,11 +252,28 @@ const TrainerBookingLimits = () => {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label className="text-xs font-bold">{t("bookingLimits.kindLabel")}</Label>
+                  <Select
+                    value={rule.exempt ? "exempt" : "limit"}
+                    onValueChange={(v) => patchRule(rule.key, { exempt: v === "exempt" })}
+                  >
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="limit">{t("bookingLimits.kindLimit")}</SelectItem>
+                      <SelectItem value="exempt">{t("bookingLimits.kindExempt")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold">{t("bookingLimits.targetLabel")}</Label>
                   <Select value={rule.userId} onValueChange={(v) => patchRule(rule.key, { userId: v })}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={TARGET_ALL}>{t("bookingLimits.targetAll")}</SelectItem>
+                      {/* 免除は必ず特定のお客様あて（全員免除は作らせない） */}
+                      {!rule.exempt && (
+                        <SelectItem value={TARGET_ALL}>{t("bookingLimits.targetAll")}</SelectItem>
+                      )}
                       {profiles.map((p) => (
                         <SelectItem key={p.user_id} value={p.user_id}>{p.display_name}</SelectItem>
                       ))}
@@ -302,6 +330,10 @@ const TrainerBookingLimits = () => {
                   </Select>
                 </div>
 
+                {/* 免除の行では期間・回数は意味を持たない（列は共有するが使わない） */}
+                {rule.exempt ? (
+                  <p className="text-xs text-muted-foreground">{t("bookingLimits.exemptHint")}</p>
+                ) : (
                 <div className="flex items-center gap-1.5">
                   <Select
                     value={rule.period}
@@ -329,6 +361,7 @@ const TrainerBookingLimits = () => {
                     {t("bookingLimits.countUnit")}
                   </span>
                 </div>
+                )}
               </div>
             );
           })}

@@ -36,8 +36,10 @@ interface DumbbellLoaderProps extends Omit<React.ImgHTMLAttributes<HTMLImageElem
  *
  * It does not carry a background. The shield is a teal outline rather than a white fill,
  * so it still reads on the app's near-white surface (--background is the only theme;
- * there is no dark mode). The winter app icon was used here briefly, but its scenery
- * competes with the mark at the 16-24px sizes this renders at inside buttons.
+ * there is no dark mode). The full app icon was used here briefly, but its background
+ * competes with the mark at the 16-24px sizes this renders at inside buttons. That was
+ * true of the winter scenery it had then, and stays true of the flat teal it has now:
+ * either way a filled square floats on the near-white surface. Do not reuse the icon here.
  *
  * The name is historical: this rendered a dumbbell, then a World Cup trophy, then the
  * app icon. Renaming would touch 40+ call sites, so it was left alone.

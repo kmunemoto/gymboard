@@ -21,10 +21,13 @@ function pngSize(path: string): [number, number] {
 }
 
 /**
- * 8bit RGBA の PNG を復号する。画素まで見ないと「盾の中が塗られている」ことを検出できず、
- * ほぼ白の画面では見た目でも気づけないため、ここだけ自前で展開する（依存を増やさない）。
+ * 8bit の PNG を復号する（colorType 6=RGBA / 2=RGB のみ）。画素まで見ないと
+ * 「盾の中が塗られている」「背景に絵が描いてある」を検出できず、見た目でも気づけないため、
+ * ここだけ自前で展開する（依存を増やさない）。
+ *
+ * 返す `ch` は 1画素あたりのバイト数（4 か 3）。呼ぶ側はこれで添字を作る。
  */
-function decodeRGBA(path: string): { w: number; h: number; px: Buffer } {
+function decodePNG(path: string): { w: number; h: number; px: Buffer; ch: number } {
   const buf = readFileSync(path);
   let pos = 8;                                    // PNGシグネチャ
   let w = 0, h = 0, depth = 0, colorType = 0;
@@ -42,11 +45,11 @@ function decodeRGBA(path: string): { w: number; h: number; px: Buffer } {
     else if (type === "IEND") break;
     pos += 12 + len;                              // len + type(4) + data + CRC(4)
   }
-  if (depth !== 8 || colorType !== 6) {
+  if (depth !== 8 || (colorType !== 6 && colorType !== 2)) {
     throw new Error(`想定外のPNG形式: depth=${depth} colorType=${colorType}`);
   }
   const raw = inflateSync(Buffer.concat(idat));
-  const bpp = 4, stride = w * bpp;
+  const bpp = colorType === 6 ? 4 : 3, stride = w * bpp;
   const px = Buffer.alloc(h * stride);
   let p = 0;
   for (let y = 0; y < h; y++) {
@@ -69,7 +72,7 @@ function decodeRGBA(path: string): { w: number; h: number; px: Buffer } {
       px[y * stride + x] = v & 0xff;
     }
   }
-  return { w, h, px };
+  return { w, h, px, ch: bpp };
 }
 
 describe("アプリアイコンのアセット", () => {
@@ -77,7 +80,7 @@ describe("アプリアイコンのアセット", () => {
     const src = readFileSync("src/components/ui/dumbbell-loader.tsx", "utf8");
     expect(src).toContain("@/assets/gymboard-loader.png");
     expect(existsSync("src/assets/gymboard-loader.png")).toBe(true);
-    // 生成元はブランドロゴ。アイコン（雪山の背景つき）に戻すと、
+    // 生成元はブランドロゴ。アイコン（背景つき）に戻すと、
     // ボタン内の16〜24px表示で背景が主張してマークが読めなくなる。
     const gen = readFileSync("scripts/generate-app-icon.py", "utf8");
     expect(gen).toMatch(/Image\.open\("src\/assets\/gymboard-logo\.png"\)/);
@@ -87,6 +90,8 @@ describe("アプリアイコンのアセット", () => {
     // 背景つきの画像を貼ると、白い画面の上で四角い板が浮いて見える。
     // PNG の IHDR 25バイト目が色タイプ。6 = truecolor+alpha、2 = alpha無しのRGB。
     // 背景つきのアプリアイコン（=2）を流用すると、この判定で落ちる。
+    // ここが 6 に変わったら、アイコン側を透過で書き出してしまっている
+    // （ネイティブのランチャーアイコンは透過を許さない）。
     const colorType = (p: string) => readFileSync(p).readUInt8(25);
     expect(colorType("src/assets/gymboard-loader.png"),
       "ローディング画像にアルファチャンネルが無い").toBe(6);
@@ -97,8 +102,8 @@ describe("アプリアイコンのアセット", () => {
   it("ローディング画像は盾の中身が塗られていない（輪郭だけ）", () => {
     // ロゴ原本は外側だけ透過で**盾の内側が白ベタ**。ほぼ白の通常画面では気づかないが、
     // 写真背景（theme-glass）では白い板として浮く。画素まで見ないと検出できない。
-    const { w, h, px } = decodeRGBA("src/assets/gymboard-loader.png");
-    const alphaAt = (x: number, y: number) => px[(y * w + x) * 4 + 3];
+    const { w, h, px, ch } = decodePNG("src/assets/gymboard-loader.png");
+    const alphaAt = (x: number, y: number) => px[(y * w + x) * ch + 3];
 
     expect(alphaAt(1, 1), "余白が透明でない").toBe(0);
 
@@ -160,6 +165,80 @@ describe("アプリアイコンのアセット", () => {
       expect(existsSync(path), `${path} が無い`).toBe(true);
       expect(pngSize(path), `${path} の寸法が違う`).toEqual(want);
     }
+  });
+
+  // ------------------------------------------------------------------
+  // 背景デザイン（2026-08-21: 雪山 → ティール1色）
+  // ------------------------------------------------------------------
+  // 雪山をやめた理由は「16〜24px で何が描いてあるか判別できない」こと。
+  // 背景に絵が戻ってきたら、その理由ごと静かに巻き戻る。ここで画素から見張る。
+
+  /** icon-background.png を読んで、平均色を返すヘルパー */
+  const bgBlock = (x0: number, y0: number, n = 24) => {
+    const { w, px, ch } = decodePNG("assets/icon-background.png");
+    const sum = [0, 0, 0];
+    for (let y = y0; y < y0 + n; y++) {
+      for (let x = x0; x < x0 + n; x++) {
+        for (let i = 0; i < 3; i++) sum[i] += px[(y * w + x) * ch + i];
+      }
+    }
+    return sum.map((v) => v / (n * n));
+  };
+
+  it("背景の右下が生成スクリプトの GRAD_TO と一致する", () => {
+    // 生成物（コミット済みPNG）と生成元（定数）のドリフト検出。
+    // 定数だけ書き換えて python を流し忘れると、リポジトリの絵は前のままになる。
+    //
+    // 右下を基準にするのは、そこだけ他の要素が乗らないため。
+    // 左上には LIGHT_AMOUNT の加算があり、中央はグラデーションの途中なので、
+    // 「定数がそのまま出ている」と言えるのは t=1 の右下だけ。
+    const gen = readFileSync("scripts/generate-app-icon.py", "utf8");
+    const m = gen.match(/^GRAD_TO = \((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)/m);
+    expect(m, "GRAD_TO が読み取れない").toBeTruthy();
+    const want = [m![1], m![2], m![3]].map((v) => parseInt(v, 16));
+
+    const { w, h } = decodePNG("assets/icon-background.png");
+    const got = bgBlock(w - 24, h - 24);
+    // 許容±3は GRAIN(1.2) のばらつきと LANCZOS 縮小のぶん。
+    got.forEach((v, i) =>
+      expect(Math.abs(v - want[i]), `右下の色が GRAD_TO と違う got=${got} want=${want}`)
+        .toBeLessThanOrEqual(3));
+  });
+
+  it("背景は左上が明るく右下が暗い（135°の向きが保たれている）", () => {
+    // 製品の .gradient-primary と同じ向き。逆転すると、フィーチャーグラフィックで
+    // 「ジムボード」の白文字が明るい側に乗ってコントラストを失う。
+    const { w, h } = decodePNG("assets/icon-background.png");
+    const lum = (c: number[]) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    const tl = lum(bgBlock(0, 0));
+    const br = lum(bgBlock(w - 24, h - 24));
+    expect(tl - br, `左上が右下より明るくない (tl=${tl} br=${br})`).toBeGreaterThan(30);
+  });
+
+  it("背景に絵が描かれていない（どの窓を見ても平坦）", () => {
+    // これが今回の変更の理由そのもの。山・粉雪・周辺減光のような「絵」が入ると、
+    // 局所のばらつきが跳ね上がる。実測: 雪山版は 32px 窓の std が最大 56.9、
+    // ティール1色は最大 0.85（GRAIN のディザ）。閾値 2.0 はその間。
+    const { w, h, px, ch } = decodePNG("assets/icon-background.png");
+    const N = 32;
+    let worst = 0;
+    for (let y0 = 0; y0 + N <= h; y0 += N) {
+      for (let x0 = 0; x0 + N <= w; x0 += N) {
+        let sum = 0, sq = 0;
+        for (let y = y0; y < y0 + N; y++) {
+          for (let x = x0; x < x0 + N; x++) {
+            const i = (y * w + x) * ch;
+            // 輝度で見る（色相の違いではなく「模様があるか」を見たい）
+            const l = 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+            sum += l; sq += l * l;
+          }
+        }
+        const n = N * N;
+        worst = Math.max(worst, Math.sqrt(Math.max(0, sq / n - (sum / n) ** 2)));
+      }
+    }
+    expect(worst, `背景に絵が入っている（32px窓の輝度std=${worst.toFixed(2)}）`)
+      .toBeLessThan(2.0);
   });
 
   it("ルートのマスターと assets/icon-only.png が一致している", () => {

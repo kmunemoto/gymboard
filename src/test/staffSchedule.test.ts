@@ -208,6 +208,31 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
     expect(sql).toMatch(/CREATE POLICY staff_schedules_write[\s\S]{0,200}?has_tenant_role\(tenant_id, auth\.uid\(\), ARRAY\['owner','trainer'\]\)/);
   });
 
+  it("🔴 終了に 24:00 を許す（24時間営業の「20:00〜24:00 のスタッフ」）", () => {
+    // 営業時間の選択肢を1日の全域に広げたとき、シフトだけ 23:30 のまま
+    // 取り残されていた（2026-08-21 に是正）。営業時間で選べる終業が
+    // シフトで選べないのは単純に不整合。
+    const endCheck = /end_time ~ '([^']+)'/.exec(sql);
+    expect(endCheck, "end_time の CHECK が見つかりません").toBeTruthy();
+    expect(endCheck![1], "終了に 24:00 を許していません").toContain("24:00");
+
+    // 実際に正規表現として評価して、通す値・弾く値を確かめる
+    // （文字列に "24:00" が含まれるだけの検査だと、書き方を変えたときに素通りする）
+    const re = new RegExp(endCheck![1]);
+    for (const ok of ["24:00", "23:30", "00:30", "09:00"]) {
+      expect(re.test(ok), `${ok} が弾かれました`).toBe(true);
+    }
+    for (const ng of ["24:30", "25:00", "24:01", "2400", "あ"]) {
+      expect(re.test(ng), `${ng} が通ってしまいました`).toBe(false);
+    }
+  });
+
+  it("開始側には 24:00 を許さない（出勤開始が 24:00 の人は居ない）", () => {
+    const startCheck = /start_time ~ '([^']+)'/.exec(sql);
+    expect(startCheck).toBeTruthy();
+    expect(new RegExp(startCheck![1]).test("24:00"), "開始に 24:00 が入ります").toBe(false);
+  });
+
   it("1人1曜日1行（UNIQUE）で、終わりが始まりより後", () => {
     expect(sql).toMatch(/UNIQUE \(tenant_id, user_id, weekday\)/);
     expect(sql).toMatch(/CHECK \(end_time > start_time\)/);
@@ -241,6 +266,16 @@ describe("🔴 画面が担当のシフトを見ている", () => {
     expect(src).toMatch(/staffBookingSlotMinutes\(/);
     expect(src).toMatch(/staffWorksOnWeekday\(/);
     expect(src).toMatch(/isStaffOffShiftError\(error\)/);
+  });
+
+  it("設定画面の選択肢が営業時間と同じ範囲になっている", () => {
+    // 開始 00:00〜23:30（48個）／終了 00:30〜24:00（48個）。
+    // ここだけ狭いままだと、営業時間で選べる終業がシフトで選べない。
+    const src = readFileSync("src/components/trainer/TrainerStaffSchedule.tsx", "utf8");
+    expect(src).toMatch(/SHIFT_START_OPTIONS = Array\.from\(\{ length: 48 \}, \(_, i\) => shiftTime\(i\)\)/);
+    expect(src).toMatch(/SHIFT_END_OPTIONS = Array\.from\(\{ length: 48 \}, \(_, i\) => shiftTime\(i \+ 1\)\)/);
+    // 開始と終了で同じ配列を使い回していないこと（終了だけ 24:00 まで伸びる）
+    expect(src, "開始と終了が同じ配列のままです").not.toMatch(/\{TIME_OPTIONS\.map/);
   });
 
   it("シフトが読めないときは空配列＝営業時間どおりに倒す", () => {

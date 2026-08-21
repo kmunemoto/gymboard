@@ -2604,7 +2604,7 @@
   },
   "bookingLimits": {
     "section": "Booking frequency limits",
-    "desc": "Limit how many bookings each member can make in busy time windows (e.g. weekdays 18:00–19:00, once per week).",
+    "desc": "Limit how many bookings each member can make in busy time windows (e.g. weekdays 18:00–19:00, once per week). Bookings starting exactly at the end time (19:00 in this example) are also covered.",
     "empty": "No limits yet. Use \"Add limit\" to create one.",
     "targetLabel": "Applies to",
     "targetAll": "All members",

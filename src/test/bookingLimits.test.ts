@@ -14,7 +14,8 @@ import {
 // 予約回数の制限（「平日18-19時は週1回まで」等）の規則を見張る。
 //
 // 守るべき不変条件:
-//   1. 時間帯は [start, end) —— 18:00-19:00 のルールは 19:00 開始には効かない
+//   1. 時間帯は [start, end] の**閉区間** —— 18:00-19:00 のルールは 19:00 ちょうどの
+//      開始にも効く（2026-08-21 に半開区間から変更。実店舗で 19:00 開始が素通りした報告への対応）
 //   2. 週は月曜始まり（このアプリの週は全箇所 weekStartsOn: 1。DBも date_trunc('week')）
 //   3. 数えない予約は 'キャンセル済み' **だけ**。'同日キャンセル済み'（消化）は数える
 //   4. 個別ルールはそのお客様だけに効き、他のお客様には効かない
@@ -76,13 +77,16 @@ describe("期間の計算", () => {
 });
 
 describe("ルールのマッチング", () => {
-  it("時間帯は [start, end) —— 端の扱いを固定する", () => {
+  it("時間帯は [start, end] の閉区間 —— 端の扱いを固定する", () => {
     // 18:00 ちょうどは効く（含む）
     expect(matchesFrequencyLimit(PEAK_RULE, 5, 18 * 60, "user-a")).toBe(true);
     // 18:59 も効く
     expect(matchesFrequencyLimit(PEAK_RULE, 5, 18 * 60 + 59, "user-a")).toBe(true);
-    // 19:00 ちょうどは効かない（半開区間の終端）
-    expect(matchesFrequencyLimit(PEAK_RULE, 5, 19 * 60, "user-a")).toBe(false);
+    // 🔴 19:00 ちょうども効く（終端は含む）。店の「〜19:00」は「19:00 の回まで」の意味。
+    //    半開区間だった頃、実店舗で 19:00 開始が素通りして意図と違うと報告された（2026-08-21）。
+    expect(matchesFrequencyLimit(PEAK_RULE, 5, 19 * 60, "user-a")).toBe(true);
+    // 19:01 以降は効かない（終端を過ぎた開始）
+    expect(matchesFrequencyLimit(PEAK_RULE, 5, 19 * 60 + 1, "user-a")).toBe(false);
     // 17:59 も効かない
     expect(matchesFrequencyLimit(PEAK_RULE, 5, 17 * 60 + 59, "user-a")).toBe(false);
   });
@@ -112,6 +116,18 @@ describe("超過の判定", () => {
   it("同じ週のピーク帯に1件あれば、2件目は拒否される", () => {
     const hit = exceededFrequencyLimit([PEAK_RULE], candidateFri18, [booking({})]);
     expect(hit?.id).toBe("rule-peak");
+  });
+
+  it("🔴 終端ちょうどの開始も、判定・数えの両方に入る（実店舗の報告の再現）", () => {
+    // 月曜 18:00 に1件ある週の金曜 19:00 開始 → 「18:00〜19:00 週1」で拒否される。
+    // これが素通りしたのが報告された症状（19:00 の枠だけ押せてしまった）。
+    const fri19 = { dateKey: FRI, startMinutes: 19 * 60, userId: "user-a" };
+    expect(exceededFrequencyLimit([PEAK_RULE], fri19, [booking({})])?.id).toBe("rule-peak");
+    // 逆向き: 既にある 19:00 開始の予約も回数に**数える**。
+    // マッチ判定だけ閉区間にして数えを半開のままにすると、判定が自分と矛盾する
+    // （19:00 は塞ぐのに、19:00 の既存予約が居ても 18:30 が取れてしまう）。
+    const mon19 = booking({ startTime: "19:00" });
+    expect(exceededFrequencyLimit([PEAK_RULE], candidateFri18, [mon19])?.id).toBe("rule-peak");
   });
 
   it("同じ週でもピーク帯の外の予約は数えない", () => {
@@ -208,11 +224,17 @@ describe("免除（exempt）: 特定のお客様を制限から外す", () => {
     const sat = { dateKey: "2026-08-22", startMinutes: 18 * 60, userId: "user-a" };   // 土曜
     expect(exceededFrequencyLimit([allWeek, exemptRow], sat, [booking({ date: "2026-08-22" })])?.id)
       .toBe("rule-all");
-    // 時間帯の外（19:00 開始）でも免除は効かない
-    const fri19 = { ...candidateFri18, startMinutes: 19 * 60 };
+    // 時間帯の外（19:30 開始。免除の終端 19:00 を過ぎている）でも免除は効かない
+    const fri1930 = { ...candidateFri18, startMinutes: 19 * 60 + 30 };
     const evening = { ...PEAK_RULE, id: "rule-eve", start_time: "18:00", end_time: "21:00" };
-    expect(exceededFrequencyLimit([evening, exemptRow], fri19, [booking({ startTime: "19:00" })])?.id)
+    expect(exceededFrequencyLimit([evening, exemptRow], fri1930, [booking({ startTime: "19:30" })])?.id)
       .toBe("rule-eve");
+    // 🔴 終端ちょうど（19:00 開始）には免除も**効く**（制限と同じ閉区間）。
+    //    制限だけ 19:00 まで届いて免除が 18:59 までだと、免除したお客様が
+    //    終端の回だけ拒否されるねじれが出る。
+    const fri19 = { ...candidateFri18, startMinutes: 19 * 60 };
+    expect(exceededFrequencyLimit([evening, exemptRow], fri19, [booking({ startTime: "19:00" })]))
+      .toBeNull();
   });
 
   it("無効（enabled=false）の免除は効かない", () => {
@@ -324,16 +346,25 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
     expect(guard).toMatch(/pg_advisory_xact_lock\(hashtext\(NEW\.tenant_id::text \|\| NEW\.user_id::text\)\)/);
   });
 
-  it("マッチ条件: enabled・対象・曜日・[start, end) がすべて効いている", () => {
+  it("マッチ条件: enabled・対象・曜日・[start, end] がすべて効いている", () => {
     // どれか1つ消えても他のテストは緑のまま通る（変異検証で実証された穴）ので、
     // FOR ループの WHERE 節を1条件ずつピン留めする。
     expect(guard).toMatch(/AND l\.enabled\b/);
     expect(guard).toMatch(/AND \(l\.user_id IS NULL OR l\.user_id = NEW\.user_id\)/);
     expect(guard).toMatch(/AND v_dow = ANY \(l\.weekdays\)/);
     expect(guard).toMatch(/AND v_min >= \(split_part\(l\.start_time/);
-    // 終端は排他（<）。<= に変わるとクライアントの [start, end) とずれて、
-    // 画面で押せた 19:00 開始の枠が DB で拒否される。
-    expect(guard).toMatch(/AND v_min < {2}\(split_part\(l\.end_time/);
+    // 🔴 終端は**包含（<=）**。2026-08-21 に半開（<）から変更。店の「〜19:00」は
+    //    「19:00 の回まで」の意味で、< だと 19:00 開始が素通りする（実店舗で発生）。
+    //    l.end_time の比較は**免除の EXISTS と制限ループの2箇所**。片方だけ < に
+    //    戻ると、免除したお客様が終端の回だけ拒否される（またはその逆）。
+    const endOps = [...guard.matchAll(/AND v_min <= \(split_part\(l\.end_time/g)];
+    expect(endOps.length, "l.end_time の <= 比較が2箇所（免除・制限）に無い").toBe(2);
+    // 既存予約を数えるクエリの終端も包含。ここだけ < だと「19:00 開始は塞ぐのに
+    // 既にある 19:00 開始の予約は数えない」で判定が自分と矛盾する。
+    expect(guard).toMatch(/<= \(split_part\(v_limit\.end_time/);
+    // 排他（<）の終端比較が残っていないこと
+    expect(guard).not.toMatch(/v_min\s*<\s+\(split_part\(l\.end_time/);
+    expect(guard).not.toMatch(/<\s+\(split_part\(v_limit\.end_time/);
   });
 
   it("曜日と時刻は JST で数え、週は date_trunc('week') = 月曜始まり", () => {

@@ -8,8 +8,16 @@
  *
  * ## ルールの形
  *
- *   曜日の集合 × 時間帯 [start, end) × 期間（週 or 日）× 回数上限
+ *   曜日の集合 × 時間帯 [start, end]（終端も含む）× 期間（週 or 日）× 回数上限
  *     × 対象（user_id null = 全員 / 非null = そのお客様だけ）× enabled
+ *
+ * 🔴 時間帯の**終端は含む**（2026-08-21 に半開区間から変更）。
+ * 「18:00〜19:00」のルールは 19:00 ちょうどに始まる予約にも効く。
+ * 店が設定画面で見る「〜19:00」は「19:00 の回まで」と読まれる（実店舗で
+ * 18:00-19:00 を設定したら 19:00 開始が素通りした、という報告への対応）。
+ * ⚠️ 容量の帯（bookingCapacity.ts）は今までどおり半開区間 [start, end)。
+ * あちらは「その時間に居るスタッフの数」なので、帯が終わった時刻に始まる
+ * 予約へ帯の値を効かせてはならない（12時に帰る応援の帯が 12:00 開始に効く事故）。
  *
  * ## ここにある規則は DB トリガーと同じもの
  *
@@ -96,8 +104,8 @@ export const limitPeriodRange = (
 
 /**
  * このルールがその予約（曜日・開始時刻・予約者）にマッチするか。
- * 時間帯は [start, end) の半開区間 —— 18:00-19:00 のルールは
- * 18:00〜18:59 開始の予約に効き、19:00 開始には効かない。
+ * 時間帯は [start, end] の**閉区間** —— 18:00-19:00 のルールは
+ * 18:00〜19:00 ちょうどに始まる予約に効く（19:01 以降の開始には効かない）。
  */
 export const matchesFrequencyLimit = (
   limit: BookingFrequencyLimitRow,
@@ -112,7 +120,7 @@ export const matchesFrequencyLimit = (
   const start = parseTimeToMinutes(limit.start_time);
   const end = parseTimeToMinutes(limit.end_time);
   if (start === null || end === null) return false;   // 壊れた行は効かせない（DBが正）
-  return startMinutes >= start && startMinutes < end;
+  return startMinutes >= start && startMinutes <= end;
 };
 
 /**
@@ -137,7 +145,9 @@ export const isExemptFromFrequencyLimits = (
     const start = parseTimeToMinutes(l.start_time);
     const end = parseTimeToMinutes(l.end_time);
     if (start === null || end === null) return false;
-    return startMinutes >= start && startMinutes < end;
+    // 制限と同じ閉区間 [start, end]。制限は 19:00 開始まで効くのに免除は 18:59 まで、
+    // だと「免除したのに終端の回だけ拒否される」ねじれが出る。
+    return startMinutes >= start && startMinutes <= end;
   });
 };
 
@@ -158,7 +168,9 @@ const countTowardLimit = (
     const wd = weekdayOfDateKey(b.date);
     if (wd === null || !limit.weekdays.includes(wd)) return false;
     const min = parseTimeToMinutes(b.startTime);
-    return min !== null && min >= start && min < end;
+    // マッチ判定と同じ閉区間で数える。片方だけ変えると「19:00 開始は塞ぐのに
+    // 既にある 19:00 開始の予約は数えない」となり、判定が自分と矛盾する。
+    return min !== null && min >= start && min <= end;
   }).length;
 };
 

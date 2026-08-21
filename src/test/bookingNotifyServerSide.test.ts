@@ -213,7 +213,7 @@ describe("Edge Function（notify-new-booking）", () => {
 
 describe("send-transactional-email の重複排除と拒否の記録", () => {
   it("🔴 明示された冪等キーを notification_dedupe で先勝ちにする（旧クライアントとの二重送信を1通に畳む）", () => {
-    expect(sendEmailFn).toMatch(/if \(explicitIdempotencyKey\)/);
+    expect(sendEmailFn).toMatch(/if \(dedupable\)/);
     expect(sendEmailFn).toContain("`email:${explicitIdempotencyKey}`");
     expect(sendEmailFn).toContain("'23505'");
     expect(sendEmailFn).toContain("status: 'duplicate'");
@@ -235,6 +235,29 @@ describe("send-transactional-email の重複排除と拒否の記録", () => {
 
   it("fallback の messageId では予約しない（毎回ユニークで排除の意味が無い）", () => {
     expect(sendEmailFn).toMatch(/explicitIdempotencyKey = body\.idempotencyKey \|\| body\.idempotency_key \|\| null/);
+  });
+
+  it("🔴 排除の対象は予約行の id を含むキーだけ（体験・ドロップインの再予約メールを永久に消さない）", () => {
+    // notification_dedupe に期限は無い。全キーを対象にすると、体験予約の冪等キー
+    // （trial-confirm-<日時>-<連絡先>＝予約行ではなく「枠×連絡先」で決まる）が焼き付き、
+    // 「キャンセル → 同じ枠を取り直す」で確認メールが二度と出なくなる。
+    // 体験のお客様はアプリを持たず、メールが唯一の連絡手段。
+    const m = sendEmailFn.match(/const DEDUPE_KEY_PREFIXES = \[([^\]]+)\]/);
+    expect(m, "DEDUPE_KEY_PREFIXES の定義が見つからない").toBeTruthy();
+    const prefixes = m![1].split(",").map((x) => x.trim().replace(/^'|'$/g, "")).filter(Boolean);
+    expect(prefixes.sort()).toEqual(["booking-confirm-customer-", "booking-notify-"]);
+    // 予約行の id を含まないキー（体験・ドロップイン・リマインダー）が混ざっていないこと
+    for (const p of prefixes) {
+      expect(["trial-", "dropin-", "booking-reminder-", "cancel-"].some((bad) => p.startsWith(bad)))
+        .toBe(false);
+    }
+    expect(sendEmailFn).toMatch(/DEDUPE_KEY_PREFIXES\.some\(\(p\) => explicitIdempotencyKey!\.startsWith\(p\)\)/);
+  });
+
+  it("解放（DELETE）の失敗を握りつぶさない（キーだけ焼けると手作業でしか直せない）", () => {
+    const enqueueFail = sendEmailFn.slice(sendEmailFn.indexOf("if (enqueueError)"));
+    expect(enqueueFail).toMatch(/const \{ error: releaseErr \}/);
+    expect(enqueueFail).toMatch(/CRITICAL: dedupe key stuck/);
   });
 
   it("🔴 認可 403・宛先解決の失敗・テンプレート404 は email_send_log に 'rejected' を残す", () => {
@@ -259,10 +282,15 @@ describe("send-transactional-email の重複排除と拒否の記録", () => {
     expect(authBlock).not.toContain("logRejected");
   });
 
-  it("email_send_log の CHECK に duplicate / rejected が入っている", () => {
+  it("email_send_log の CHECK に duplicate / rejected / rate_limited が入っている", () => {
     const lastCheck = notifySql.slice(notifySql.lastIndexOf("email_send_log_status_check"));
     expect(lastCheck).toContain("'duplicate'");
     expect(lastCheck).toContain("'rejected'");
+    // process-email-queue が 429 のときに書く値。CHECK に無いと 23514 が無音で捨てられ、
+    // レート制限に当たった事実がどこにも残らない（既存バグをこの機会に直した）。
+    expect(lastCheck).toContain("'rate_limited'");
+    const queue = readFileSync("supabase/functions/process-email-queue/index.ts", "utf8");
+    expect(queue).toContain("status: 'rate_limited'");
   });
 });
 
@@ -285,12 +313,55 @@ describe("🔴 クライアントは端末発の送信をしない（復活さ�
 
   it("予約変更の内部 INSERT に created_via マーカーを付ける（付け忘れると変更のたびに新規予約メールが出る）", () => {
     const src = readFileSync("src/hooks/useBookings.ts", "utf8");
-    expect(src).toMatch(/\.\.\.\(opts\.silent \? \{ created_via: "reschedule" \} : \{\}\)/);
+    // マーカーは silent（＝予約変更）のときだけ載せる。通常の予約に付くと
+    // サーバー側が新規予約の通知を出さなくなる＝直したはずの不具合が復活する。
+    expect(src).toMatch(
+      /withMarker \? \{ \.\.\.basePayload, created_via: "reschedule" \} : basePayload/,
+    );
+    expect(src).toMatch(/await insertBooking\(!!opts\.silent\)/);
   });
 
   it("🔴 tenantHelper は getSession（getUser は毎回ネットワークに出て、失敗すると所属なしと区別できない）", () => {
     const src = readFileSync("src/lib/tenantHelper.ts", "utf8");
     expect(src).toContain("supabase.auth.getSession()");
     expect(src).not.toContain("supabase.auth.getUser()");
+  });
+});
+
+describe("レビューで見つかった落とし穴（2026-08-21 のレビュー修正）", () => {
+  it("🔴 プッシュの抑止は INSERT の一意制約で直列化する（select→upsert だと定期予約でN回鳴る）", () => {
+    // トリガーは予約1行ごとに pg_net を撃つので、定期予約では N 本が同時に走る。
+    // 「読んでから書く」だと全員が『行が無い』を見てしまい抑止が効かない。
+    const pushBlock = edgeFn.slice(edgeFn.indexOf("const pushKey ="));
+    expect(pushBlock).toMatch(/\.from\("notification_dedupe"\)\s*\n\s*\.insert\(\{ idempotency_key: pushKey/);
+    expect(pushBlock).toContain('reserveErr.code === "23505"');
+    // upsert（＝先勝ちにならない）に戻していないこと
+    expect(pushBlock).not.toMatch(/\.upsert\(\{ idempotency_key: pushKey/);
+  });
+
+  it("抑止の基盤が壊れているときは鳴らす（fail-open。店が気づかないほうが害が大きい）", () => {
+    expect(edgeFn).toMatch(/push dedupe reservation failed — sending anyway/);
+  });
+
+  it("🔴 スタッフ一覧の取得エラーを「スタッフ0人」と混同しない（サーバー側で沈黙故障を再発させない）", () => {
+    expect(edgeFn).toMatch(/if \(staffRes\.error\) throw staffRes\.error;/);
+  });
+
+  it("プランの所要時間は limit(1)（tenant_plans に一意制約が無く、同名2件で maybeSingle が落ちる）", () => {
+    const planBlock = edgeFn.slice(
+      edgeFn.indexOf('.from("tenant_plans")'),
+      edgeFn.indexOf('.from("profiles")'),
+    );
+    expect(planBlock).toContain(".limit(1)");
+    expect(planBlock).not.toContain(".maybeSingle()");
+  });
+
+  it("🔴 created_via は未適用のDBでも予約を失わない（PGRST204 なら列なしで入れ直す）", () => {
+    // 予約変更は「旧行を削除 → 新行を INSERT」。未適用のDBで INSERT が PGRST204 で
+    // 落ちると**お客様の予約が消える**（ロールバックの再作成も同じ経路で道連れ）。
+    const src = readFileSync("src/hooks/useBookings.ts", "utf8");
+    expect(src).toMatch(/const insertBooking = \(withMarker: boolean\)/);
+    expect(src).toMatch(/code === "PGRST204" && opts\.silent/);
+    expect(src).toMatch(/\(\{ data, error \} = await insertBooking\(false\)\)/);
   });
 });

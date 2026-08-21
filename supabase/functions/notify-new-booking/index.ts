@@ -136,12 +136,15 @@ Deno.serve(async (req) => {
         .select("gym_name, booking_email_note, slot_duration_minutes")
         .eq("id", booking.tenant_id)
         .maybeSingle(),
+      // ⚠️ tenant_plans に (tenant_id, plan_name) の一意制約は**無い**。maybeSingle だと
+      // 同名プランが2件あるだけでエラーになり、所要時間が既定60分に化ける（メールの
+      // 終了時刻がずれる）。limit(1) で1件に絞る。
       supabase
         .from("tenant_plans")
         .select("slot_duration_minutes")
         .eq("tenant_id", booking.tenant_id)
         .eq("plan_name", booking.booking_type)
-        .maybeSingle(),
+        .limit(1),
       supabase
         .from("profiles")
         .select("display_name")
@@ -156,12 +159,17 @@ Deno.serve(async (req) => {
         .order("joined_at", { ascending: true }),
     ]);
 
+    // 🔴 スタッフ一覧の取得エラーを「スタッフ0人」と混同しない。混同すると、DBの一過性の
+    // エラーで店宛メールが no_staff として黙って落ちる＝今回直したはずの沈黙故障が
+    // サーバー側で再発する。エラーなら例外にして last_error に残し、再実行で拾えるようにする。
+    if (staffRes.error) throw staffRes.error;
+
     const gymName = (tenantRes.data?.gym_name as string | null) ?? null;
     const gymNote = (tenantRes.data?.booking_email_note as string | null) ?? null;
     // プラン側に設定があれば優先、無ければテナント既定、どちらも無ければ60分
     // （resolvePlanSlotMinutes / sendCancelEmailNotification と同じ「null=継承」の作法）
     const sessionMinutes =
-      (planRes.data?.slot_duration_minutes as number | null) ??
+      ((planRes.data as { slot_duration_minutes: number | null }[] | null)?.[0]?.slot_duration_minutes ?? null) ??
       (tenantRes.data?.slot_duration_minutes as number | null) ??
       60;
     const customerName = (profileRes.data?.display_name as string | null)?.trim() || "お客様";
@@ -238,19 +246,42 @@ Deno.serve(async (req) => {
     if (isSelfBooking) {
       pushResult = "sent";
       const pushKey = `booking-push-${booking.tenant_id}-${booking.user_id}-${startTime}`;
-      const { data: existing } = await supabase
+      // 🔴 直列化は INSERT の一意制約で行う（select → upsert だと、定期予約で
+      // 同時に走る N 本が揃って「行が無い」を見てから全部が upsert し、
+      // 抑止が効かずに N 回鳴る。トリガーは行ごとに pg_net を撃つので同時実行は普通に起きる）。
+      const { error: reserveErr } = await supabase
         .from("notification_dedupe")
-        .select("idempotency_key, sent_at")
-        .eq("idempotency_key", pushKey)
-        .maybeSingle();
-      const fresh = existing?.sent_at &&
-        Date.now() - new Date(existing.sent_at as string).getTime() < 10 * 60 * 1000;
-      if (fresh) {
+        .insert({ idempotency_key: pushKey, sent_at: new Date().toISOString() });
+      let duplicate = false;
+      if (reserveErr) {
+        if (reserveErr.code === "23505") {
+          // 既にキーがある。10分より古ければ「別の機会の予約」とみなして鳴らし直す
+          // （同じお客様が同じ時刻の枠を後日また取ることがある）。
+          const { data: existing } = await supabase
+            .from("notification_dedupe")
+            .select("sent_at")
+            .eq("idempotency_key", pushKey)
+            .maybeSingle();
+          const ageMs = existing?.sent_at
+            ? Date.now() - new Date(existing.sent_at as string).getTime()
+            : Number.POSITIVE_INFINITY;
+          if (ageMs < 10 * 60 * 1000) {
+            duplicate = true;
+          } else {
+            await supabase
+              .from("notification_dedupe")
+              .update({ sent_at: new Date().toISOString() })
+              .eq("idempotency_key", pushKey);
+          }
+        } else {
+          // 抑止の基盤が壊れているだけ。**鳴らすほうを選ぶ**（fail-open。
+          // 二重に鳴るほうが、店が予約に気づかないより害が小さい）。
+          console.error("push dedupe reservation failed — sending anyway", reserveErr);
+        }
+      }
+      if (duplicate) {
         pushResult = "skipped:duplicate";
       } else {
-        await supabase
-          .from("notification_dedupe")
-          .upsert({ idempotency_key: pushKey, sent_at: new Date().toISOString() });
         const { error: pushErr } = await supabase.functions.invoke("send-push-notification", {
           body: {
             user_ids: [...new Set([...staffIds, booking.user_id])],

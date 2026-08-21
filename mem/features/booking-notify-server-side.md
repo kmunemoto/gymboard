@@ -96,3 +96,36 @@ bookings AFTER INSERT (notify_booking_created)
 - 酒本さんの件の100%確定には、届いた確認メールの**差出人名**（「Salute御所南」で
   なく「ジムボード」なら getUser 失敗の証拠）と、本人への「新しい予約」プッシュの
   有無が使える（DB には残っていないため受信箱でしか確認できない）
+
+## レビューで見つけて直した5件（2026-08-21・マージ前）
+
+反証つきレビュー（9指摘 → 2件確定＋自己検証で3件追加）。
+
+1. 🔴 **重複排除を全キーに効かせてはいけない**（confirmed・major）。
+   `notification_dedupe` に期限は無く、一度焼けたキーは二度と送れない。体験・
+   ドロップインの冪等キーは `trial-confirm-<日時>-<連絡先>`＝**予約行ではなく
+   「枠×連絡先」**で決まるので、「キャンセル → 同じ枠を取り直す」で確認メールが
+   永久に消える（体験のお客様はアプリを持たず、メールが唯一の連絡手段）。
+   → `DEDUPE_KEY_PREFIXES = ['booking-notify-', 'booking-confirm-customer-']` に限定。
+   **ここに足すキーは、必ず予約行の id を含むものに限ること。**
+2. 🔴 **予約変更で予約が消える**（自己検証。未適用DBでの schema drift）。
+   reschedule は「旧行を削除 → 新行を INSERT」で、その INSERT は必ず silent＝
+   `created_via` を積む。未適用のDBでは PGRST204 で拒否され、**ロールバックの
+   再作成も同じ経路なので道連れ**＝お客様の予約が消える。staff_user_id 方式
+   （値があるときだけ積む）が使えない唯一の列だった。→ PGRST204 のときだけ
+   列なしで1回入れ直す。
+3. プッシュの抑止が **select → upsert** で、定期予約の N 本が同時に走ると全員が
+   「行が無い」を見て N 回鳴る。→ INSERT の一意制約で直列化（23505 で判定。
+   10分より古ければ鳴らし直す。基盤エラーは fail-open で鳴らす）。
+4. `staffRes.error` を見ておらず、**一過性のDBエラーが「スタッフ0人」に化けて
+   店宛メールが黙って落ちる**（＝直したはずの沈黙故障をサーバー側で再発させる）。
+   → throw して last_error に残す。
+5. `tenant_plans` に (tenant_id, plan_name) の**一意制約が無い**のに maybeSingle。
+   同名プラン2件で所要時間が既定60分に化け、メールの終了時刻がずれる。→ limit(1)。
+
+ついでに: `email_send_log` の CHECK に `rate_limited` を追加（process-email-queue が
+429 のときに書こうとして 23514 で無音に落ちていた**既存バグ**。制約を作り直す機会に修正）。
+
+反証で否定した主なもの: 「EXCEPTION が booking_notify_log ごと巻き戻すので痕跡ゼロ」
+（vault 欠落は例外にならず skip_reason が残る／pg_net の enqueue はトランザクショナルで
+実際の故障は dispatched_at NULL として残る）。

@@ -586,16 +586,25 @@ Deno.serve(async (req) => {
   //
   // - notification_dedupe への INSERT が直列化点。23505 になった側が重複 →
   //   status='duplicate' を記録して 200 で返す
-  // - 対象は呼び出し元が**明示した**キーだけ（fallback の messageId は毎回ユニークで
-  //   排除の意味が無い）
   // - dedupe 基盤自体のエラーでは**送信を止めない**（fail-open。予約メールは
   //   二重に届くほうが、届かないより害が小さい）
   // - 🔴 予約（INSERT）は enqueue の**直前**に置く。前段（宛先解決・配信停止トークン）の
   //   失敗パスが予約の後に残っていると、一時エラーでキーだけ焼けて
   //   「その予約のメールは再試行しても永久に duplicate」になる
   // - enqueue に失敗したら予約を取り消す（同じ理由）
+  //
+  // 🔴 対象は下の DEDUPE_KEY_PREFIXES で始まるキー**だけ**に限る。
+  //    notification_dedupe に期限は無く、一度焼けたキーは二度と送れない。
+  //    体験・ドロップイン予約の冪等キーは `trial-confirm-<日時>-<連絡先>` のように
+  //    **予約行ではなく「枠×連絡先」で決まる**ため、全キーを対象にすると
+  //    「キャンセル → 同じ枠を取り直す」で確認メールが永久に消える
+  //    （体験のお客様はアプリを持たず、メールが唯一の連絡手段）。
+  //    ここに足すキーは、必ず予約行の id を含む（＝二度と再利用されない）ものに限ること。
+  const DEDUPE_KEY_PREFIXES = ['booking-notify-', 'booking-confirm-customer-']
+  const dedupable = !!explicitIdempotencyKey
+    && DEDUPE_KEY_PREFIXES.some((p) => explicitIdempotencyKey!.startsWith(p))
   let dedupeReserved = false
-  if (explicitIdempotencyKey) {
+  if (dedupable) {
     const { error: dedupeErr } = await supabase
       .from('notification_dedupe')
       .insert({ idempotency_key: `email:${explicitIdempotencyKey}` })
@@ -659,10 +668,18 @@ Deno.serve(async (req) => {
 
     // 冪等キーの予約を取り消す（残すと、この予約の再試行が永久に duplicate 扱いになる）
     if (dedupeReserved && explicitIdempotencyKey) {
-      await supabase
+      const { error: releaseErr } = await supabase
         .from('notification_dedupe')
         .delete()
         .eq('idempotency_key', `email:${explicitIdempotencyKey}`)
+      // 解放に失敗するとキーだけ焼けて、この予約のメールは再試行しても永久に
+      // duplicate になる。復旧は手作業なので、気づけるようにログへ明示する。
+      if (releaseErr) {
+        console.error('CRITICAL: dedupe key stuck — delete it manually', {
+          key: `email:${explicitIdempotencyKey}`,
+          error: releaseErr,
+        })
+      }
     }
 
     await supabase.from('email_send_log').insert({

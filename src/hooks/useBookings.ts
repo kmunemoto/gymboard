@@ -433,24 +433,39 @@ export const createBooking = async (
   // custom_answers も同じ理由で「回答があるときだけ」入れる（未適用のDBで
   // PGRST204 になり、全予約が作れなくなるのを避ける）。
   const customAnswers = opts.customAnswers?.length ? opts.customAnswers : null;
-  const { data, error } = await supabase
-    .from("bookings")
-    .insert(withTenant({
-      user_id: userId,
-      booking_date: bookingDate,
-      booking_type: bookingType,
-      source: "gymboard",
-      ...(staffUserId ? { staff_user_id: staffUserId } : {}),
-      ...(customAnswers ? { custom_answers: customAnswers } : {}),
-      // silent＝予約変更（reschedule）の内部 INSERT。サーバー側の通知トリガー
-      // （notify_booking_created）が「新規予約」通知を出さないようマーカーを付ける
-      // （店には従来どおり「予約日時の変更」プッシュが別途届く）。
-      // 値があるときだけ入れるのは staff_user_id と同じ理由（未適用のDBで PGRST204
-      // になり全予約が作れなくなるのを避ける。mem/ops/schema-drift.md）。
-      ...(opts.silent ? { created_via: "reschedule" } : {}),
-    }, tenantId) as any)
-    .select()
-    .single();
+  const basePayload = {
+    user_id: userId,
+    booking_date: bookingDate,
+    booking_type: bookingType,
+    source: "gymboard",
+    ...(staffUserId ? { staff_user_id: staffUserId } : {}),
+    ...(customAnswers ? { custom_answers: customAnswers } : {}),
+  };
+  // silent＝予約変更（reschedule）の内部 INSERT。サーバー側の通知トリガー
+  // （notify_booking_created）が「新規予約」通知を出さないようマーカーを付ける
+  // （店には従来どおり「予約日時の変更」プッシュが別途届く）。
+  const insertBooking = (withMarker: boolean) =>
+    supabase
+      .from("bookings")
+      .insert(withTenant(
+        withMarker ? { ...basePayload, created_via: "reschedule" } : basePayload,
+        tenantId,
+      ) as any)
+      .select()
+      .single();
+
+  let { data, error } = await insertBooking(!!opts.silent);
+  // 🔴 未適用のDBでは created_via が無く PostgREST が PGRST204 で INSERT を拒否する。
+  // 予約変更は「旧行を削除 → 新行を INSERT」なので、ここで落ちると**お客様の予約が消える**
+  // （ロールバックの再作成も同じ silent 経路なので道連れになる）。
+  // staff_user_id / custom_answers は「値があるときだけ入れる」で回避しているが、
+  // reschedule は必ず silent なので同じ手が使えない。列なしで1回だけ入れ直す。
+  // マーカーが付かないぶん、未適用のDBでは変更でも「新規予約」通知が出る（トリガー自体
+  // まだ無いので実際には何も出ない）。mem/ops/schema-drift.md
+  if (error && (error as { code?: string }).code === "PGRST204" && opts.silent) {
+    console.warn("bookings.created_via が未適用のため、マーカー無しで再試行します");
+    ({ data, error } = await insertBooking(false));
+  }
 
   if (!error && data) {
     // 新しいルーティンの1回目なら起算日を予約日に自動設定（期限＝1回目から1ヶ月）。

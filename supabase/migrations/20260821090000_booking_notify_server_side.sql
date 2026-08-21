@@ -231,10 +231,14 @@ REVOKE ALL ON FUNCTION public.log_booking_forfeited() FROM PUBLIC, anon, authent
 --   duplicate … 冪等キーが使用済みで送信をスキップした（旧クライアントとの二重送信の畳み込み）
 --   rejected  … 認可・宛先解決などの早期 return（今まで**1行も残さず**消えていた経路。
 --               「クライアントが呼ばなかった」と「呼んだが弾かれた」をログで区別できるようにする）
+--   rate_limited … 🔴 **既存のバグの修正**。process-email-queue は配送APIが 429 を返すと
+--               status='rate_limited' を書こうとするが、CHECK に無いため 23514 で落ち、
+--               しかも戻り値を見ていないので**無音で捨てられていた**（レート制限に当たった
+--               事実がどこにも残らない）。制約を作り直すこの機会に足す。
 DO $$ BEGIN
   ALTER TABLE public.email_send_log DROP CONSTRAINT IF EXISTS email_send_log_status_check;
   ALTER TABLE public.email_send_log ADD CONSTRAINT email_send_log_status_check
-    CHECK (status IN ('pending', 'sent', 'suppressed', 'failed', 'bounced', 'complained', 'dlq', 'duplicate', 'rejected'));
+    CHECK (status IN ('pending', 'sent', 'suppressed', 'failed', 'bounced', 'complained', 'dlq', 'duplicate', 'rejected', 'rate_limited'));
 END $$;
 
 -- ----------------------------------------------------------------------------

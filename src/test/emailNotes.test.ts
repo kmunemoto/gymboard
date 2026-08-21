@@ -34,8 +34,10 @@ const TEMPLATES = [
 ];
 
 /** gymNote を渡す5つの送信元 */
+// 予約確認はサーバー側送信へ移行済み（2026-08-21。bookings の AFTER INSERT →
+// notify-new-booking。端末発の bookingNotification.ts は削除された）。
 const SENDERS: Array<[string, string]> = [
-  ["src/lib/bookingNotification.ts", "booking-confirmation"],
+  ["supabase/functions/notify-new-booking/index.ts", "booking-confirmation"],
   ["supabase/functions/push-booking-reminder/index.ts", "booking-reminder"],
   ["supabase/functions/trial-book/index.ts", "trial-booking-confirmation"],
   ["supabase/functions/send-trial-reminders/index.ts", "trial-booking-reminder"],

@@ -41,3 +41,7 @@ project_id = "rrbfwitprzuevzytykrq"
   # pg_net で JWT なしで叩かれる前提 (daily-trainer-summary と同じ認可)。
   [functions.notify-new-message]
     verify_jwt = false
+  # 予約の通知（店宛メール・受付確認・プッシュ）。bookings の AFTER INSERT
+  # トリガーから pg_net で JWT なしで叩かれる前提 (notify-new-message と同じ認可)。
+  [functions.notify-new-booking]
+    verify_jwt = false

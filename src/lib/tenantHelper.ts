@@ -4,9 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
  * Get the current user's active tenant_id directly (no React hook).
  * Use inside non-React utility functions or async flows that don't have access
  * to useTenant(). Returns null if the user isn't signed in or has no membership.
+ *
+ * 🔴 getUser() ではなく getSession() を使う。getUser() はセッションの有無に関わらず
+ * **毎回 /auth/v1/user へ HTTPS GET を撃ち**、失敗しても throw せず user=null を返す
+ * （リトライも無い）。この null が「所属なし」と区別できず、モバイル回線の瞬断だけで
+ * 店への予約通知が黙って消えていた（2026-08-21 の沈黙故障。詳細は
+ * mem/features/booking-notify-server-side.md）。getSession() は localStorage 読みで、
+ * 期限内ならネットワークに出ない。後続の PostgREST リクエストはどのみち
+ * getSession() のトークンで飛ぶので、getUser() の追加往復に意味は無かった。
  */
 export async function fetchMyTenantId(): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return null;
   const { data } = await supabase
     .from("tenant_members")

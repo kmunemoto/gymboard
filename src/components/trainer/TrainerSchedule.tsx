@@ -28,7 +28,6 @@ import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
 import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
 import { toast } from "sonner";
-import { sendBookingNotifications } from "@/lib/bookingNotification";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -195,9 +194,6 @@ const TrainerSchedule = () => {
 
     // 定期予約: proxyRepeatWeeks > 1 なら毎週同じ曜日・時間でまとめて作成。
     // 満枠の週はスキップされる（結果はトーストで通知）。
-    // 作成できた予約は全件保持する。メールは1件ずつ送るため、ここで取りこぼすと
-    // 定期予約の2回目以降に受付メールが届かなくなる（実際にそうなっていた）。
-    let createdBookings: { id: string; date: string }[] = [];
     const client = profiles.find((p) => p.user_id === proxyClient);
     if (proxyRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
@@ -209,7 +205,6 @@ const TrainerSchedule = () => {
         setSubmitting(false);
         return;
       }
-      createdBookings = booked;
       toast.success(t("booking.repeatResult", { count: booked.length }));
       // 回数上限（GB003）でのスキップは満枠と案内を分ける（代理予約で出るのは
       // トレーナーが自分自身をお客様として選んだときだけ）。
@@ -244,13 +239,8 @@ const TrainerSchedule = () => {
         setSubmitting(false);
         return;
       }
-      createdBookings = bookingData?.id ? [{ id: bookingData.id, date: proxyDateKey }] : [];
       toast.success(t("schedule.addedToast", { name: client?.display_name || t("schedule.clientFallback"), date: format(proxyDate, "M/d"), time: proxyTime }));
     }
-
-    const [hh, mm] = proxyTime.split(":").map(Number);
-    const endMin = hh * 60 + mm + proxySessionMinutes;
-    const proxyEndTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
     setProxyDialogOpen(false);
     setProxyDate(undefined);
@@ -264,8 +254,10 @@ const TrainerSchedule = () => {
     setSubmitting(false);
     void refetch();
 
-    // 定期予約では作成できた全件を渡す（1件目だけ渡すと2回目以降にメールが届かない）。
-    sendBookingNotifications(createdBookings, client?.display_name || t("schedule.clientFallback"), proxyTime, proxyEndTime, proxyBookingType, proxyClient, undefined, tenant?.booking_email_note ?? null);
+    // 予約の通知（店宛メール・お客様の受付確認メール）はサーバー側が送る
+    // （bookings の AFTER INSERT トリガー → notify-new-booking Edge Function）。
+    // 端末発の送信は回線の瞬断で黙って消える沈黙故障を起こした（2026-08-21。
+    // mem/features/booking-notify-server-side.md）。端末発に戻さないこと。
   };
 
   // 既存予約の担当を差し替える。空欄なら「指名なし」に戻す。

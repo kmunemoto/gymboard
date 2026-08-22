@@ -99,16 +99,39 @@ bookings AFTER INSERT (notify_booking_created)
 | 7 | 権限 | service_role 専用 | authenticated / anon とも記録簿は読めず、3関数とも EXECUTE 不可 |
 | 8 | email_send_log の CHECK | 10値 | duplicate / rejected / rate_limited を含む |
 
-⚠️ **「関数 → 実際にメールが届く」だけは合成テストをしていない。**
-オーナー自身を客に見立てた実予約なら安全に試せるが、`on_booking_ensure_customer`
-がオーナーに customer ロールを**足してしまう**（本番のロールを触ることになる）ため見送った。
-この最後の1本は、もともと壊れていなかった経路（invoke されれば届いていた）。
-**次の実際の予約で booking_notify_log.dispatched_at と email_send_log を見て確定させる。**
+### ✅ 実トラフィックで完全確認（2026-08-22）
+
+適用時に唯一残していた「関数 → 実際にメールが届く」を、**本物の予約で確定**させた
+（合成テストは `on_booking_ensure_customer` がオーナーに customer ロールを足すため見送っていた）。
+
+8/22 の実予約3件（うち **10:37 はお客様の自己予約＝まさに壊れていたケース**）:
+
+- `booking_notify_log`: 3件とも `dispatched_at` 入り・`skip_reason` / `last_error` なし
+- `email_send_log`: 3件とも **店宛（new-booking-notification）と お客様宛
+  （booking-confirmation）の両方が pending → sent**
+- 各予約に `duplicate` が1組ずつ＝**旧クライアントも送ってきて、dedupe が1通に畳んだ実証**
+  （設計どおり。移行期間の二重送信は起きていない）
+- 18時間の集計: **sent 41 / pending 41（完全に1:1）・duplicate 6・rejected 0・failed 0**
+
+⚠️ 体験・ドロップインの店宛通知も同じ `new-booking-notification` テンプレートを使うが、
+冪等キーが枠ベースなので **dedupe の対象外**（`DEDUPE_KEY_PREFIXES` で除外済み）。
+8/22 の体験2件は重複排除されずに正しく送られており、**マージ前に直した判断が
+本番で裏付けられた**（キャンセル→同枠再予約で確認メールが永久に消える穴を回避）。
 
 ⚠️ 適用中、`query_database` の 499 に3回当たった。うち1回は
 **「無い」と確認した直後に再実行したら 42710（既に在る）**＝ mem の記録どおり
 **遅れて適用されていた**。499 のあとは間を置いて状態を見ること。
 DDL は小さく分けて送ると通りやすい（bookings への DROP TRIGGER を含む文が落ちやすい）。
+
+## 副産物: バウンスで配信停止になっている宛先が1件（2026-08-22 発見）
+
+`email_send_log` の集計中に `status='bounced'`（Permanent bounce）が1件見つかった。
+その宛先は **`suppressed_emails` に載っている＝今後すべてのメールが黙って止まる**。
+アカウントは存在するが profiles.display_name が空・これまで届いたメールは1通だけ、
+という状態（登録途中で離脱した可能性が高い）。
+実害が出るのは「実在のお客様なのにアドレスが死んでいる」場合＝予約確認が永久に
+届かないので、**心当たりのあるお客様がいたらアドレスを直して
+`suppressed_emails` から削除する**こと。今回の移行とは無関係の既存事象。
 
 ## 診断で分かったが今回は直していないもの
 

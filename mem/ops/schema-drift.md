@@ -150,3 +150,15 @@ node scripts/check-schema-applied.mjs > /tmp/check.sql
 
 フォールバック段（旧 `COL_VARIANTS`）は上記から機械生成される。手で書き換える必要はない。
 登録漏れは `src/test/tenantColumns.test.ts` が検出する。
+
+## 🔴 Lovable は「マージの数分後」に本番DBから types.ts を再生成して main に push する（2026-08-22）
+
+実際に起きたこと: #328（booking_notify_log ほか）をマージ → **3分後**に
+gpt-engineer-app[bot] の「Work in progress」コミットが types.ts を再生成 →
+その時点で migration はまだ本番に適用していなかったため、**PR で足した
+types.ts のエントリが main から消えた**（次の PR の CI で schemaDrift が検出）。
+
+教訓: **migration の本番適用は、マージしたら間を置かずにやる。**
+types.ts の再生成は「そのとき本番DBに在るもの」がすべてで、適用前に
+再生成が走ると PR の追加ぶんが巻き戻る。消えた場合は、本番DBに実在する
+ことを確認したうえで types.ts に手で復元すればよい（次の再生成は消さない）。

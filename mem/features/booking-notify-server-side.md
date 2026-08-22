@@ -78,16 +78,37 @@ bookings AFTER INSERT (notify_booking_created)
   「サーバー＋旧経路」の並走（メールは dedupe で1通、プッシュは二重がありうる）
 - 帯域: 定期予約は1行ごとに店宛メールが出る（従来と同じ）。プッシュは10分窓で1回
 
-## 本番適用の順序（🔴 順番に意味がある）
+## 本番適用（2026-08-21 完了）🔴 順番に意味がある
 
-1. マージ → Lovable が同期
-2. **send-transactional-email を先にデプロイ**（dedupe が無いまま 3 を先にやると
-   サーバー＋旧クライアントの二重メールになる）→ notify-new-booking をデプロイ
-   （どちらも Lovable のエージェント経由のみ。push/Publish では出ない）
+1. マージ → Lovable が同期（read_file でレビュー修正込みのコードを確認）
+2. **send-transactional-email → notify-new-booking の順でデプロイ**
+   （dedupe が無いまま 3 を先にやるとサーバー＋旧クライアントの二重メールになる）
 3. migration を適用（この瞬間からトリガーが動き出す）
-4. 3段構えの検証（お客様を演じた実 INSERT → booking_notify_log と
-   net.http_request_queue を確認 → ROLLBACK。※ROLLBACK すれば http_post も
-   キューごと消えるので本物のメールは飛ばない）
+4. 3段構えの検証
+
+適用済み。検証の結果:
+
+| # | 確認 | 期待 | 結果 |
+|---|---|---|---|
+| 1 | 両関数のデプロイ（DBから net.http_post で叩く） | 404 以外 | notify-new-booking=403（対照の notify-new-message と同一）/ send-transactional-email=401 |
+| 2 | お客様を演じた実 INSERT（BEGIN…ROLLBACK） | 記録簿に1行 | event=created / actor=お客様本人 / skip なし / http_request_id 有り |
+| 3 | pg_net に積まれた中身 | 秘密ヘッダ＋ID だけ | url=/notify-new-booking・x-cron-secret 有り・body は `{log_id, booking_id}` のみ |
+| 4 | ROLLBACK 後の残留 | 0件 | 記録簿0 / 予約0 / キュー0 |
+| 5 | **トリガーと同じ URL・同じ秘密**で関数を叩く | 200 | `{"skipped":"booking_not_found"}`（＝認可が通り、ロジックも動く） |
+| 6 | delete_my_gym の DELETE 対象 | リポジトリと一致 | **32テーブル完全一致**・booking_notify_log は bookings の後 |
+| 7 | 権限 | service_role 専用 | authenticated / anon とも記録簿は読めず、3関数とも EXECUTE 不可 |
+| 8 | email_send_log の CHECK | 10値 | duplicate / rejected / rate_limited を含む |
+
+⚠️ **「関数 → 実際にメールが届く」だけは合成テストをしていない。**
+オーナー自身を客に見立てた実予約なら安全に試せるが、`on_booking_ensure_customer`
+がオーナーに customer ロールを**足してしまう**（本番のロールを触ることになる）ため見送った。
+この最後の1本は、もともと壊れていなかった経路（invoke されれば届いていた）。
+**次の実際の予約で booking_notify_log.dispatched_at と email_send_log を見て確定させる。**
+
+⚠️ 適用中、`query_database` の 499 に3回当たった。うち1回は
+**「無い」と確認した直後に再実行したら 42710（既に在る）**＝ mem の記録どおり
+**遅れて適用されていた**。499 のあとは間を置いて状態を見ること。
+DDL は小さく分けて送ると通りやすい（bookings への DROP TRIGGER を含む文が落ちやすい）。
 
 ## 診断で分かったが今回は直していないもの
 

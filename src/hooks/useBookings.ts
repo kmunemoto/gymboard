@@ -67,6 +67,8 @@ export interface BookingWithTime {
   status: string;
   booking_type: string;
   isBlocked?: boolean;
+  /** くり返しブロック（毎週×N週で作った blocked_slots）のグループID。単発ブロックと予約は null */
+  recurrenceGroup?: string | null;
   /** 担当スタッフ。null＝指名なし／未割当 */
   staff_user_id?: string | null;
   /** 事前アンケートの回答（読み出し済み）。無ければ空配列。 */
@@ -248,6 +250,8 @@ export const useAllBookings = () => {
         status: "ブロック済み",
         booking_type: "ブロック",
         isBlocked: true,
+        // 未適用のDBでは列自体が無い（undefined）→ null に倒す
+        recurrenceGroup: (bs as { recurrence_group?: string | null }).recurrence_group ?? null,
       });
     });
 

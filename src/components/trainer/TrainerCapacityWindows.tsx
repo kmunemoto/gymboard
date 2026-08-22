@@ -25,13 +25,14 @@ import { SHIFT_WEEKDAY_ORDER } from "@/lib/staffSchedule";
  * 静かに消えて「制限なし」に戻る。TrainerBookingLimits と同じ理由）。
  */
 
-// 30分刻みの時刻。営業時間・シフト・回数制限の設定と同じ範囲。
+// 🔴 15分刻み。予約枠のグリッドが15分刻みのジムでは 18:15 のような境界を
+// 指定する必要がある（回数の制限・受付しない時間帯と同じ理由。2026-08-22 に統一）。
 const windowTime = (i: number) => {
-  const total = i * 30;
+  const total = i * 15;
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 };
-const WINDOW_START_OPTIONS = Array.from({ length: 48 }, (_, i) => windowTime(i));
-const WINDOW_END_OPTIONS = Array.from({ length: 48 }, (_, i) => windowTime(i + 1));
+const WINDOW_START_OPTIONS = Array.from({ length: 96 }, (_, i) => windowTime(i));
+const WINDOW_END_OPTIONS = Array.from({ length: 96 }, (_, i) => windowTime(i + 1));
 // 営業時間カードの BUSINESS_CAPACITY_OPTIONS と同じ並びにする（同じ概念の設定なので）
 const CAPACITY_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10];
 
@@ -241,7 +242,7 @@ const TrainerCapacityWindows = () => {
                 <Select value={w.start} onValueChange={(v) => patchWindow(w.key, { start: v })}>
                   <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {/* SQL直挿入等で30分刻み外の値が入っていても表示を保つ（黙って丸めない） */}
+                    {/* SQL直挿入等で15分刻み外の値が入っていても表示を保つ（黙って丸めない） */}
                     {!WINDOW_START_OPTIONS.includes(w.start) && (
                       <SelectItem value={w.start}>{w.start}</SelectItem>
                     )}

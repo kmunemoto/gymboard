@@ -60,7 +60,7 @@ const TrainerSchedule = () => {
   // 定期予約: 毎週同じ曜日・時間で何回分まとめて予約するか（1=この回のみ）
   const [proxyRepeatWeeks, setProxyRepeatWeeks] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; clientName: string; date: string; startTime: string; isBlocked?: boolean } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; clientName: string; date: string; startTime: string; isBlocked?: boolean; recurrenceGroup?: string | null } | null>(null);
   const [deleting, setDeleting] = useState(false);
   // 同日キャンセルのペナルティが有効なジムで、対象が当日の会員予約のときだけ
   // 「消化扱いにする」を選べるチェックボックスの値（既定ON）
@@ -69,6 +69,11 @@ const TrainerSchedule = () => {
   const [blockDate, setBlockDate] = useState<Date | undefined>();
   const [blockStartTime, setBlockStartTime] = useState<string>("");
   const [blockEndTime, setBlockEndTime] = useState<string>("");
+  // くり返しブロック: 毎週同じ曜日・時間で何週ぶんまとめてブロックするか（1=この回のみ）。
+  // 「毎週月曜の午後はスタジオ貸し出し」のような固定の予定を1回の操作で入れる（実店舗の要望）。
+  const [blockRepeatWeeks, setBlockRepeatWeeks] = useState(1);
+  // ブロック解除: 同じくり返しグループの「この日以降」もまとめて解除するか
+  const [releaseSeriesChecked, setReleaseSeriesChecked] = useState(false);
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
@@ -297,6 +302,27 @@ const TrainerSchedule = () => {
 
     // Blocked slot → delete from blocked_slots table
     if (target.isBlocked) {
+      // くり返しブロックで「この日以降まとめて解除」にチェックが入っていたら、
+      // 同じグループの**この日以降**の行を全部消す。過去の行は残す（実績の記録なので）。
+      // tenant_id の絞りは RLS（tenant_isolation）が最終防衛だが、明示もしておく。
+      if (releaseSeriesChecked && target.recurrenceGroup) {
+        const { data: released, error } = await supabase
+          .from("blocked_slots")
+          .delete()
+          .eq("recurrence_group", target.recurrenceGroup)
+          .gte("blocked_date", `${target.date}T00:00:00+09:00`)
+          .select("id");
+        if (error) {
+          toast.error(t("schedule.releaseFailed"));
+          setDeleting(false);
+          return;
+        }
+        toast.success(t("schedule.releasedSeriesToast", { count: (released ?? []).length }));
+        void refetch();
+        setDeleting(false);
+        setDeleteTarget(null);
+        return;
+      }
       const { error } = await supabase.from("blocked_slots").delete().eq("id", target.id);
       if (error) {
         toast.error(t("schedule.releaseFailed"));
@@ -374,30 +400,50 @@ const TrainerSchedule = () => {
 
   const handleBlockSlot = async () => {
     if (!blockDate || !blockStartTime || !blockEndTime || !user) return;
-    const dateStr = format(blockDate, "yyyy-MM-dd");
 
     if (blockEndTime <= blockStartTime) {
       toast.error(t("schedule.blockEndAfterStart"));
       return;
     }
 
-    // Check if the range overlaps with any existing booking/block
-    if (checkSlotBlocked(bookings, dateStr, blockStartTime, blockEndTime, bookingBufferMinutes, sessionMinutes)) {
-      toast.error(t("schedule.blockOverlap"));
-      return;
-    }
-
     setSubmitting(true);
     const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
     const tenantId = await fetchMyTenantId();
-    const row = {
-      blocked_date: `${dateStr}T${blockStartTime}:00+09:00`,
-      end_blocked_date: `${dateStr}T${blockEndTime}:00+09:00`,
-      created_by: user.id,
-      reason: t("schedule.blockReason", { start: blockStartTime, end: blockEndTime }),
-    };
 
-    const { error } = await supabase.from("blocked_slots").insert(withTenant(row, tenantId) as any);
+    // くり返し: 毎週同じ曜日・時間で blockRepeatWeeks 週ぶんの実体行を作る
+    // （定期予約 createRecurringBookings と同じ方式。恒久ルールの表にしないのは、
+    //  公開済みの旧クライアントが実体行しか読まないため）。
+    // 予約やブロックと重なる週はスキップして結果をトーストで知らせる。
+    // グループIDは繰り返しのときだけ積む（未適用のDBに常に積むと PGRST204 で
+    // 単発ブロックまで作れなくなる。staff_user_id と同じ作法）。
+    const recurrenceGroup = blockRepeatWeeks > 1 ? crypto.randomUUID() : null;
+    const [by, bm, bd] = format(blockDate, "yyyy-MM-dd").split("-").map(Number);
+    const rows: Record<string, unknown>[] = [];
+    const skippedDates: string[] = [];
+    for (let i = 0; i < blockRepeatWeeks; i++) {
+      // ローカル日付で +7日ずつ（時刻を持たない日付演算のためTZずれ無し）
+      const d = new Date(by, bm - 1, bd + i * 7);
+      const dateStr = format(d, "yyyy-MM-dd");
+      if (checkSlotBlocked(bookings, dateStr, blockStartTime, blockEndTime, bookingBufferMinutes, sessionMinutes)) {
+        skippedDates.push(format(d, "M/d"));
+        continue;
+      }
+      rows.push(withTenant({
+        blocked_date: `${dateStr}T${blockStartTime}:00+09:00`,
+        end_blocked_date: `${dateStr}T${blockEndTime}:00+09:00`,
+        created_by: user.id,
+        reason: t("schedule.blockReason", { start: blockStartTime, end: blockEndTime }),
+        ...(recurrenceGroup ? { recurrence_group: recurrenceGroup } : {}),
+      }, tenantId));
+    }
+
+    if (rows.length === 0) {
+      toast.error(t("schedule.blockOverlap"));
+      setSubmitting(false);
+      return;
+    }
+
+    const { error } = await supabase.from("blocked_slots").insert(rows as any);
 
     if (error) {
       toast.error(t("schedule.blockFailed"));
@@ -405,11 +451,19 @@ const TrainerSchedule = () => {
       return;
     }
 
-    toast.success(t("schedule.blockedToast", { date: format(blockDate, "M/d"), start: blockStartTime, end: blockEndTime }));
+    if (blockRepeatWeeks > 1) {
+      toast.success(t("schedule.blockRepeatResult", { count: rows.length, start: blockStartTime, end: blockEndTime }));
+      if (skippedDates.length > 0) {
+        toast.info(t("schedule.blockRepeatSkipped", { count: skippedDates.length, dates: skippedDates.join("、") }));
+      }
+    } else {
+      toast.success(t("schedule.blockedToast", { date: format(blockDate, "M/d"), start: blockStartTime, end: blockEndTime }));
+    }
     setBlockDialogOpen(false);
     setBlockDate(undefined);
     setBlockStartTime("");
     setBlockEndTime("");
+    setBlockRepeatWeeks(1);
     setSubmitting(false);
     void refetch();
   };
@@ -506,15 +560,17 @@ const TrainerSchedule = () => {
             // （ProfileLite.grace_enabled はオプショナルのため型エラーにならない）
             grace_enabled: p.grace_enabled ?? null,
           }))}
-          onSelectBooking={(b) =>
+          onSelectBooking={(b) => {
             setDeleteTarget({
               id: b.id,
               clientName: b.clientName,
               date: b.date,
               startTime: b.startTime,
               isBlocked: b.isBlocked,
-            })
-          }
+              recurrenceGroup: b.recurrenceGroup ?? null,
+            });
+            setReleaseSeriesChecked(false);
+          }}
         />
       )}
 
@@ -567,7 +623,7 @@ const TrainerSchedule = () => {
                                     variant="destructive"
                                     size="icon"
                                     aria-label={session.isBlocked ? t("schedule.blockedRelease") : t("schedule.deleteBookingAria", { name: session.clientName })}
-                                    onClick={() => { setDeleteTarget({ id: session.id, clientName: session.clientName, date: session.date, startTime: session.startTime, isBlocked: session.isBlocked }); setForfeitChecked(true); }}
+                                    onClick={() => { setDeleteTarget({ id: session.id, clientName: session.clientName, date: session.date, startTime: session.startTime, isBlocked: session.isBlocked, recurrenceGroup: session.recurrenceGroup ?? null }); setForfeitChecked(true); setReleaseSeriesChecked(false); }}
                                     className="absolute top-1 right-1 h-7 w-7 rounded-md"
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -702,7 +758,7 @@ const TrainerSchedule = () => {
                               type="button"
                               variant="destructive"
                               size="sm"
-                              onClick={() => { setDeleteTarget({ id: booking.id, clientName: booking.clientName, date: booking.date, startTime: booking.startTime, isBlocked: booking.isBlocked }); setForfeitChecked(true); }}
+                              onClick={() => { setDeleteTarget({ id: booking.id, clientName: booking.clientName, date: booking.date, startTime: booking.startTime, isBlocked: booking.isBlocked, recurrenceGroup: booking.recurrenceGroup ?? null }); setForfeitChecked(true); setReleaseSeriesChecked(false); }}
                               className="min-w-[112px]"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -993,6 +1049,22 @@ const TrainerSchedule = () => {
               }
             </p>
           </DialogHeader>
+          {deleteTarget?.isBlocked && deleteTarget.recurrenceGroup && (
+            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3">
+              <Checkbox
+                id="release-series-checkbox"
+                checked={releaseSeriesChecked}
+                onCheckedChange={(v) => setReleaseSeriesChecked(v === true)}
+                className="mt-0.5"
+              />
+              <Label htmlFor="release-series-checkbox" className="text-sm font-normal leading-snug cursor-pointer">
+                {t("schedule.blockSeriesRelease")}
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  {t("schedule.blockSeriesReleaseDesc", { date: deleteTarget.date })}
+                </span>
+              </Label>
+            </div>
+          )}
           {deleteTargetForfeitable && (
             <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3">
               <Checkbox
@@ -1027,7 +1099,7 @@ const TrainerSchedule = () => {
       </Dialog>
 
       {/* Block slot dialog */}
-      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+      <Dialog open={blockDialogOpen} onOpenChange={(o) => { setBlockDialogOpen(o); if (!o) setBlockRepeatWeeks(1); }}>
         <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("schedule.blockDialogTitle")}</DialogTitle>
@@ -1119,6 +1191,39 @@ const TrainerSchedule = () => {
                     </div>
                   </div>
                 )}
+                {/* くり返しブロック: 毎週同じ曜日・時間でまとめてブロック（定期予約と同じ選択UI）。
+                    ブロックは休憩・貸し出しなど長めの固定予定が多いので、定期予約より長い
+                    12週（約3ヶ月）まで選べる。それ以上は「消化されたらまた入れる」運用。 */}
+                {blockStartTime && blockEndTime && (
+                  <div>
+                    <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <Repeat className="w-3 h-3" />
+                      {t("schedule.blockRepeatTitle")}
+                    </p>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[1, 2, 3, 4, 6, 8, 10, 12].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setBlockRepeatWeeks(n)}
+                          aria-pressed={blockRepeatWeeks === n}
+                          className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            blockRepeatWeeks === n
+                              ? "bg-destructive text-destructive-foreground shadow-sm"
+                              : "bg-secondary text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {n === 1 ? t("booking.repeatOnce") : t("schedule.blockRepeatWeeks", { count: n })}
+                        </button>
+                      ))}
+                    </div>
+                    {blockRepeatWeeks > 1 && (
+                      <p className="text-[11px] text-muted-foreground mt-1.5">
+                        {t("schedule.blockRepeatWeeklyDesc", { count: blockRepeatWeeks })}
+                      </p>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -1126,7 +1231,7 @@ const TrainerSchedule = () => {
             <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="w-full sm:w-auto">{t("common.cancel")}</Button>
             <Button variant="destructive" onClick={handleBlockSlot} disabled={!blockDate || !blockStartTime || !blockEndTime || submitting} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-              {t("schedule.blockBtn")}
+              {blockRepeatWeeks > 1 ? t("schedule.blockRepeatBtn", { count: blockRepeatWeeks }) : t("schedule.blockBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>

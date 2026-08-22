@@ -305,6 +305,7 @@ export type Database = {
           end_blocked_date: string
           id: string
           reason: string | null
+          recurrence_group: string | null
           source: string | null
           tenant_id: string | null
         }
@@ -315,6 +316,7 @@ export type Database = {
           end_blocked_date: string
           id?: string
           reason?: string | null
+          recurrence_group?: string | null
           source?: string | null
           tenant_id?: string | null
         }
@@ -325,6 +327,7 @@ export type Database = {
           end_blocked_date?: string
           id?: string
           reason?: string | null
+          recurrence_group?: string | null
           source?: string | null
           tenant_id?: string | null
         }

@@ -27,13 +27,15 @@ import { SHIFT_WEEKDAY_ORDER } from "@/lib/staffSchedule";
  * 行ごとの差分を取るより状態がずれない。ルール0件で保存＝制限なしに戻る。
  */
 
-// 30分刻みの時刻。営業時間・シフトの設定と同じ範囲（開始 00:00〜23:30 / 終了 00:30〜24:00）。
+// 🔴 15分刻み（開始 00:00〜23:45 / 終了 00:15〜24:00）。予約枠のグリッドが15分刻みの
+// ジムでは 18:15 のような境界を指定する必要がある（受付しない時間帯と同じ理由。
+// 実店舗の要望で 30分刻みから変更した。2026-08-22）。
 const limitTime = (i: number) => {
-  const total = i * 30;
+  const total = i * 15;
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 };
-const LIMIT_START_OPTIONS = Array.from({ length: 48 }, (_, i) => limitTime(i));
-const LIMIT_END_OPTIONS = Array.from({ length: 48 }, (_, i) => limitTime(i + 1));
+const LIMIT_START_OPTIONS = Array.from({ length: 96 }, (_, i) => limitTime(i));
+const LIMIT_END_OPTIONS = Array.from({ length: 96 }, (_, i) => limitTime(i + 1));
 const MAX_OPTIONS = Array.from({ length: 10 }, (_, i) => i + 1);
 
 // Radix の Select は空文字を値にできないので「全員」は番兵値で持つ
@@ -311,7 +313,7 @@ const TrainerBookingLimits = () => {
                   <Select value={rule.start} onValueChange={(v) => patchRule(rule.key, { start: v })}>
                     <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {/* SQL直挿入等で30分刻み外の値が入っていても表示を保つ（黙って丸めない） */}
+                      {/* SQL直挿入等で15分刻み外の値が入っていても表示を保つ（黙って丸めない） */}
                       {!LIMIT_START_OPTIONS.includes(rule.start) && (
                         <SelectItem value={rule.start}>{rule.start}</SelectItem>
                       )}

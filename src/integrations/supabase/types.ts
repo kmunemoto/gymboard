@@ -4348,24 +4348,30 @@ export type Database = {
         }
         Returns: number
       }
-      plan_cycle_window: {
-        Args:
-          | {
-              p_cycle_months: number
-              p_cycle_start: string
-              p_target: string
-            }
-          | {
+      plan_cycle_window:
+        | {
+            Args: {
               p_cycle_len: number
               p_cycle_start: string
               p_cycle_unit: string
               p_target: string
             }
-        Returns: {
-          window_end: string
-          window_start: string
-        }[]
-      }
+            Returns: {
+              window_end: string
+              window_start: string
+            }[]
+          }
+        | {
+            Args: {
+              p_cycle_months: number
+              p_cycle_start: string
+              p_target: string
+            }
+            Returns: {
+              window_end: string
+              window_start: string
+            }[]
+          }
       process_session_rewards: {
         Args: { _user_id: string; _workout_date: string }
         Returns: Json

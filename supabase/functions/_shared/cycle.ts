@@ -20,10 +20,20 @@ export function isoToJstYmd(iso: string): string {
 const MS = 86400000;
 export const epochToDayNum = (epochMs: number): number => Math.floor(epochMs / MS);
 
-/** epoch(ms) に m ヶ月足す（暦月・応当日ベース、JST暦日）。 */
+/**
+ * epoch(ms) に m ヶ月足す（暦月・応当日ベース、JST暦日）。
+ * 🔴 月末はクランプする（1/31 + 1ヶ月 = 2/28）。クライアント（date-fns addMonths）と
+ * DB（Postgres の date + interval）は両方クランプするのに、ここだけ Date.UTC の
+ * 日付繰り上げ（1/31 + 1ヶ月 → 3/3）で先へ進んでいた。月末起算のお客様だけ
+ * 期限リマインドの窓がクライアント表示とずれ、繰り上がりが累積すると
+ * 丸ごと1サイクルずれるケースもあった（2026-08-22 の調査ワークフローが検出）。
+ */
 function addMonthsEpoch(epochMs: number, m: number): number {
   const d = new Date(epochMs);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + m, d.getUTCDate());
+  const y = d.getUTCFullYear();
+  const mo = d.getUTCMonth() + m;
+  const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate(); // 対象月の末日
+  return Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay));
 }
 const addDaysEpoch = (epochMs: number, days: number): number => epochMs + days * MS;
 

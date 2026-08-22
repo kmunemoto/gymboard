@@ -1,0 +1,18 @@
+# Windows のバッチファイルは CRLF のまま保存・取り出しする（変換しない）。
+#
+# 🔴 LF だと cmd.exe がスクリプトを壊して読む（2026-08-22 に実害が出た）。
+# .bat は UTF-8 だが cmd は CP932 として読むため、日本語コメントの行末バイトが
+# 「2バイト文字の1バイト目」（0x81-0x9F / 0xE0-0xFC）に化ける。cmd はその次の
+# 1バイトを無条件に2バイト目として飲むので、**行末が LF だと改行そのものが消え、
+# 次の行が前の REM / echo に飲み込まれて実行されなくなる**。
+# CRLF なら飲まれるのは CR で、LF が残るため改行は保たれる。
+#
+# 実際に build-android.bat は 71行 → 54行に潰れ、npm run build ・
+# npm install（optional peer）・git checkout（pull 前の掃除）・findstr（版数表示）が
+# 丸ごと実行されていなかった。**ビルドは通るのに dist が古いまま AAB ができる**
+# という、いちばん気づけない壊れ方をする。
+#
+# `text eol=crlf` ではなく `-text` にしているのは、リポジトリの中身も CRLF に
+# 固定して「ファイルを見れば分かる」状態にするため（検査は
+# src/test/buildAndroidScript.test.ts）。
+*.bat -text

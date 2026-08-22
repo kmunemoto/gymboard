@@ -155,3 +155,89 @@ describe("版数はリポジトリに持たない（2026-08-13〜）", () => {
     expect(claude).toMatch(/Android Studio で直接編集/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 🔴 cmd.exe が .bat を壊して読む問題（2026-08-22 に実害が出た）
+//
+// 宗本さんの Windows で build-android.bat が化けた文字列を実行しようとして
+// 「内部コマンドまたは外部コマンドとして認識されていません」を出していた。
+// 調べたら、**改行が LF だったせいでスクリプトの半分が実行されていなかった**。
+//
+// 仕組み:
+//   .bat は UTF-8（日本語コメント入り）だが、cmd は CP932 として読む。
+//   日本語行の行末バイトが 0x81-0x9F / 0xE0-0xFC に化けると、cmd はそれを
+//   「2バイト文字の1バイト目」とみなして**次の1バイトを無条件に飲む**。
+//   行末が LF だと、飲まれるのは改行そのもの。→ 行が消えて次の行が前の
+//   REM / echo に飲み込まれる。CRLF なら CR が飲まれて LF が残るので無事。
+//
+// 実際の被害: 71行 → 54行に潰れ、以下が**一度も実行されていなかった**。
+//   - git checkout --（pull 前の掃除。2回目以降の pull が止まる原因そのもの）
+//   - npm install（optional peer。無いと build が落ちる）
+//   - 🔴 npm run build（web の dist が更新されない＝**古い中身で AAB ができる**）
+//   - findstr（版数の表示）
+// ビルドは最後まで通ってしまうので、**成果物を見るまで誰も気づけない**壊れ方。
+//
+// このテストは cmd の読み方をバイト単位で再現して、主要なコマンドが「行頭に
+// 立ったまま」であることを見張る。日本語コメントを足すのは自由だが、
+// LF で保存した瞬間に赤くなる。
+// ---------------------------------------------------------------------------
+describe("cmd.exe が読んでも行が潰れない（CRLF 必須）", () => {
+  const bytes = readFileSync(BAT);
+
+  it("CRLF で保存されている（LF だと cmd が改行を食う）", () => {
+    expect(bytes.includes(Buffer.from("\r\n")), "build-android.bat は CRLF で保存すること").toBe(true);
+    // LF 単独（CR を伴わない改行）が混ざっていないこと
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i] === 0x0a) {
+        expect(i > 0 && bytes[i - 1] === 0x0d, `${i} バイト目に CR の無い LF がある`).toBe(true);
+      }
+    }
+  });
+
+  it(".gitattributes が .bat の改行変換を禁じている（次の clone で LF に戻らない）", () => {
+    const attrs = readFileSync(".gitattributes", "utf8");
+    expect(attrs).toMatch(/^\*\.bat\s+-text\s*$/m);
+  });
+
+  it("cmd（CP932）の読み方を再現しても、実行すべきコマンドが行頭に残る", () => {
+    // cmd の挙動: 先頭バイトが 0x81-0x9F / 0xE0-0xFC なら次の1バイトを無条件に飲む
+    const lines: string[] = [];
+    let cur: number[] = [];
+    for (let i = 0; i < bytes.length; ) {
+      const b = bytes[i];
+      if ((b >= 0x81 && b <= 0x9f) || (b >= 0xe0 && b <= 0xfc)) {
+        cur.push(b);
+        if (i + 1 < bytes.length) cur.push(bytes[i + 1]); // LF でも飲む
+        i += 2;
+      } else if (b === 0x0a) {
+        lines.push(Buffer.from(cur).toString("binary"));
+        cur = [];
+        i += 1;
+      } else {
+        cur.push(b);
+        i += 1;
+      }
+    }
+    if (cur.length) lines.push(Buffer.from(cur).toString("binary"));
+    const heads = lines.map((l) => l.replace(/^\s+/, "").replace(/\r$/, ""));
+
+    // ビルドの本体。1つでも飲まれると「通ったのに中身が古い」成果物ができる
+    const MUST_SURVIVE = [
+      "git checkout -- package-lock.json",
+      "git checkout -- supabase/functions/mcp/index.ts",
+      "git pull",
+      "call npm install --legacy-peer-deps",
+      "call npm install @mediapipe/pose",
+      "call npm run build",
+      "call npx cap sync android",
+      "node scripts/patch-android.mjs",
+      'findstr /C:"versionCode"',
+    ];
+    for (const cmd of MUST_SURVIVE) {
+      expect(
+        heads.some((h) => h.startsWith(cmd)),
+        `cmd が読むと「${cmd}」が行頭に立たない＝実行されない（LF で保存していないか確認）`,
+      ).toBe(true);
+    }
+  });
+});

@@ -1,6 +1,15 @@
 @echo off
 REM ============================================================
 REM  GymBoard Android build helper (run from project root)
+REM
+REM  *** KEEP THIS FILE CRLF. DO NOT SAVE AS LF. ***
+REM  cmd.exe reads this file as CP932 while it is stored as UTF-8.
+REM  A Japanese comment can end with a byte in 0x81-0x9F / 0xE0-0xFC,
+REM  which cmd treats as the lead byte of a 2-byte char and then eats
+REM  the NEXT byte. With LF that byte is the newline itself, so the line
+REM  break disappears and the following command is swallowed by the REM.
+REM  With CRLF the CR is eaten instead and the LF survives.
+REM  Guarded by src/test/buildAndroidScript.test.ts and .gitattributes.
 REM  Prepares the Capacitor android/ project for FCM build.
 REM ============================================================
 setlocal

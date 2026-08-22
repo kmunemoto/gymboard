@@ -65,6 +65,16 @@ push-period-reminder は正しい。単位を月以外にする店には新ビ�
   （pinned ゲート3箇所・periodPending・週span・floor→ceil・港側3種・
   resolvePlanUsageInput の単位落とし・GB005 規則除去）
 
+## 追補: Deno 移植の月末クランプ修正（同日・調査ワークフローが検出）
+
+利用期間の調査ワークフロー（84エージェント・反証付き）が、`_shared/cycle.ts` の
+`addMonthsEpoch` が**月末をクランプしない**既存バグを確認した（1/31+1ヶ月 →
+Date.UTC の繰り上げで 3/3。クライアントの date-fns と DB の Postgres interval は
+両方 2/28 へクランプ）。影響は push-period-reminder（期限リマインド）だけで、
+月末起算（29〜31日）のお客様の窓がクライアント表示とずれ、繰り上がりの累積で
+丸ごと1サイクルずれるケースもあった。クランプ実装に修正し、cyclePortParity に
+月末4シナリオ（1/31・8/31・数サイクル後・閏年）を追加。旧実装では4本とも赤。
+
 ## ⚠️ 変異検証で `git restore` を使わない（2026-08-22 に踏んだ）
 
 変異を戻すときに `git restore <file>` を使うと、**未コミットの実装ごと消える**

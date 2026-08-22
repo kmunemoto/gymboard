@@ -211,7 +211,7 @@ describe("🔴 超過を許さないプランでは起算日のロールを永�
     // shouldRebaseCycleStart 側のゲートだけテストしても、呼び出し側が渡さなければ
     // 既定 true のまま＝ゲートが一度も効かない（変異検証で実際に素通りした）。
     const hook = readFileSync("src/hooks/useBookings.ts", "utf8");
-    expect(hook).toMatch(/\.select\("plan_type, max_sessions, cycle_months, grace_days, allow_overflow"\)/);
+    expect(hook).toMatch(/\.select\("plan_type, max_sessions, cycle_months, cycle_unit, grace_days, allow_overflow"\)/);
     expect(hook).toMatch(/shouldRebaseCycleStart\(\{[\s\S]*?allowOverflow,[\s\S]*?\}\)/);
   });
 });
@@ -252,7 +252,23 @@ const lastFn = (name: string): string => {
 
 describe("🔴 DB 側の規則がクライアントと一致している", () => {
   const guard = lastFn("guard_booking_plan_limit");
-  const cycle = lastFn("plan_cycle_window");
+  // plan_cycle_window は 2026-08-22 に4引数（cycle_unit 対応）のオーバーロードが増えた。
+  // 応当日の規則は**月専用の3引数版**のもの（週・日の連続窓＝4引数版は
+  // cyclePinAndUnit.test.ts が固定する）。3引数版の最後の定義を取り出す。
+  const cycle = (() => {
+    const marker = "CREATE OR REPLACE FUNCTION public.plan_cycle_window";
+    let at = -1;
+    for (let i = planSql.indexOf(marker); i >= 0; i = planSql.indexOf(marker, i + 1)) {
+      const rest = planSql.slice(i);
+      const end = rest.search(/\$(function)?\$;/);
+      const def = end >= 0 ? rest.slice(0, end) : rest;
+      if (def.includes("p_cycle_months")) at = i;
+    }
+    expect(at, "plan_cycle_window（3引数・月版）の定義が見つからない").toBeGreaterThanOrEqual(0);
+    const rest = planSql.slice(at);
+    const end = rest.search(/\$(function)?\$;/);
+    return end >= 0 ? rest.slice(0, end) : rest;
+  })();
 
   it("トリガーが bookings に結線されている", () => {
     expect(planSql).toMatch(/BEFORE INSERT OR UPDATE ON public\.bookings/);

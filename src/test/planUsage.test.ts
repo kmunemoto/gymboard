@@ -82,20 +82,22 @@ describe("resolvePlanUsageInput", () => {
     const input = resolvePlanUsageInput("回数券10", { plan_type: "ticket", max_sessions: 10, validity_days: 90 }, "2026-06-20");
     expect(input).toEqual({
       planType: "ticket", maxSessions: 10, validityDays: 90, startDate: "2026-06-20",
-      cycleMonths: null, graceDays: null,
+      cycleMonths: null, cycleUnit: null, graceDays: null,
       // 未設定（列に値が無い）は既定の true＝超過を許す＝従来どおり
       allowOverflow: true,
+      // 起算日固定（profiles.cycle_start_pinned）は第4引数。省略は null＝未固定
+      cycleStartPinned: null,
     });
   });
 
   it("tenant_plans に無い『月N回』は subscription として解決（旧データ互換）", () => {
     const input = resolvePlanUsageInput("月3回", null, "2026-06-20");
-    expect(input).toEqual({ planType: "subscription", maxSessions: 3, validityDays: null, startDate: "2026-06-20" });
+    expect(input).toEqual({ planType: "subscription", maxSessions: 3, validityDays: null, startDate: "2026-06-20", cycleStartPinned: null });
   });
 
   it("『通い放題』は無制限の subscription として解決", () => {
     const input = resolvePlanUsageInput("通い放題", null, "2026-06-20");
-    expect(input).toEqual({ planType: "subscription", maxSessions: null, validityDays: null, startDate: "2026-06-20" });
+    expect(input).toEqual({ planType: "subscription", maxSessions: null, validityDays: null, startDate: "2026-06-20", cycleStartPinned: null });
   });
 
   it("解決できない名称は null", () => {

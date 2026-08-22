@@ -17,6 +17,8 @@ interface PlanUsageCardProps {
   tenantPlans: TenantPlan[];
   /** お客様の予約一覧（booking_date は ISO 文字列） */
   bookings: PlanUsageBooking[];
+  /** 店が起算日を固定しているお客様（profiles.cycle_start_pinned）。自動ロール・引き直しをしない */
+  cycleStartPinned?: boolean | null;
   /** 猶予（大目に見る）をこのお客様に適用するか（profiles.grace_enabled）。false で無効、null/未指定は適用 */
   graceEnabled?: boolean | null;
   /**
@@ -31,12 +33,12 @@ interface PlanUsageCardProps {
 // 予約種別ではないもの（体験・未設定）はカードを出さない
 const EXCLUDED_PLAN_NAMES = new Set(["初回無料体験", "プラン未設定"]);
 
-const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, graceEnabled, showUsagePeriod, className }: PlanUsageCardProps) => {
+const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, cycleStartPinned, graceEnabled, showUsagePeriod, className }: PlanUsageCardProps) => {
   const { t } = useTranslation();
 
   if (!planName || EXCLUDED_PLAN_NAMES.has(planName)) return null;
   const tenantPlan = tenantPlans.find((p) => p.plan_name === planName) ?? null;
-  const input = resolvePlanUsageInput(planName, tenantPlan, cycleStartDate);
+  const input = resolvePlanUsageInput(planName, tenantPlan, cycleStartDate, cycleStartPinned);
   if (!input) return null;
   // 猶予OFFのお客様には猶予を適用しない（期限どおり厳格に扱う）
   if (graceEnabled === false) input.graceDays = 0;

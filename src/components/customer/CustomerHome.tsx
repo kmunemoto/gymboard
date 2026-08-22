@@ -23,7 +23,7 @@ import { getJSTNow, formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
 import { supabase } from "@/integrations/supabase/client";
-import { getCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
+import { getCycleWindow, resolveCycleMonths, resolveCycleUnit } from "@/lib/courseProgress";
 import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
@@ -161,7 +161,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
     : (currentPlan ? (fallbackPlanMaxSessions[currentPlan] || 4) : 0);
   const maxSessions = hasPlan ? resolvedMax : 0;
 
-  const nextBookingCycle = nextBooking ? getCycleWindow(profile?.cycle_start_date, parseISO(nextBooking.date), resolveCycleMonths(currentPlan, tenantPlans)) : null;
+  const nextBookingCycle = nextBooking ? getCycleWindow(profile?.cycle_start_date, parseISO(nextBooking.date), resolveCycleMonths(currentPlan, tenantPlans), resolveCycleUnit(currentPlan, tenantPlans)) : null;
 
   const cycleBookings = (() => {
     if (!nextBookingCycle) return [];
@@ -324,6 +324,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         cycleStartDate={profile?.cycle_start_date}
         tenantPlans={tenantPlans}
         bookings={bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
+        cycleStartPinned={profile?.cycle_start_pinned}
         graceEnabled={profile?.grace_enabled}
         showUsagePeriod={profile?.show_usage_period}
       />
@@ -597,7 +598,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                   <p className="font-bold text-sm flex items-center gap-1.5"><BarChart3 className="w-4 h-4" />{t("home.thisReport")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {(() => {
-                       const currentCycle = getCycleWindow(profile?.cycle_start_date, now, resolveCycleMonths(currentPlan, tenantPlans));
+                       const currentCycle = getCycleWindow(profile?.cycle_start_date, now, resolveCycleMonths(currentPlan, tenantPlans), resolveCycleUnit(currentPlan, tenantPlans));
                       if (!currentCycle) return t("home.checkData");
                       const cycleVisited = bookings.filter(b => {
                         // 同日キャンセル消化は実際には来店していないため「来店◯回」に含めない

@@ -36,7 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import WeekTimelineView from "./WeekTimelineView";
 import CourseProgressBadge from "./CourseProgressBadge";
-import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
@@ -141,6 +141,8 @@ const TrainerSchedule = () => {
       bookingsByUser.get(booking.user_id) || [],
       resolveCycleMonths(profile.plan, plans),
       resolveGraceDays(profile.plan, plans, profile.grace_enabled),
+      resolveCycleUnit(profile.plan, plans),
+      profile.cycle_start_pinned,
     );
   };
 
@@ -556,6 +558,7 @@ const TrainerSchedule = () => {
             user_id: p.user_id,
             plan: p.plan ?? null,
             cycle_start_date: p.cycle_start_date ?? null,
+            cycle_start_pinned: p.cycle_start_pinned ?? false,
             // 渡し忘れると猶予OFFのお客様にも猶予が適用された進捗バッジが出る
             // （ProfileLite.grace_enabled はオプショナルのため型エラーにならない）
             grace_enabled: p.grace_enabled ?? null,

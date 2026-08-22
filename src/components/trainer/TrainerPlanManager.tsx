@@ -42,6 +42,8 @@ interface FormState {
   price: string;
   validity_days: string;
   cycle_months: string;
+  /** 利用期間の単位。months=応当日ベース（従来）/ weeks / days。保存時は months を null にする */
+  cycle_unit: "months" | "weeks" | "days";
   grace_days: string;
   /** 上限を超えた予約を許すか（既定 true＝今までどおり超過できる） */
   allow_overflow: boolean;
@@ -58,6 +60,7 @@ const emptyForm: FormState = {
   price: "",
   validity_days: "",
   cycle_months: "",
+  cycle_unit: "months",
   grace_days: "",
   allow_overflow: true,
   slot_duration_minutes: "",
@@ -116,6 +119,7 @@ const TrainerPlanManager = () => {
       price: String(plan.price ?? ""),
       validity_days: plan.validity_days != null ? String(plan.validity_days) : "",
       cycle_months: plan.cycle_months != null ? String(plan.cycle_months) : "",
+      cycle_unit: plan.cycle_unit === "weeks" || plan.cycle_unit === "days" ? plan.cycle_unit : "months",
       grace_days: plan.grace_days != null ? String(plan.grace_days) : "",
       // null（未設定）は既定の true として扱う（今までどおり超過できる）
       allow_overflow: plan.allow_overflow !== false,
@@ -150,10 +154,15 @@ const TrainerPlanManager = () => {
             ? parseInt(form.validity_days)
             : null
           : null,
-      // 利用期間（サイクル月数）はサブスクのみ。未入力は null（＝1ヶ月）。
+      // 利用期間（サイクル単位数）はサブスクのみ。未入力は null（＝1ヶ月）。
       cycle_months:
         form.plan_type === "subscription" && form.cycle_months
           ? Math.max(1, parseInt(form.cycle_months) || 1)
+          : null,
+      // 利用期間の単位。既定の months は null で保存する（旧データと同じ表現に揃える）。
+      cycle_unit:
+        form.plan_type === "subscription" && form.cycle_unit !== "months"
+          ? form.cycle_unit
           : null,
       // 猶予日数はサブスクのみ。未入力は null（＝0＝猶予なし）。
       grace_days:
@@ -271,7 +280,9 @@ const TrainerPlanManager = () => {
                     ¥{plan.price.toLocaleString()}
                     {plan.max_sessions != null && ` / ${t("settings.plans.sessionsSuffix", { count: plan.max_sessions })}`}
                     {plan.validity_days != null && ` / ${t("settings.plans.daysSuffix", { count: plan.validity_days })}`}
-                    {plan.plan_type === "subscription" && plan.cycle_months != null && plan.cycle_months > 1 && ` / ${t("settings.plans.cycleMonthsSuffix", { count: plan.cycle_months })}`}
+                    {plan.plan_type === "subscription" && plan.cycle_unit === "weeks" && ` / ${t("settings.plans.cycleWeeksSuffix", { count: plan.cycle_months ?? 1 })}`}
+                    {plan.plan_type === "subscription" && plan.cycle_unit === "days" && ` / ${t("settings.plans.cycleDaysSuffix", { count: plan.cycle_months ?? 1 })}`}
+                    {plan.plan_type === "subscription" && (plan.cycle_unit == null || plan.cycle_unit === "months") && plan.cycle_months != null && plan.cycle_months > 1 && ` / ${t("settings.plans.cycleMonthsSuffix", { count: plan.cycle_months })}`}
                     {plan.plan_type === "subscription" && plan.grace_days != null && plan.grace_days > 0 && ` / ${t("settings.plans.graceDaysSuffix", { count: plan.grace_days })}`}
                     {plan.slot_duration_minutes != null && ` / ${t("settings.plans.slotDurationSuffix", { count: plan.slot_duration_minutes })}`}
                   </p>
@@ -389,14 +400,26 @@ const TrainerPlanManager = () => {
             {showCycleMonths && (
               <div>
                 <Label>{t("settings.plans.cycleMonths")}</Label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  value={form.cycle_months}
-                  onChange={(e) => setForm({ ...form, cycle_months: e.target.value })}
-                  placeholder={t("settings.plans.cycleMonthsPlaceholder")}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={form.cycle_months}
+                    onChange={(e) => setForm({ ...form, cycle_months: e.target.value })}
+                    placeholder={t("settings.plans.cycleMonthsPlaceholder")}
+                    className="flex-1"
+                  />
+                  <select
+                    value={form.cycle_unit}
+                    onChange={(e) => setForm({ ...form, cycle_unit: e.target.value as FormState["cycle_unit"] })}
+                    className="h-10 px-3 rounded-md border border-input bg-background text-sm shrink-0"
+                  >
+                    <option value="months">{t("settings.plans.cycleUnitMonths")}</option>
+                    <option value="weeks">{t("settings.plans.cycleUnitWeeks")}</option>
+                    <option value="days">{t("settings.plans.cycleUnitDays")}</option>
+                  </select>
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-1">{t("settings.plans.cycleMonthsHint")}</p>
               </div>
             )}

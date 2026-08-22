@@ -4,13 +4,15 @@ import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import { BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
-import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { timelineHourRange } from "@/lib/businessHours";
 
 export interface ProfileLite {
   user_id: string;
   plan: string | null;
   cycle_start_date: string | null;
+  /** 起算日を店の設定で固定しているか。省略は未固定扱い */
+  cycle_start_pinned?: boolean | null;
   /** 猶予（大目に見る）をこのお客様に適用するか。null/true=適用（既定） */
   grace_enabled?: boolean | null;
 }
@@ -20,8 +22,8 @@ interface WeekTimelineViewProps {
   bookings: BookingWithTime[];
   onSelectBooking?: (booking: BookingWithTime) => void;
   profiles?: ProfileLite[];
-  /** サイクル月数の解決用（プランごとの利用期間）。 */
-  tenantPlans?: ReadonlyArray<{ plan_name: string; cycle_months?: number | null }>;
+  /** サイクル月数・単位の解決用（プランごとの利用期間）。 */
+  tenantPlans?: ReadonlyArray<{ plan_name: string; cycle_months?: number | null; cycle_unit?: string | null }>;
   /** 営業時間（tenants.operating_hours）。時間軸の範囲に使う。 */
   operatingHours?: { start?: string | null; end?: string | null } | null;
 }
@@ -178,6 +180,8 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                           bookingsByUser.get(b.user_id) || [],
                           resolveCycleMonths(profile.plan, tenantPlans),
                           resolveGraceDays(profile.plan, tenantPlans, profile.grace_enabled),
+                          resolveCycleUnit(profile.plan, tenantPlans),
+                          profile.cycle_start_pinned,
                         )
                       : null;
                   const progressLabel = progress

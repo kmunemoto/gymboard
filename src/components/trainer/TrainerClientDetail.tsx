@@ -1387,6 +1387,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                           );
                         })}
                       </div>
+                      {/* その日のメモ（記録タブの一覧と同じ規則で常時表示） */}
+                      {(() => {
+                        const memo = groupedRecords[date].find((r) => r.notes && r.notes.trim())?.notes;
+                        if (!memo) return null;
+                        return (
+                          <div className="mt-1.5 flex items-start gap-1.5">
+                            <StickyNote className="w-3.5 h-3.5 shrink-0 mt-0.5 text-accent" />
+                            <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words min-w-0">{memo}</p>
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 ))}
@@ -1621,6 +1632,18 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                           );
                         })}
                       </div>
+                      {/* その日のメモ。以前は編集画面を開かないと読めなかった（実店舗の要望で常時表示に）。
+                          メモは日単位で、その日の行のどれか1つに入っている（openEdit の existingMemo と同じ規則） */}
+                      {(() => {
+                        const memo = groupedRecords[date].find((r) => r.notes && r.notes.trim())?.notes;
+                        if (!memo) return null;
+                        return (
+                          <div className="mt-2 rounded-lg bg-muted/60 px-2.5 py-1.5 flex items-start gap-1.5">
+                            <StickyNote className="w-3.5 h-3.5 shrink-0 mt-0.5 text-accent" />
+                            <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words min-w-0">{memo}</p>
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 ))}

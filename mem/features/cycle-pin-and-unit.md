@@ -80,3 +80,4 @@ Date.UTC の繰り上げで 3/3。クライアントの date-fns と DB の Post
 変異を戻すときに `git restore <file>` を使うと、**未コミットの実装ごと消える**
 （HEAD に戻るため）。実際に courseProgress.ts の実装を丸ごと飛ばして書き直した。
 変異検証は「事前に cp でバックアップ → sed で変異 → cp で復旧」で行うこと。
+（`git checkout -- <file>` も同じ罠。同日にもう一度踏んだ。git で戻さない）

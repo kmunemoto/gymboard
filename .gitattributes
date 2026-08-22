@@ -16,3 +16,11 @@
 # 固定して「ファイルを見れば分かる」状態にするため（検査は
 # src/test/buildAndroidScript.test.ts）。
 *.bat -text
+
+# .ps1 も同じ理由で CRLF 固定。加えて **UTF-8 BOM 必須**。
+# Windows PowerShell 5.1（powershell.exe。Windows の既定）は BOM の無いファイルを
+# ANSI（日本語環境では CP932）として読むため、.bat とまったく同じ「行が消える」
+# 現象が起きる。実際 setup-android-secrets.ps1 は 192行 → 171行に潰れ、
+# keytool の実行や一時ファイルの作成が飛んでいた。BOM があれば UTF-8 として
+# 読まれるので根本的に起きない（PowerShell 7+ は BOM 無しでも UTF-8）。
+*.ps1 -text

@@ -241,3 +241,41 @@ describe("cmd.exe が読んでも行が潰れない（CRLF 必須）", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// setup-android-secrets.ps1 も同じ地雷を踏んでいた（2026-08-22）
+//
+// Windows PowerShell 5.1（powershell.exe = Windows の既定）は **BOM の無い**
+// ファイルを ANSI（日本語環境では CP932）として読む。つまり .bat と同じ
+// 「日本語行の行末バイトが次の1バイトを飲む」現象が起きる。
+// 実測: 192行 → 171行に潰れ、$tmp = [IO.Path]::GetTempFileName() や
+// keytool の実行行が丸ごと消えていた。
+//
+// 根治は **UTF-8 BOM を付けること**（PowerShell が UTF-8 として読む）。
+// CRLF も併せて固定する（Windows のスクリプトとしての作法）。
+// PowerShell 7+ は BOM 無しでも UTF-8 なので、BOM があれば両方で正しい。
+// ---------------------------------------------------------------------------
+describe("setup-android-secrets.ps1 も PowerShell が壊して読まない", () => {
+  const PS1 = "scripts/setup-android-secrets.ps1";
+  const bytes = readFileSync(PS1);
+
+  it("UTF-8 BOM がある（PS 5.1 が CP932 として読むのを防ぐ）", () => {
+    expect(
+      bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf,
+      "PowerShell 5.1 は BOM 無しの UTF-8 を CP932 として読み、日本語行が次の行を飲む",
+    ).toBe(true);
+  });
+
+  it("CRLF で保存されている", () => {
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i] === 0x0a) {
+        expect(i > 0 && bytes[i - 1] === 0x0d, `${i} バイト目に CR の無い LF がある`).toBe(true);
+      }
+    }
+  });
+
+  it(".gitattributes が .ps1 の改行変換も禁じている", () => {
+    const attrs = readFileSync(".gitattributes", "utf8");
+    expect(attrs).toMatch(/^\*\.ps1\s+-text\s*$/m);
+  });
+});

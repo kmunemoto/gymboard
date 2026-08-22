@@ -19,7 +19,7 @@ import BookingCompleteDialog from "./BookingCompleteDialog";
 import BookingCancelledDialog from "./BookingCancelledDialog";
 import { getJSTNow, getJSTToday, toJSTDate, formatJST } from "@/lib/timezone";
 import { maxRepeatWeeksFor } from "@/lib/repeatBookingWindow";
-import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import PlanUsageCard from "./PlanUsageCard";
 import { formatDate } from "@/lib/dateFormat";
 import { useWaitlist } from "@/hooks/useWaitlist";
@@ -90,10 +90,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // allow_overflow が既定(true)のプランでは常に false ＝ 従来どおり超過できる。
   const currentTenantPlan = tenantPlans?.find((p) => p.plan_name === profile?.plan) ?? null;
   const planUsageInput = useMemo(() => {
-    const input = resolvePlanUsageInput(profile?.plan, currentTenantPlan, profile?.cycle_start_date);
+    const input = resolvePlanUsageInput(profile?.plan, currentTenantPlan, profile?.cycle_start_date, profile?.cycle_start_pinned);
     if (input && profile?.grace_enabled === false) input.graceDays = 0;
     return input;
-  }, [profile?.plan, profile?.cycle_start_date, profile?.grace_enabled, currentTenantPlan]);
+  }, [profile?.plan, profile?.cycle_start_date, profile?.cycle_start_pinned, profile?.grace_enabled, currentTenantPlan]);
   const planBookingsForUsage = useMemo(
     () => myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
     [myBookings],
@@ -766,6 +766,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
           cycleStartDate={profile?.cycle_start_date}
           tenantPlans={tenantPlans}
           bookings={myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
+          cycleStartPinned={profile?.cycle_start_pinned}
           graceEnabled={profile?.grace_enabled}
           showUsagePeriod={profile?.show_usage_period}
         />
@@ -816,6 +817,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                                   bookingsForProgress,
                                   resolveCycleMonths(profile?.plan, tenantPlans),
                                   resolveGraceDays(profile?.plan, tenantPlans, profile?.grace_enabled),
+                                  resolveCycleUnit(profile?.plan, tenantPlans),
+                                  profile?.cycle_start_pinned,
                                 );
                                 if (!progress || progress.isUnconfigured) return null;
                                 return (

@@ -29,16 +29,38 @@ const addDaysEpoch = (epochMs: number, days: number): number => epochMs + days *
 
 const normCycleMonths = (m?: number | null): number => (m && m > 0 ? Math.floor(m) : 1);
 const normGraceDays = (g?: number | null): number => (g && g > 0 ? Math.floor(g) : 0);
+/** 利用期間の単位（tenant_plans.cycle_unit）。null/不明値は months（クライアント normCycleUnit と同じ）。 */
+const normCycleUnit = (u?: string | null): "months" | "weeks" | "days" =>
+  u === "weeks" || u === "days" ? u : "months";
 
 export interface Win {
   start: number; // epoch ms（JST暦日00:00）
   end: number; // 排他上限
 }
 
-/** クライアント getCycleWindow と同じ [start, end)（end=アニバーサリー翌日）。 */
-export function getCycleWindow(startYmd: string, targetEpoch: number, cycleMonths?: number | null): Win {
+/**
+ * クライアント getCycleWindow と同じ [start, end)。
+ * months: end=アニバーサリー翌日（応当日を含む・従来どおり）。
+ * weeks/days: ちょうど N×7日 / N日 の連続窓（翌サイクルは end 当日から）。
+ */
+export function getCycleWindow(
+  startYmd: string,
+  targetEpoch: number,
+  cycleMonths?: number | null,
+  cycleUnit?: string | null,
+): Win {
   const m = normCycleMonths(cycleMonths);
+  const unit = normCycleUnit(cycleUnit);
   const initial = ymdToEpoch(startYmd);
+  if (unit !== "months") {
+    const span = (unit === "weeks" ? m * 7 : m) * MS;
+    if (targetEpoch < initial) {
+      return { start: initial, end: initial + span };
+    }
+    // 連続窓なので直接計算できる（epoch は UTC 00:00 に揃っている）
+    const start = initial + Math.floor((targetEpoch - initial) / span) * span;
+    return { start, end: start + span };
+  }
   if (targetEpoch < initial) {
     return { start: initial, end: addDaysEpoch(addMonthsEpoch(initial, m), 1) };
   }
@@ -57,6 +79,7 @@ function graceLent(
   startYmd: string,
   maxSessions: number | null,
   cycleMonths: number | null | undefined,
+  cycleUnit: string | null | undefined,
   graceDays: number,
   win: Win,
   dates: number[],
@@ -64,7 +87,7 @@ function graceLent(
   if (graceDays <= 0 || maxSessions == null || maxSessions <= 0) return 0;
   const startISO = ymdToEpoch(startYmd);
   if (win.start <= startISO) return 0;
-  const prev = getCycleWindow(startYmd, addDaysEpoch(win.start, -1), cycleMonths);
+  const prev = getCycleWindow(startYmd, addDaysEpoch(win.start, -1), cycleMonths, cycleUnit);
   const prevCount = countInRange(dates, prev.start, win.start);
   const capacity = maxSessions - prevCount;
   if (capacity <= 0) return 0;
@@ -92,23 +115,33 @@ export function computeSubscriptionUsage(params: {
   startYmd: string;
   maxSessions: number | null;
   cycleMonths?: number | null;
+  /** 利用期間の単位（tenant_plans.cycle_unit）。null は months */
+  cycleUnit?: string | null;
   graceDays?: number | null;
   bookingIsos: string[];
   nowJstYmd: string;
   /** 表示用: サイクル窓を実際の1回目の予約日起点に引き直す（クライアント computePlanUsage と一致） */
   anchorToFirstBooking?: boolean;
+  /**
+   * 店が起算日を固定しているお客様（profiles.cycle_start_pinned）。
+   * 🔴 true のとき使い切りロール・1回目起点の引き直しをせず、periodPending も立てない
+   * （期間は店の設定で確定している）。クライアント resolveEffectiveCycle / computePlanUsage と同じ。
+   */
+  pinned?: boolean | null;
 }): EffectiveUsage | null {
-  const { startYmd, maxSessions, cycleMonths, graceDays: g, bookingIsos, nowJstYmd, anchorToFirstBooking } = params;
+  const { startYmd, maxSessions, cycleMonths, cycleUnit, graceDays: g, bookingIsos, nowJstYmd } = params;
   if (!startYmd) return null;
+  const pinned = params.pinned === true;
+  const anchorToFirstBooking = params.anchorToFirstBooking === true && !pinned;
   const graceDays = normGraceDays(g);
   const dates = bookingIsos.map((iso) => ymdToEpoch(isoToJstYmd(iso))).sort((a, b) => a - b);
   const refDay = ymdToEpoch(nowJstYmd);
 
   let anchor = startYmd;
-  let win = getCycleWindow(anchor, ymdToEpoch(anchor), cycleMonths);
+  let win = getCycleWindow(anchor, ymdToEpoch(anchor), cycleMonths, cycleUnit);
 
   const summarize = (w: Win, key: string) => {
-    const lent = graceLent(key, maxSessions, cycleMonths, graceDays, w, dates);
+    const lent = graceLent(key, maxSessions, cycleMonths, cycleUnit, graceDays, w, dates);
     const inWin = dates.filter((d) => d >= w.start && d < w.end);
     return { lent, inWin };
   };
@@ -121,7 +154,7 @@ export function computeSubscriptionUsage(params: {
       const firstCore = inWin[lent];
       if (firstCore != null && firstCore > w.start) {
         const key = isoToJstYmd(new Date(firstCore).toISOString());
-        w = getCycleWindow(key, firstCore, cycleMonths);
+        w = getCycleWindow(key, firstCore, cycleMonths, cycleUnit);
       }
     }
     const remaining = isUnlimited || maxSessions == null ? null : Math.max(0, maxSessions - used);
@@ -131,13 +164,15 @@ export function computeSubscriptionUsage(params: {
       used,
       remaining,
       isUnlimited,
-      periodPending: !isUnlimited && used === 0,
+      // 起算日固定（pinned）中は期間が店の設定で確定しているので「1回目待ち」にしない
+      periodPending: !isUnlimited && used === 0 && !pinned,
     };
   };
 
   for (let i = 0; i < 240; i++) {
     const { lent, inWin } = summarize(win, anchor);
-    if (maxSessions != null && maxSessions > 0 && inWin.length - lent > maxSessions) {
+    // 🔴 起算日固定（pinned）中は使い切りロールをしない（店の設定が最上位）
+    if (!pinned && maxSessions != null && maxSessions > 0 && inWin.length - lent > maxSessions) {
       const rollDate = inWin[lent + maxSessions];
       if (rollDate > refDay) {
         // 1回目がまだ未来 → 現在の窓を維持、消化は上限で頭打ち
@@ -146,7 +181,7 @@ export function computeSubscriptionUsage(params: {
       const newKey = isoToJstYmd(new Date(rollDate).toISOString());
       if (ymdToEpoch(newKey) <= ymdToEpoch(anchor)) break;
       anchor = newKey;
-      win = getCycleWindow(anchor, rollDate, cycleMonths);
+      win = getCycleWindow(anchor, rollDate, cycleMonths, cycleUnit);
       continue;
     }
     if (refDay < win.end) {
@@ -154,7 +189,7 @@ export function computeSubscriptionUsage(params: {
     }
     const next = dates.find((d) => d >= win.end);
     const target = next != null && next < refDay ? next : refDay;
-    win = getCycleWindow(anchor, target, cycleMonths);
+    win = getCycleWindow(anchor, target, cycleMonths, cycleUnit);
   }
   const { lent, inWin } = summarize(win, anchor);
   return finalizeWin(win, lent, inWin);

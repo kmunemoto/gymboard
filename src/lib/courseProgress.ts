@@ -1,4 +1,4 @@
-import { addMonths, addDays, format, parseISO, startOfDay } from "date-fns";
+import { addMonths, addDays, differenceInDays, format, parseISO, startOfDay } from "date-fns";
 import { PlanType, planOptions } from "./dummyData";
 import { getJSTNow, toJSTDate } from "./timezone";
 
@@ -23,6 +23,17 @@ export interface CycleWindow {
 /** サイクル月数を正規化（未設定/不正は1）。 */
 const normCycleMonths = (cycleMonths?: number | null): number =>
   cycleMonths && cycleMonths > 0 ? Math.floor(cycleMonths) : 1;
+
+/**
+ * 利用期間の単位（tenant_plans.cycle_unit）。null/未設定・不明値は "months"。
+ * cycle_months は「単位数」として使い回す（列名は歴史的なもの）。
+ *   - months … 応当日ベース・応当日を含む（従来どおり。既存プランの窓を変えない）
+ *   - weeks / days … ちょうど N×7日 / N日 の連続窓 [start, start+span)
+ */
+export type CycleUnit = "months" | "weeks" | "days";
+
+const normCycleUnit = (u?: string | null): CycleUnit =>
+  u === "weeks" || u === "days" ? u : "months";
 
 /** 猶予日数を正規化（未設定/不正は0＝猶予なし）。 */
 const normGraceDays = (graceDays?: number | null): number =>
@@ -79,17 +90,18 @@ export const graceLentToPrevCount = (params: {
   cycleStartDate: string;
   maxSessions: number | null;
   cycleMonths?: number | null;
+  cycleUnit?: string | null;
   graceDays?: number | null;
   windowStart: Date;
   windowEnd: Date;
   bookings: DatedBooking[];
 }): number => {
   const graceDays = normGraceDays(params.graceDays);
-  const { maxSessions, cycleStartDate, cycleMonths, windowStart, windowEnd, bookings } = params;
+  const { maxSessions, cycleStartDate, cycleMonths, cycleUnit, windowStart, windowEnd, bookings } = params;
   if (graceDays <= 0 || maxSessions == null || maxSessions <= 0) return 0;
   const startISO = startOfDay(parseISO(cycleStartDate));
   if (windowStart.getTime() <= startISO.getTime()) return 0; // 最初の窓＝前サイクル無し
-  const prev = getCycleWindow(cycleStartDate, addDays(windowStart, -1), cycleMonths);
+  const prev = getCycleWindow(cycleStartDate, addDays(windowStart, -1), cycleMonths, cycleUnit);
   if (!prev) return 0;
   const prevCount = countActiveInRange(bookings, prev.start, windowStart);
   const capacity = maxSessions - prevCount;
@@ -118,6 +130,7 @@ export const resolveEffectiveCycle = (params: {
   cycleStartDate: string;
   maxSessions: number | null;
   cycleMonths?: number | null;
+  cycleUnit?: string | null;
   graceDays?: number | null;
   bookings: DatedBooking[];
   referenceDate: Date;
@@ -132,12 +145,22 @@ export const resolveEffectiveCycle = (params: {
    * DB 側（`guard_booking_plan_limit`）も同じく暦窓のまま数える。
    */
   allowOverflow?: boolean;
+  /**
+   * 店が起算日を固定しているお客様（`profiles.cycle_start_pinned`）。
+   * 🔴 true のときは**使い切りロールも「1回目の予約日起点」の引き直し表示もしない**。
+   * 店が決めた起算日から暦どおりに進む純粋な窓だけを返す（店の設定が最上位）。
+   * DB（guard_booking_plan_limit）はもともと純粋な暦窓で数えるので、固定中は
+   * DBと表示が完全に一致する。
+   */
+  pinned?: boolean | null;
 }): { cycleStartDate: string; window: CycleWindow; lent: number; used: number } | null => {
-  const { maxSessions, cycleMonths, graceDays, bookings, referenceDate, anchorToFirstBooking } = params;
+  const { maxSessions, cycleMonths, cycleUnit, graceDays, bookings, referenceDate } = params;
   const allowOverflow = params.allowOverflow !== false;
+  const pinned = params.pinned === true;
+  const anchorToFirstBooking = params.anchorToFirstBooking === true && !pinned;
   let anchorKey = params.cycleStartDate;
   if (!anchorKey) return null;
-  let window = getCycleWindow(anchorKey, startOfDay(parseISO(anchorKey)), cycleMonths);
+  let window = getCycleWindow(anchorKey, startOfDay(parseISO(anchorKey)), cycleMonths, cycleUnit);
   if (!window) return null;
 
   const refDay = startOfDay(referenceDate);
@@ -151,6 +174,7 @@ export const resolveEffectiveCycle = (params: {
       cycleStartDate: key,
       maxSessions,
       cycleMonths,
+      cycleUnit,
       graceDays,
       windowStart: w.start,
       windowEnd: w.end,
@@ -175,7 +199,7 @@ export const resolveEffectiveCycle = (params: {
       const firstCore = inWindow[lent]; // 繰入分を飛ばした最初の予約＝本来の1回目
       if (firstCore && startOfDay(firstCore).getTime() > w.start.getTime()) {
         const key = format(startOfDay(firstCore), "yyyy-MM-dd");
-        const rebased = getCycleWindow(key, firstCore, cycleMonths);
+        const rebased = getCycleWindow(key, firstCore, cycleMonths, cycleUnit);
         if (rebased) return { cycleStartDate: key, window: rebased, lent, used };
       }
     }
@@ -184,7 +208,8 @@ export const resolveEffectiveCycle = (params: {
 
   for (let i = 0; i < 240; i++) {
     const { lent, inWindow } = summarize(window, anchorKey);
-    if (allowOverflow && maxSessions != null && maxSessions > 0 && inWindow.length - lent > maxSessions) {
+    // 🔴 起算日固定（pinned）中は使い切りロールをしない（店の設定が最上位）
+    if (!pinned && allowOverflow && maxSessions != null && maxSessions > 0 && inWindow.length - lent > maxSessions) {
       // 回数上限を超過 → (上限+1)回目（猶予繰入はスキップ）の予約日を新しい起算日にロール
       const rollDate = inWindow[lent + maxSessions];
       // ただし新ルーティンの1回目がまだ先の日付なら、その日が来るまでは現在の窓のまま表示する
@@ -195,7 +220,7 @@ export const resolveEffectiveCycle = (params: {
       const newKey = format(rollDate, "yyyy-MM-dd");
       if (newKey <= anchorKey) break; // 同日多重予約などでの無限ループ防止
       anchorKey = newKey;
-      window = getCycleWindow(anchorKey, rollDate, cycleMonths)!;
+      window = getCycleWindow(anchorKey, rollDate, cycleMonths, cycleUnit)!;
       continue;
     }
     if (refDay < window.end) {
@@ -204,11 +229,11 @@ export const resolveEffectiveCycle = (params: {
     // referenceDate はこの窓より後 → 次に予約のある日（無ければ referenceDate）まで暦窓を進める
     const next = activeDates.find((d) => d >= window.end);
     const target = next && next < refDay ? next : refDay;
-    window = getCycleWindow(anchorKey, target, cycleMonths)!;
+    window = getCycleWindow(anchorKey, target, cycleMonths, cycleUnit)!;
   }
 
   // ガード超過時のフォールバック（通常は到達しない）
-  const w = getCycleWindow(anchorKey, referenceDate, cycleMonths)!;
+  const w = getCycleWindow(anchorKey, referenceDate, cycleMonths, cycleUnit)!;
   const { lent, inWindow } = summarize(w, anchorKey);
   return finalizeWindow(w, lent, inWindow);
 };
@@ -227,6 +252,19 @@ export const resolveCycleMonths = (
 };
 
 /**
+ * プラン名 + tenant_plans 定義から利用期間の単位を解決する（既定 "months"）。
+ * cycle_months（単位数）とセットで getCycleWindow / resolveEffectiveCycle に渡す。
+ */
+export const resolveCycleUnit = (
+  planName: string | null | undefined,
+  tenantPlans: ReadonlyArray<{ plan_name: string; cycle_unit?: string | null }> | null | undefined,
+): CycleUnit => {
+  if (!planName || !tenantPlans) return "months";
+  const p = tenantPlans.find((tp) => tp.plan_name === planName);
+  return normCycleUnit(p?.cycle_unit);
+};
+
+/**
  * cycle_start_date を起算日として、targetDate を含むサイクル期間 [start, end) を求める。
  * cycleMonths でサイクルの長さ（月数・応当日ベース）を指定できる（既定 1ヶ月）。
  *
@@ -241,11 +279,26 @@ export const getCycleWindow = (
   cycleStartDate: string | null | undefined,
   targetDate: Date,
   cycleMonths?: number | null,
+  cycleUnit?: string | null,
 ): CycleWindow | null => {
   if (!cycleStartDate) return null;
   const m = normCycleMonths(cycleMonths);
+  const unit = normCycleUnit(cycleUnit);
   const initialStart = parseISO(cycleStartDate);
   const targetDay = startOfDay(targetDate);
+
+  if (unit !== "months") {
+    // 週・日: ちょうど span 日の連続窓 [start, start+span)。翌サイクルは end 当日から
+    // （月と違い応当日の概念が無いので、最終日を共有する規則は適用しない）。
+    const span = unit === "weeks" ? m * 7 : m;
+    if (targetDay < initialStart) {
+      return { start: initialStart, end: addDays(initialStart, span) };
+    }
+    // 連続窓なので直接計算できる（両者とも 00:00 の擬似日付なので差は整数日）
+    const k = Math.floor(differenceInDays(targetDay, initialStart) / span);
+    const start = addDays(initialStart, k * span);
+    return { start, end: addDays(start, span) };
+  }
 
   // 契約起算日より前は、最初のサイクルを返す（架空の「前回」を作らない）
   if (targetDay < initialStart) {
@@ -289,12 +342,13 @@ export const computeCourseProgress = (
   bookings: BookingForProgress[],
   referenceDate: Date = getJSTNow(),
   cycleMonths?: number | null,
+  cycleUnit?: string | null,
 ): CourseProgress => {
   const monthlyTotal = getMonthlySessionCount(plan);
   const isUnlimited = monthlyTotal === -1;
   const isUnconfigured = monthlyTotal === null || !cycleStartDate;
 
-  const cycle = getCycleWindow(cycleStartDate, referenceDate, cycleMonths);
+  const cycle = getCycleWindow(cycleStartDate, referenceDate, cycleMonths, cycleUnit);
 
   if (!cycle) {
     return {
@@ -352,6 +406,7 @@ export const shouldRebaseCycleStart = (params: {
   /** プランの回数上限。null = 無制限 */
   maxSessions: number | null;
   cycleMonths?: number | null;
+  cycleUnit?: string | null;
   /** 猶予日数（既定 0＝猶予なし） */
   graceDays?: number | null;
   /** 新規予約の日付キー（yyyy-MM-dd） */
@@ -365,10 +420,18 @@ export const shouldRebaseCycleStart = (params: {
    * だけで起算日が書き換わり上限が丸ごとリセットされる（レビューで発覚）。既定は従来どおり。
    */
   allowOverflow?: boolean | null;
+  /**
+   * 店が起算日を固定しているお客様（`profiles.cycle_start_pinned`）。
+   * 🔴 true のとき、起算日の自動書き換えを**一切しない**（店の設定が最上位）。
+   * 起算日が未設定（NULL）の間だけは初回設定を許す（固定は日付が無いと意味を持たず、
+   * UI 側も日付なしでは固定をONにできない）。
+   */
+  pinned?: boolean | null;
 }): boolean => {
-  const { cycleStartDate, maxSessions, cycleMonths, bookingDateKey, existingBookings } = params;
+  const { cycleStartDate, maxSessions, cycleMonths, cycleUnit, bookingDateKey, existingBookings } = params;
   const allowOverflow = params.allowOverflow !== false;
   if (!cycleStartDate) return true; // 起算日未設定 → 1回目の予約日を起算日に
+  if (params.pinned === true) return false; // 🔴 起算日固定 → 自動調整しない
 
   // 起算日より過去の日付への予約（過去分の記録など）では動かさない
   if (bookingDateKey < cycleStartDate) return false;
@@ -382,6 +445,7 @@ export const shouldRebaseCycleStart = (params: {
     cycleStartDate,
     maxSessions,
     cycleMonths,
+    cycleUnit,
     graceDays,
     bookings: active,
     referenceDate: bookingDate,
@@ -399,7 +463,7 @@ export const shouldRebaseCycleStart = (params: {
     const graceTailEnd = addDays(window.start, graceDays);
     const inGraceTail = bookingDate >= window.start && bookingDate < graceTailEnd;
     if (inGraceTail) {
-      const prevWindow = getCycleWindow(effStartKey, addDays(window.start, -1), cycleMonths);
+      const prevWindow = getCycleWindow(effStartKey, addDays(window.start, -1), cycleMonths, cycleUnit);
       if (prevWindow) {
         const prevCount = countActiveInRange(active, prevWindow.start, window.start);
         const prevCapacity = maxSessions - prevCount;
@@ -434,7 +498,7 @@ export const shouldRebaseCycleStart = (params: {
 
   // ロール済みの窓: 直前サイクルを上限まで消化済みのときだけ「次のルーティン」とみなす
   if (maxSessions == null || maxSessions <= 0) return false; // 無制限は自動では動かさない
-  const prevWindow = getCycleWindow(effStartKey, addDays(window.start, -1), cycleMonths);
+  const prevWindow = getCycleWindow(effStartKey, addDays(window.start, -1), cycleMonths, cycleUnit);
   if (!prevWindow) return false;
   // 前サイクルの物理予約数 + 猶予で繰り入れた分が上限に達していれば「次のルーティン」
   const prevCount = countActiveInRange(active, prevWindow.start, window.start);
@@ -465,11 +529,14 @@ export const getBookingProgressIndex = (
   bookings: BookingForProgress[],
   cycleMonths?: number | null,
   graceDays?: number | null,
+  cycleUnit?: string | null,
+  /** 店が起算日を固定しているお客様（自動ロール・引き直しをしない）。resolveEffectiveCycle 参照 */
+  pinned?: boolean | null,
 ): { index: number; total: number | null; isUnlimited: boolean; isUnconfigured: boolean; isOverflow: boolean; isGraceCarryover: boolean } | null => {
   const target = bookings.find((b) => b.id === bookingId);
   if (!target) return null;
   const targetDate = toJSTDate(target.booking_date);
-  const progress = computeCourseProgress(cycleStartDate, plan, bookings, targetDate, cycleMonths);
+  const progress = computeCourseProgress(cycleStartDate, plan, bookings, targetDate, cycleMonths, cycleUnit);
   if (!progress.cycle) {
     return { index: 0, total: progress.monthlyTotal, isUnlimited: progress.isUnlimited, isUnconfigured: progress.isUnconfigured, isOverflow: false, isGraceCarryover: false };
   }
@@ -486,9 +553,11 @@ export const getBookingProgressIndex = (
       cycleStartDate,
       maxSessions: total,
       cycleMonths,
+      cycleUnit,
       graceDays,
       bookings,
       referenceDate: targetDate,
+      pinned,
     });
     if (eff) {
       cycle = eff.window;
@@ -506,7 +575,7 @@ export const getBookingProgressIndex = (
   if (lent > 0 && total !== null) {
     if (rawIndex <= lent) {
       // 前サイクルの消化数 + 繰入順 = 前サイクルとしての回数（例: 7消化 + 1件目 = 8/8）
-      const prevWindow = getCycleWindow(effStartKey, addDays(cycle.start, -1), cycleMonths);
+      const prevWindow = getCycleWindow(effStartKey, addDays(cycle.start, -1), cycleMonths, cycleUnit);
       const prevCount = prevWindow ? countActiveInRange(bookings, prevWindow.start, cycle.start) : 0;
       return {
         index: Math.min(total, prevCount + rawIndex),

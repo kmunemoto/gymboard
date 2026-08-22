@@ -23,6 +23,8 @@ export interface Profile {
   trial_completed: boolean;
   line_user_id: string | null;
   cycle_start_date: string | null;
+  /** 起算日を店の設定で固定する（自動調整しない）。既定 false。詳細は courseProgress.ts の pinned */
+  cycle_start_pinned: boolean;
   show_usage_period: boolean;
   calendar_token: string | null;
   best_streak: number;
@@ -281,6 +283,7 @@ export const useAllCustomerProfiles = () => {
         trial_completed: p?.trial_completed || false,
         line_user_id: p?.line_user_id || null,
         cycle_start_date: p?.cycle_start_date || null,
+        cycle_start_pinned: (p as Profile | undefined)?.cycle_start_pinned ?? false,
         show_usage_period: p?.show_usage_period ?? true,
         calendar_token: (p as any)?.calendar_token || null,
         best_streak: p?.best_streak || 0,

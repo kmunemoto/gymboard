@@ -124,6 +124,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [editingRecordIds, setEditingRecordIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRecord | null>(null);
   const [cycleStartDate, setCycleStartDate] = useState<string>("");
+  const [cycleStartPinned, setCycleStartPinned] = useState<boolean>(false);
   const [trainingGoal, setTrainingGoal] = useState<string>("");
   const [editingGoal, setEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
@@ -171,6 +172,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         const linkedName = (mem as any)?.tenant_plans?.plan_name as string | undefined;
         setClientPlan(linkedName || data.plan || '');
         setCycleStartDate(data.cycle_start_date || "");
+        setCycleStartPinned((data as { cycle_start_pinned?: boolean | null }).cycle_start_pinned === true);
         setTrainingGoal((data as any).training_goal || "");
         setMilestoneGoal(data.milestone_goal || "");
         setMilestoneGoalSetAt(data.milestone_goal_set_at ?? null);
@@ -622,10 +624,25 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
 
   const handleCycleStartDateChange = async (newDate: string) => {
-    const { error } = await supabase.from("profiles").update({ cycle_start_date: newDate || null }).eq("user_id", clientId);
+    // 日付を消すときは固定も解除する（日付なしの固定は意味を持たないため）
+    const clearPin = !newDate && cycleStartPinned;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ cycle_start_date: newDate || null, ...(clearPin ? { cycle_start_pinned: false } : {}) })
+      .eq("user_id", clientId);
     if (error) { toast.error(t("clientDetail.cycleUpdateFailed")); return; }
     setCycleStartDate(newDate);
+    if (clearPin) setCycleStartPinned(false);
     toast.success(t("clientDetail.cycleUpdatedToast"));
+  };
+
+  // 起算日の固定（店の設定が最上位）。ONの間は自動調整（1回目の予約日への合わせ込み・
+  // 使い切りロール）が止まり、お客様本人による変更も DB（GB005）が拒否する。
+  const handleCycleStartPinnedToggle = async (checked: boolean) => {
+    const { error } = await supabase.from("profiles").update({ cycle_start_pinned: checked }).eq("user_id", clientId);
+    if (error) { toast.error(t("clientDetail.updateFailed")); return; }
+    setCycleStartPinned(checked);
+    toast.success(checked ? t("clientDetail.pinCycleOnToast") : t("clientDetail.pinCycleOffToast"));
   };
 
   const handleResetCycleToToday = async () => {
@@ -949,6 +966,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               cycleStartDate={cycleStartDate}
               tenantPlans={tenantPlans}
               bookings={bookings.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status }))}
+              cycleStartPinned={cycleStartPinned}
               graceEnabled={graceEnabled}
             />
 
@@ -970,12 +988,24 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   {t("clientDetail.resetToToday")}
                 </Button>
               </div>
+              {/* 起算日の固定（明示スイッチ）。日付が無い間はONにできない */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium">{t("clientDetail.pinCycle")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("clientDetail.pinCycleHint")}</p>
+                </div>
+                <Switch
+                  checked={cycleStartPinned}
+                  disabled={!cycleStartDate}
+                  onCheckedChange={handleCycleStartPinnedToggle}
+                />
+              </div>
               {cycleStartDate && (() => {
                 // 有効期限は消化状況カードと同じ computePlanUsage（実効サイクル）から計算し、
                 // 「利用期間：6/5〜7/5（残り2日）」と「有効期限：7月5日（残り2日）」を常に一致させる。
                 // 期限未確定（1回目の予約待ち）・回数使い切り後の自動ロールもカードと同じ挙動になる。
                 const tenantPlan = tenantPlans.find((p) => p.plan_name === clientPlan) ?? null;
-                const input = resolvePlanUsageInput(clientPlan, tenantPlan, cycleStartDate);
+                const input = resolvePlanUsageInput(clientPlan, tenantPlan, cycleStartDate, cycleStartPinned);
                 if (input && !graceEnabled) input.graceDays = 0; // 猶予OFFのお客様は期限どおり
                 const usage = input
                   ? computePlanUsage(

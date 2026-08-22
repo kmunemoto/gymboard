@@ -12,7 +12,7 @@ import { useMyBookings, BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { getCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
+import { getCycleWindow, resolveCycleMonths, resolveCycleUnit } from "@/lib/courseProgress";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
 import { formatDate } from "@/lib/dateFormat";
@@ -457,7 +457,7 @@ const CustomerSettings = () => {
             .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
 
           // Compute cycle-based count（アニバーサリー日は前サイクル最終日として扱う）
-          const cycleWindow = profile?.cycle_start_date ? getCycleWindow(profile.cycle_start_date, now, resolveCycleMonths(profile?.plan, tenantPlans)) : null;
+          const cycleWindow = profile?.cycle_start_date ? getCycleWindow(profile.cycle_start_date, now, resolveCycleMonths(profile?.plan, tenantPlans), resolveCycleUnit(profile?.plan, tenantPlans)) : null;
           const cycleCount = cycleWindow
             ? pastBookings.filter((b) => {
                 const d = new Date(b.date);

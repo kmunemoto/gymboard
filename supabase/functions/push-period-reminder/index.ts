@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // 対象候補: プランと起算日を持つお客様（サブスク判定は tenant_plans で行う）
     const { data: profiles, error: profErr } = await supabase
       .from("profiles")
-      .select("user_id, display_name, plan, cycle_start_date, tenant_id, grace_enabled, show_usage_period" as any)
+      .select("user_id, display_name, plan, cycle_start_date, cycle_start_pinned, tenant_id, grace_enabled, show_usage_period" as any)
       .not("plan", "is", null)
       .not("cycle_start_date", "is", null);
     if (profErr) throw profErr;
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     const [{ data: plans }, { data: prefs }, { data: tenants }, { data: bookings }] = await Promise.all([
       tenantIds.length
-        ? supabase.from("tenant_plans").select("tenant_id, plan_name, plan_type, max_sessions, cycle_months, grace_days").in("tenant_id", tenantIds)
+        ? supabase.from("tenant_plans").select("tenant_id, plan_name, plan_type, max_sessions, cycle_months, cycle_unit, grace_days").in("tenant_id", tenantIds)
         : Promise.resolve({ data: [] as any[] }),
       supabase.from("notification_preferences").select("user_id, reminder_period").in("user_id", userIds),
       tenantIds.length
@@ -99,10 +99,12 @@ Deno.serve(async (req) => {
         startYmd: isoToJstYmd(`${p.cycle_start_date}T00:00:00+09:00`),
         maxSessions: tp.max_sessions,
         cycleMonths: tp.cycle_months,
+        cycleUnit: tp.cycle_unit,
         graceDays,
         bookingIsos: bookingsByUser.get(p.user_id) ?? [],
         nowJstYmd,
         anchorToFirstBooking: true, // 表示（クライアント）と同じ「1回目の予約日起点」で期限を判定
+        pinned: p.cycle_start_pinned === true, // 起算日固定のお客様は店が決めた窓のまま
       });
       if (!usage || usage.periodPending || usage.isUnlimited) continue;
       const remaining = usage.remaining ?? 0;

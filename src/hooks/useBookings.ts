@@ -352,14 +352,15 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
   try {
     const { data: prof } = await supabase
       .from("profiles")
-      .select("plan, cycle_start_date, tenant_id, grace_enabled")
+      .select("plan, cycle_start_date, cycle_start_pinned, tenant_id, grace_enabled")
       .eq("user_id", userId)
       .maybeSingle();
     if (!prof?.plan) return;
 
-    // プラン定義（回数上限・サイクル月数・猶予日数）。サブスク以外（回数券・期間）は購入日起算のため動かさない。
+    // プラン定義（回数上限・サイクル月数/単位・猶予日数）。サブスク以外（回数券・期間）は購入日起算のため動かさない。
     let maxSessions: number | null = null;
     let cycleMonths: number | null = null;
+    let cycleUnit: string | null = null;
     let graceDays: number | null = null;
     // 🔴 allow_overflow=false のプランでは「使い切ったら予約日を新起算日にする」ロールを
     //    永続化しない（shouldRebaseCycleStart 側でゲート）。超過は DB が GB004 で拒否する
@@ -368,7 +369,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
     if (prof.tenant_id) {
       const { data: tp } = await supabase
         .from("tenant_plans")
-        .select("plan_type, max_sessions, cycle_months, grace_days, allow_overflow")
+        .select("plan_type, max_sessions, cycle_months, cycle_unit, grace_days, allow_overflow")
         .eq("tenant_id", prof.tenant_id)
         .eq("plan_name", prof.plan)
         .maybeSingle();
@@ -376,6 +377,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
         if (tp.plan_type && tp.plan_type !== "subscription") return;
         maxSessions = tp.max_sessions ?? null;
         cycleMonths = tp.cycle_months ?? null;
+        cycleUnit = (tp as { cycle_unit?: string | null }).cycle_unit ?? null;
         // 猶予OFFのお客様（profiles.grace_enabled=false）には猶予を適用しない
         graceDays = (prof as any).grace_enabled === false ? 0 : tp.grace_days ?? null;
         allowOverflow = (tp as { allow_overflow?: boolean | null }).allow_overflow !== false;
@@ -396,10 +398,13 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
       cycleStartDate: prof.cycle_start_date,
       maxSessions,
       cycleMonths,
+      cycleUnit,
       graceDays,
       bookingDateKey: dateKey,
       existingBookings: (rows ?? []).map((r) => ({ id: "", booking_date: r.booking_date, status: r.status })),
       allowOverflow,
+      // 🔴 店が起算日を固定しているお客様では自動書き換えしない（店の設定が最上位）
+      pinned: (prof as { cycle_start_pinned?: boolean | null }).cycle_start_pinned === true,
     });
     if (!ok) return;
 

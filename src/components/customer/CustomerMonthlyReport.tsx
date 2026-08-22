@@ -15,7 +15,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, 
 import MuscleGroupBadge from "./MuscleGroupBadge";
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
-import { getCycleWindow as getSharedCycleWindow, resolveCycleMonths } from "@/lib/courseProgress";
+import { getCycleWindow as getSharedCycleWindow, resolveCycleMonths, resolveCycleUnit } from "@/lib/courseProgress";
 import { useTranslation } from "react-i18next";
 import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import {
@@ -58,6 +58,9 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
   const cycleStartDate = profile?.cycle_start_date;
   // サイクル月数（ジム／プランごとに設定可能・既定1）。offset での移動幅にも使う。
   const cycleMonths = resolveCycleMonths(profile?.plan, tenantPlans);
+  // 利用期間の単位。週・日のプランでは offset の移動幅も日数（span 日）になる。
+  const cycleUnit = resolveCycleUnit(profile?.plan, tenantPlans);
+  const spanDays = cycleUnit === "weeks" ? cycleMonths * 7 : cycleUnit === "days" ? cycleMonths : null;
 
   const { cycleStart, cycleEnd, prevCycleStart, prevCycleEnd, isCurrentCycle } = useMemo(() => {
     if (!cycleStartDate) {
@@ -73,13 +76,19 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       };
     }
     const now = getJSTNow();
-    const currentCycle = getSharedCycleWindow(cycleStartDate, now, cycleMonths)!;
-    const shifted = {
-      start: addMonths(currentCycle.start, cycleOffset * cycleMonths),
-      end: addMonths(currentCycle.end, cycleOffset * cycleMonths),
-    };
+    const currentCycle = getSharedCycleWindow(cycleStartDate, now, cycleMonths, cycleUnit)!;
+    // 週・日の連続窓は span 日ずらす（月は従来どおり応当日ベースで cycleMonths ヶ月ずらす）
+    const shifted = spanDays != null
+      ? {
+          start: addDays(currentCycle.start, cycleOffset * spanDays),
+          end: addDays(currentCycle.end, cycleOffset * spanDays),
+        }
+      : {
+          start: addMonths(currentCycle.start, cycleOffset * cycleMonths),
+          end: addMonths(currentCycle.end, cycleOffset * cycleMonths),
+        };
     const prevRef = addDays(shifted.start, -1);
-    const prev = getSharedCycleWindow(cycleStartDate, prevRef, cycleMonths)!;
+    const prev = getSharedCycleWindow(cycleStartDate, prevRef, cycleMonths, cycleUnit)!;
     return {
       cycleStart: shifted.start,
       cycleEnd: shifted.end,
@@ -87,7 +96,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       prevCycleEnd: prev.end,
       isCurrentCycle: cycleOffset === 0,
     };
-  }, [cycleStartDate, cycleOffset, cycleMonths]);
+  }, [cycleStartDate, cycleOffset, cycleMonths, cycleUnit, spanDays]);
 
   const canGoNext = cycleOffset < 0;
 
@@ -287,7 +296,10 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
     return parts.join(" ");
   };
 
-  const periodLabel = `${format(cycleStart, "M/d", { locale: ja })}〜${format(addMonths(cycleStart, cycleMonths), "M/d", { locale: ja })}`;
+  // 週・日の窓は end が排他的上限なので最終日（end-1日）を出す。月は従来どおり応当日。
+  const periodLabel = spanDays != null
+    ? `${format(cycleStart, "M/d", { locale: ja })}〜${format(addDays(cycleEnd, -1), "M/d", { locale: ja })}`
+    : `${format(cycleStart, "M/d", { locale: ja })}〜${format(addMonths(cycleStart, cycleMonths), "M/d", { locale: ja })}`;
 
   if (loading) {
     return (

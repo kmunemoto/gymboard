@@ -1965,6 +1965,7 @@ export type Database = {
           calendar_token: string
           created_at: string
           cycle_start_date: string | null
+          cycle_start_pinned: boolean
           display_name: string | null
           game_mode_enabled: boolean
           grace_enabled: boolean | null
@@ -1991,6 +1992,7 @@ export type Database = {
           calendar_token?: string
           created_at?: string
           cycle_start_date?: string | null
+          cycle_start_pinned?: boolean
           display_name?: string | null
           game_mode_enabled?: boolean
           grace_enabled?: boolean | null
@@ -2017,6 +2019,7 @@ export type Database = {
           calendar_token?: string
           created_at?: string
           cycle_start_date?: string | null
+          cycle_start_pinned?: boolean
           display_name?: string | null
           game_mode_enabled?: boolean
           grace_enabled?: boolean | null
@@ -2939,6 +2942,7 @@ export type Database = {
           allow_overflow: boolean | null
           created_at: string
           cycle_months: number | null
+          cycle_unit: string | null
           grace_days: number | null
           id: string
           is_active: boolean | null
@@ -2955,6 +2959,7 @@ export type Database = {
           allow_overflow?: boolean | null
           created_at?: string
           cycle_months?: number | null
+          cycle_unit?: string | null
           grace_days?: number | null
           id?: string
           is_active?: boolean | null
@@ -2971,6 +2976,7 @@ export type Database = {
           allow_overflow?: boolean | null
           created_at?: string
           cycle_months?: number | null
+          cycle_unit?: string | null
           grace_days?: number | null
           id?: string
           is_active?: boolean | null
@@ -4343,11 +4349,18 @@ export type Database = {
         Returns: number
       }
       plan_cycle_window: {
-        Args: {
-          p_cycle_months: number
-          p_cycle_start: string
-          p_target: string
-        }
+        Args:
+          | {
+              p_cycle_months: number
+              p_cycle_start: string
+              p_target: string
+            }
+          | {
+              p_cycle_len: number
+              p_cycle_start: string
+              p_cycle_unit: string
+              p_target: string
+            }
         Returns: {
           window_end: string
           window_start: string

@@ -12,7 +12,7 @@ import CounselingResponseList from "./CounselingResponseList";
 import TrainerUtilizationHeatmap from "./TrainerUtilizationHeatmap";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
-import { getBookingProgressIndex, resolveCycleMonths, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -312,7 +312,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
       if (!isActiveMember(p.status)) return;
       if (!p.cycle_start_date || !p.plan) return;
       const tenantPlan = tenantPlans.find((tp) => tp.plan_name === p.plan) ?? null;
-      const input = resolvePlanUsageInput(p.plan, tenantPlan, p.cycle_start_date);
+      const input = resolvePlanUsageInput(p.plan, tenantPlan, p.cycle_start_date, p.cycle_start_pinned);
       if (!input) return;
       if (p.grace_enabled === false) input.graceDays = 0; // 猶予OFFのお客様は期限どおり
       const usage = computePlanUsage(input, bookingsByUser.get(p.user_id) || [], now);
@@ -394,7 +394,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
                 .map((b) => {
                   const profile = profiles.find((pr) => pr.user_id === b.user_id);
                   const progress = profile
-                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans), resolveGraceDays(profile.plan, tenantPlans, profile.grace_enabled))
+                    ? getBookingProgressIndex(b.id, profile.cycle_start_date, profile.plan, bookingsByUser.get(b.user_id) || [], resolveCycleMonths(profile.plan, tenantPlans), resolveGraceDays(profile.plan, tenantPlans, profile.grace_enabled), resolveCycleUnit(profile.plan, tenantPlans), profile.cycle_start_pinned)
                     : null;
 
                   // 体験予約(trial-guest)は会員プロフィールが無いため詳細遷移不可。クリック不可にする。

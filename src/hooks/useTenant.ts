@@ -103,8 +103,10 @@ export interface TenantPlan {
   max_sessions: number | null;
   price: number;
   validity_days: number | null;
-  /** サブスクのサイクル月数（応当日ベース）。null/未設定は1ヶ月 */
+  /** サブスクのサイクル単位数。null/未設定は1。意味は cycle_unit で決まる（既定ヶ月・応当日ベース） */
   cycle_months: number | null;
+  /** 利用期間の単位。'months'（応当日を含む・従来）/'weeks'/'days'。null は months */
+  cycle_unit: string | null;
   /** サブスクの猶予日数。期限超過後この日数までは前サイクル分として大目に見る。null/未設定は0 */
   grace_days: number | null;
   /** このプランの予約1件あたりの占有時間（分）。null/未設定はジムの既定値（tenants.slot_duration_minutes）を継承 */

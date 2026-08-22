@@ -24,6 +24,14 @@ export interface PlanUsageInput {
   startDate?: string | null;
   /** サブスクのサイクル月数（tenant_plans.cycle_months）。null/未設定は1ヶ月 */
   cycleMonths?: number | null;
+  /** 利用期間の単位（tenant_plans.cycle_unit）。months=応当日ベース（従来）/ weeks / days。null は months */
+  cycleUnit?: string | null;
+  /**
+   * 店が起算日を固定しているお客様（profiles.cycle_start_pinned）。
+   * true のとき使い切りロール・1回目起点の引き直し表示をせず、期限も
+   * 「1回目の予約待ち（periodPending）」にしない（期間は店の設定で確定している）。
+   */
+  cycleStartPinned?: boolean | null;
   /** 猶予日数（tenant_plans.grace_days）。期限を過ぎても前サイクル分として大目に見る日数。null/未設定は0 */
   graceDays?: number | null;
   /**
@@ -100,7 +108,8 @@ export function computePlanUsage(
   bookings: PlanUsageBooking[],
   now: Date = getJSTNow(),
 ): PlanUsage {
-  const { planType, maxSessions, validityDays, startDate, cycleMonths, graceDays } = input;
+  const { planType, maxSessions, validityDays, startDate, cycleMonths, cycleUnit, graceDays } = input;
+  const pinned = input.cycleStartPinned === true;
   if (!startDate) return UNCONFIGURED;
 
   const anchor = startOfDay(parseISO(startDate));
@@ -131,12 +140,15 @@ export function computePlanUsage(
       cycleStartDate: startDate,
       maxSessions: maxSessions ?? null,
       cycleMonths,
+      cycleUnit,
       graceDays,
       bookings,
       referenceDate: now,
       // 表示は「実際の1回目のトレーニング日から1ヶ月」で見せる（応当日境界ではなく最初の予約日起点）
+      // 🔴 起算日固定（pinned）中は resolveEffectiveCycle 側で引き直しもロールもしない
       anchorToFirstBooking: true,
       allowOverflow: input.allowOverflow,
+      pinned,
     });
     if (!eff) return UNCONFIGURED;
     windowStart = eff.window.start;
@@ -169,8 +181,10 @@ export function computePlanUsage(
     isExpired,
     notStarted,
     isUnconfigured: false,
-    // サブスクは「1回目の予約」が入るまで期限が確定しない（起算日は予約時に自動設定）
-    periodPending: kind === "subscription" && used === 0,
+    // サブスクは「1回目の予約」が入るまで期限が確定しない（起算日は予約時に自動設定）。
+    // 🔴 起算日固定（pinned）のお客様は例外: 期間は店の設定で確定しているので、
+    //    予約0件でも期限を出す（未確定扱いにすると固定した意味が伝わらない）。
+    periodPending: kind === "subscription" && used === 0 && !pinned,
     consumed,
   };
 }
@@ -179,8 +193,10 @@ export function computePlanUsage(
 // tenant_plans に該当があればそれを正とし、無ければ名称から推定（旧データ互換）。
 export function resolvePlanUsageInput(
   planName: string | null | undefined,
-  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null; cycle_months?: number | null; grace_days?: number | null; allow_overflow?: boolean | null } | null | undefined,
+  tenantPlan: { plan_type?: string | null; max_sessions?: number | null; validity_days?: number | null; cycle_months?: number | null; cycle_unit?: string | null; grace_days?: number | null; allow_overflow?: boolean | null } | null | undefined,
   startDate: string | null | undefined,
+  /** 店が起算日を固定しているお客様（profiles.cycle_start_pinned）。省略は未固定扱い */
+  cycleStartPinned?: boolean | null,
 ): PlanUsageInput | null {
   if (!planName) return null;
   if (tenantPlan) {
@@ -190,19 +206,21 @@ export function resolvePlanUsageInput(
       validityDays: tenantPlan.validity_days ?? null,
       startDate: startDate ?? null,
       cycleMonths: tenantPlan.cycle_months ?? null,
+      cycleUnit: tenantPlan.cycle_unit ?? null,
       graceDays: tenantPlan.grace_days ?? null,
       // 超過を許さないプランは、表示側でもサイクルをロールさせない
       // （DB の拒否と食い違わせないため。courseProgress の allowOverflow 参照）
       allowOverflow: tenantPlan.allow_overflow ?? true,
+      cycleStartPinned: cycleStartPinned ?? null,
     };
   }
   // 旧データ互換: tenant_plans に無い名称
   if (planName === "通い放題") {
-    return { planType: "subscription", maxSessions: null, validityDays: null, startDate: startDate ?? null };
+    return { planType: "subscription", maxSessions: null, validityDays: null, startDate: startDate ?? null, cycleStartPinned: cycleStartPinned ?? null };
   }
   const m = planName.match(/月(\d+)回/);
   if (m) {
-    return { planType: "subscription", maxSessions: parseInt(m[1], 10), validityDays: null, startDate: startDate ?? null };
+    return { planType: "subscription", maxSessions: parseInt(m[1], 10), validityDays: null, startDate: startDate ?? null, cycleStartPinned: cycleStartPinned ?? null };
   }
   return null;
 }

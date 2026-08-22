@@ -1,4 +1,4 @@
-# Windows で実行して、Android CI 用の GitHub Secrets を登録するスクリプト。
+﻿# Windows で実行して、Android CI 用の GitHub Secrets を登録するスクリプト。
 #
 # 手で base64 化したり値をコピペしたりしなくて済むようにするためのもの。
 # 5つ（GOOGLE_SERVICES_JSON_BASE64 / ANDROID_KEYSTORE_BASE64 /

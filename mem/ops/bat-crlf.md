@@ -50,6 +50,34 @@ Could not resolve host: github.com
 なので、ここで `[build-android] FAILED` になっていた。コードの問題ではない。
 `ping github.com` / `nslookup github.com` で切り分ける（VPN・Wi-Fi・DNS 設定）。
 
+## .ps1 も同じ地雷を踏んでいた（同日に発見）
+
+`scripts/setup-android-secrets.ps1` も **LF ＋ BOM なし ＋ 日本語コメント**だった。
+**Windows PowerShell 5.1**（`powershell.exe`＝Windows の既定）は BOM の無いファイルを
+ANSI（日本語環境では CP932）として読むため、`.bat` とまったく同じ現象が起きる。
+実測で **192行 → 171行**に潰れ、`$tmp = [IO.Path]::GetTempFileName()` や
+`keytool` の実行行が丸ごと消えていた。
+
+根治は **UTF-8 BOM を付けること**（PowerShell が UTF-8 として読む）。CRLF も併せて固定。
+PowerShell 7+（`pwsh`）は BOM 無しでも UTF-8 なので、BOM があれば両方で正しく読める。
+`.gitattributes` に `*.ps1 -text`、見張りは同じテストファイルに3件追加（BOM／CRLF／
+`.gitattributes` の指定）。変異2種（BOM を外す／LF に戻す）で赤を確認。
+
+⚠️ このスクリプトは Android CI（`android-build.yml`）用で、その CI 自体は使っていない。
+つまり**壊れていても誰も気づけない位置**にあった。使うときが来たら直っている。
+
+## この問題の影響範囲（2026-08-22 に確認）
+
+| | 影響 | 理由 |
+|---|---|---|
+| **Android のビルド** | 🔴 **あり**（直した） | Windows の cmd / PowerShell がスクリプトを読むのはここだけ |
+| **iOS のビルド** | 無し | GitHub Actions の macOS ランナーで動き、`npm run build` を自分で実行する（`ios-build.yml`）。cmd も CP932 も介在しない |
+| **Web（Lovable）** | 無し | Lovable のクラウドでビルドする |
+| **本番DB・Edge Function** | 無し | スクリプトを通らない |
+
+つまり**「Windows で人が叩くスクリプト」だけの問題**。ジムボードではそれが
+Android の経路にしか無いので、結果として Android 専用の問題になっている。
+
 ## 兄弟アプリへ
 
 同じ `.bat` を持っているなら**必ず同じ確認をすること**。症状が出ていなくても、

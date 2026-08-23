@@ -225,15 +225,28 @@ describe("🔴 画面が受付しない時間帯を見ている", () => {
     expect(customerBooking).toContain("isBlockedWindowError(");
     const calls = (customerBooking.match(/isSlotNotAccepting\(/g) ?? []).length;
     expect(calls, "isSlotNotAccepting の呼び出しが3箇所より少ない").toBeGreaterThanOrEqual(3);
-    // 🔴 帯の枠は「満枠」と**完全に同じ表示**にする（2026-08-23 店の要望）。
-    // 「受付外」の専用文言を出すと、帯で意図的に閉めていることがお客様に見える。
-    // 分岐自体は残す（落とすと締切後(tooSoon)の帯が viewOnlyOpen で「空き」表示になる）。
-    expect(customerBooking).toMatch(
-      /slot\.notAccepting && !slot\.blocked\s*\n\s*\? <span className="text-destructive\/70">\{t\("booking\.slotFull"\)\}<\/span>/,
+    // 🔴 帯の枠は「満枠」と**完全に同じ表示・同じ挙動**にする（2026-08-23 店の要望）。
+    // ラベルだけ揃えても、帯だけ押せない／文字が薄い／空き待ちに出せない、が同じ
+    // グリッドに並ぶと「この時間だけ扱いが違う」と分かってしまう（実際に踏んだ）。
+    // そこで表示層は displayBlocked（帯を「埋まっている」とみなす）1本に寄せてある。
+    expect(customerBooking, "帯を満枠と同一視する displayBlocked が無い").toMatch(
+      /const displayBlocked = slot\.blocked \|\| slot\.notAccepting;/,
     );
+    // 押せる/押せない・薄さ・空き待ちの可否を決める3箇所が、すべて displayBlocked を見る
+    expect(customerBooking, "空き待ちの判定が帯を別扱いしている").toMatch(
+      /const waitlistable = WAITLIST_ENABLED && !slot\.available && displayBlocked && !slot\.tooSoon && !slot\.overLimit;/,
+    );
+    expect(customerBooking, "締切後の帯が「空き」表示に戻っている").toMatch(
+      /const viewOnlyOpen = slot\.tooSoon && !displayBlocked;/,
+    );
+    expect(customerBooking, "ラベルの分岐が帯を別扱いしている").toMatch(
+      /\{slot\.overLimit && !displayBlocked/,
+    );
+    // 🔴 帯だけを名指しで別扱いする分岐が復活していないこと（ラベル・見た目・空き待ちの
+    //    どれか1つでも slot.notAccepting で分岐すると、そこだけ満枠と違う挙動になる）
+    const namedBranches = (customerBooking.match(/slot\.notAccepting/g) ?? []).length;
+    expect(namedBranches, "slot.notAccepting は displayBlocked の定義1箇所だけであるべき").toBe(1);
     expect(customerBooking, "受付外の専用ラベルが復活している").not.toContain("slotNotAccepting");
-    // 空き待ちの対象にもしない（帯は永久に空かない。締切後の満枠も待てないので見分けは付かない）
-    expect(customerBooking).toMatch(/&& !slot\.notAccepting/);
   });
 
   it("🔴 帯の存在がお客様向けの文言に漏れない（すべて満枠の体裁）", () => {

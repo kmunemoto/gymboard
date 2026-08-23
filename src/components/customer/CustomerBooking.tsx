@@ -1122,12 +1122,19 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 )}
                 <div className="grid grid-cols-4 gap-1.5">
                   {slots.map((slot) => {
-                    // 満枠（他予約で埋まっている＝blocked かつ 締切前）はキャンセル待ち登録可能（フラグON時のみ）。
+                    // 🔴 受付しない帯の枠は、表示も挙動も「普通に埋まっている枠」と**完全に同一**にする
+                    //    （2026-08-23 店の要望）。ラベルだけ揃えても、帯だけ押せない・文字が薄い・
+                    //    空き待ちに出せない、が同じグリッドに並ぶと「この時間だけ扱いが違う」と分かる。
+                    //    そこで表示層では帯を blocked（他の予約で埋まっている）と同一視する。
+                    //    空き通知は実際の予約のキャンセルでしか発火しないので、帯の枠に待機者が
+                    //    付いても「誰もキャンセルしない満枠」として静かに待つだけになる。
+                    const displayBlocked = slot.blocked || slot.notAccepting;
+                    // 満枠（埋まっている＝displayBlocked かつ 締切前）はキャンセル待ち登録可能（フラグON時のみ）。
                     // 回数上限の枠はキャンセル待ちの対象にもしない（空きを待っても自分は取れない）。
-                    const waitlistable = WAITLIST_ENABLED && !slot.available && slot.blocked && !slot.tooSoon && !slot.overLimit && !slot.notAccepting;
+                    const waitlistable = WAITLIST_ENABLED && !slot.available && displayBlocked && !slot.tooSoon && !slot.overLimit;
                     const onWaitlist = waitlistable && isOnWaitlist(dateKey, slot.time);
                     // 当日など締切済みの日の「空いている枠」。予約は不可だが空き状況として区別表示する。
-                    const viewOnlyOpen = slot.tooSoon && !slot.blocked;
+                    const viewOnlyOpen = slot.tooSoon && !displayBlocked;
                     return (
                     <button
                       key={slot.id}
@@ -1160,11 +1167,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         <span className="block text-[9px] font-medium">
                           {/* 受付しない帯は「満枠」と完全に同じ表示にする（2026-08-23 店の要望）。
                               「受付外」と出すと帯で意図的に閉めていることがお客様に見えるため、
-                              普通に埋まった枠と見分けが付かないようにする。分岐自体は残す
-                              （落とすと 締切後(tooSoon) の帯が viewOnlyOpen で「空き」表示になる） */}
-                          {slot.notAccepting && !slot.blocked
-                            ? <span className="text-destructive/70">{t("booking.slotFull")}</span>
-                            : slot.overLimit && !slot.blocked
+                              普通に埋まった枠と見分けが付かないようにする。判定は displayBlocked
+                              （帯を「埋まっている」とみなす）に寄せてあるので、ここは満枠の枠と
+                              同じ経路を通る＝帯だけ別のラベルになることが構造的に起きない */}
+                          {slot.overLimit && !displayBlocked
                             ? <span className="text-muted-foreground">{t("bookingLimits.slotLimitReached")}</span>
                             : viewOnlyOpen
                               ? <span className="text-accent">{t("booking.slotOpen")}</span>

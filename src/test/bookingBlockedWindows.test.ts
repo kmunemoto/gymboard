@@ -200,6 +200,19 @@ describe("🔴 DB 側の規則がクライアントと一致している", () =>
   });
 });
 
+
+/** migrations 連結から guard_booking_blocked_window の**最後の**定義を取り出す（CREATE OR REPLACE は最後しか残らない） */
+function lastFnBlocked(): string {
+  const files = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
+  const all = files.map((f) => readFileSync(`supabase/migrations/${f}`, "utf8")).join("\n");
+  const marker = "CREATE OR REPLACE FUNCTION public.guard_booking_blocked_window";
+  const at = all.lastIndexOf(marker);
+  expect(at, "guard_booking_blocked_window の定義が見つからない").toBeGreaterThanOrEqual(0);
+  const rest = all.slice(at);
+  const end = rest.search(/\$function\$;/);
+  return end >= 0 ? rest.slice(0, end) : rest;
+}
+
 // ---------------------------------------------------------------------------
 // 画面がこの仕組みを実際に使っていることを見張る
 // ---------------------------------------------------------------------------
@@ -212,10 +225,48 @@ describe("🔴 画面が受付しない時間帯を見ている", () => {
     expect(customerBooking).toContain("isBlockedWindowError(");
     const calls = (customerBooking.match(/isSlotNotAccepting\(/g) ?? []).length;
     expect(calls, "isSlotNotAccepting の呼び出しが3箇所より少ない").toBeGreaterThanOrEqual(3);
-    // 枠のラベルは「上限」ではなく専用の文言（空き待ちしても取れないのは同じだが理由が違う）
-    expect(customerBooking).toContain('t("blockedWindows.slotNotAccepting")');
-    // 空き待ちの対象にもしない
+    // 🔴 帯の枠は「満枠」と**完全に同じ表示**にする（2026-08-23 店の要望）。
+    // 「受付外」の専用文言を出すと、帯で意図的に閉めていることがお客様に見える。
+    // 分岐自体は残す（落とすと締切後(tooSoon)の帯が viewOnlyOpen で「空き」表示になる）。
+    expect(customerBooking).toMatch(
+      /slot\.notAccepting && !slot\.blocked\s*\n\s*\? <span className="text-destructive\/70">\{t\("booking\.slotFull"\)\}<\/span>/,
+    );
+    expect(customerBooking, "受付外の専用ラベルが復活している").not.toContain("slotNotAccepting");
+    // 空き待ちの対象にもしない（帯は永久に空かない。締切後の満枠も待てないので見分けは付かない）
     expect(customerBooking).toMatch(/&& !slot\.notAccepting/);
+  });
+
+  it("🔴 帯の存在がお客様向けの文言に漏れない（すべて満枠の体裁）", () => {
+    // クライアントのエラー文言（単発・定期・リスケの GB006 分岐が全部この1キーを使う）
+    // 🔴 否定と肯定の両建てで見る。否定だけだと「受け付けていません」（受付の2文字が
+    //    連続しない）をすり抜ける——変異検証で実際にすり抜けた穴。
+    const fullWording: Record<string, RegExp> = {
+      ja: /満枠/,
+      en: /fully booked/i,
+      ko: /만석/,
+      "zh-CN": /约满/,
+      "zh-TW": /約滿/,
+    };
+    for (const [lang, full] of Object.entries(fullWording)) {
+      const d = JSON.parse(readFileSync(`src/locales/${lang}.json`, "utf8"));
+      const bw = d.blockedWindows;
+      expect(bw.errorNotAccepting, `${lang}: 満枠の語が入っていない`).toMatch(full);
+      expect(bw.errorNotAccepting, `${lang}: 受付しない旨が漏れている`).not.toMatch(
+        /受付|受け付け|not accept|접수|受理/i,
+      );
+      // 消したキーが復活していない（復活すると grid や toast で使われ直すおそれ）
+      expect(bw.slotNotAccepting, `${lang}: slotNotAccepting が復活`).toBeUndefined();
+      expect(bw.repeatSkippedBlocked, `${lang}: repeatSkippedBlocked が復活`).toBeUndefined();
+      // 店側向けの案内は明示のまま（お客様には出ない文言）
+      expect(bw.errorNotAcceptingProxy, `${lang}: 店側向けの文言が消えた`).toBeTruthy();
+    }
+    // 定期予約のスキップ通知: 帯スキップは満枠スキップに合流（専用トーストを出さない）
+    expect(customerBooking).not.toContain("repeatSkippedBlocked");
+    // DB の GB006 メッセージ（旧クライアントにだけ届く）も満枠の体裁。ERRCODE は GB006 のまま
+    const gb006 = lastFnBlocked();
+    expect(gb006).toMatch(/RAISE EXCEPTION '[^']*満枠[^']*'/);
+    expect(gb006).not.toMatch(/RAISE EXCEPTION '[^']*受け付けていません[^']*'/);
+    expect(gb006).toMatch(/ERRCODE = 'GB006'/);
   });
 
   it("🔴 免除のお客様には帯を効かせない（免除は帯より強い）", () => {

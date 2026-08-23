@@ -475,10 +475,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         list.map((sk) => formatJST(`${sk.date}T00:00:00+09:00`, "M/d", { locale: ja })).join("、");
       const planSkipped = skipped.filter((sk) => isPlanLimitError({ code: sk.code }));
       const limitSkipped = skipped.filter((sk) => isBookingLimitError({ code: sk.code }));
-      const blockSkipped = skipped.filter((sk) => isBlockedWindowError({ code: sk.code }));
+      // 帯（GB006）でスキップした週も「満枠のためスキップ」に合流させる（2026-08-23）。
+      // 別の文言で出すと帯の存在がお客様に見えるため、満枠スキップと区別しない。
       const otherSkipped = skipped.filter(
-        (sk) => !isBookingLimitError({ code: sk.code }) && !isPlanLimitError({ code: sk.code })
-          && !isBlockedWindowError({ code: sk.code }),
+        (sk) => !isBookingLimitError({ code: sk.code }) && !isPlanLimitError({ code: sk.code }),
       );
       if (otherSkipped.length > 0) {
         toast.info(t("booking.repeatSkipped", { count: otherSkipped.length, dates: fmtDates(otherSkipped) }));
@@ -488,9 +488,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       }
       if (planSkipped.length > 0) {
         toast.info(t("planSessions.repeatSkippedPlan", { count: planSkipped.length, dates: fmtDates(planSkipped) }));
-      }
-      if (blockSkipped.length > 0) {
-        toast.info(t("blockedWindows.repeatSkippedBlocked", { count: blockSkipped.length, dates: fmtDates(blockSkipped) }));
       }
     } else {
       const { data, error } = await createBooking(
@@ -1161,8 +1158,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                       <span>{slot.time}</span>
                       {!slot.available && (
                         <span className="block text-[9px] font-medium">
+                          {/* 受付しない帯は「満枠」と完全に同じ表示にする（2026-08-23 店の要望）。
+                              「受付外」と出すと帯で意図的に閉めていることがお客様に見えるため、
+                              普通に埋まった枠と見分けが付かないようにする。分岐自体は残す
+                              （落とすと 締切後(tooSoon) の帯が viewOnlyOpen で「空き」表示になる） */}
                           {slot.notAccepting && !slot.blocked
-                            ? <span className="text-muted-foreground">{t("blockedWindows.slotNotAccepting")}</span>
+                            ? <span className="text-destructive/70">{t("booking.slotFull")}</span>
                             : slot.overLimit && !slot.blocked
                             ? <span className="text-muted-foreground">{t("bookingLimits.slotLimitReached")}</span>
                             : viewOnlyOpen

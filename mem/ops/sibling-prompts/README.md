@@ -28,3 +28,4 @@
 | 7 | `blocked-slots-recurrence.md` | くり返しブロック（毎週×N週） | なし |
 | 8 | `booking-blocked-windows.md` | 受付しない時間帯（2026-08-21 作成・既存） | なし（4 があれば免除と繋がる） |
 | 9 | `workout-memo-visible.md` | 記録のメモを一覧で常時表示（小） | なし |
+| 10 | `settings-categories.md` | 店側の設定画面をカテゴリー分けして2階層に | なし（設定画面が長くなったアプリだけ） |

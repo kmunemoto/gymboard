@@ -18,9 +18,12 @@ import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 // ここは間の「設定画面にトグルが出るか」を見る。3つ揃って初めて
 // 「定義したのに設定に出てこない」「設定にあるのに効かない」の両方を塞げる。
 //
-// カテゴリー別アコーディオンは一度導入したが、オーナーの意向で撤回し
-// 1本の縦並びリストに戻した（2026-07-26）。招待コードが最上部にあることは
-// 引き続き担保する。
+// 画面の階層の経緯:
+// - カテゴリー別アコーディオンを一度導入 → オーナーの意向で撤回し1本の縦並びに（2026-07-26）
+// - 2026-08-23 にオーナー自身の依頼で「一覧（カテゴリーの行）→ タップで該当ページ」の
+//   2階層に変更（iOS の設定アプリ式）。**招待コードだけは一覧の最上部に残す**
+//   （2026-07-26 の「開いてすぐ使える」要望はこの形でも生きている）。
+// 表示設定などは「表示・テーマ」カテゴリーを開いてから検査する。
 
 const tenantRef = { current: null as Tenant | null };
 const refetchTenant = vi.fn();
@@ -123,32 +126,49 @@ beforeEach(() => {
   tenantRef.current = makeTenant();
 });
 
+// 「表示・テーマ」カテゴリーを開く（表示設定のトグル類はこの下にある）
+const openDisplayCategory = () => {
+  fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.display")));
+};
+
 describe("TrainerGymSettings（設定画面の構造）", () => {
-  it("招待コードが最上部（他のカードより前）に表示される", () => {
-    // お客様の招待に日常的に使うため、画面を開いてすぐ使えること（オーナー要望）
+  it("🔴 招待コードは一覧の最上部にあり、開閉操作なしで見える", () => {
+    // お客様の招待に日常的に使うため、画面を開いてすぐ使えること（2026-07-26 オーナー要望。
+    // 2026-08-23 のカテゴリー分け後も招待コードだけはカテゴリーの外・一覧の最上部に置く）
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
     const invite = screen.getByTestId("invite-code-card");
-    if (!TRIAL_BOOKING_ENABLED) {
-      // フォークでフラグがOFFなら体験予約リンクカード自体が無いので、比較対象を持たない
-      expect(screen.queryByTestId("trial-link-card")).toBeNull();
-      return;
-    }
-    const trialLink = screen.getByTestId("trial-link-card");
-    // DOM 上で招待コードが先 = 画面上でより上
-    expect(invite.compareDocumentPosition(trialLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // カテゴリーの行（基本情報）より DOM 上で前 = 画面上でより上
+    const firstRow = screen.getByText(i18n.t("settings.trainer.cat.profile"));
+    expect(invite.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("カテゴリーのアコーディオンで折りたたまれず、全項目が最初から見えている", () => {
-    // カテゴリー別アコーディオンは一度導入したが撤回した。開閉操作なしで
-    // 表示設定のトグルが見えることを担保する。
+  it("一覧にカテゴリーの行が出て、タップで該当ページへ・戻るで一覧へ", () => {
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    // 一覧: 主要カテゴリーの行が見える（体験予約はフラグ依存）
+    for (const key of ["profile", "members", "plans", "hours", "rules", "comms", "display", "help", "feedback"]) {
+      expect(screen.getByText(i18n.t(`settings.trainer.cat.${key}`)), `${key} の行が無い`).toBeTruthy();
+    }
+    if (TRIAL_BOOKING_ENABLED) {
+      expect(screen.getByText(i18n.t("settings.trainer.cat.trial"))).toBeTruthy();
+    } else {
+      expect(screen.queryByText(i18n.t("settings.trainer.cat.trial"))).toBeNull();
+    }
+    // 一覧の時点では表示設定のトグルは出ていない（2階層になっている）
+    expect(screen.queryByText(i18n.t("settings.trainer.displaySection"))).toBeNull();
+    // 開く → 表示設定が見える
+    openDisplayCategory();
     expect(screen.getByText(i18n.t("settings.trainer.displaySection"))).toBeTruthy();
     expect(screen.getAllByRole("switch").length).toBeGreaterThanOrEqual(VISIBLE_TOGGLES.length);
+    // 戻る → 一覧（招待コード）が見える。カテゴリー表示中の「ジム設定」の文字は
+    // 戻るボタンだけなので getByText で一意に取れる
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.title")));
+    expect(screen.getByTestId("invite-code-card")).toBeTruthy();
   });
 
   it("定義済みの表示トグルが全て出る（体験予約関連はTRIAL_BOOKING_ENABLEDに従う）", () => {
     // ここが落ちる = gymDisplaySettings に足したのに設定画面へ出し忘れている
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    openDisplayCategory();
 
     expect(ALL_TOGGLES.length).toBe(17);
     for (const { column, labelKey } of ALL_TOGGLES) {
@@ -166,6 +186,7 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
   it("トグルの初期状態がテナントの設定値どおりになる", () => {
     tenantRef.current = makeTenant({ show_nav_messages: false });
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    openDisplayCategory();
 
     const row = screen.getByText(i18n.t("trainerNav.messages")).closest("div")!;
     expect(within(row).getByRole("switch").getAttribute("aria-checked")).toBe("false");
@@ -176,6 +197,7 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
 
   it("表示量プリセットの3ボタンが出て、今の設定に一致するものが選択状態になる", () => {
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    openDisplayCategory();
     for (const preset of GYM_DISPLAY_PRESETS) {
       expect(
         screen.getByText(i18n.t(`settings.trainer.displayPreset.${preset}`)),
@@ -189,6 +211,7 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
   it("プリセットを押すと17項目をまとめて保存する", async () => {
     // 1項目ずつ17回 update する実装だと、途中で失敗したとき中途半端な状態が残る
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    openDisplayCategory();
 
     fireEvent.click(screen.getByText(i18n.t("settings.trainer.displayPreset.simple")));
 
@@ -201,6 +224,7 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
   it("トグルを切ると、その列だけを tenants に保存して再取得する", async () => {
     // ここが落ちる = スイッチは動くのに保存されない / 別の列を書き換えている
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    openDisplayCategory();
 
     const row = screen.getByText(i18n.t("trainerNav.messages")).closest("div")!;
     fireEvent.click(within(row).getByRole("switch"));

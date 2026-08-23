@@ -9,6 +9,10 @@ import "@testing-library/jest-dom";
 // 上書きしてから動的 import しているため影響しない。
 localStorage.setItem("i18nextLng", "ja");
 
+// jsdom は window.scrollTo を実装していない（呼ぶと Not implemented のエラーログが出る）。
+// 設定画面のカテゴリー遷移や予約画面がスクロール制御に使うため、無害な実装を入れておく。
+Object.defineProperty(window, "scrollTo", { writable: true, value: () => {} });
+
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({

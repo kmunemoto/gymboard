@@ -353,7 +353,17 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     }
   };
 
-  const addExercise = () => setExercises([...exercises, { exerciseId: "", name: "", sets: [{ weight: "", reps: "" }] }]);
+  const addExercise = () => {
+    const nextIndex = exercises.length;
+    setExercises([...exercises, { exerciseId: "", name: "", sets: [{ weight: "", reps: "" }] }]);
+    // iOS 実機で「追加を押すとページ先頭まで飛ぶ」報告あり（直前までキーボードが
+    // 開いていると、収納時の WebView リサイズと再レンダーが重なって起きる）。
+    // 描画とキーボードの収納が落ち着いてから、追加した種目カードへ明示的に
+    // スクロールして着地させる（飛ばなかった場合も新しい入力欄に直行できる）。
+    setTimeout(() => {
+      document.getElementById(`training-exercise-${nextIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 350);
+  };
   const updateExerciseSet = (exIdx: number, setIdx: number, field: keyof SetEntry, value: string) => {
     const updated = [...exercises];
     const updatedSets = [...updated[exIdx].sets];
@@ -1436,7 +1446,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
 
               <div className="space-y-3">
                 {exercises.map((ex, i) => (
-                  <div key={i} className="rounded-xl border border-border p-3 bg-muted/30 space-y-2">
+                  <div key={i} id={`training-exercise-${i}`} className="rounded-xl border border-border p-3 bg-muted/30 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-muted-foreground">{t("clientDetail.exerciseNum", { n: i + 1 })}</span>
                       {exercises.length > 1 && (
@@ -1545,7 +1555,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 ))}
               </div>
 
-              <Button variant="outline" size="sm" onClick={addExercise} className="w-full gap-1.5 h-11">
+              <Button type="button" variant="outline" size="sm" onClick={addExercise} className="w-full gap-1.5 h-11">
                 <Plus className="w-3.5 h-3.5" />
                 {t("clientDetail.addExercise")}
               </Button>

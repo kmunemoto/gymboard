@@ -11,7 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Upload, Trash2, Image, User, Save, LogOut, Settings, CalendarOff } from "lucide-react";
+import {
+  Upload, Trash2, Image, User, Save, LogOut, Settings, CalendarOff,
+  Building2, Users, CreditCard, Clock, CalendarCheck2, Sparkles, Mail,
+  SlidersHorizontal, BookOpen, MessageSquare, ChevronRight, ChevronLeft,
+  type LucideIcon,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerStaffManager from "./TrainerStaffManager";
@@ -91,7 +96,20 @@ const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 // （実際に表示を出し分ける TrainerSidebar / TrainerDashboard と同じ定義を参照し、
 //  「設定にはあるが効かない」といったズレを防ぐ）。
 
+type SettingsCategory =
+  | "profile"
+  | "members"
+  | "plans"
+  | "hours"
+  | "rules"
+  | "trial"
+  | "comms"
+  | "display"
+  | "help"
+  | "feedback";
+
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
+  const [settingsView, setSettingsView] = useState<SettingsCategory | null>(null);
   const { t } = useTranslation();
   const { tenant, role, refetch: refetchTenant } = useTenant();
   const { user } = useAuth();
@@ -609,112 +627,218 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
 
 
+  // === 設定のカテゴリー分け（2026-08-23） ===
+  // 項目が20超に伸びて1枚の縦一覧では目的の設定に辿り着けなくなったため、
+  // iOS の設定アプリ式に「一覧（カテゴリーの行）→ タップで該当ページ」の2階層にした。
+  // 各セクションの中身・保存ロジックには手を付けていない（表示の出し分けだけ）。
+  const settingsMenu: {
+    key: string;
+    items: { key: SettingsCategory; icon: LucideIcon; enabled: boolean }[];
+  }[] = [
+    {
+      key: "groupGym",
+      items: [
+        { key: "profile", icon: Building2, enabled: true },
+        { key: "members", icon: Users, enabled: role === "owner" },
+        { key: "plans", icon: CreditCard, enabled: true },
+      ],
+    },
+    {
+      key: "groupBooking",
+      items: [
+        { key: "hours", icon: Clock, enabled: true },
+        { key: "rules", icon: CalendarCheck2, enabled: true },
+        { key: "trial", icon: Sparkles, enabled: TRIAL_BOOKING_ENABLED },
+      ],
+    },
+    {
+      key: "groupGuide",
+      items: [
+        { key: "comms", icon: Mail, enabled: true },
+        { key: "display", icon: SlidersHorizontal, enabled: true },
+      ],
+    },
+    {
+      key: "groupSupport",
+      items: [
+        { key: "help", icon: BookOpen, enabled: true },
+        { key: "feedback", icon: MessageSquare, enabled: true },
+      ],
+    },
+  ];
+  const openCategory = (key: SettingsCategory) => {
+    setSettingsView(key);
+    window.scrollTo({ top: 0 });
+  };
+  const backToMenu = () => {
+    setSettingsView(null);
+    window.scrollTo({ top: 0 });
+  };
+  const activeItem = settingsMenu.flatMap((g) => g.items).find((i) => i.key === settingsView) ?? null;
+  const ActiveIcon = activeItem?.icon ?? Settings;
+
   return (
     <div className="space-y-6 pb-24 md:pb-0 max-w-lg">
-      <h2 className="text-lg sm:text-xl font-black flex items-center gap-2">
-        <Settings className="w-5 h-5 text-accent" />
-        {t("settings.trainer.title")}
-      </h2>
+      {settingsView === null ? (
+        <h2 className="text-lg sm:text-xl font-black flex items-center gap-2">
+          <Settings className="w-5 h-5 text-accent" />
+          {t("settings.trainer.title")}
+        </h2>
+      ) : (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={backToMenu}
+            className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors -ml-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            {t("settings.trainer.title")}
+          </button>
+          <h2 className="text-lg sm:text-xl font-black flex items-center gap-2">
+            <ActiveIcon className="w-5 h-5 text-accent" />
+            {t(`settings.trainer.cat.${settingsView}`)}
+          </h2>
+        </div>
+      )}
 
-      {/* === 招待コード === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.invite")}</h3>
-        <InviteCodeCard />
-      </section>
-
-      <Separator />
-
-      {/* === スタッフ管理（オーナーのみ。オーナー以外には何も描画されない） === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("staff.sectionTitle")}</h3>
-        <TrainerStaffManager />
-      </section>
-
-      {TRIAL_BOOKING_ENABLED && (
+      {settingsView === null && (
         <>
-          <Separator />
-
-          {/* === 体験予約リンク === */}
+          {/* 🔴 招待コードは階層化しても一覧の最上部に置いたまま（2026-07-26 のオーナー要望:
+              お客様の招待に日常的に使うため、画面を開いてすぐ使えること。
+              2026-08-23 のカテゴリー分けでもこの要望は生きている）。 */}
           <section className="space-y-3">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
-            <TrialLinkCard />
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.invite")}</h3>
+            <InviteCodeCard />
           </section>
 
+          {settingsMenu.map((group) => {
+            const items = group.items.filter((i) => i.enabled);
+            if (items.length === 0) return null;
+            return (
+              <section key={group.key} className="space-y-2">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  {t(`settings.trainer.cat.${group.key}`)}
+                </h3>
+                <Card className="overflow-hidden">
+                  <CardContent className="p-0 divide-y divide-border">
+                    {items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => openCategory(item.key)}
+                          className="w-full flex items-center gap-3 p-3.5 text-left hover:bg-muted/50 active:bg-muted transition-colors"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                            <Icon className="w-4 h-4 text-accent" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm">{t(`settings.trainer.cat.${item.key}`)}</p>
+                            <p className="text-xs text-muted-foreground truncate">{t(`settings.trainer.cat.${item.key}Desc`)}</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                        </button>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              </section>
+            );
+          })}
+
           <Separator />
 
-          {/* === 体験予約ページの案内文 === */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPageSection")}</h3>
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <p className="text-xs text-muted-foreground">{t("settings.trainer.trialInfoDesc")}</p>
-                <div className="space-y-1.5">
-                  <Label htmlFor="trial-info-title" className="text-xs font-bold">{t("settings.trainer.trialInfoTitleLabel")}</Label>
-                  <Input
-                    id="trial-info-title"
-                    value={trialInfoTitle}
-                    onChange={(e) => setTrialInfoTitle(e.target.value)}
-                    placeholder={t("trialBooking.infoTitle")}
-                    maxLength={40}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="trial-info-body" className="text-xs font-bold">{t("settings.trainer.trialInfoBodyLabel")}</Label>
-                  <Textarea
-                    id="trial-info-body"
-                    value={trialInfoBody}
-                    onChange={(e) => setTrialInfoBody(e.target.value)}
-                    placeholder={t("trialBooking.infoBody")}
-                    rows={3}
-                    maxLength={300}
-                  />
-                </div>
-                <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
-                  <Save className="w-4 h-4 mr-1" />
-                  {savingTrialInfo ? t("common.saving") : t("common.save")}
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
-
-          <Separator />
-
-          {/* === 体験の料金 ===
-              ジムごとの設定。**コードに金額を書かない**（本番には14テナントいて、
-              無料体験で集客しているジムもある）。空欄なら料金を出さない＝従来の見た目。 */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPriceSection")}</h3>
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <p className="text-xs text-muted-foreground">{t("settings.trainer.trialPriceDesc")}</p>
-                <div className="space-y-1.5">
-                  <Label htmlFor="trial-price" className="text-xs font-bold">{t("settings.trainer.trialPriceLabel")}</Label>
-                  <Input
-                    id="trial-price"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={1000000}
-                    step={100}
-                    value={trialPrice}
-                    onChange={(e) => setTrialPrice(e.target.value)}
-                    placeholder={t("settings.trainer.trialPricePlaceholder")}
-                  />
-                  {trialPrice.trim() === "" && (
-                    <p className="text-[11px] text-muted-foreground">{t("settings.trainer.trialPriceUnset")}</p>
-                  )}
-                </div>
-                <Button onClick={handleSaveTrialPrice} disabled={savingTrialPrice || !tenant} size="sm" className="h-10">
-                  <Save className="w-4 h-4 mr-1" />
-                  {savingTrialPrice ? t("common.saving") : t("common.save")}
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
+      {/* === ログアウト === */}
+      <section className="space-y-3">
+        <Button
+          variant="outline"
+          className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive font-bold"
+          onClick={onSignOut}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          {t("settings.logout")}
+        </Button>
+        {/* オーナーは、引き継ぐか閉じるかしないとアカウントを削除できない。
+            2026-08-13 まで**その手段が無く行き止まり**だった（GymOwnershipActions の冒頭）。 */}
+        {role === "owner" && (
+          <GymOwnershipActions
+            gymName={tenant?.gym_name ?? null}
+            onChanged={() => {
+              void refetchTenant();
+            }}
+          />
+        )}
+        <DeleteAccountButton />
+      </section>
         </>
       )}
 
-      <Separator />
+      {/* === 基本情報: 表示名・ロゴ・連絡先・LINE・口コミ === */}
+      {settingsView === "profile" && (
+        <>
+      {/* === プロフィール === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.profileSection")}</h3>
+
+        {/* トレーナー表示名 */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">{t("settings.trainer.displayName")}</h3>
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.displayNameDesc")}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("settings.trainer.displayNamePlaceholder")} className="flex-1" />
+              <Button onClick={handleSaveName} disabled={savingName || !displayName.trim()} size="sm" className="h-10">
+                <Save className="w-4 h-4 mr-1" />
+                {savingName ? t("common.saving") : t("common.save")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ロゴ画像 */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                <Image className="w-4 h-4 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">{t("settings.trainer.logo")}</h3>
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.logoDesc")}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 shrink-0">
+                {tenant?.logo_url ? (
+                  <img src={tenant.logo_url} alt={t("settings.trainer.logoAlt")} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">{t("common.notSet")}</span>
+                )}
+              </div>
+              <div className="flex gap-2 flex-1">
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+                <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm" className="flex-1">
+                  <Upload className="w-4 h-4 mr-1" />
+                  {uploading ? t("common.processing") : tenant?.logo_url ? t("settings.trainer.change") : t("settings.trainer.upload")}
+                </Button>
+                {tenant?.logo_url && (
+                  <Button variant="destructive" onClick={handleDelete} disabled={uploading} size="sm">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
       {/* === 連絡先メールアドレス === */}
       <section className="space-y-3">
@@ -741,8 +865,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </Card>
       </section>
 
-      <Separator />
-
       {/* === 電話番号 === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.contactPhoneSection")}</h3>
@@ -767,8 +889,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           </CardContent>
         </Card>
       </section>
-
-      <Separator />
 
       {/* === LINE連絡先 === */}
       <section className="space-y-3">
@@ -800,8 +920,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           フラグで無効化できるようにしてある（src/lib/featureFlags.ts）。 */}
       {GOOGLE_REVIEW_ENABLED && (
         <>
-          <Separator />
-
           {/* === Google口コミ依頼 === */}
           <section className="space-y-3">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.googleReviewSection")}</h3>
@@ -829,17 +947,43 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           </section>
         </>
       )}
+        </>
+      )}
 
-      <Separator />
+      {/* === スタッフ管理（オーナーのみ。一覧の行も role で出し分ける） === */}
+      {settingsView === "members" && (
+        <>
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("staff.sectionTitle")}</h3>
+        <TrainerStaffManager />
+      </section>
+        </>
+      )}
 
+      {/* === プラン・お支払い === */}
+      {settingsView === "plans" && (
+        <>
       {/* === プラン管理 === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.planManage")}</h3>
         <TrainerPlanManager />
       </section>
 
-      <Separator />
+      {/* GymBoard SaaS の請求。課金無効化中は非表示 */}
+      {BILLING_ENABLED && (
+        <>
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
+            <TrainerBilling />
+          </section>
+        </>
+      )}
+        </>
+      )}
 
+      {/* === 営業時間・受け入れ枠 === */}
+      {settingsView === "hours" && (
+        <>
       {/* === 営業時間 === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.businessHoursSection")}</h3>
@@ -1012,81 +1156,35 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </Card>
       </section>
 
-      <Separator />
-
       {/* === 時間帯別の同時受け入れ数 === 営業時間カードの capacity を時間帯で上書きする */}
       <section className="space-y-3">
         <TrainerCapacityWindows />
       </section>
 
-      <Separator />
-
       {/* === スタッフ別のシフト === 担当を指名する店だけに関係する。2人以上のジムでのみ描画される */}
       <section className="space-y-3">
         <TrainerStaffSchedule />
       </section>
+        </>
+      )}
 
-      <Separator />
-
+      {/* === 予約のルール === */}
+      {settingsView === "rules" && (
+        <>
       {/* === 予約回数の制限 === 混み合う時間帯に、お一人が取れる回数を絞る */}
       <section className="space-y-3">
         <TrainerBookingLimits />
       </section>
-
-      <Separator />
 
       {/* === 受付しない時間帯 === 開始時刻を揃えて夜の枠数を確保する（両端の時刻は受け付ける） */}
       <section className="space-y-3">
         <TrainerBlockedWindows />
       </section>
 
-      <Separator />
-
       {/* === 予約時のカスタム質問（事前アンケート） === */}
       <section className="space-y-3">
         <TrainerBookingQuestions />
       </section>
-
-      <Separator />
-
-      {/* === 予約確認メール・リマインドメールに足す、店からの案内 === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-          {t("settings.trainer.emailNoteSection")}
-        </h3>
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">{t("settings.trainer.emailNoteDesc")}</p>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">{t("settings.trainer.bookingEmailNoteLabel")}</Label>
-              <Textarea
-                value={bookingEmailNote}
-                onChange={(e) => setBookingEmailNote(e.target.value)}
-                maxLength={EMAIL_NOTE_MAX_LENGTH}
-                rows={3}
-                placeholder={t("settings.trainer.bookingEmailNotePlaceholder")}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">{t("settings.trainer.reminderEmailNoteLabel")}</Label>
-              <Textarea
-                value={reminderEmailNote}
-                onChange={(e) => setReminderEmailNote(e.target.value)}
-                maxLength={EMAIL_NOTE_MAX_LENGTH}
-                rows={3}
-                placeholder={t("settings.trainer.reminderEmailNotePlaceholder")}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">{t("settings.trainer.emailNoteUnset")}</p>
-            <Button onClick={handleSaveEmailNotes} disabled={savingEmailNotes || !tenant} size="sm" className="h-10">
-              <Save className="w-4 h-4 mr-1" />
-              {savingEmailNotes ? t("common.saving") : t("common.save")}
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
-
-      <Separator />
 
       {/* === 予約ポリシー === */}
       <section className="space-y-3">
@@ -1134,9 +1232,153 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           </CardContent>
         </Card>
       </section>
+        </>
+      )}
 
-      <Separator />
+      {/* === 体験予約（機能フラグでカテゴリーごと非表示） === */}
+      {TRIAL_BOOKING_ENABLED && settingsView === "trial" && (
+        <>
+          {/* === 体験予約リンク === */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialLinkSection")}</h3>
+            <TrialLinkCard />
+          </section>
 
+          {/* === 体験予約ページの案内文 === */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPageSection")}</h3>
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.trialInfoDesc")}</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trial-info-title" className="text-xs font-bold">{t("settings.trainer.trialInfoTitleLabel")}</Label>
+                  <Input
+                    id="trial-info-title"
+                    value={trialInfoTitle}
+                    onChange={(e) => setTrialInfoTitle(e.target.value)}
+                    placeholder={t("trialBooking.infoTitle")}
+                    maxLength={40}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trial-info-body" className="text-xs font-bold">{t("settings.trainer.trialInfoBodyLabel")}</Label>
+                  <Textarea
+                    id="trial-info-body"
+                    value={trialInfoBody}
+                    onChange={(e) => setTrialInfoBody(e.target.value)}
+                    placeholder={t("trialBooking.infoBody")}
+                    rows={3}
+                    maxLength={300}
+                  />
+                </div>
+                <Button onClick={handleSaveTrialInfo} disabled={savingTrialInfo || !tenant} size="sm" className="h-10">
+                  <Save className="w-4 h-4 mr-1" />
+                  {savingTrialInfo ? t("common.saving") : t("common.save")}
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* === 体験の料金 ===
+              ジムごとの設定。**コードに金額を書かない**（本番には14テナントいて、
+              無料体験で集客しているジムもある）。空欄なら料金を出さない＝従来の見た目。 */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialPriceSection")}</h3>
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t("settings.trainer.trialPriceDesc")}</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trial-price" className="text-xs font-bold">{t("settings.trainer.trialPriceLabel")}</Label>
+                  <Input
+                    id="trial-price"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={1000000}
+                    step={100}
+                    value={trialPrice}
+                    onChange={(e) => setTrialPrice(e.target.value)}
+                    placeholder={t("settings.trainer.trialPricePlaceholder")}
+                  />
+                  {trialPrice.trim() === "" && (
+                    <p className="text-[11px] text-muted-foreground">{t("settings.trainer.trialPriceUnset")}</p>
+                  )}
+                </div>
+                <Button onClick={handleSaveTrialPrice} disabled={savingTrialPrice || !tenant} size="sm" className="h-10">
+                  <Save className="w-4 h-4 mr-1" />
+                  {savingTrialPrice ? t("common.saving") : t("common.save")}
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        </>
+      )}
+
+      {/* === メール・通知 === */}
+      {settingsView === "comms" && (
+        <>
+      {/* === 予約確認メール・リマインドメールに足す、店からの案内 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          {t("settings.trainer.emailNoteSection")}
+        </h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.emailNoteDesc")}</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.bookingEmailNoteLabel")}</Label>
+              <Textarea
+                value={bookingEmailNote}
+                onChange={(e) => setBookingEmailNote(e.target.value)}
+                maxLength={EMAIL_NOTE_MAX_LENGTH}
+                rows={3}
+                placeholder={t("settings.trainer.bookingEmailNotePlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{t("settings.trainer.reminderEmailNoteLabel")}</Label>
+              <Textarea
+                value={reminderEmailNote}
+                onChange={(e) => setReminderEmailNote(e.target.value)}
+                maxLength={EMAIL_NOTE_MAX_LENGTH}
+                rows={3}
+                placeholder={t("settings.trainer.reminderEmailNotePlaceholder")}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">{t("settings.trainer.emailNoteUnset")}</p>
+            <Button onClick={handleSaveEmailNotes} disabled={savingEmailNotes || !tenant} size="sm" className="h-10">
+              <Save className="w-4 h-4 mr-1" />
+              {savingEmailNotes ? t("common.saving") : t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* === 朝のサマリー通知 === */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.dailySummarySection")}</h3>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-sm">{t("settings.trainer.dailySummaryTitle")}</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.dailySummaryDesc")}</p>
+              </div>
+              <Switch
+                checked={tenant?.daily_summary_enabled !== false}
+                disabled={savingDailySummary || !tenant}
+                onCheckedChange={handleToggleDailySummary}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+        </>
+      )}
+
+      {/* === 表示・テーマ === */}
+      {settingsView === "display" && (
+        <>
       {/* === 表示設定（ホーム画面の各パーツ・メニューの各タブをジムごとにON/OFF） === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.displaySection")}</h3>
@@ -1237,42 +1479,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </Card>
       </section>
 
-      <Separator />
-
-      {/* === 朝のサマリー通知 === */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.dailySummarySection")}</h3>
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h4 className="font-bold text-sm">{t("settings.trainer.dailySummaryTitle")}</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.dailySummaryDesc")}</p>
-              </div>
-              <Switch
-                checked={tenant?.daily_summary_enabled !== false}
-                disabled={savingDailySummary || !tenant}
-                onCheckedChange={handleToggleDailySummary}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <Separator />
-
-      {/* === プラン・お支払い（GymBoard SaaS）。課金無効化中は非表示 === */}
-      {BILLING_ENABLED && (
-        <>
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
-            <TrainerBilling />
-          </section>
-
-          <Separator />
-        </>
-      )}
-
       {/* === 言語 / Language === */}
       {LANGUAGE_SWITCHER_ENABLED && <LanguageSwitcher variant="trainer" />}
 
@@ -1281,110 +1487,30 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       {/* === 背景画像 / Background image === */}
       <BackgroundImagePicker variant="trainer" />
+        </>
+      )}
 
-      <Separator />
-
-      {/* === プロフィール === */}
+      {/* === 使い方ガイド === */}
+      {settingsView === "help" && (
+        <>
+      {/* === 使い方ガイド === */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.profileSection")}</h3>
-
-        {/* トレーナー表示名 */}
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                <User className="w-4 h-4 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm">{t("settings.trainer.displayName")}</h3>
-                <p className="text-xs text-muted-foreground">{t("settings.trainer.displayNameDesc")}</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("settings.trainer.displayNamePlaceholder")} className="flex-1" />
-              <Button onClick={handleSaveName} disabled={savingName || !displayName.trim()} size="sm" className="h-10">
-                <Save className="w-4 h-4 mr-1" />
-                {savingName ? t("common.saving") : t("common.save")}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ロゴ画像 */}
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                <Image className="w-4 h-4 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm">{t("settings.trainer.logo")}</h3>
-                <p className="text-xs text-muted-foreground">{t("settings.trainer.logoDesc")}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 shrink-0">
-                {tenant?.logo_url ? (
-                  <img src={tenant.logo_url} alt={t("settings.trainer.logoAlt")} className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-[10px] text-muted-foreground">{t("common.notSet")}</span>
-                )}
-              </div>
-              <div className="flex gap-2 flex-1">
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-                <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm" className="flex-1">
-                  <Upload className="w-4 h-4 mr-1" />
-                  {uploading ? t("common.processing") : tenant?.logo_url ? t("settings.trainer.change") : t("settings.trainer.upload")}
-                </Button>
-                {tenant?.logo_url && (
-                  <Button variant="destructive" onClick={handleDelete} disabled={uploading} size="sm">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <TrainerHelpGuide />
       </section>
+        </>
+      )}
 
-      <Separator />
-
+      {/* === 運営への要望 === */}
+      {settingsView === "feedback" && (
+        <>
       {/* === 運営への要望 ===
           店側の声を開発元に直接届けてもらう欄（2026-08-14）。
           メール通知は DB トリガー側の仕事。ここは INSERT するだけ。 */}
       <section className="space-y-3">
         <OperatorFeedback tenantId={tenant?.id ?? null} />
       </section>
-
-      <Separator />
-
-      {/* === 使い方ガイド === */}
-      <section className="space-y-3">
-        <TrainerHelpGuide />
-      </section>
-
-      {/* === ログアウト === */}
-      <section className="space-y-3">
-        <Button
-          variant="outline"
-          className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive font-bold"
-          onClick={onSignOut}
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          {t("settings.logout")}
-        </Button>
-        {/* オーナーは、引き継ぐか閉じるかしないとアカウントを削除できない。
-            2026-08-13 まで**その手段が無く行き止まり**だった（GymOwnershipActions の冒頭）。 */}
-        {role === "owner" && (
-          <GymOwnershipActions
-            gymName={tenant?.gym_name ?? null}
-            onChanged={() => {
-              void refetchTenant();
-            }}
-          />
-        )}
-        <DeleteAccountButton />
-      </section>
+        </>
+      )}
     </div>
   );
 };

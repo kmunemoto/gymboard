@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import i18n from "@/lib/i18n";
 import { upstreamOnly } from "./helpers/upstream";
@@ -136,6 +136,8 @@ describe("Google口コミ依頼セクション（TrainerGymSettings）", () => {
       GOOGLE_REVIEW_ENABLED: true,
     }));
     await setup();
+    // 2026-08-23 のカテゴリー分けで「基本情報」の下に移動した
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.profile")));
     expect(screen.getByText(i18n.t("settings.trainer.googleReviewSection"))).toBeTruthy();
   });
 
@@ -145,6 +147,7 @@ describe("Google口コミ依頼セクション（TrainerGymSettings）", () => {
       GOOGLE_REVIEW_ENABLED: false,
     }));
     await setup();
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.profile")));
     expect(screen.queryByText(i18n.t("settings.trainer.googleReviewSection"))).toBeNull();
   });
 
@@ -154,6 +157,8 @@ describe("Google口コミ依頼セクション（TrainerGymSettings）", () => {
       LANGUAGE_SWITCHER_ENABLED: true,
     }));
     await setup();
+    // 2026-08-23 のカテゴリー分けで「表示・テーマ」の下に移動した
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.display")));
     expect(screen.getByTestId("language-switcher")).toBeTruthy();
   });
 
@@ -163,6 +168,7 @@ describe("Google口コミ依頼セクション（TrainerGymSettings）", () => {
       LANGUAGE_SWITCHER_ENABLED: false,
     }));
     await setup();
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.display")));
     expect(screen.queryByTestId("language-switcher")).toBeNull();
   });
 });

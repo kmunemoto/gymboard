@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import i18n from "@/lib/i18n";
@@ -127,6 +127,8 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
       TRIAL_BOOKING_ENABLED: true,
     }));
     await setup();
+    // 2026-08-23 のカテゴリー分けで「体験予約」カテゴリーの下に移動した
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.trial")));
     expect(screen.getByTestId("trial-link-card")).toBeTruthy();
     expect(screen.getByText(i18n.t("settings.trainer.trialPageSection"))).toBeTruthy();
   });
@@ -137,6 +139,8 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
       TRIAL_BOOKING_ENABLED: false,
     }));
     await setup();
+    // カテゴリーの行ごと消える（開き先が無い）
+    expect(screen.queryByText(i18n.t("settings.trainer.cat.trial"))).toBeNull();
     expect(screen.queryByTestId("trial-link-card")).toBeNull();
     expect(screen.queryByText(i18n.t("settings.trainer.trialPageSection"))).toBeNull();
   });
@@ -147,6 +151,8 @@ describe("TrainerGymSettings: 体験予約関連セクション", () => {
       TRIAL_BOOKING_ENABLED: false,
     }));
     await setup();
+    // 表示設定は「表示・テーマ」カテゴリーの下。開いた上で行が無いことを見る
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.display")));
     expect(screen.queryByText(i18n.t("settings.trainer.displayTrialFollowUp"))).toBeNull();
     expect(screen.queryByText(i18n.t("trainerNav.trialFollowUps"))).toBeNull();
   });

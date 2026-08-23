@@ -2703,9 +2703,7 @@
     "cleared": "已解除所有不受理的时段。",
     "proxyNote": "此设置仅对会员自行预约生效。健身房从日程表代为添加的预约以及设有豁免的会员不受影响。",
     "rowHint": "恰好在 {{start}} 和 {{end}} 开始的预约照常受理（仅不受理在两者之间开始的预约）。",
-    "slotNotAccepting": "不受理",
-    "errorNotAccepting": "该时段不受理预约。请选择前后其他时间。",
-    "errorNotAcceptingProxy": "该时段已设为不受理（将自己选为顾客时会按本人预约处理。可在 健身房设置 → 不受理的时段 中修改）。",
-    "repeatSkippedBlocked": "有 {{count}} 次预约因该时段不受理而被跳过（{{dates}}）。"
+    "errorNotAccepting": "该时段已约满，无法预约。请选择其他时间。",
+    "errorNotAcceptingProxy": "该时段已设为不受理（将自己选为顾客时会按本人预约处理。可在 健身房设置 → 不受理的时段 中修改）。"
   }
 }

@@ -49,3 +49,39 @@ jobs:
       - name: Lint (informational)
         continue-on-error: true
         run: npx eslint .
+
+  # 主要導線の E2E（fixtures モードのUIスモーク）。
+  #
+  # 上の verify とは別ジョブにしてある。落ちたときに「型/ユニットが赤い」のか
+  # 「画面が開かない」のかが、ジョブ名だけで分かるようにするため。
+  #
+  # ブラウザはランナーに入れる。ローカルの開発コンテナには /opt/pw-browsers に
+  # プリインストール済みの実体があり、playwright.config.ts が存在チェックで
+  # 自動的に使い分ける（PW_CHROMIUM_PATH で上書きも可能）。
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # fixtures モードの dev サーバーは playwright.config.ts の webServer が起動する
+      - name: E2E
+        run: npm run test:e2e
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -33,3 +33,9 @@ GoogleService-Info.plist
 
 # tsc -b の増分ビルド情報（tsc 実行のたびに未追跡ファイルとして現れる）
 *.tsbuildinfo
+
+# Playwright（E2E の実行成果物）
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

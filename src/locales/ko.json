@@ -305,7 +305,9 @@
         "help": "사용 가이드",
         "helpDesc": "각 기능의 설명 보기",
         "feedback": "운영사에 요청",
-        "feedbackDesc": "개발사에 의견·요청 보내기"
+        "feedbackDesc": "개발사에 의견·요청 보내기",
+        "dataExport": "데이터 내보내기",
+        "dataExportDesc": "고객·예약·기록을 CSV로 저장"
       }
     },
     "notification": {
@@ -2731,5 +2733,29 @@
     "rowHint": "{{start}}와 {{end}} 정각에 시작하는 예약은 받습니다(그 사이에 시작하는 예약만 받지 않습니다).",
     "errorNotAccepting": "이 시간대는 만석이라 예약할 수 없습니다. 다른 시간을 선택해 주세요.",
     "errorNotAcceptingProxy": "이 시간대는 접수하지 않도록 설정되어 있습니다(자신을 고객으로 선택하면 본인 예약으로 처리됩니다. 짐 설정 → 접수하지 않는 시간대에서 변경할 수 있습니다)."
+  },
+  "dataExport": {
+    "section": "데이터 내보내기(CSV)",
+    "desc": "짐의 데이터를 CSV로 다운로드합니다. Excel이나 스프레드시트에서 열 수 있습니다. 다른 시스템으로 이전하거나 백업용으로 사용하세요.",
+    "download": "다운로드",
+    "done": "{{count}}건을 내보냈습니다",
+    "failed": "내보내기에 실패했습니다",
+    "emptyNotice": "대상 데이터가 없습니다(머리글만 있는 파일을 저장합니다)",
+    "excelNote": "Excel에서 바로 열립니다. 개인정보가 포함되어 있으니 취급에 주의해 주세요.",
+    "nativeHint": "앱에서는 파일을 저장할 수 없습니다. PC 브라우저에서 {{url}} 을 열어 다운로드해 주세요.",
+    "kind": {
+      "customers": "고객",
+      "bookings": "예약",
+      "workouts": "트레이닝 기록",
+      "measurements": "측정",
+      "payments": "입금"
+    },
+    "kindDesc": {
+      "customers": "이름·연락처·재적 상태·입회일",
+      "bookings": "일시·고객·담당·상태",
+      "workouts": "날짜·종목·중량·횟수",
+      "measurements": "체중·체지방률",
+      "payments": "입금일·금액·결제 수단"
+    }
   }
 }

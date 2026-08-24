@@ -305,7 +305,9 @@
         "help": "使用指南",
         "helpDesc": "查看各功能說明",
         "feedback": "向營運方回饋",
-        "feedbackDesc": "向開發方傳送意見與需求"
+        "feedbackDesc": "向開發方傳送意見與需求",
+        "dataExport": "資料匯出",
+        "dataExportDesc": "將顧客·預約·紀錄儲存為CSV"
       }
     },
     "notification": {
@@ -2731,5 +2733,29 @@
     "rowHint": "恰好在 {{start}} 和 {{end}} 開始的預約照常受理（僅不受理在兩者之間開始的預約）。",
     "errorNotAccepting": "該時段已約滿，無法預約。請選擇其他時間。",
     "errorNotAcceptingProxy": "該時段已設為不受理（將自己選為顧客時會按本人預約處理。可在 健身房設定 → 不受理的時段 中修改）。"
+  },
+  "dataExport": {
+    "section": "資料匯出（CSV）",
+    "desc": "將健身房的資料下載為CSV。可用 Excel 或試算表軟體開啟。可用於轉移到其他系統或保存備份。",
+    "download": "下載",
+    "done": "已匯出 {{count}} 筆",
+    "failed": "匯出失敗",
+    "emptyNotice": "沒有可匯出的資料（將儲存僅含標題的檔案）",
+    "excelNote": "可直接用 Excel 開啟。包含個人資料，請妥善保管。",
+    "nativeHint": "無法從應用程式內儲存檔案。請在電腦瀏覽器開啟 {{url}} 進行下載。",
+    "kind": {
+      "customers": "顧客",
+      "bookings": "預約",
+      "workouts": "訓練紀錄",
+      "measurements": "測量",
+      "payments": "收款"
+    },
+    "kindDesc": {
+      "customers": "姓名·聯絡方式·在籍狀態·入會日",
+      "bookings": "日期·顧客·負責人·狀態",
+      "workouts": "日期·項目·重量·次數",
+      "measurements": "體重·體脂率",
+      "payments": "收款日·金額·付款方式"
+    }
   }
 }

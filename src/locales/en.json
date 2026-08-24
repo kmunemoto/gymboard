@@ -305,7 +305,9 @@
         "help": "User guide",
         "helpDesc": "Learn how each feature works",
         "feedback": "Feedback to the operator",
-        "feedbackDesc": "Send requests and ideas to the developer"
+        "feedbackDesc": "Send requests and ideas to the developer",
+        "dataExport": "Data export",
+        "dataExportDesc": "Save customers, bookings and records as CSV"
       }
     },
     "notification": {
@@ -2731,5 +2733,29 @@
     "rowHint": "Bookings starting exactly at {{start}} or {{end}} are accepted (only starts between them are not).",
     "errorNotAccepting": "This slot is fully booked. Please choose another time.",
     "errorNotAcceptingProxy": "This window is set to not accept bookings (selecting yourself as the customer makes it a self-booking; change it in Gym Settings → Non-accepting time windows)."
+  },
+  "dataExport": {
+    "section": "Data export (CSV)",
+    "desc": "Download your gym's data as CSV. Opens in Excel or any spreadsheet app. Use it to migrate to another system or to keep your own backup.",
+    "download": "Download",
+    "done": "Exported {{count}} rows",
+    "failed": "Export failed",
+    "emptyNotice": "No data to export (saving a file with headers only)",
+    "excelNote": "Opens correctly in Excel. Contains personal information — please handle with care.",
+    "nativeHint": "Files cannot be saved from the app. Please open {{url}} in a desktop browser to download.",
+    "kind": {
+      "customers": "Customers",
+      "bookings": "Bookings",
+      "workouts": "Training records",
+      "measurements": "Measurements",
+      "payments": "Payments"
+    },
+    "kindDesc": {
+      "customers": "Name, contact, status, join date",
+      "bookings": "Date, customer, staff, status",
+      "workouts": "Date, exercise, weight, reps",
+      "measurements": "Weight and body fat",
+      "payments": "Date, amount, method"
+    }
   }
 }

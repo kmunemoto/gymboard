@@ -96,8 +96,14 @@ describe("同時受入数を店に確認する導線", () => {
   });
 
   it("オンボーディングを通った店は確認済みとして記録される", () => {
-    const onboarding = read("src/pages/Onboarding.tsx");
-    expect(onboarding).toMatch(/booking_capacity_confirmed_at/);
+    // ⚠️ 2026-08-24 に開設は RPC（create_gym_with_owner）へ畳んだので、
+    //    記録するのは SQL 側。ダッシュボードで二度聞かないための不変条件は変わらない
+    const sql = read("supabase/migrations/20260824010000_create_gym_transaction.sql");
+    const fn = sql.slice(
+      sql.indexOf("CREATE OR REPLACE FUNCTION public.create_gym_with_owner"),
+      sql.indexOf("REVOKE ALL ON FUNCTION"),
+    );
+    expect(fn, "開設時に確認済みとして記録していません").toMatch(/booking_capacity_confirmed_at/);
   });
 
   it("選択肢が設定画面・オンボーディングと揃っている", () => {

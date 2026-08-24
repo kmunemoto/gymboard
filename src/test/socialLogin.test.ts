@@ -152,8 +152,10 @@ describe("🔴 profiles の行はトリガーが作ってくれない", () => {
   // 丸ごと欠けて、ジム側ホームの挨拶が既定文言のままになっていた
   // （2026-08-08 に tenant_members.display_name から16件バックフィル済み）。
 
+  // ⚠️ ジム開設は 2026-08-24 に RPC（create_gym_with_owner）へ移した。
+  //    profiles を作る責務も RPC の中にあるので、見る先が SQL になる。
+  //    「誰かが必ず profiles を作る」という不変条件は変わっていない。
   const NEW_ROW_PATHS = [
-    ["src/pages/Onboarding.tsx", "ジム開設（オーナー）"],
     ["src/pages/JoinGym.tsx", "招待コードでの参加（お客様）"],
   ] as const;
 
@@ -179,6 +181,19 @@ describe("🔴 profiles の行はトリガーが作ってくれない", () => {
       const i = src.indexOf('.from("profiles")');
       expect(src.slice(i, i + 400), `${path}`).toMatch(/onConflict:\s*"user_id"/);
     }
+  });
+
+  it("ジム開設（オーナー）は RPC の中で profiles を作る", () => {
+    // 開設は create_gym_with_owner に畳んだ（2026-08-24）。
+    // ここが消えると、また開設したオーナーの profiles だけが欠ける
+    const sql = read("supabase/migrations/20260824010000_create_gym_transaction.sql");
+    const fn = sql.slice(
+      sql.indexOf("CREATE OR REPLACE FUNCTION public.create_gym_with_owner"),
+      sql.indexOf("REVOKE ALL ON FUNCTION"),
+    );
+    expect(fn, "RPC が profiles を作っていません").toMatch(/INSERT INTO public\.profiles/);
+    // ON CONFLICT が無いと、既に profiles がある人の開設で 23505 になる
+    expect(fn).toMatch(/ON CONFLICT \(user_id\) DO UPDATE/);
   });
 });
 

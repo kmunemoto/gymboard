@@ -37,7 +37,8 @@ bun run dev   # http://localhost:8080
 | `bun run build` | 本番ビルド |
 | `bun run build:dev` | development モードでビルド |
 | `bun run lint` | ESLint 実行 |
-| `bun run test` | Vitest 実行 |
+| `bun run test` | Vitest 実行（ユニット） |
+| `bun run test:e2e` | Playwright 実行（主要導線のスモーク。fixtures モードで自動起動） |
 | `bun run translate` | ロケールファイルの翻訳生成 |
 
 ### ログインせずに画面を確認する

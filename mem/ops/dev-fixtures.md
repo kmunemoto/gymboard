@@ -80,3 +80,6 @@ RLS・トランザクション・制約・トリガー・Realtime は再現し�
 // executablePath: '/opt/pw-browsers/chromium'（クラウドセッションの場合）
 // Vite の依存事前バンドルで初回が白くなるので、goto の後に reload を挟むこと
 ```
+
+このモードの上に、主要導線の E2E スモーク（`npm run test:e2e`）が乗っている。
+何を見て・何を見ていないかは `mem/ops/e2e-smoke.md`。

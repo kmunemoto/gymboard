@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import {
   Upload, Trash2, Image, User, Save, LogOut, Settings, CalendarOff,
   Building2, Users, CreditCard, Clock, CalendarCheck2, Sparkles, Mail,
-  SlidersHorizontal, BookOpen, MessageSquare, ChevronRight, ChevronLeft,
+  SlidersHorizontal, BookOpen, MessageSquare, ChevronRight, ChevronLeft, FileSpreadsheet,
   type LucideIcon,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -44,6 +44,7 @@ import TrainerBookingQuestions from "./TrainerBookingQuestions";
 import TrainerBookingLimits from "./TrainerBookingLimits";
 import TrainerCapacityWindows from "./TrainerCapacityWindows";
 import TrainerBlockedWindows from "./TrainerBlockedWindows";
+import TrainerDataExport from "./TrainerDataExport";
 import { formatWeekdayShort } from "@/lib/dateFormat";
 import {
   DASHBOARD_STAT_TOGGLES,
@@ -106,7 +107,8 @@ type SettingsCategory =
   | "comms"
   | "display"
   | "help"
-  | "feedback";
+  | "feedback"
+  | "dataExport";
 
 const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const [settingsView, setSettingsView] = useState<SettingsCategory | null>(null);
@@ -641,6 +643,8 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         { key: "profile", icon: Building2, enabled: true },
         { key: "members", icon: Users, enabled: role === "owner" },
         { key: "plans", icon: CreditCard, enabled: true },
+        // データの書き出しはオーナーだけ。顧客の連絡先や入金まで丸ごと出せるため
+        { key: "dataExport", icon: FileSpreadsheet, enabled: role === "owner" },
       ],
     },
     {
@@ -1496,6 +1500,16 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       {/* === 使い方ガイド === */}
       <section className="space-y-3">
         <TrainerHelpGuide />
+      </section>
+        </>
+      )}
+
+      {/* === データの書き出し（CSV） === */}
+      {settingsView === "dataExport" && (
+        <>
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("dataExport.section")}</h3>
+        <TrainerDataExport />
       </section>
         </>
       )}

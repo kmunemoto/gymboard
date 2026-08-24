@@ -305,7 +305,9 @@
         "help": "使い方ガイド",
         "helpDesc": "各機能の説明を見る",
         "feedback": "運営への要望",
-        "feedbackDesc": "開発元に意見・要望を送る"
+        "feedbackDesc": "開発元に意見・要望を送る",
+        "dataExport": "データの書き出し",
+        "dataExportDesc": "顧客・予約・記録などをCSVで保存"
       }
     },
     "notification": {
@@ -2731,5 +2733,29 @@
     "rowHint": "{{start}} と {{end}} ちょうどに始まる予約は受け付けます（その間に始まる予約だけを受け付けません）。",
     "errorNotAccepting": "この枠は満枠のためご予約いただけません。別の時間帯をお選びください。",
     "errorNotAcceptingProxy": "この時間帯は受付しない設定です（ご自身をお客様として選んだ場合は制限の対象になります。ジム設定 → 受付しない時間帯 で変更できます）"
+  },
+  "dataExport": {
+    "section": "データの書き出し（CSV）",
+    "desc": "ジムのデータをCSVでダウンロードします。Excelやスプレッドシートで開けます。他のシステムへの移行や、控えの保管に使ってください。",
+    "download": "ダウンロード",
+    "done": "{{count}}件を書き出しました",
+    "failed": "書き出しに失敗しました",
+    "emptyNotice": "対象のデータがありませんでした（見出しだけのファイルを保存します）",
+    "excelNote": "Excelでそのまま開けます（文字化け対策済み）。顧客の個人情報を含むため、取り扱いにご注意ください。",
+    "nativeHint": "アプリからはファイルを保存できません。パソコンのブラウザで {{url}} を開いてダウンロードしてください。",
+    "kind": {
+      "customers": "顧客",
+      "bookings": "予約",
+      "workouts": "トレーニング記録",
+      "measurements": "測定",
+      "payments": "入金"
+    },
+    "kindDesc": {
+      "customers": "名前・連絡先・在籍状態・入会日",
+      "bookings": "日時・顧客・担当・状態",
+      "workouts": "日付・種目・重量・回数",
+      "measurements": "体重・体脂肪率",
+      "payments": "入金日・金額・支払方法"
+    }
   }
 }

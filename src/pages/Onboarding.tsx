@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { getWebOrigin } from "@/lib/nativeBridge";
+import { DEFAULT_TENANT_MUSCLE_GROUPS } from "@/lib/tenantMuscleGroups";
 
 type BusinessType = "personal_gym" | "pilates" | "yoga" | "seitai" | "other";
 type CutoffType = "prev_day" | "hours_before";
@@ -144,9 +145,24 @@ const Onboarding = () => {
     setSubmitting(true);
     try {
       const cutoff = CUTOFF_OPTIONS.find((c) => c.value === cutoffValue)!;
-      const { data: tenant, error: tErr } = await supabase
-        .from("tenants")
-        .insert({
+      const ownerName = gymName.trim() + t("onboarding.ownerSuffix");
+
+      // 🔴 開設は RPC 1本＝1トランザクション（create_gym_with_owner）。
+      //
+      // 以前はここで tenants → tenant_plans → 表示プリセット → 部位 → tenant_members
+      // → profiles → user_roles と**8回に分けて書いて**いた。巻き戻しが1行も無いので、
+      // 途中で失敗すると:
+      //   ・tenants だけ残る「孤児テナント」ができる。しかも再試行は毎回 INSERT から
+      //     始まるので押すたびに1件ずつ増える（既存判定は tenant_members を見ており孤児は素通り）
+      //   ・tenant_members で失敗すると本人が非メンバーのまま残り、delete_my_gym の
+      //     本人確認（owner として在籍）に引っかかって**本人にも消せない**
+      //   ・部位のシードは tenant_members より前に居たため RLS に**必ず**弾かれていた
+      //     （エラーは console.error で握りつぶし。本番では 2026-07-29 以降の全ジムが部位0件だった）
+      // RPC は SECURITY DEFINER なので順序の問題ごと消え、失敗すれば何も残らない。
+      // ⚠️ `as never` は types.ts が未再生成のため（Lovable のボットがマージ後に生成する）。
+      //    既存の RPC 呼び出し（GymOwnershipActions）と同じ書き方に揃えている。
+      const { data, error } = await supabase.rpc("create_gym_with_owner" as never, {
+        _tenant: {
           gym_name: gymName.trim(),
           business_type: businessType,
           address: address.trim() || null,
@@ -158,89 +174,44 @@ const Onboarding = () => {
           operating_hours: { start: startTime, end: endTime },
           slot_duration_minutes: slotDuration,
           booking_capacity: bookingCapacity,
-          // ここで明示的に聞いているので「確認済み」。ダッシュボードで二度は聞かない。
-          booking_capacity_confirmed_at: new Date().toISOString(),
           booking_cutoff_type: cutoff.type,
           booking_cutoff_hours: cutoff.hours ?? 24,
-          owner_user_id: user.id,
-          status: "trial",
-          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-          gymboard_plan: "free",
-          max_customers: 5,
-        })
-        .select("id")
-        .single();
-      if (tErr || !tenant) throw tErr || new Error(t("onboarding.errTenantCreateFailed"));
+          // ⚠️ status / trial_ends_at / gymboard_plan / max_customers は**送らない**。
+          //    サーバー側（RPC）で trial・60日・free・上限5 に固定している。
+          //    以前はクライアントが申告していたので、API を直接叩けば premium で開設できた。
+        },
+        _plans: plans
+          .map((p) => ({
+            plan_name: p.name.trim(),
+            plan_type: p.type,
+            max_sessions: p.type === "period" ? null : p.maxSessions ? parseInt(p.maxSessions) : null,
+            price: parseInt(p.price) || 0,
+            validity_days:
+              p.type === "ticket" || p.type === "period"
+                ? p.validityDays ? parseInt(p.validityDays) : null
+                : null,
+          }))
+          .filter((p) => p.plan_name.length > 0),
+        _owner_name: ownerName,
+        _muscle_groups: [...DEFAULT_TENANT_MUSCLE_GROUPS],
+      } as never);
+      if (error) throw error;
+      // RETURNS TABLE なので配列で返る。念のため単体で返る形にも耐えるようにしておく
+      const rows = data as unknown as { tenant_id?: string; invite_code?: string }[] | { tenant_id?: string; invite_code?: string } | null;
+      const created = Array.isArray(rows) ? rows[0] : rows;
+      if (!created?.tenant_id) throw new Error(t("onboarding.errTenantCreateFailed"));
 
-      const validPlans = plans
-        .map((p, idx) => ({
-          tenant_id: tenant.id,
-          plan_name: p.name.trim(),
-          plan_type: p.type,
-          max_sessions: p.type === "period" ? null : p.maxSessions ? parseInt(p.maxSessions) : null,
-          price: parseInt(p.price) || 0,
-          validity_days: p.type === "ticket" || p.type === "period" ? (p.validityDays ? parseInt(p.validityDays) : null) : null,
-          sort_order: idx + 1,
-        }))
-        .filter((p) => p.plan_name.length > 0);
-      if (validPlans.length > 0) {
-        const { error: pErr } = await supabase.from("tenant_plans").insert(validPlans);
-        if (pErr) throw pErr;
-      }
-
-      // 画面に出す機能の量（表示プリセット）を適用する。
-      // DBの既定は全17項目 true なので、何もしないと新しいジムがいきなり全部盛りで始まる。
-      // 失敗しても登録自体は止めない（後から設定画面で変えられるため）。
+      // 画面に出す機能の量（表示プリセット）。DBの既定は全17項目 true なので、
+      // 何もしないと新しいジムがいきなり全部盛りで始まる。
+      // ここは失敗しても開設自体は成立している（後から設定画面で変えられる）ので、
+      // RPC の外に置いて、失敗しても止めない。
       const { error: dErr } = await supabase
         .from("tenants")
         .update(presetToValues(displayPreset) as never)
-        .eq("id", tenant.id);
+        .eq("id", created.tenant_id);
       if (dErr) console.error("[Onboarding] display preset failed:", dErr.message);
 
-      // トレーニング部位バランス(レーダーチャート)・種目管理の「部位」既定値をシードする
-      // (tenant_muscle_groups は既存テナントのみマイグレーションでバックフィル済みのため、
-      // 新規テナントはここで作らないと部位が0件になってしまう)。
-      const { DEFAULT_TENANT_MUSCLE_GROUPS } = await import("@/lib/tenantMuscleGroups");
-      const { error: gErr } = await supabase.from("tenant_muscle_groups").insert(
-        DEFAULT_TENANT_MUSCLE_GROUPS.map((name, idx) => ({
-          tenant_id: tenant.id,
-          name,
-          sort_order: idx,
-        })),
-      );
-      if (gErr) console.error("[Onboarding] muscle group seed failed:", gErr.message);
-
-      const { error: mErr } = await supabase.from("tenant_members").insert({
-        tenant_id: tenant.id,
-        user_id: user.id,
-        role: "owner",
-        status: "active",
-        display_name: gymName.trim() + t("onboarding.ownerSuffix"),
-      });
-      if (mErr) throw mErr;
-
-      // ⚠️ **upsert であること。`update` にしないこと。**
-      //
-      // `update` は対象行が無いと**エラーも出さずに0行更新で成功する。**
-      // profiles の行は auth.users の INSERT トリガー（handle_new_user）が
-      // 作る前提で書かれていたが、**本番にそのトリガーは存在しない**
-      // （2026-08-08 に確認。mem/auth/social-login.md）。
-      // そのため開設したオーナー14人ぶんの profiles が丸ごと欠けていて、
-      // ジム側ホームの挨拶が既定文言のままになっていた。
-      // JoinGym.tsx は最初から upsert なので、自分で参加したお客様は無事だった。
-      await supabase
-        .from("profiles")
-        .upsert(
-          { user_id: user.id, display_name: gymName.trim() + t("onboarding.ownerSuffix") },
-          { onConflict: "user_id" },
-        );
-
-      await supabase
-        .from("user_roles")
-        .upsert({ user_id: user.id, role: "trainer" }, { onConflict: "user_id,role" });
-
-      const { data: inviteCode } = await supabase.rpc("get_my_tenant_invite_code");
-      setCreatedTenant({ id: tenant.id, invite_code: (inviteCode as string) ?? "" });
+      setCreatedTenant({ id: created.tenant_id, invite_code: created.invite_code ?? "" });
       setStep(4);
     } catch (err) {
       toast({ title: t("onboarding.toastRegisterFailed"), description: err.message, variant: "destructive" });

@@ -1660,7 +1660,9 @@
     "hidePassword": "비밀번호 숨기기",
     "verifyingLink": "링크를 확인하는 중…",
     "processing": "처리 중...",
-    "submit": "비밀번호 변경하기"
+    "submit": "비밀번호 변경하기",
+    "inviteTitle": "환영합니다",
+    "inviteIntro": "짐에서 보낸 초대입니다. 비밀번호를 설정하면 예약과 트레이닝 기록을 앱에서 사용할 수 있습니다."
   },
   "unsubscribe": {
     "titlePrompt": "이메일 수신 중지",
@@ -2790,6 +2792,22 @@
       "duplicateInFilePhone": "이 파일 안에서 전화번호가 중복됩니다",
       "duplicateInFileName": "이 파일 안에서 이름이 중복됩니다"
     },
-    "unclaimedBadge": "미초대"
+    "unclaimedBadge": "미초대",
+    "invitedBadge": "초대됨",
+    "invite": {
+      "section": "앱으로 초대",
+      "desc": "이 고객은 CSV로 등록되어 아직 앱을 사용하지 않았습니다. 이메일 주소를 입력해 초대를 보내면 비밀번호 설정 안내가 전달됩니다.",
+      "descInvited": "초대를 이미 보냈습니다. 도착하지 않았거나 주소가 틀렸다면 올바른 주소로 다시 보낼 수 있습니다.",
+      "emailPlaceholder": "고객의 이메일 주소",
+      "send": "초대 보내기",
+      "resend": "다시 보내기",
+      "confirm": "{{email}} 주소로 초대를 보냅니다.\n\n⚠️ 주소가 틀리면 다른 사람이 이 고객의 기록을 사용할 수 있게 됩니다. 주소를 다시 확인해 주세요.",
+      "sent": "{{email}} 주소로 초대를 보냈습니다",
+      "statusInvited": "{{date}} 초대됨",
+      "errInvalidEmail": "이메일 주소 형식이 올바르지 않습니다",
+      "errEmailTaken": "이 주소는 이미 다른 계정에서 사용 중입니다. 고객에게 기존 계정으로 로그인하도록 안내해 주세요",
+      "errSuppressed": "이 주소로는 과거에 메일이 전달되지 않아 보낼 수 없습니다. 다른 주소를 확인해 주세요",
+      "errFailed": "초대를 보내지 못했습니다. 잠시 후 다시 시도해 주세요"
+    }
   }
 }

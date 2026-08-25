@@ -68,6 +68,7 @@ import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import TrainingGrowthChart from "./clientDetail/TrainingGrowthChart";
 import MemberInfoCard from "./clientDetail/MemberInfoCard";
+import MemberInviteCard from "./clientDetail/MemberInviteCard";
 import MemberPaymentsSection from "./clientDetail/MemberPaymentsSection";
 import MemberAgreementsSection from "./clientDetail/MemberAgreementsSection";
 import type { SetEntry, ExerciseEntry, ExerciseMaster, WorkoutRecord, MealRecord } from "./clientDetail/types";
@@ -1175,6 +1176,15 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             タブを増やさず概要の先頭に置いている。タブは最大7本まで埋まっていて、
             8本目を足すとモバイルでラベルが潰れるため（各テナントの機能フラグ次第で本数が変わる）。
           */}
+          {/* CSV で取り込んだ顧客で、本人がまだログインしていない場合だけ出る（オーナー限定） */}
+          {profile?.imported_at && !profile?.claimed_at && (
+            <MemberInviteCard
+              clientId={clientId}
+              invitedAt={profile?.invited_at ?? null}
+              onChanged={() => setMemberRefreshKey((k) => k + 1)}
+            />
+          )}
+
           <MemberInfoCard
             clientId={clientId}
             phone={profile?.phone ?? null}

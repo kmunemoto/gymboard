@@ -41,6 +41,8 @@ export interface Profile {
    * アカウントは在るが本人はまだ一度もログインしていない状態。
    */
   imported_at?: string | null;
+  /** 店が招待メールを送った時刻。imported_at がある行にだけ意味を持つ。 */
+  invited_at?: string | null;
   /** 本人が実際にログインした時刻。 */
   claimed_at?: string | null;
   created_at: string;

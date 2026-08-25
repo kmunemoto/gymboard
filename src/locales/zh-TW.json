@@ -2452,7 +2452,13 @@
       "pending": "未確認",
       "collected": "已收取",
       "waived": "因入會而免除"
-    }
+    },
+    "followedUpAt": "{{date}} 已跟進",
+    "sourceLabel": "從何得知",
+    "sourcePlaceholder": "Instagram / 介紹 / 路過 等",
+    "declinedReasonLabel": "未入會的原因",
+    "declinedReasonPlaceholder": "價格／地點／時間不合適 等",
+    "limited": "顯示最近 {{count}} 筆（較早的體驗已省略）"
   },
   "waitlistAlert": {
     "title": "有{{count}}位候補預約",

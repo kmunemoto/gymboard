@@ -71,7 +71,8 @@ CREATE POLICY "Tenant staff can read own send log"
 UPDATE public.email_send_log l
    SET tenant_id = m.tenant_id
   FROM (
-    SELECT lower(u.email) AS email, min(tm.tenant_id) AS tenant_id
+    -- ⚠️ Postgres に min(uuid) は無い。1件だけなのは下の HAVING が保証している
+    SELECT lower(u.email) AS email, (array_agg(DISTINCT tm.tenant_id))[1] AS tenant_id
       FROM auth.users u
       JOIN public.tenant_members tm ON tm.user_id = u.id AND tm.status = 'active'
      WHERE u.email IS NOT NULL
@@ -80,3 +81,22 @@ UPDATE public.email_send_log l
   ) m
  WHERE l.tenant_id IS NULL
    AND lower(l.recipient_email) = m.email;
+
+-- 体験予約のお客様はアカウントを持たないので、上の引き当てでは埋まらない。
+-- 連絡先（trial_bookings.guest_contact）から引く。
+--
+-- ⚠️ 体験のお客様は**店が一番追いかけたい相手**なので、ここを埋める価値が高い
+--    （本番では未紐づけ69行のうち46行がこれだった）。
+--    同じ連絡先が複数ジムで使われていたら埋めない（上と同じ理由）。
+UPDATE public.email_send_log l
+   SET tenant_id = t.tenant_id
+  FROM (
+    SELECT lower(btrim(guest_contact)) AS contact,
+           (array_agg(DISTINCT tenant_id))[1] AS tenant_id
+      FROM public.trial_bookings
+     WHERE guest_contact IS NOT NULL AND btrim(guest_contact) <> ''
+     GROUP BY lower(btrim(guest_contact))
+    HAVING count(DISTINCT tenant_id) = 1
+  ) t
+ WHERE l.tenant_id IS NULL
+   AND lower(l.recipient_email) = t.contact;

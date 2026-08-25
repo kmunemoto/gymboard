@@ -72,6 +72,28 @@ export const loadEmailLog = async (
   return (data ?? []) as EmailLogRow[];
 };
 
+/**
+ * 履歴の1行をもう一度送る。
+ *
+ * 🔴 クライアントから `send-transactional-email` を直接呼ばないこと。
+ *    あちらは生のアドレス指定を**自分宛だけ**に制限している（正規ドメインから
+ *    任意の宛先へ送れると、フィッシングの踏み台になる）。
+ *    再送は Edge Function 側で「その行が自分のジムのものか」を確かめてから送る。
+ */
+export const resendEmail = async (
+  tenantId: string,
+  logId: string,
+): Promise<{ ok: true } | { ok: false; code: string }> => {
+  const { data, error } = await supabase.functions.invoke("resend-email", {
+    body: { tenant_id: tenantId, log_id: logId },
+  });
+  const payload = data as { ok?: boolean; error?: string } | null;
+  if (error || !payload?.ok) {
+    return { ok: false, code: payload?.error ?? "send_failed" };
+  }
+  return { ok: true };
+};
+
 /** 畳んだあとの1行。 */
 export interface EmailLogEntry extends EmailLogRow {
   /** 同じ宛先・同じ種別・同じ日で積まれた行数（再試行の回数の目安） */

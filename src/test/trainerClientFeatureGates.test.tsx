@@ -65,6 +65,15 @@ const setup = async () => {
             in: () => ({
               eq: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
             }),
+            // ⚠️ 2026-08-26: 活動タイムライン（MemberTimeline）が
+            //    .eq(tenant).eq(user).order().limit() と **eq を2回**繋ぐようになった。
+            //    ここが無いと effect の中で TypeError が投げられ、
+            //    「Tests は全部 passed、Errors 4件」で exit 1 になる（上と同じ罠）。
+            eq: () => ({
+              order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }),
+              limit: () => Promise.resolve({ data: [], error: null }),
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
           }),
           order: () => {
             const result: any = Promise.resolve({ data: [], error: null });

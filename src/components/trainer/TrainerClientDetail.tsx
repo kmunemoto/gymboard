@@ -69,6 +69,7 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import TrainingGrowthChart from "./clientDetail/TrainingGrowthChart";
 import MemberInfoCard from "./clientDetail/MemberInfoCard";
 import MemberInviteCard from "./clientDetail/MemberInviteCard";
+import MemberTimeline from "./clientDetail/MemberTimeline";
 import MemberPaymentsSection from "./clientDetail/MemberPaymentsSection";
 import MemberAgreementsSection from "./clientDetail/MemberAgreementsSection";
 import type { SetEntry, ExerciseEntry, ExerciseMaster, WorkoutRecord, MealRecord } from "./clientDetail/types";
@@ -1194,6 +1195,16 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             suspendedUntil={membership.suspended_until}
             onChanged={() => setMemberRefreshKey((k) => k + 1)}
             onWithdrawn={onBack}
+          />
+
+          {/* 活動タイムライン（2026-08-26）。
+              来店・記録・測定・入金・同意が別々のタブに散っていて、
+              セッション前に「前回どうだったか」を見るのに何度も行き来していた。
+              ここは集約で、詳しく見る・編集するのは元のタブのまま。 */}
+          <MemberTimeline
+            tenantId={tenant?.id ?? null}
+            clientId={clientId}
+            refreshKey={memberRefreshKey}
           />
 
           <MemberPaymentsSection

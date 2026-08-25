@@ -2854,5 +2854,18 @@
       "rate_limited": "Waiting",
       "dlq": "Given up"
     }
+  },
+  "timeline": {
+    "section": "Activity",
+    "empty": "No records yet",
+    "expand": "Show {{count}} more days",
+    "collapse": "Collapse",
+    "booking": "Visit ({{type}})",
+    "cancelled": "Cancelled ({{type}})",
+    "workout": "Training, {{count}} exercises",
+    "measurement": "Measured — {{weight}} kg / {{fat}}% body fat",
+    "payment": "Payment ¥{{amount}}",
+    "agreement": "Agreement recorded",
+    "photo": "Photo recorded"
   }
 }

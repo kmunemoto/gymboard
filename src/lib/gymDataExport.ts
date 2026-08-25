@@ -42,6 +42,35 @@ const fetchAll = async <T,>(
   return out;
 };
 
+/**
+ * 顧客IDの配列から profiles を引く。
+ *
+ * 🔴 profiles を `.eq("tenant_id", ...)` で引いてはいけない。
+ *    profiles.tenant_id は**埋まっていない列**である（在籍は tenant_members が正で、
+ *    JoinGym は profiles を作ってから在籍行を作るため tenant_id を入れる機会が無い）。
+ *    2026-08-25 時点の本番で 71行中55行が NULL。この列で絞っていたせいで、
+ *    Salute御所南の顧客38名中**37名**の名前・ふりがな・電話・プラン・起算日が
+ *    CSV で空欄になっていた（書き出しは成功し、件数も合うので気づけない壊れ方）。
+ *
+ * 代わりに「テナントで絞り込んだ行から出てきた顧客ID」で引く。ID の出所が
+ * 既にテナント境界を通っているので、絞りとしてはこちらのほうが強い。
+ */
+const ID_CHUNK = 200;
+
+const fetchProfilesByUserIds = async <T,>(columns: string, userIds: string[]): Promise<T[]> => {
+  const out: T[] = [];
+  // .in() は URL に載るため、まとめて渡すとリクエストが長すぎて壊れる
+  for (let i = 0; i < userIds.length; i += ID_CHUNK) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(columns)
+      .in("user_id", userIds.slice(i, i + ID_CHUNK));
+    if (error) throw new Error(error.message);
+    out.push(...((data ?? []) as unknown as T[]));
+  }
+  return out;
+};
+
 const jstDate = (v: string | null | undefined) => (v ? formatJST(v, "yyyy-MM-dd") : "");
 const jstDateTime = (v: string | null | undefined) => (v ? formatJST(v, "yyyy-MM-dd HH:mm") : "");
 
@@ -100,13 +129,9 @@ const fetchCustomers = async (tenantId: string): Promise<CustomerRow[]> => {
   );
   if (members.length === 0) return [];
 
-  const profiles = await fetchAll<CustomerRow>((from, to) =>
-    supabase
-      .from("profiles")
-      .select("user_id, display_name, name_kana, phone, plan, cycle_start_date, created_at")
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: true })
-      .range(from, to),
+  const profiles = await fetchProfilesByUserIds<CustomerRow>(
+    "user_id, display_name, name_kana, phone, plan, cycle_start_date, created_at",
+    members.map((m) => m.user_id),
   );
 
   const byUser = new Map(profiles.map((p) => [p.user_id, p]));
@@ -298,14 +323,15 @@ const fetchPayments = (tenantId: string) =>
 // 入口
 // ---------------------------------------------------------------------------
 
-/** 顧客ID → 表示名。予約・記録・入金の CSV に名前を載せるために使う。 */
-const buildNameMap = async (tenantId: string): Promise<Map<string, string>> => {
-  const rows = await fetchAll<{ user_id: string; display_name: string | null }>((from, to) =>
-    supabase
-      .from("profiles")
-      .select("user_id, display_name")
-      .eq("tenant_id", tenantId)
-      .range(from, to),
+/**
+ * 顧客ID → 表示名。予約・記録・入金の CSV に名前を載せるために使う。
+ * 引くのは「これから出す行に実際に出てくるID」だけ（上の fetchProfilesByUserIds 参照）。
+ */
+const buildNameMap = async (userIds: string[]): Promise<Map<string, string>> => {
+  if (userIds.length === 0) return new Map();
+  const rows = await fetchProfilesByUserIds<{ user_id: string; display_name: string | null }>(
+    "user_id, display_name",
+    userIds,
   );
   return new Map(rows.map((r) => [r.user_id, r.display_name ?? ""]));
 };
@@ -324,18 +350,30 @@ export const loadExport = async (kind: ExportKind, tenantId: string): Promise<Ex
     return { rows: await fetchCustomers(tenantId), columns: customerColumns as CsvColumn<never>[] };
   }
 
-  // 以降は顧客名を引くので、名前表を先に作る
-  const names = await buildNameMap(tenantId);
-  const nameOf = (id: string | null) => (id ? names.get(id) ?? "" : "");
+  // 以降は顧客名を載せる。**行を先に取り、そこに出てくるIDだけ**名前を引く
+  // （テナントで絞る前は、絞り列が空の顧客の名前が全部空欄になっていた）。
+  const withNames = async <T extends { user_id: string; staff_user_id?: string | null }>(
+    rows: T[],
+    columns: (nameOf: (id: string | null) => string) => CsvColumn<T>[],
+  ): Promise<ExportResult> => {
+    const ids = new Set<string>();
+    for (const r of rows) {
+      if (r.user_id) ids.add(r.user_id);
+      if (r.staff_user_id) ids.add(r.staff_user_id);
+    }
+    const names = await buildNameMap([...ids]);
+    const nameOf = (id: string | null) => (id ? names.get(id) ?? "" : "");
+    return { rows: rows as unknown[], columns: columns(nameOf) as CsvColumn<never>[] };
+  };
 
   switch (kind) {
     case "bookings":
-      return { rows: await fetchBookings(tenantId), columns: bookingColumns(nameOf) as CsvColumn<never>[] };
+      return withNames(await fetchBookings(tenantId), bookingColumns);
     case "workouts":
-      return { rows: await fetchWorkouts(tenantId), columns: workoutColumns(nameOf) as CsvColumn<never>[] };
+      return withNames(await fetchWorkouts(tenantId), workoutColumns);
     case "measurements":
-      return { rows: await fetchMeasurements(tenantId), columns: measurementColumns(nameOf) as CsvColumn<never>[] };
+      return withNames(await fetchMeasurements(tenantId), measurementColumns);
     case "payments":
-      return { rows: await fetchPayments(tenantId), columns: paymentColumns(nameOf) as CsvColumn<never>[] };
+      return withNames(await fetchPayments(tenantId), paymentColumns);
   }
 };

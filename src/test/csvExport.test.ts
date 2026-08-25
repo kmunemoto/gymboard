@@ -111,24 +111,55 @@ describe("🔴 取得は必ずテナントで絞る", () => {
     );
   });
 
-  it("すべての from() に tenant_id の絞りが付いている", () => {
+  it("profiles 以外の from() には tenant_id の絞りが付いている", () => {
     // .from("X") ごとに、そのクエリの中で tenant_id を eq しているかを見る。
-    // ここが抜けると RLS の穴1つで他ジムのデータが CSV に混ざる
+    // ここが抜けると RLS の穴1つで他ジムのデータが CSV に混ざる。
+    // profiles だけは別扱い（次のテストを参照）
     const queries = src.split(/\.from\(/).slice(1);
     expect(queries.length).toBeGreaterThanOrEqual(6);
     for (const q of queries) {
       const head = q.slice(0, 400);
       const table = head.match(/^"([a-z_]+)"/)?.[1] ?? "?";
+      if (table === "profiles") continue;
       expect(head, `${table} の取得に tenant_id の絞りが無い`).toContain('.eq("tenant_id", tenantId)');
     }
+  });
+
+  it("🔴 profiles を tenant_id で絞らない（その列は埋まっていない）", () => {
+    // profiles.tenant_id は在籍（tenant_members）が正で、JoinGym は profiles を
+    // 作ってから在籍行を作るため埋まらない。2026-08-25 の本番で 71行中55行が NULL。
+    // この列で絞っていたせいで、Salute御所南の顧客38名中37名の名前・ふりがな・
+    // 電話・プラン・起算日が CSV で空欄になっていた（件数は合うので気づけない）。
+    const profileQueries = src.split(/\.from\("profiles"\)/).slice(1);
+    expect(profileQueries.length, "profiles の取得が消えている").toBeGreaterThan(0);
+    for (const q of profileQueries) {
+      expect(q.slice(0, 400), "profiles を tenant_id で絞っている（空欄バグの再発）").not.toContain(
+        '.eq("tenant_id"',
+      );
+    }
+  });
+
+  it("profiles は「テナントで絞った行から出たID」で引く", () => {
+    // ID の出所が既にテナント境界を通っているので、絞りとしてはこちらのほうが強い。
+    // 素の tenant_id 絞りに戻すのも、絞りを一切かけないのも、どちらも赤にしたい
+    expect(src).toContain('.in("user_id", userIds.slice(i, i + ID_CHUNK))');
+    // 顧客CSVは在籍行のIDから、名前表は「これから出す行」のIDから引く
+    expect(src).toMatch(/fetchProfilesByUserIds<CustomerRow>\([\s\S]{0,200}members\.map\(\(m\) => m\.user_id\)/);
+    expect(src).toContain("const names = await buildNameMap([...ids]);");
+  });
+
+  it(".in() を分割して投げる（URL が長すぎて壊れない）", () => {
+    expect(src).toMatch(/const ID_CHUNK = \d+;/);
+    expect(src).toMatch(/for \(let i = 0; i < userIds\.length; i \+= ID_CHUNK\)/);
   });
 
   it("1000行の壁を越えて全件取る（ページング）", () => {
     expect(src).toMatch(/const PAGE = 1000;/);
     expect(src).toMatch(/if \(rows\.length < PAGE\) break;/);
-    // 取得関数はすべて fetchAll を通す（生の select だけで済ませない）
+    // 取得はすべて共通ヘルパ2本（fetchAll / fetchProfilesByUserIds）を通す。
+    // 生の select が散ると、ページングや絞りの抜けを1箇所で守れなくなる
     const rawSelects = (src.match(/await supabase\s*\n?\s*\.from\(/g) ?? []).length;
-    expect(rawSelects, "fetchAll を通さない直接取得がある").toBe(0);
+    expect(rawSelects, "共通ヘルパを通さない直接取得がある").toBe(1);
   });
 });
 

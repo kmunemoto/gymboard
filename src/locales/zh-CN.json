@@ -1660,7 +1660,9 @@
     "hidePassword": "隐藏密码",
     "verifyingLink": "正在验证链接…",
     "processing": "处理中...",
-    "submit": "更改密码"
+    "submit": "更改密码",
+    "inviteTitle": "欢迎",
+    "inviteIntro": "这是来自健身房的邀请。设置密码后即可在应用中使用预约和训练记录。"
   },
   "unsubscribe": {
     "titlePrompt": "退订邮件",
@@ -2790,6 +2792,22 @@
       "duplicateInFilePhone": "该文件中电话号码重复",
       "duplicateInFileName": "该文件中姓名重复"
     },
-    "unclaimedBadge": "未邀请"
+    "unclaimedBadge": "未邀请",
+    "invitedBadge": "已邀请",
+    "invite": {
+      "section": "邀请使用应用",
+      "desc": "该客户通过 CSV 登记，尚未使用应用。输入邮箱地址发送邀请后，对方会收到设置密码的指引。",
+      "descInvited": "邀请已发送。如果未收到或地址有误，可以用正确的地址再次发送。",
+      "emailPlaceholder": "客户的邮箱地址",
+      "send": "发送邀请",
+      "resend": "重新发送",
+      "confirm": "将向 {{email}} 发送邀请。\n\n⚠️ 如果地址有误，其他人将能使用该客户的档案。请再次确认地址。",
+      "sent": "已向 {{email}} 发送邀请",
+      "statusInvited": "{{date}} 已邀请",
+      "errInvalidEmail": "邮箱地址格式不正确",
+      "errEmailTaken": "该地址已被其他账号使用。请让客户用已有账号登录",
+      "errSuppressed": "该地址曾投递失败，无法发送。请确认其他地址",
+      "errFailed": "邀请发送失败，请稍后重试"
+    }
   }
 }

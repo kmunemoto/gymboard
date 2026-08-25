@@ -22,6 +22,9 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [linkExpired, setLinkExpired] = useState(false);
   const ran = useRef(false);
+  // 招待メール（CSV で取り込んだ顧客へのアカウント引き渡し）から来た場合。
+  // 仕組みはパスワード再設定と同一で、見出しと説明文だけ「はじめて」の文面にする
+  const isInvite = searchParams.get("flow") === "invite";
 
   useEffect(() => {
     if (ran.current) return;
@@ -129,7 +132,7 @@ const ResetPassword = () => {
       <div className="w-full max-w-md space-y-6 slide-up mx-auto my-auto">
         <div className="text-center flex flex-col items-center gap-1">
           <img src={gymboardLogo} alt={t("resetPassword.logoAlt")} className="h-20 w-auto object-contain" />
-          <h1 className="text-2xl font-bold tracking-tight mt-1">{t("resetPassword.title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight mt-1">{t(isInvite ? "resetPassword.inviteTitle" : "resetPassword.title")}</h1>
         </div>
 
         <Card>
@@ -161,7 +164,7 @@ const ResetPassword = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-sm text-muted-foreground">{t("resetPassword.intro")}</p>
+                <p className="text-sm text-muted-foreground">{t(isInvite ? "resetPassword.inviteIntro" : "resetPassword.intro")}</p>
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold">{t("resetPassword.labelNewPassword")}</label>
                   <div className="relative">

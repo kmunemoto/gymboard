@@ -1972,6 +1972,7 @@ export type Database = {
           grace_enabled: boolean | null
           id: string
           imported_at: string | null
+          invited_at: string | null
           last_streak_notified: number
           line_user_id: string | null
           milestone_goal: string | null
@@ -2001,6 +2002,7 @@ export type Database = {
           grace_enabled?: boolean | null
           id?: string
           imported_at?: string | null
+          invited_at?: string | null
           last_streak_notified?: number
           line_user_id?: string | null
           milestone_goal?: string | null
@@ -2030,6 +2032,7 @@ export type Database = {
           grace_enabled?: boolean | null
           id?: string
           imported_at?: string | null
+          invited_at?: string | null
           last_streak_notified?: number
           line_user_id?: string | null
           milestone_goal?: string | null

@@ -17,6 +17,7 @@ import { template as bookingCancellation } from './booking-cancellation.tsx'
 import { template as newAccountNotification } from './new-account-notification.tsx'
 import { template as trialBookingReminder } from './trial-booking-reminder.tsx'
 import { template as bookingReminder } from './booking-reminder.tsx'
+import { template as customerInvite } from './customer-invite.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-booking-notification': newBookingNotification,
@@ -27,4 +28,6 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-account-notification': newAccountNotification,
   'trial-booking-reminder': trialBookingReminder,
   'booking-reminder': bookingReminder,
+  // 🔴 CLIENT_ALLOWED_TEMPLATES に入れないこと（宛先が自由入力。service_role 経路専用）
+  'customer-invite': customerInvite,
 }

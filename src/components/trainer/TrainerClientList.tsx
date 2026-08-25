@@ -249,7 +249,7 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
               {c.imported_at && !c.claimed_at && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-muted text-muted-foreground border-muted-foreground/30">
                   <MailQuestion className="w-2.5 h-2.5" />
-                  {t("dataImport.unclaimedBadge")}
+                  {c.invited_at ? t("dataImport.invitedBadge") : t("dataImport.unclaimedBadge")}
                 </Badge>
               )}
               {/*

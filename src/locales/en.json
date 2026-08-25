@@ -1660,7 +1660,9 @@
     "hidePassword": "Hide password",
     "verifyingLink": "Verifying link…",
     "processing": "Processing...",
-    "submit": "Change password"
+    "submit": "Change password",
+    "inviteTitle": "Welcome",
+    "inviteIntro": "Your gym has invited you. Set a password to use bookings and training records in the app."
   },
   "unsubscribe": {
     "titlePrompt": "Unsubscribe from emails",
@@ -2790,6 +2792,22 @@
       "duplicateInFilePhone": "This phone number appears twice in the file",
       "duplicateInFileName": "This name appears twice in the file"
     },
-    "unclaimedBadge": "Not invited"
+    "unclaimedBadge": "Not invited",
+    "invitedBadge": "Invited",
+    "invite": {
+      "section": "Invite to the app",
+      "desc": "This customer was registered via CSV and has not used the app yet. Enter their email address to send an invitation with password-setup instructions.",
+      "descInvited": "An invitation has been sent. If it did not arrive or the address was wrong, you can send it again to the correct address.",
+      "emailPlaceholder": "Customer's email address",
+      "send": "Send invitation",
+      "resend": "Resend",
+      "confirm": "Send an invitation to {{email}}.\n\n⚠️ If the address is wrong, someone else will be able to use this customer's chart. Please double-check the address.",
+      "sent": "Invitation sent to {{email}}",
+      "statusInvited": "Invited {{date}}",
+      "errInvalidEmail": "The email address format is invalid",
+      "errEmailTaken": "This address is already used by another account. Ask the customer to log in with their existing account",
+      "errSuppressed": "Mail to this address has bounced before, so it cannot be sent. Please confirm another address",
+      "errFailed": "Could not send the invitation. Please try again later"
+    }
   }
 }

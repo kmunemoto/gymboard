@@ -118,3 +118,17 @@ DB から見れば普通の顧客なので、**一覧・カルテ・予約・記
 
 🔴 **push でも Publish でも本番に出ない。** Lovable のエージェントに頼むしかない。
 頼んだあと必ず自分で叩いて 404 でないことを確かめる（`mem/ops/edge-function-deploy.md`）。
+
+**2026-08-25 にデプロイ済み。** DB から `net.http_post` で確認:
+
+| 叩いた先 | 依頼前 | 依頼後 |
+|---|---|---|
+| `import-customers`（今回） | **404** NOT_FOUND | **401** Unauthorized |
+| `signup-trainer`（対照・デプロイ済み） | 401 Unauthorized | 401 Unauthorized |
+
+依頼前は対照と食い違い、依頼後は一致した＝デプロイされた。
+401 は `verifyCaller` が未認証を弾いている正しい応答。
+
+⚠️ `mcp__Lovable__send_message` は 60 秒で MCP 側がタイムアウトするが、
+**依頼自体は届いている**（`list_messages` で `status: accepted` を確認）。
+タイムアウトしても投げ直さないこと（クレジットを二重に使う）。

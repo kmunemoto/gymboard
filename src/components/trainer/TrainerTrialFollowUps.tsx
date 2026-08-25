@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +18,23 @@ import { hasTrialPrice } from "@/lib/trialPricing";
 // 体験予約のフォローアップ管理（体験CRM）。trial_bookings.follow_up_status/note は
 // マイグレーション未適用の環境では存在しないため、select("*") + any キャストで
 // 扱う（useTenant 等、既存の新カラム未適用フォールバック方針と同じ）。
-export const FOLLOW_UP_STATUSES = ["未対応", "来店した", "入会した", "見送り"] as const;
+/**
+ * フォロー状況。**DB にはこのコードが入る**（2026-08-26 に日本語からコード化）。
+ *
+ * ⚠️ 公開済みのネイティブアプリは日本語（未対応 等）を書いてくる。
+ *    DB 側の BEFORE トリガー（normalize_trial_follow_up_status）が入口で
+ *    コードに直すので、古いアプリも今までどおり動く。
+ *    ここで日本語を復活させないこと（DB の CHECK に弾かれる）。
+ */
+/**
+ * 1回に読む件数。
+ *
+ * 体験予約は消さずに積み上がる（本番は約2か月で70件）。全件読むと、
+ * 続けるほど開くのが遅くなる。フォローは鮮度が命なので直近だけ見れば足りる。
+ */
+export const TRIAL_PAGE = 100;
+
+export const FOLLOW_UP_STATUSES = ["pending", "visited", "joined", "declined"] as const;
 export type FollowUpStatus = (typeof FOLLOW_UP_STATUSES)[number];
 
 /**
@@ -41,19 +58,26 @@ const FEE_I18N_KEY: Record<TrialFeeStatus, string> = {
 const feeI18nKey = (v: string | null | undefined): string =>
   FEE_I18N_KEY[(v ?? "未確認") as TrialFeeStatus] ?? FEE_I18N_KEY["未確認"];
 
-// i18n キーは英語で統一する方針のため、DB値（日本語）→ 翻訳キーの対応表を用意する。
-const STATUS_I18N_KEY: Record<FollowUpStatus, string> = {
+/**
+ * DB の値 → 翻訳キー。コード化したので基本は同じ文字列だが、
+ * **古い日本語の値もここで受ける**（トリガー適用前に入った行や、
+ * トリガーの無い環境のため）。未知の値は pending に倒す
+ * （解決できないと画面に "trialFollowUp.status.undefined" が出る）。
+ */
+const LEGACY_STATUS: Record<string, FollowUpStatus> = {
   "未対応": "pending",
   "来店した": "visited",
   "入会した": "joined",
   "見送り": "declined",
 };
 
-// DBの follow_up_status は自由文字列（CHECK制約なし）。想定外の値が入っていると
-// 翻訳キーが解決できず、画面に "trialFollowUp.status.undefined" という生の文字列が
-// そのまま出てしまうため、未知の値は「未対応」として扱う。
-const statusI18nKey = (status: string | null | undefined): string =>
-  STATUS_I18N_KEY[(status ?? "未対応") as FollowUpStatus] ?? STATUS_I18N_KEY["未対応"];
+export const normalizeStatus = (status: string | null | undefined): FollowUpStatus => {
+  const v = status ?? "pending";
+  if ((FOLLOW_UP_STATUSES as readonly string[]).includes(v)) return v as FollowUpStatus;
+  return LEGACY_STATUS[v] ?? "pending";
+};
+
+const statusI18nKey = (status: string | null | undefined): string => normalizeStatus(status);
 
 interface TrialRow {
   id: string;
@@ -66,15 +90,71 @@ interface TrialRow {
   follow_up_note: string | null;
   /** 体験料の徴収結果。null は未記録（列が無い環境でも null になる） */
   trial_fee_status: TrialFeeStatus | null;
+  /** 店がフォローした時刻。null なら未対応のまま */
+  followed_up_at: string | null;
+  /** 流入元（どこで知ったか） */
+  source: string | null;
+  /** 見送りの理由。declined のときだけ意味を持つ */
+  declined_reason: string | null;
 }
 
 const statusBadgeVariant = (status: FollowUpStatus): "outline" | "secondary" | "default" | "destructive" => {
   switch (status) {
-    case "入会した": return "default";
-    case "来店した": return "secondary";
-    case "見送り": return "destructive";
+    case "joined": return "default";
+    case "visited": return "secondary";
+    case "declined": return "destructive";
     default: return "outline";
   }
+};
+
+/**
+ * その場で書ける1行の入力欄（流入元・見送り理由）。
+ *
+ * 入力するのは体験のあと、店が思い出しながら書くもの。ダイアログを開かせると
+ * 書かなくなるので、カードの中で完結させる（メモ欄と同じ考え方）。
+ * 変えていないときは保存ボタンを出さない＝押す判断をさせない。
+ */
+const InlineField = ({
+  label, placeholder, value, maxLength, disabled, onSave,
+}: {
+  label: string;
+  placeholder: string;
+  value: string | null;
+  maxLength: number;
+  disabled: boolean;
+  onSave: (v: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(value ?? "");
+  // 外から値が変わったら追随する（保存後・再取得後）
+  useEffect(() => { setDraft(value ?? ""); }, [value]);
+  const dirty = draft.trim() !== (value ?? "");
+
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] font-bold text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          disabled={disabled}
+          className="h-9 text-xs"
+        />
+        {dirty && (
+          <Button
+            size="sm"
+            className="h-9 text-xs shrink-0"
+            disabled={disabled}
+            onClick={() => onSave(draft)}
+          >
+            {t("common.save")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const TrainerTrialFollowUps = () => {
@@ -93,10 +173,19 @@ const TrainerTrialFollowUps = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("trial_bookings")
-        .select("*")
+        // ⚠️ select("*") をやめる。体験は積み上がる一方なので、
+        //    画面が使わない列（cancel_token・google_event_id・custom_answers）まで
+        //    毎回運ぶと、件数が増えたぶんだけ重くなる
+        .select(
+          "id, guest_name, guest_contact, booking_date, booking_type, status, " +
+          "follow_up_status, follow_up_note, trial_fee_status, followed_up_at, source, declined_reason",
+        )
         .eq("tenant_id", tenant.id)
         .neq("status", "キャンセル済み")
-        .order("booking_date", { ascending: false });
+        .order("booking_date", { ascending: false })
+        // 直近だけ見れば足りる（フォローは鮮度が命で、半年前の体験は追わない）。
+        // 全部見たいときのために、上限に達したら画面で知らせる
+        .limit(TRIAL_PAGE);
       if (cancelled) return;
       if (error) {
         console.warn("体験フォロー一覧の取得に失敗（マイグレーション未適用の可能性）:", error.message);
@@ -110,10 +199,13 @@ const TrainerTrialFollowUps = () => {
             booking_date: r.booking_date,
             booking_type: r.booking_type,
             status: r.status,
-            follow_up_status: (r.follow_up_status as FollowUpStatus) ?? "未対応",
+            follow_up_status: normalizeStatus(r.follow_up_status),
             follow_up_note: r.follow_up_note ?? null,
             // 列が無い環境（マイグレーション未適用）では undefined → null。
             trial_fee_status: (r.trial_fee_status as TrialFeeStatus) ?? null,
+            followed_up_at: r.followed_up_at ?? null,
+            source: r.source ?? null,
+            declined_reason: r.declined_reason ?? null,
           })),
         );
       }
@@ -124,23 +216,27 @@ const TrainerTrialFollowUps = () => {
 
   const now = useMemo(() => new Date(), []);
   const needsFollowUp = useMemo(
-    () => rows.filter((r) => r.follow_up_status === "未対応" && new Date(r.booking_date) < now)
+    () => rows.filter((r) => r.follow_up_status === "pending" && new Date(r.booking_date) < now)
       .sort((a, b) => a.booking_date.localeCompare(b.booking_date)),
     [rows, now],
   );
 
   const conversion = useMemo(() => {
-    const decided = rows.filter((r) => r.follow_up_status === "入会した" || r.follow_up_status === "見送り");
-    const joined = rows.filter((r) => r.follow_up_status === "入会した");
+    const decided = rows.filter((r) => r.follow_up_status === "joined" || r.follow_up_status === "declined");
+    const joined = rows.filter((r) => r.follow_up_status === "joined");
     if (decided.length === 0) return null;
     return Math.round((joined.length / decided.length) * 100);
   }, [rows]);
 
   const handleStatusChange = async (id: string, status: FollowUpStatus) => {
     setSavingId(id);
+    // フォローした時刻を一緒に記録する。「いつ動いたか」が分からないと、
+    // 何日も放置されている人を見つけられない（状態だけでは古さが見えない）。
+    // 未対応に戻したときは時刻も消す（対応していないので）
+    const followedUpAt = status === "pending" ? null : new Date().toISOString();
     const { error } = await supabase
       .from("trial_bookings")
-      .update({ follow_up_status: status } as any)
+      .update({ follow_up_status: status, followed_up_at: followedUpAt } as any)
       .eq("id", id);
     setSavingId(null);
     if (error) {
@@ -148,7 +244,30 @@ const TrainerTrialFollowUps = () => {
       toast.error(t("trialFollowUp.updateFailed"), { description: error.message });
       return;
     }
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, follow_up_status: status } : r)));
+    setRows((prev) => prev.map((r) =>
+      (r.id === id ? { ...r, follow_up_status: status, followed_up_at: followedUpAt } : r)));
+    toast.success(t("trialFollowUp.updated"));
+  };
+
+  /** 流入元・見送り理由。どちらも自由入力なので、保存の形は同じ。 */
+  const handleSaveText = async (
+    id: string,
+    field: "source" | "declined_reason",
+    value: string,
+  ) => {
+    setSavingId(id);
+    const v = value.trim() || null;
+    const { error } = await supabase
+      .from("trial_bookings")
+      .update({ [field]: v } as any)
+      .eq("id", id);
+    setSavingId(null);
+    if (error) {
+      console.error("体験CRMの保存に失敗:", error);
+      toast.error(t("trialFollowUp.updateFailed"), { description: error.message });
+      return;
+    }
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: v } : r)));
     toast.success(t("trialFollowUp.updated"));
   };
 
@@ -200,7 +319,7 @@ const TrainerTrialFollowUps = () => {
   const showFee = hasTrialPrice(tenant?.trial_price_yen);
 
   const renderCard = (r: TrialRow) => (
-    <Card key={r.id} className={r.follow_up_status === "未対応" && new Date(r.booking_date) < now ? "border-warning/40" : undefined}>
+    <Card key={r.id} className={r.follow_up_status === "pending" && new Date(r.booking_date) < now ? "border-warning/40" : undefined}>
       <CardContent className="p-3 sm:p-4 space-y-2.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -215,13 +334,13 @@ const TrainerTrialFollowUps = () => {
               </p>
             )}
           </div>
-          <Badge variant={statusBadgeVariant(r.follow_up_status ?? "未対応")} className="shrink-0 text-[10px]">
+          <Badge variant={statusBadgeVariant(r.follow_up_status ?? "pending")} className="shrink-0 text-[10px]">
             {t(`trialFollowUp.status.${statusI18nKey(r.follow_up_status)}`)}
           </Badge>
         </div>
 
         <Select
-          value={r.follow_up_status ?? "未対応"}
+          value={r.follow_up_status ?? "pending"}
           disabled={savingId === r.id}
           onValueChange={(v) => handleStatusChange(r.id, v as FollowUpStatus)}
         >
@@ -234,6 +353,35 @@ const TrainerTrialFollowUps = () => {
             ))}
           </SelectContent>
         </Select>
+
+        {/* いつフォローしたか。状態だけでは「何日放置されているか」が見えない */}
+        {r.followed_up_at && (
+          <p className="text-[11px] text-muted-foreground">
+            {t("trialFollowUp.followedUpAt", { date: formatJST(r.followed_up_at, "M/d HH:mm") })}
+          </p>
+        )}
+
+        {/* 流入元。どこで知ったか。次にどこへ出すかの材料になる */}
+        <InlineField
+          label={t("trialFollowUp.sourceLabel")}
+          placeholder={t("trialFollowUp.sourcePlaceholder")}
+          value={r.source}
+          maxLength={100}
+          disabled={savingId === r.id}
+          onSave={(v) => handleSaveText(r.id, "source", v)}
+        />
+
+        {/* 見送りの理由は「見送り」のときだけ。常に出すと入力欄だらけになる */}
+        {r.follow_up_status === "declined" && (
+          <InlineField
+            label={t("trialFollowUp.declinedReasonLabel")}
+            placeholder={t("trialFollowUp.declinedReasonPlaceholder")}
+            value={r.declined_reason}
+            maxLength={500}
+            disabled={savingId === r.id}
+            onSave={(v) => handleSaveText(r.id, "declined_reason", v)}
+          />
+        )}
 
         {/* 体験料の徴収記録。**料金を設定しているジムにだけ出す。**
             無料体験のジムに「体験料」の欄が出ても意味がないため。
@@ -362,6 +510,13 @@ const TrainerTrialFollowUps = () => {
         ) : (
           <div className="space-y-2">
             {rows.map(renderCard)}
+            {/* 上限に達したことを黙って隠さない。
+                「古い体験が消えた」と誤解させないため */}
+            {rows.length >= TRIAL_PAGE && (
+              <p className="text-[11px] text-muted-foreground text-center py-2">
+                {t("trialFollowUp.limited", { count: TRIAL_PAGE })}
+              </p>
+            )}
           </div>
         )}
       </section>

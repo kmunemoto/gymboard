@@ -87,7 +87,9 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
         .from("trial_bookings") as any)
         .select("id")
         .eq("tenant_id", tenant.id)
-        .eq("follow_up_status", "未対応")
+        // 🔴 コード（2026-08-26 に日本語から移行）。DB のトリガーが入口で正すので、
+        //    古いアプリが日本語を書いても保存された値はこのコードになる
+        .eq("follow_up_status", "pending")
         .lt("booking_date", nowIso);
       if (cancelled) return;
       if (error) {

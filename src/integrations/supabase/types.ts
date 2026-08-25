@@ -3257,12 +3257,15 @@ export type Database = {
           cancel_token: string
           created_at: string
           custom_answers: Json | null
+          declined_reason: string | null
           follow_up_note: string | null
           follow_up_status: string
+          followed_up_at: string | null
           google_event_id: string | null
           guest_contact: string
           guest_name: string
           id: string
+          source: string | null
           status: string
           tenant_id: string
           trial_fee_status: string | null
@@ -3274,12 +3277,15 @@ export type Database = {
           cancel_token?: string
           created_at?: string
           custom_answers?: Json | null
+          declined_reason?: string | null
           follow_up_note?: string | null
           follow_up_status?: string
+          followed_up_at?: string | null
           google_event_id?: string | null
           guest_contact: string
           guest_name: string
           id?: string
+          source?: string | null
           status?: string
           tenant_id: string
           trial_fee_status?: string | null
@@ -3291,12 +3297,15 @@ export type Database = {
           cancel_token?: string
           created_at?: string
           custom_answers?: Json | null
+          declined_reason?: string | null
           follow_up_note?: string | null
           follow_up_status?: string
+          followed_up_at?: string | null
           google_event_id?: string | null
           guest_contact?: string
           guest_name?: string
           id?: string
+          source?: string | null
           status?: string
           tenant_id?: string
           trial_fee_status?: string | null

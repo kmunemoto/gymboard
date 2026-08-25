@@ -2452,7 +2452,13 @@
       "pending": "미확인",
       "collected": "받았음",
       "waived": "등록으로 면제"
-    }
+    },
+    "followedUpAt": "{{date}} 대응",
+    "sourceLabel": "어떻게 알게 되었는지",
+    "sourcePlaceholder": "Instagram / 소개 / 방문 등",
+    "declinedReasonLabel": "보류 이유",
+    "declinedReasonPlaceholder": "요금／위치／시간이 맞지 않음 등",
+    "limited": "최근 {{count}}건을 표시하고 있습니다(오래된 체험은 생략)"
   },
   "waitlistAlert": {
     "title": "취소 대기가 {{count}}건 있습니다",

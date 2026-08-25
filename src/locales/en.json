@@ -2452,7 +2452,13 @@
       "pending": "Not confirmed",
       "collected": "Collected",
       "waived": "Waived (signed up)"
-    }
+    },
+    "followedUpAt": "Followed up {{date}}",
+    "sourceLabel": "How they heard about you",
+    "sourcePlaceholder": "Instagram / referral / walk-in, etc.",
+    "declinedReasonLabel": "Reason for declining",
+    "declinedReasonPlaceholder": "Price / location / schedule, etc.",
+    "limited": "Showing the most recent {{count}} (older trials omitted)"
   },
   "waitlistAlert": {
     "title": "{{count}} people are on the waitlist",

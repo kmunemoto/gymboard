@@ -2452,7 +2452,13 @@
       "pending": "未確認",
       "collected": "頂いた",
       "waived": "入会のため免除"
-    }
+    },
+    "followedUpAt": "{{date}} に対応",
+    "sourceLabel": "どこで知ったか",
+    "sourcePlaceholder": "Instagram / 紹介 / 通りがかり など",
+    "declinedReasonLabel": "見送りの理由",
+    "declinedReasonPlaceholder": "料金／場所／時間が合わない など",
+    "limited": "直近{{count}}件を表示しています（古い体験は省略）"
   },
   "waitlistAlert": {
     "title": "キャンセル待ちが{{count}}件あります",

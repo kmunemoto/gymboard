@@ -2452,7 +2452,13 @@
       "pending": "未确认",
       "collected": "已收取",
       "waived": "因入会而免除"
-    }
+    },
+    "followedUpAt": "{{date}} 已跟进",
+    "sourceLabel": "从何得知",
+    "sourcePlaceholder": "Instagram / 介绍 / 路过 等",
+    "declinedReasonLabel": "未入会的原因",
+    "declinedReasonPlaceholder": "价格／地点／时间不合适 等",
+    "limited": "显示最近 {{count}} 条（较早的体验已省略）"
   },
   "waitlistAlert": {
     "title": "有{{count}}位候补预约",

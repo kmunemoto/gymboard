@@ -82,6 +82,66 @@ enqueue の payload に `tenant_id: tenantId` があること。
 | 未知の状態を `ok` に倒す | ok |
 | 取得の `tenant_id` 絞りを外す | ok |
 
+## 本番適用の結果（2026-08-26）
+
+| | 件数 |
+|---|---|
+| 履歴の総数 | 3392（2026-05-21 〜） |
+| バックフィルで埋まった | **3369（99.3%）** |
+| NULL のまま | 23 |
+
+NULL のまま残るのは、認証メール（signup 6）・運営宛フィードバック（4）・
+system（1）・退会済みの人の古い行（12）で、**いずれも NULL が正しい**。
+
+### 🔴 `min(uuid)` は存在しない
+
+引き当ての SELECT で `min(tm.tenant_id)` を使っていたら 42883 で落ちた。
+1件だけなのは `HAVING` が保証しているので `(array_agg(DISTINCT ...))[1]` にした。
+`delete_my_gym` も同じ書き方をしている（そちらは元からこの形だった）。
+
+### 体験のお客様は別経路で引く
+
+体験客はアカウントを持たないので `auth.users` からは引き当たらない。
+本番では未紐づけ69行のうち**46行がこれ**だった。店が一番追いかけたい相手なので、
+`trial_bookings.guest_contact` から引く UPDATE を足した。
+
+### 権限の実測（BEGIN…ROLLBACK）
+
+| 演じた相手 | 見えた件数 |
+|---|---|
+| Salute のオーナー | **2719**（自ジムのみ。うち sent 1307 / 問題 39） |
+| 他ジムの行 | **0** |
+| `tenant_id` が NULL の行（認証メール） | **0** |
+| そのジムのお客様 | **0** |
+| 未ログイン（anon） | **0** |
+
+⚠️ 実データで**問題39件**（failed / bounced / dlq / rejected）が出た。
+これまで店からは1件も見えていなかったもの。
+
+## デプロイと実トラフィックでの確認（2026-08-26）
+
+Edge Function **8本**を Lovable のエージェントに依頼してデプロイ。
+`net.http_post` で9本（対照1本を含む）を叩き、**404 が1本も無い**ことを確認:
+
+| 関数 | 応答 |
+|---|---|
+| send-transactional-email / process-email-queue / invite-customer | 401 |
+| notify-new-booking / push-booking-reminder / send-trial-reminders | 403 |
+| trial-book / drop-in-book | 200（バリデーションエラー＝生きている） |
+| signup-trainer（対照） | 401 |
+
+そのあと**実際の予約が1件入り**、その通知の全行に `tenant_id` が載ったことを確認した:
+
+```
+booking-confirmation      pending → sent   tagged=true
+new-booking-notification  pending → sent   tagged=true
+booking-confirmation      duplicate        tagged=true
+```
+
+🔴 `sent` を書くのは `process-email-queue`（別関数）なので、
+**そこに載っていること＝payload 経由の受け渡しが本当に効いている**、が確認できた。
+ここが一番壊れやすい箇所だったので、実トラフィックで見えたのは大きい。
+
 ## 閉店時の消し込み
 
 `email_send_log` に `tenant_id` を足したので、`delete_my_gym`（閉店処理）の
@@ -98,6 +158,10 @@ FK は `ON DELETE SET NULL` なので消さなくてもテナント削除時に 
 この漏れは既存の見張り（`gymOwnership.test.ts`「テナント配下のテーブルを
 取りこぼしていない」）が自動で捕まえた。**列を足した時点で赤くなる**作りになっていて、
 今回それがそのまま効いた。
+
+適用後、**本番の定義・repo の migration・見張りテストが固定している一覧**の3つを
+機械的に突き合わせて、33テーブルで完全一致することを確認した。
+（写し間違いは目視では絶対に見つからない。必ず突き合わせること）
 
 ## ⚠️ まだやっていないこと: 再送
 

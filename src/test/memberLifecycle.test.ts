@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import {
-  MEMBER_STATUS_LABEL, isActiveMember, isSuspended, isWithdrawn,
+  MEMBER_STATUS_LABEL, MEMBER_STATUSES, isActiveMember, isSuspended, isWithdrawn,
   occupiesSeat, suspensionLabel, validateSuspension,
 } from "@/lib/memberLifecycle";
 import {
@@ -412,5 +412,44 @@ describe("これは記録であって決済ではない", () => {
     // 「注記を表示していること」だけを固定する。
     expect(read("src/components/trainer/clientDetail/MemberAgreementsSection.tsx"))
       .toMatch(/t\("member\.agreementsNote"\)/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 🔴 休会・退会が DB に書けること（2026-08-25 に本番で書けていなかった）
+//
+// tenant_members.status に CHECK が2本付いていて、通る値が積集合になっていた:
+//   tenant_members_status_check … ('active','paused','cancelled')      ← 作成時のもの
+//   tenant_members_status_known … (NULL,'active','suspended','withdrawn','cancelled')
+// 実際に書けるのは active と cancelled だけで、8/8 に休会・退会を出してから
+// カルテの「休会にする」「退会にする」は押すたびに check_violation で失敗していた。
+// 本番の status は全72行が active のまま（＝誰も休会にできていない）。
+// ---------------------------------------------------------------------------
+describe("🔴 在籍状態は DB に書ける値と一致していること", () => {
+  const FIX = "supabase/migrations/20260825000500_fix_member_status_check.sql";
+  const fix = read(FIX);
+
+  it("古い CHECK（'paused' 版）を外す migration がある", () => {
+    expect(fix).toMatch(/DROP CONSTRAINT tenant_members_status_check/);
+  });
+
+  it("休会・退会を許す CHECK は残す", () => {
+    expect(fix).toMatch(/tenant_members_status_known/);
+    expect(fix).toMatch(/'suspended'/);
+    expect(fix).toMatch(/'withdrawn'/);
+  });
+
+  it("画面が書く値が、DB が許す集合に収まっている", () => {
+    // MEMBER_STATUSES を増やしたのに CHECK を直し忘れる、を防ぐ
+    const allowed = fix.match(/CHECK \(status IS NULL OR status IN \(([^)]*)\)\)/)?.[1] ?? "";
+    const set = new Set(allowed.split(",").map((s) => s.trim().replace(/'/g, "")));
+    for (const s of MEMBER_STATUSES) {
+      expect(set.has(s), `status='${s}' を DB が受け付けない`).toBe(true);
+    }
+  });
+
+  it("使っていない 'paused' をアプリ側に戻さない", () => {
+    // 'paused' は元の CHECK にしか無い語で、src のどこでも使っていない
+    expect(MEMBER_STATUSES).not.toContain("paused" as never);
   });
 });

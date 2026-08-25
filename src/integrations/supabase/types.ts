@@ -4117,6 +4117,7 @@ export type Database = {
         Returns: Json
       }
       claim_daily_login_bonus: { Args: { p_user_id: string }; Returns: Json }
+      claim_my_profile: { Args: never; Returns: boolean }
       claim_rival_reward: { Args: { p_battle_id: string }; Returns: Json }
       complete_dungeon_run: {
         Args: {
@@ -4139,6 +4140,18 @@ export type Database = {
       }
       complete_rival_battles: { Args: { p_week_start: string }; Returns: Json }
       compute_rank_for_level: { Args: { _level: number }; Returns: string }
+      create_gym_with_owner: {
+        Args: {
+          _muscle_groups?: string[]
+          _owner_name?: string
+          _plans?: Json
+          _tenant: Json
+        }
+        Returns: {
+          invite_code: string
+          tenant_id: string
+        }[]
+      }
       current_jst_monday: { Args: never; Returns: string }
       delete_customer_cascade: {
         Args: { _customer_id: string }
@@ -4308,6 +4321,10 @@ export type Database = {
       hatch_companion_egg: {
         Args: { p_egg_key: string; p_user_id: string }
         Returns: Json
+      }
+      import_customers: {
+        Args: { _rows: Json; _tenant_id: string }
+        Returns: number
       }
       initialize_quest_boss_progress: { Args: never; Returns: Json }
       initialize_quest_progress: { Args: never; Returns: Json }

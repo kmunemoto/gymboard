@@ -199,6 +199,7 @@ Deno.serve(async (req) => {
         body: {
           templateName: "new-booking-notification",
           recipientEmail: "_resolve_trainer_",
+          tenantId: booking.tenant_id,
           idempotencyKey: `booking-notify-${booking.id}`,
           templateData: {
             customerName,
@@ -223,6 +224,7 @@ Deno.serve(async (req) => {
         body: {
           templateName: "booking-confirmation",
           recipientEmail: "_resolve_user_",
+          tenantId: booking.tenant_id,
           idempotencyKey: `booking-confirm-customer-${booking.id}`,
           templateData: {
             customerName,

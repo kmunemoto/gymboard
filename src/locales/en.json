@@ -2809,5 +2809,38 @@
       "errSuppressed": "Mail to this address has bounced before, so it cannot be sent. Please confirm another address",
       "errFailed": "Could not send the invitation. Please try again later"
     }
+  },
+  "emailLog": {
+    "section": "Notification history",
+    "desc": "Results of emails sent from this gym. When someone says an email never arrived, you can check here whether it was delivered or stopped.",
+    "refresh": "Refresh",
+    "empty": "No sends recorded yet",
+    "loadMore": "Load more",
+    "loadFailed": "Could not load the history. Please refresh after a moment",
+    "attempts": "{{count}} attempts",
+    "authNote": "Sign-up and password-reset emails do not appear here (they are not per-gym notifications).",
+    "template": {
+      "new-booking-notification": "New booking (to gym)",
+      "booking-confirmation": "Booking confirmation",
+      "booking-cancellation": "Booking cancelled",
+      "booking-reminder": "Day-before reminder",
+      "trial-booking-confirmation": "Trial booking confirmation",
+      "trial-booking-reminder": "Trial day-before reminder",
+      "drop-in-booking-confirmation": "Drop-in booking confirmation",
+      "new-account-notification": "New account registered",
+      "customer-invite": "App invitation"
+    },
+    "status": {
+      "sent": "Sent",
+      "pending": "Sending",
+      "failed": "Failed",
+      "suppressed": "Unsubscribed",
+      "bounced": "Bounced",
+      "complained": "Spam report",
+      "rejected": "Not sent",
+      "duplicate": "Duplicate",
+      "rate_limited": "Waiting",
+      "dlq": "Given up"
+    }
   }
 }

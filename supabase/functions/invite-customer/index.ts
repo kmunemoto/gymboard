@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
         body: {
           templateName: "customer-invite",
           recipientEmail: email,
+          tenantId,
           idempotencyKey: `customer-invite-${targetUserId}-${crypto.randomUUID()}`,
           templateData: {
             gymName: gym?.gym_name ?? "",

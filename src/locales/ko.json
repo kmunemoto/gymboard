@@ -2809,5 +2809,38 @@
       "errSuppressed": "이 주소로는 과거에 메일이 전달되지 않아 보낼 수 없습니다. 다른 주소를 확인해 주세요",
       "errFailed": "초대를 보내지 못했습니다. 잠시 후 다시 시도해 주세요"
     }
+  },
+  "emailLog": {
+    "section": "알림 발송 이력",
+    "desc": "이 짐에서 보낸 메일의 결과입니다. \"메일이 오지 않았다\"는 말을 들었을 때 전달되었는지 중단되었는지 여기서 확인할 수 있습니다.",
+    "refresh": "새로고침",
+    "empty": "아직 발송 기록이 없습니다",
+    "loadMore": "더 보기",
+    "loadFailed": "이력을 불러오지 못했습니다. 잠시 후 새로고침해 주세요",
+    "attempts": "{{count}}회 시도",
+    "authNote": "신규 가입·비밀번호 재설정 메일은 여기에 표시되지 않습니다(짐별 알림이 아니기 때문).",
+    "template": {
+      "new-booking-notification": "신규 예약 알림(짐 앞)",
+      "booking-confirmation": "예약 접수 확인",
+      "booking-cancellation": "예약 취소 알림",
+      "booking-reminder": "전날 리마인드",
+      "trial-booking-confirmation": "체험 예약 접수 확인",
+      "trial-booking-reminder": "체험 전날 리마인드",
+      "drop-in-booking-confirmation": "드롭인 예약 접수 확인",
+      "new-account-notification": "신규 계정 등록 알림",
+      "customer-invite": "앱 초대"
+    },
+    "status": {
+      "sent": "전송됨",
+      "pending": "전송 중",
+      "failed": "실패",
+      "suppressed": "수신 거부",
+      "bounced": "전달 실패",
+      "complained": "스팸 신고",
+      "rejected": "보내지 않음",
+      "duplicate": "중복",
+      "rate_limited": "대기 중",
+      "dlq": "포기"
+    }
   }
 }

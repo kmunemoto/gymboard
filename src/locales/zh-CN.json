@@ -2809,5 +2809,38 @@
       "errSuppressed": "该地址曾投递失败，无法发送。请确认其他地址",
       "errFailed": "邀请发送失败，请稍后重试"
     }
+  },
+  "emailLog": {
+    "section": "通知发送记录",
+    "desc": "本健身房发出的邮件结果。当客户说\"没收到邮件\"时，可在此确认是否送达或被中止。",
+    "refresh": "刷新",
+    "empty": "暂无发送记录",
+    "loadMore": "查看更多",
+    "loadFailed": "无法加载记录，请稍后刷新",
+    "attempts": "尝试 {{count}} 次",
+    "authNote": "注册和密码重置邮件不会显示在这里（不属于各健身房的通知）。",
+    "template": {
+      "new-booking-notification": "新预约通知（发给门店）",
+      "booking-confirmation": "预约受理确认",
+      "booking-cancellation": "预约取消通知",
+      "booking-reminder": "前一天提醒",
+      "trial-booking-confirmation": "体验预约受理确认",
+      "trial-booking-reminder": "体验前一天提醒",
+      "drop-in-booking-confirmation": "临时预约受理确认",
+      "new-account-notification": "新账号注册通知",
+      "customer-invite": "应用邀请"
+    },
+    "status": {
+      "sent": "已发送",
+      "pending": "发送中",
+      "failed": "失败",
+      "suppressed": "已退订",
+      "bounced": "未送达",
+      "complained": "垃圾举报",
+      "rejected": "未发送",
+      "duplicate": "重复",
+      "rate_limited": "等待中",
+      "dlq": "已放弃"
+    }
   }
 }

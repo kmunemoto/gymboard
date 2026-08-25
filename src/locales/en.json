@@ -306,8 +306,8 @@
         "helpDesc": "Learn how each feature works",
         "feedback": "Feedback to the operator",
         "feedbackDesc": "Send requests and ideas to the developer",
-        "dataExport": "Data export",
-        "dataExportDesc": "Save customers, bookings and records as CSV"
+        "dataExport": "Import / export data",
+        "dataExportDesc": "Bulk-register customers from CSV and export your data"
       }
     },
     "notification": {
@@ -2757,5 +2757,39 @@
       "measurements": "Weight and body fat",
       "payments": "Date, amount, method"
     }
+  },
+  "dataImport": {
+    "section": "Bulk-register customers (CSV)",
+    "desc": "Register customers in bulk from a CSV — useful when moving over from another gym. CSV files from Excel or Google Sheets work as-is.",
+    "noEmailNote": "Importing sends nothing to your customers. They are only contacted when you press Invite later.",
+    "columnsLabel": "Columns read (a header row is required; order is free, extra columns are ignored)",
+    "columnsNote": "Only Name is required. Status accepts active / suspended / withdrawn, and Joined date must look like 2026-04-01.",
+    "choose": "Choose a CSV file",
+    "readFailed": "Could not read the CSV",
+    "noNameColumn": "No Name column found. Add a column named 名前 (Name) to the header row.",
+    "countNew": "To register",
+    "countSkip": "Skipped (duplicate)",
+    "countError": "Errors",
+    "line": "Line {{line}}",
+    "andMore": "and {{count}} more",
+    "statusPreview": "Breakdown: {{detail}}",
+    "submit": "Register {{count}} people",
+    "sending": "Registering… {{done}} / {{total}}",
+    "done": "Registered {{count}} people",
+    "failed": "Stopped partway ({{count}} registered)",
+    "issue": {
+      "nameRequired": "Name is missing",
+      "nameTooLong": "Name is too long",
+      "kanaTooLong": "Reading is too long (100 characters max)",
+      "phoneTooLong": "Phone number is too long (30 characters max)",
+      "statusUnknown": "Could not read the status ({{value}})",
+      "joinedAtUnreadable": "Could not read the joined date (use 2026-04-01)",
+      "planUnknown": "This plan is not registered at your gym ({{value}}). Revenue will show no amount",
+      "duplicatePhone": "A customer with this phone number already exists",
+      "duplicateName": "A customer with this name already exists",
+      "duplicateInFilePhone": "This phone number appears twice in the file",
+      "duplicateInFileName": "This name appears twice in the file"
+    },
+    "unclaimedBadge": "Not invited"
   }
 }

@@ -1963,6 +1963,7 @@ export type Database = {
           avatar_url: string | null
           best_streak: number
           calendar_token: string
+          claimed_at: string | null
           created_at: string
           cycle_start_date: string | null
           cycle_start_pinned: boolean
@@ -1970,6 +1971,7 @@ export type Database = {
           game_mode_enabled: boolean
           grace_enabled: boolean | null
           id: string
+          imported_at: string | null
           last_streak_notified: number
           line_user_id: string | null
           milestone_goal: string | null
@@ -1990,6 +1992,7 @@ export type Database = {
           avatar_url?: string | null
           best_streak?: number
           calendar_token?: string
+          claimed_at?: string | null
           created_at?: string
           cycle_start_date?: string | null
           cycle_start_pinned?: boolean
@@ -1997,6 +2000,7 @@ export type Database = {
           game_mode_enabled?: boolean
           grace_enabled?: boolean | null
           id?: string
+          imported_at?: string | null
           last_streak_notified?: number
           line_user_id?: string | null
           milestone_goal?: string | null
@@ -2017,6 +2021,7 @@ export type Database = {
           avatar_url?: string | null
           best_streak?: number
           calendar_token?: string
+          claimed_at?: string | null
           created_at?: string
           cycle_start_date?: string | null
           cycle_start_pinned?: boolean
@@ -2024,6 +2029,7 @@ export type Database = {
           game_mode_enabled?: boolean
           grace_enabled?: boolean | null
           id?: string
+          imported_at?: string | null
           last_streak_notified?: number
           line_user_id?: string | null
           milestone_goal?: string | null

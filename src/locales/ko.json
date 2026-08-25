@@ -306,8 +306,8 @@
         "helpDesc": "각 기능의 설명 보기",
         "feedback": "운영사에 요청",
         "feedbackDesc": "개발사에 의견·요청 보내기",
-        "dataExport": "데이터 내보내기",
-        "dataExportDesc": "고객·예약·기록을 CSV로 저장"
+        "dataExport": "데이터 내보내기・가져오기",
+        "dataExportDesc": "고객 CSV 일괄 등록과 데이터 CSV 내보내기"
       }
     },
     "notification": {
@@ -2757,5 +2757,39 @@
       "measurements": "체중·체지방률",
       "payments": "입금일·금액·결제 수단"
     }
+  },
+  "dataImport": {
+    "section": "고객 일괄 등록 (CSV)",
+    "desc": "다른 짐에서 이전할 때 등 고객을 CSV로 한 번에 등록합니다. Excel이나 스프레드시트의 CSV를 그대로 읽을 수 있습니다.",
+    "noEmailNote": "가져와도 고객에게는 아무것도 전달되지 않습니다. 앱으로 초대하는 것은 나중에 '초대'를 눌렀을 때입니다.",
+    "columnsLabel": "읽어들일 열 (머리글 행이 필요합니다. 순서는 자유이며 나머지 열은 무시합니다)",
+    "columnsNote": "'이름'만 필수입니다. 재적 상태는 재적 중 / 휴회 중 / 탈퇴, 가입일은 2026-04-01 형식으로 입력하세요.",
+    "choose": "CSV 파일 선택",
+    "readFailed": "CSV를 읽지 못했습니다",
+    "noNameColumn": "'이름' 열을 찾을 수 없습니다. 머리글 행에 이름을 추가해 주세요.",
+    "countNew": "등록",
+    "countSkip": "건너뜀 (중복)",
+    "countError": "오류",
+    "line": "{{line}}번째 줄",
+    "andMore": "외 {{count}}건",
+    "statusPreview": "내역: {{detail}}",
+    "submit": "{{count}}명 등록",
+    "sending": "등록 중… {{done}} / {{total}}",
+    "done": "{{count}}명을 등록했습니다",
+    "failed": "도중에 실패했습니다 ({{count}}명까지 등록됨)",
+    "issue": {
+      "nameRequired": "이름이 없습니다",
+      "nameTooLong": "이름이 너무 깁니다",
+      "kanaTooLong": "가나가 너무 깁니다 (100자까지)",
+      "phoneTooLong": "전화번호가 너무 깁니다 (30자까지)",
+      "statusUnknown": "재적 상태를 읽을 수 없습니다 ({{value}})",
+      "joinedAtUnreadable": "가입일을 읽을 수 없습니다 (2026-04-01 형식)",
+      "planUnknown": "이 플랜은 짐에 등록되어 있지 않습니다 ({{value}}). 매출에 금액이 표시되지 않습니다",
+      "duplicatePhone": "같은 전화번호의 고객이 이미 있습니다",
+      "duplicateName": "같은 이름의 고객이 이미 있습니다",
+      "duplicateInFilePhone": "이 파일 안에서 전화번호가 중복됩니다",
+      "duplicateInFileName": "이 파일 안에서 이름이 중복됩니다"
+    },
+    "unclaimedBadge": "미초대"
   }
 }

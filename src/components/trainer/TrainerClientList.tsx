@@ -1,4 +1,4 @@
-import { Users, Search, ChevronRight, ChevronDown, ChevronUp, Sparkles, UserCheck, Trash2, CalendarDays, Target, ArrowUpDown, EyeOff, Moon, Clock, PauseCircle } from "lucide-react";
+import { Users, Search, ChevronRight, ChevronDown, ChevronUp, Sparkles, UserCheck, Trash2, CalendarDays, Target, ArrowUpDown, EyeOff, Moon, Clock, PauseCircle, MailQuestion } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -240,6 +240,16 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
               ) : (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 text-muted-foreground">
                   {t("clientList.noBooking")}
+                </Badge>
+              )}
+              {/*
+                未招待（CSV で取り込んだが、本人がまだ一度もログインしていない）。
+                この人にはアプリからの通知が一切届かないので、予約や記録より先に見せる。
+              */}
+              {c.imported_at && !c.claimed_at && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-muted text-muted-foreground border-muted-foreground/30">
+                  <MailQuestion className="w-2.5 h-2.5" />
+                  {t("dataImport.unclaimedBadge")}
                 </Badge>
               )}
               {/*

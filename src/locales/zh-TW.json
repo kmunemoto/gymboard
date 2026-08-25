@@ -306,8 +306,8 @@
         "helpDesc": "查看各功能說明",
         "feedback": "向營運方回饋",
         "feedbackDesc": "向開發方傳送意見與需求",
-        "dataExport": "資料匯出",
-        "dataExportDesc": "將顧客·預約·紀錄儲存為CSV"
+        "dataExport": "資料匯入・匯出",
+        "dataExportDesc": "客戶 CSV 批次匯入與資料 CSV 匯出"
       }
     },
     "notification": {
@@ -2757,5 +2757,39 @@
       "measurements": "體重·體脂率",
       "payments": "收款日·金額·付款方式"
     }
+  },
+  "dataImport": {
+    "section": "批次匯入客戶（CSV）",
+    "desc": "從其他健身房轉移時，可用 CSV 批次登錄客戶。Excel 或試算表匯出的 CSV 可直接讀取。",
+    "noEmailNote": "匯入不會向客戶發送任何通知。只有之後點選「邀請」時才會聯繫本人。",
+    "columnsLabel": "讀取的欄位（需要標題列，順序不限，多餘的欄位會被忽略）",
+    "columnsNote": "只有「姓名」是必填。在籍狀態可填 在籍中 / 停會中 / 退會，入會日期請寫成 2026-04-01 的形式。",
+    "choose": "選擇 CSV 檔案",
+    "readFailed": "無法讀取 CSV",
+    "noNameColumn": "找不到「姓名」欄位。請在標題列中加入姓名。",
+    "countNew": "將登錄",
+    "countSkip": "略過（重複）",
+    "countError": "錯誤",
+    "line": "第 {{line}} 列",
+    "andMore": "另有 {{count}} 筆",
+    "statusPreview": "明細：{{detail}}",
+    "submit": "登錄 {{count}} 人",
+    "sending": "登錄中… {{done}} / {{total}}",
+    "done": "已登錄 {{count}} 人",
+    "failed": "中途失敗（已登錄 {{count}} 人）",
+    "issue": {
+      "nameRequired": "沒有姓名",
+      "nameTooLong": "姓名過長",
+      "kanaTooLong": "假名過長（最多 100 字）",
+      "phoneTooLong": "電話號碼過長（最多 30 字）",
+      "statusUnknown": "無法辨識在籍狀態（{{value}}）",
+      "joinedAtUnreadable": "無法辨識入會日期（請寫成 2026-04-01）",
+      "planUnknown": "此方案未在健身房登錄（{{value}}），營收中不會顯示金額",
+      "duplicatePhone": "已有相同電話號碼的客戶",
+      "duplicateName": "已有相同姓名的客戶",
+      "duplicateInFilePhone": "此檔案中電話號碼重複",
+      "duplicateInFileName": "此檔案中姓名重複"
+    },
+    "unclaimedBadge": "未邀請"
   }
 }

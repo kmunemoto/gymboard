@@ -35,6 +35,14 @@ export interface Profile {
   milestone_goal_set_at?: string | null;
   /** プランの猶予（大目に見る）をこのお客様に適用するか。null/true=適用（既定）、false=適用しない */
   grace_enabled: boolean | null;
+  /**
+   * CSV 一括登録で作られた行なら、その時刻。手で入会した顧客は null。
+   * `imported_at` があって `claimed_at` が null の間が「未招待」＝
+   * アカウントは在るが本人はまだ一度もログインしていない状態。
+   */
+  imported_at?: string | null;
+  /** 本人が実際にログインした時刻。 */
+  claimed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -148,7 +156,20 @@ export const useProfile = () => {
 
       if (!cancelled) {
         if (!error) {
-          setProfile((data as Profile) ?? null);
+          const row = (data as Profile) ?? null;
+          setProfile(row);
+          // CSV で取り込まれたお客様が、初めてログインしてきた瞬間。
+          // 店の一覧から「未招待」のバッジを外す（本人にはこの操作は見えない）。
+          //
+          // ⚠️ ここに置いているのは、**本番の auth.users にトリガーが1本も無い**ため。
+          //    migration には on_auth_user_created があるが本番には当たっておらず、
+          //    サインアップを DB 側で捕まえる場所が存在しない。
+          //    失敗しても本人の利用には影響しないので、握って続行する。
+          if (row?.imported_at && !row.claimed_at) {
+            void supabase.rpc("claim_my_profile" as never).then(({ error: claimErr }) => {
+              if (claimErr) console.warn("claim_my_profile failed", claimErr);
+            });
+          }
         }
         setLoading(false);
       }

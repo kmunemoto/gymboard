@@ -45,6 +45,7 @@ import TrainerBookingLimits from "./TrainerBookingLimits";
 import TrainerCapacityWindows from "./TrainerCapacityWindows";
 import TrainerBlockedWindows from "./TrainerBlockedWindows";
 import TrainerDataExport from "./TrainerDataExport";
+import TrainerCustomerImport from "./TrainerCustomerImport";
 import { formatWeekdayShort } from "@/lib/dateFormat";
 import {
   DASHBOARD_STAT_TOGGLES,
@@ -1504,9 +1505,16 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </>
       )}
 
-      {/* === データの書き出し（CSV） === */}
+      {/* === データの書き出し・取り込み（CSV） === */}
       {settingsView === "dataExport" && (
         <>
+      {/* 取り込みを先に置く。乗り換えで来た店が最初にやるのはこちらで、
+          書き出しは運用に乗ってから使うため（2026-08-25） */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("dataImport.section")}</h3>
+        <TrainerCustomerImport />
+      </section>
+
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("dataExport.section")}</h3>
         <TrainerDataExport />

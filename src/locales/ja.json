@@ -306,8 +306,8 @@
         "helpDesc": "各機能の説明を見る",
         "feedback": "運営への要望",
         "feedbackDesc": "開発元に意見・要望を送る",
-        "dataExport": "データの書き出し",
-        "dataExportDesc": "顧客・予約・記録などをCSVで保存"
+        "dataExport": "データの書き出し・取り込み",
+        "dataExportDesc": "顧客のCSV一括登録と、データのCSV書き出し"
       }
     },
     "notification": {
@@ -2757,5 +2757,39 @@
       "measurements": "体重・体脂肪率",
       "payments": "入金日・金額・支払方法"
     }
+  },
+  "dataImport": {
+    "section": "顧客の一括登録（CSV）",
+    "desc": "他のジムからの乗り換えなど、顧客をCSVでまとめて登録します。ExcelやスプレッドシートのCSVをそのまま読み込めます。",
+    "noEmailNote": "取り込んでもお客様には何も届きません。アプリに招待するのは、あとから「招待する」を押したときです。",
+    "columnsLabel": "読み込む列（見出し行が必要です。順番は自由、余分な列は無視します）",
+    "columnsNote": "「名前」だけが必須です。在籍状態は 在籍中 / 休会中 / 退会、入会日は 2026-04-01 の形で書いてください。",
+    "choose": "CSVファイルを選ぶ",
+    "readFailed": "CSVを読み込めませんでした",
+    "noNameColumn": "「名前」の列が見つかりません。見出し行に「名前」（または氏名）を入れてください。",
+    "countNew": "登録する",
+    "countSkip": "とばす（重複）",
+    "countError": "エラー",
+    "line": "{{line}}行目",
+    "andMore": "ほか{{count}}件",
+    "statusPreview": "内訳: {{detail}}",
+    "submit": "{{count}}人を登録する",
+    "sending": "登録中… {{done}} / {{total}}",
+    "done": "{{count}}人を登録しました",
+    "failed": "途中で失敗しました（{{count}}人まで登録済み）",
+    "issue": {
+      "nameRequired": "名前がありません",
+      "nameTooLong": "名前が長すぎます",
+      "kanaTooLong": "ふりがなが長すぎます（100文字まで）",
+      "phoneTooLong": "電話番号が長すぎます（30文字まで）",
+      "statusUnknown": "在籍状態が読めません（{{value}}）",
+      "joinedAtUnreadable": "入会日が読めません（2026-04-01 の形で書いてください）",
+      "planUnknown": "このプラン名はジムに登録されていません（{{value}}）。売上に金額が出ません",
+      "duplicatePhone": "同じ電話番号の顧客が既にいます",
+      "duplicateName": "同じ名前の顧客が既にいます",
+      "duplicateInFilePhone": "このファイルの中で電話番号が重複しています",
+      "duplicateInFileName": "このファイルの中で名前が重複しています"
+    },
+    "unclaimedBadge": "未招待"
   }
 }

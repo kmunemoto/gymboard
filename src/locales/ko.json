@@ -2854,5 +2854,18 @@
       "rate_limited": "대기 중",
       "dlq": "포기"
     }
+  },
+  "timeline": {
+    "section": "활동 기록",
+    "empty": "아직 기록이 없습니다",
+    "expand": "{{count}}일 더 보기",
+    "collapse": "접기",
+    "booking": "방문({{type}})",
+    "cancelled": "취소({{type}})",
+    "workout": "트레이닝 {{count}}종목",
+    "measurement": "측정 체중{{weight}}kg / 체지방{{fat}}%",
+    "payment": "입금 ¥{{amount}}",
+    "agreement": "동의서 기록",
+    "photo": "사진 기록"
   }
 }

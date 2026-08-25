@@ -2854,5 +2854,18 @@
       "rate_limited": "等待中",
       "dlq": "已放棄"
     }
+  },
+  "timeline": {
+    "section": "活動記錄",
+    "empty": "尚無記錄",
+    "expand": "再查看 {{count}} 天",
+    "collapse": "收合",
+    "booking": "到店（{{type}}）",
+    "cancelled": "取消（{{type}}）",
+    "workout": "訓練 {{count}} 個項目",
+    "measurement": "測量 體重{{weight}}kg / 體脂{{fat}}%",
+    "payment": "入帳 ¥{{amount}}",
+    "agreement": "已記錄同意書",
+    "photo": "已記錄照片"
   }
 }

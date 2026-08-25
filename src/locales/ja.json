@@ -2854,5 +2854,18 @@
       "rate_limited": "待機中",
       "dlq": "あきらめ"
     }
+  },
+  "timeline": {
+    "section": "活動の記録",
+    "empty": "まだ記録がありません",
+    "expand": "さらに{{count}}日ぶんを見る",
+    "collapse": "閉じる",
+    "booking": "来店（{{type}}）",
+    "cancelled": "キャンセル（{{type}}）",
+    "workout": "トレーニング {{count}}種目",
+    "measurement": "測定 体重{{weight}}kg / 体脂肪{{fat}}%",
+    "payment": "入金 ¥{{amount}}",
+    "agreement": "同意書を記録",
+    "photo": "写真を記録"
   }
 }

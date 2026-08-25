@@ -61,3 +61,69 @@ iOS/Android の WebView は `<a download>` を無視するため、**アプリ�
 `<meta name="author" content="Lovable">` / `twitter:site @Lovable` /
 外部ホスト（storage.googleapis.com の gpt-engineer-file-uploads）の og:image が残っていた。
 自前の `icon-512.png` と「ジムボード」に差し替え済み。見張りテストで復活を防いでいる。
+
+---
+
+## 🔴 出したその日から壊れていた: `profiles.tenant_id` は埋まっていない（2026-08-25）
+
+CSV 一括登録の下調べで見つけた。**本番で顧客CSVの中身がほぼ空欄になっていた。**
+
+| ジム | 顧客数 | CSV で名前・ふりがな・電話・プラン・起算日が空欄 |
+|---|---|---|
+| パーソナルジムSalute御所南 | 38 | **37** |
+| ジムボードパーソナルジム | 16 | 1 |
+
+顧客CSVだけでなく、予約・記録・測定・入金のCSVの「顧客名」列も同じ理由で空だった
+（名前表を同じ引き方で作っていたため）。
+
+### なぜ
+
+`profiles.tenant_id` は**誰も埋めていない列**だった。本番 71行中 55行が NULL。
+
+在籍の正は `tenant_members` で、`get_my_tenant_id()` も `shares_tenant_with_me()` も
+そちらを読む。`profiles.tenant_id` を読んでいたのは実質この書き出しだけだった。
+
+埋まらない理由は書き込みの順序:
+
+```
+JoinGym.tsx:100  profiles を upsert      ← tenant_id を渡していない（この時点では所属が未確定）
+JoinGym.tsx:108  tenant_members を upsert ← ここで初めて所属が決まる
+```
+
+`MemberInfoCard.tsx` の連絡先 upsert も同じく tenant_id を送っていない。
+
+### 気づけなかった理由
+
+**書き出しは成功し、行数も人数と一致する。** 顧客一覧は `tenant_members` を軸に作り、
+profiles が無い人は null で埋めるフォールバックがあるので、
+「38人ぶん出た。中身が空なだけ」という形になる。エラーもログも出ない。
+
+変異テストは「`tenant_id` の絞りを消したら赤」を固定していたので、
+**絞りが効きすぎて0件になる向きは見ていなかった**。片側しか見ていない見張りだった。
+
+### 直し方
+
+`profiles` を `tenant_id` で絞るのをやめ、**テナントで絞り込んだ行から出てきた顧客ID**で引く。
+
+- 顧客CSV … `tenant_members`（tenant_id で絞り済み）の user_id で引く
+- 名前表 … これから出す行に実際に出てくる user_id で引く（`loadExport` の `withNames`）
+
+ID の出所が既にテナント境界を通っているので、**絞りとしてはこちらのほうが強い**。
+`.in()` は URL に載るので 200件ずつ分割する（`ID_CHUNK`）。
+
+本番でオーナーを演じて確認（BEGIN…ROLLBACK）:
+
+| | 旧 `.eq("tenant_id")` | 新 `.in("user_id", 在籍ID)` |
+|---|---|---|
+| 読めた profiles | **1件** | **37件**（全件に名前あり） |
+| 他ジムの顧客IDを名指し | — | **0件**（RLS が最後の砦として効く） |
+
+### 見張り（両方向）
+
+- `profiles` を `tenant_id` で絞ったら赤（**空欄バグの再発**）
+- `profiles` 以外は `tenant_id` の絞りが必須（他ジム混入）
+- 取得は共通ヘルパ2本だけを通す（生の select を散らさない）
+
+⚠️ `profiles.tenant_id` 自体は**まだ埋めていない**。CSV 一括登録では
+「在籍行を持てない顧客」のテナント境界をこの列に持たせる必要があるので、
+バックフィルと維持（トリガー）はそちらでまとめて入れる。

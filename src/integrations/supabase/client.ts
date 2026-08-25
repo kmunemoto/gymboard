@@ -2,6 +2,7 @@
 // （生成物だが、開発用ダミーデータへの差し替えだけ手で足している。詳細は mem/ops/dev-fixtures.md）
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { brokeredPreviewStorage } from './previewAuthStorage';
 import { createFixtureClient } from '@/dev/fixtureClient';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -18,7 +19,7 @@ const USE_DEV_FIXTURES = import.meta.env.DEV && import.meta.env.VITE_DEV_FIXTURE
 const realClient = () =>
   createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
-      storage: localStorage,
+      storage: brokeredPreviewStorage(),
       persistSession: true,
       autoRefreshToken: true,
       // 🔴 **消さないこと。消すと OAuth のトークンがアプリ外のブラウザに渡る。**

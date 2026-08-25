@@ -66,6 +66,8 @@ async function moveToDlq(
     recipient_email: payload.to,
     status: 'dlq',
     error_message: reason,
+    // どのジムの通知か。send-transactional-email が payload に載せている
+    tenant_id: (payload.tenant_id as string | null) ?? null,
   })
   const { error } = await supabase.rpc('move_to_dlq', {
     source_queue: queue,
@@ -286,6 +288,7 @@ Deno.serve(async (req) => {
           template_name: payload.label || queue,
           recipient_email: payload.to,
           status: 'sent',
+          tenant_id: (payload.tenant_id as string | null) ?? null,
         })
 
         // Delete from queue
@@ -314,6 +317,7 @@ Deno.serve(async (req) => {
             recipient_email: payload.to,
             status: 'rate_limited',
             error_message: errorMsg.slice(0, 1000),
+            tenant_id: (payload.tenant_id as string | null) ?? null,
           })
 
           const retryAfterSecs = getRetryAfterSeconds(error)
@@ -351,6 +355,7 @@ Deno.serve(async (req) => {
           recipient_email: payload.to,
           status: 'failed',
           error_message: errorMsg.slice(0, 1000),
+          tenant_id: (payload.tenant_id as string | null) ?? null,
         })
         if (payload?.message_id && typeof payload.message_id === 'string') {
           failedAttemptsByMessageId.set(payload.message_id, failedAttempts + 1)

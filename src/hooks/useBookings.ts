@@ -997,6 +997,7 @@ async function sendCancelEmailNotification(
       body: {
         templateName: "booking-cancellation",
         recipientEmail: "_resolve_trainer_",
+        tenantId: booking.tenant_id ?? null,
         idempotencyKey: `cancel-trainer-${booking.id}`,
         templateData: {
           customerName,
@@ -1019,6 +1020,7 @@ async function sendCancelEmailNotification(
     body: {
       templateName: "booking-cancellation",
       recipientEmail: "_resolve_user_",
+      tenantId: booking.tenant_id ?? null,
       idempotencyKey: `cancel-customer-${booking.id}`,
       templateData: {
         customerName,

@@ -46,6 +46,7 @@ import TrainerCapacityWindows from "./TrainerCapacityWindows";
 import TrainerBlockedWindows from "./TrainerBlockedWindows";
 import TrainerDataExport from "./TrainerDataExport";
 import TrainerCustomerImport from "./TrainerCustomerImport";
+import TrainerEmailLog from "./TrainerEmailLog";
 import { formatWeekdayShort } from "@/lib/dateFormat";
 import {
   DASHBOARD_STAT_TOGGLES,
@@ -1322,6 +1323,16 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       {/* === メール・通知 === */}
       {settingsView === "comms" && (
         <>
+      {/* === 通知の送信履歴（2026-08-26） ===
+          「メールが来ていない」と言われたときに店が自分で確かめられるようにする。
+          設定より先に置いているのは、開く理由がだいたいこれだから。 */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          {t("emailLog.section")}
+        </h3>
+        <TrainerEmailLog />
+      </section>
+
       {/* === 予約確認メール・リマインドメールに足す、店からの案内 === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">

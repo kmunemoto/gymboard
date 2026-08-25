@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
       body: {
         templateName: 'trial-booking-reminder',
         recipientEmail: contact,
+        tenantId: booking.tenant_id,
         idempotencyKey: `trial-reminder-${booking.id}-${tomorrowStr}`,
         templateData: {
           guestName: booking.guest_name,

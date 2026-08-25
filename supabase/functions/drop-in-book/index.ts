@@ -286,6 +286,7 @@ Deno.serve(async (req) => {
     tasks.push(
       invokeFn("send-transactional-email", {
         templateName: "drop-in-booking-confirmation",
+        tenantId,
         recipientEmail: guestContact,
         idempotencyKey: `dropin-confirm-${notifyKey}`,
         templateData: {
@@ -307,6 +308,7 @@ Deno.serve(async (req) => {
       tasks.push(
         invokeFn("send-transactional-email", {
           templateName: "new-booking-notification",
+          tenantId,
           recipientEmail: "_resolve_trainer_",
           idempotencyKey: `dropin-notify-${notifyKey}`,
           templateData: {

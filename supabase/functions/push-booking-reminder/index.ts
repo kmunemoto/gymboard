@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
           body: {
             templateName: "booking-reminder",
             recipientEmail: "_resolve_user_",
+            tenantId,
             idempotencyKey: `booking-reminder-${userId}-${tomorrowDateStr}`,
             templateData: {
               resolveUserId: userId,

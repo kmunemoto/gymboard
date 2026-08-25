@@ -2809,5 +2809,38 @@
       "errSuppressed": "このアドレスには過去にメールが届かなかったため送信できません。別のアドレスをご確認ください",
       "errFailed": "招待を送れませんでした。時間をおいてもう一度お試しください"
     }
+  },
+  "emailLog": {
+    "section": "通知の送信履歴",
+    "desc": "このジムから送ったメールの結果です。「メールが来ていない」と言われたときに、届いたのか・止まったのかをここで確かめられます。",
+    "refresh": "更新",
+    "empty": "まだ送信の記録がありません",
+    "loadMore": "もっと見る",
+    "loadFailed": "履歴を読み込めませんでした。時間をおいて更新してください",
+    "attempts": "{{count}}回試行",
+    "authNote": "新規登録・パスワード再設定のメールはここには出ません（ジムごとの通知ではないため）。",
+    "template": {
+      "new-booking-notification": "新規予約のお知らせ（店宛）",
+      "booking-confirmation": "予約の受付確認",
+      "booking-cancellation": "予約キャンセルのお知らせ",
+      "booking-reminder": "前日リマインド",
+      "trial-booking-confirmation": "体験予約の受付確認",
+      "trial-booking-reminder": "体験の前日リマインド",
+      "drop-in-booking-confirmation": "ドロップイン予約の受付確認",
+      "new-account-notification": "新規アカウント登録のお知らせ",
+      "customer-invite": "アプリへの招待"
+    },
+    "status": {
+      "sent": "送信済み",
+      "pending": "送信中",
+      "failed": "失敗",
+      "suppressed": "配信停止",
+      "bounced": "届かず",
+      "complained": "迷惑報告",
+      "rejected": "送らず",
+      "duplicate": "重複",
+      "rate_limited": "待機中",
+      "dlq": "あきらめ"
+    }
   }
 }

@@ -159,6 +159,7 @@ async function logRejected(
   templateName: string | undefined,
   recipientEmail: string | undefined,
   reason: string,
+  tenantId?: string | null,
 ) {
   try {
     const url = Deno.env.get('SUPABASE_URL')
@@ -170,6 +171,7 @@ async function logRejected(
       recipient_email: recipientEmail || 'unknown',
       status: 'rejected',
       error_message: reason,
+      tenant_id: tenantId ?? null,
     })
   } catch (e) {
     console.error('logRejected failed', e)
@@ -250,8 +252,14 @@ Deno.serve(async (req) => {
   let explicitIdempotencyKey: string | null = null
   let messageId: string
   let templateData: Record<string, any> = {}
+  // どのジムの通知か。履歴画面（TrainerEmailLog）がこれで絞る。
+  // 認証メールはジムに属さないので null のまま＝スタッフには見えない。
+  let tenantId: string | null = null
   try {
     const body = await req.json()
+    tenantId = typeof body.tenantId === 'string' ? body.tenantId
+      : typeof body.tenant_id === 'string' ? body.tenant_id
+      : null
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     messageId = crypto.randomUUID()
@@ -297,6 +305,26 @@ Deno.serve(async (req) => {
     )
   }
 
+  // 呼び出し元が tenantId を渡してこなかった場合の引き当て。
+  //
+  // ⚠️ **公開済みのネイティブアプリは tenantId を送ってこない。** 端末に配られた
+  //    古いクライアントは書き換えられないので、ここで補わないと予約キャンセルの
+  //    通知だけ履歴に出ない、という穴がずっと残る。
+  //    templateData に載っている user_id からその人の在籍ジムを引く。
+  //    2つ以上のジムに在籍している人は決められないので引き当てない（NULL のまま）。
+  if (!tenantId) {
+    const hintUserId = templateData.resolveUserId || templateData.trainerUserId
+    if (typeof hintUserId === 'string' && hintUserId) {
+      const { data: rows } = await createClient(supabaseUrl, supabaseServiceKey)
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', hintUserId)
+        .eq('status', 'active')
+      const ids = [...new Set((rows ?? []).map((r: { tenant_id: string }) => r.tenant_id))]
+      if (ids.length === 1) tenantId = ids[0]
+    }
+  }
+
   // Resolve effective recipient: template-level `to` takes precedence over
   // the caller-provided recipientEmail. This allows notification templates
   // to always send to a fixed address (e.g., site owner from env var).
@@ -310,7 +338,7 @@ Deno.serve(async (req) => {
       effectiveRecipient = authUser.user.email
     } else {
       console.error('Could not resolve trainer email', { trainerUserId: templateData.trainerUserId })
-      await logRejected(templateName, recipientEmail, `could not resolve trainer email (${templateData.trainerUserId})`)
+      await logRejected(templateName, recipientEmail, `could not resolve trainer email (${templateData.trainerUserId})`, tenantId)
       return new Response(
         JSON.stringify({ error: 'Could not resolve trainer email' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -326,7 +354,7 @@ Deno.serve(async (req) => {
       effectiveRecipient = authUser.user.email
     } else {
       console.error('Could not resolve user email', { resolveUserId: templateData.resolveUserId })
-      await logRejected(templateName, recipientEmail, `could not resolve user email (${templateData.resolveUserId})`)
+      await logRejected(templateName, recipientEmail, `could not resolve user email (${templateData.resolveUserId})`, tenantId)
       return new Response(
         JSON.stringify({ error: 'Could not resolve user email' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -335,7 +363,7 @@ Deno.serve(async (req) => {
   }
 
   if (!effectiveRecipient || effectiveRecipient === '_resolve_trainer_' || effectiveRecipient === '_resolve_user_') {
-    await logRejected(templateName, recipientEmail, 'recipient missing or unresolved')
+    await logRejected(templateName, recipientEmail, 'recipient missing or unresolved', tenantId)
     return new Response(
       JSON.stringify({
         error: 'recipientEmail is required (unless the template defines a fixed recipient)',
@@ -398,6 +426,7 @@ Deno.serve(async (req) => {
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'suppressed',
+      tenant_id: tenantId,
     })
 
     console.log('Email suppressed', { effectiveRecipient, templateName })
@@ -435,6 +464,7 @@ Deno.serve(async (req) => {
       recipient_email: effectiveRecipient,
       status: 'failed',
       error_message: 'Failed to look up unsubscribe token',
+      tenant_id: tenantId,
     })
     return new Response(
       JSON.stringify({ error: 'Failed to prepare email' }),
@@ -469,6 +499,7 @@ Deno.serve(async (req) => {
         recipient_email: effectiveRecipient,
         status: 'failed',
         error_message: 'Failed to create unsubscribe token',
+        tenant_id: tenantId,
       })
       return new Response(
         JSON.stringify({ error: 'Failed to prepare email' }),
@@ -498,6 +529,7 @@ Deno.serve(async (req) => {
         recipient_email: effectiveRecipient,
         status: 'failed',
         error_message: 'Failed to confirm unsubscribe token storage',
+        tenant_id: tenantId,
       })
       return new Response(
         JSON.stringify({ error: 'Failed to prepare email' }),
@@ -521,6 +553,7 @@ Deno.serve(async (req) => {
       status: 'suppressed',
       error_message:
         'Unsubscribe token used but email missing from suppressed list',
+      tenant_id: tenantId,
     })
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
@@ -617,6 +650,7 @@ Deno.serve(async (req) => {
         recipient_email: effectiveRecipient,
         status: 'duplicate',
         error_message: `idempotency key already used: ${explicitIdempotencyKey}`,
+        tenant_id: tenantId,
       })
       console.log('Duplicate send suppressed', { templateName, idempotencyKey: explicitIdempotencyKey })
       return new Response(
@@ -637,6 +671,7 @@ Deno.serve(async (req) => {
     template_name: templateName,
     recipient_email: effectiveRecipient,
     status: 'pending',
+    tenant_id: tenantId,
   })
 
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
@@ -656,6 +691,10 @@ Deno.serve(async (req) => {
       idempotency_key: idempotencyKey,
       unsubscribe_token: unsubscribeToken,
       queued_at: new Date().toISOString(),
+      // 送信結果（sent / failed / dlq）を書くのは process-email-queue で、
+      // あちらは pgmq の payload しか持たない。履歴をジムごとに出すには
+      // ここで載せて渡すしかない（載せ忘れると sent の行だけ tenant_id が空になる）
+      tenant_id: tenantId,
     },
   })
 
@@ -688,6 +727,7 @@ Deno.serve(async (req) => {
       recipient_email: effectiveRecipient,
       status: 'failed',
       error_message: 'Failed to enqueue email',
+      tenant_id: tenantId,
     })
 
     return new Response(JSON.stringify({ error: 'Failed to enqueue email' }), {

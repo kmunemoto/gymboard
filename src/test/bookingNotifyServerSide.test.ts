@@ -127,12 +127,18 @@ describe("記録簿（booking_notify_log）と付随トリガー", () => {
     expect(tables).toContain("booking_notify_log");
     // 並び: bookings → booking_notify_log
     expect(tables.indexOf("booking_notify_log")).toBeGreaterThan(tables.indexOf("bookings"));
-    // 既存テーブルを1つも落としていない（20260821080000 時点の31テーブル + 新1）
+    // 既存テーブルを1つも落としていない
+    // （20260821080000 時点の31 + booking_notify_log + email_send_log）
+    //
+    // ⚠️ ここは**一覧を丸ごと**固定している。tenant_id を持つテーブルを増やしたら
+    //    delete_my_gym に消し込みを足したうえで、この配列にも足すこと。
+    //    面倒に見えるが、これが「閉じたジムの行が残る」を止めている唯一の関門
+    //    （2026-08-26 に email_send_log を足したときも、ここが最初に赤くなった）。
     const expected = [
       "announcement_reads", "member_agreements", "message_reactions", "messages",
       "message_templates", "operator_feedback", "workouts", "exercise_id_map",
       "exercises", "tenant_muscle_groups", "booking_waitlist", "bookings",
-      "booking_notify_log", "blocked_slots", "trial_bookings", "booking_questions",
+      "booking_notify_log", "email_send_log", "blocked_slots", "trial_bookings", "booking_questions",
       "staff_schedules", "booking_frequency_limits", "booking_capacity_windows",
       "booking_blocked_windows", "member_payments", "counseling_responses",
       "monthly_reports", "progress_photos", "user_measurements", "meals",

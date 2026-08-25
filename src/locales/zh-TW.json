@@ -2809,5 +2809,38 @@
       "errSuppressed": "此地址曾投遞失敗，無法發送。請確認其他地址",
       "errFailed": "邀請發送失敗，請稍後再試"
     }
+  },
+  "emailLog": {
+    "section": "通知發送記錄",
+    "desc": "本健身房發出的郵件結果。當客戶說「沒收到郵件」時，可在此確認是否送達或被中止。",
+    "refresh": "重新整理",
+    "empty": "尚無發送記錄",
+    "loadMore": "查看更多",
+    "loadFailed": "無法載入記錄，請稍後重新整理",
+    "attempts": "嘗試 {{count}} 次",
+    "authNote": "註冊和密碼重設郵件不會顯示在這裡（不屬於各健身房的通知）。",
+    "template": {
+      "new-booking-notification": "新預約通知（發給門店）",
+      "booking-confirmation": "預約受理確認",
+      "booking-cancellation": "預約取消通知",
+      "booking-reminder": "前一天提醒",
+      "trial-booking-confirmation": "體驗預約受理確認",
+      "trial-booking-reminder": "體驗前一天提醒",
+      "drop-in-booking-confirmation": "臨時預約受理確認",
+      "new-account-notification": "新帳號註冊通知",
+      "customer-invite": "應用程式邀請"
+    },
+    "status": {
+      "sent": "已發送",
+      "pending": "發送中",
+      "failed": "失敗",
+      "suppressed": "已退訂",
+      "bounced": "未送達",
+      "complained": "垃圾檢舉",
+      "rejected": "未發送",
+      "duplicate": "重複",
+      "rate_limited": "等待中",
+      "dlq": "已放棄"
+    }
   }
 }

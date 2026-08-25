@@ -1,4 +1,4 @@
-import type { Tenant } from "@/hooks/useTenant";
+import type { Tenant } from "@/lib/tenantTypes";
 import { BILLING_ENABLED } from "@/lib/featureFlags";
 
 // サブスク延滞/停止でアプリ利用が制限される状態か。

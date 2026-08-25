@@ -5,7 +5,7 @@ import { getMuscleGroup, loadMuscleGroupMap } from "./muscleGroup";
 import { formatJST } from "./timezone";
 import { getRankInfo } from "./avatarSystem";
 import { MISSION_EXP_MULT } from "./rankPerks";
-import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
+import { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";
 
 async function getMissionMult(userId: string): Promise<number> {
   const { data } = await supabase.from("user_avatars").select("level").eq("user_id", userId).maybeSingle();

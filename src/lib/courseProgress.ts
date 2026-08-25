@@ -144,7 +144,8 @@ export const resolveEffectiveCycle = (params: {
    * 「カードは残7回と言うのに予約が拒否される」という食い違いが必ず出る。
    * DB 側（`guard_booking_plan_limit`）も同じく暦窓のまま数える。
    */
-  allowOverflow?: boolean;
+  /** null も undefined も「許す」（下の `!== false` 参照）。呼び出し側の型に合わせる */
+  allowOverflow?: boolean | null;
   /**
    * 店が起算日を固定しているお客様（`profiles.cycle_start_pinned`）。
    * 🔴 true のときは**使い切りロールも「1回目の予約日起点」の引き直し表示もしない**。
@@ -160,7 +161,11 @@ export const resolveEffectiveCycle = (params: {
   const anchorToFirstBooking = params.anchorToFirstBooking === true && !pinned;
   let anchorKey = params.cycleStartDate;
   if (!anchorKey) return null;
-  let window = getCycleWindow(anchorKey, startOfDay(parseISO(anchorKey)), cycleMonths, cycleUnit);
+  // 型注釈は必須。付けないと、この下のループが
+  //   window → target → next → windowEnd → window
+  // と循環参照になり、TS が推論できず any に落ちる（strict で TS7022）
+  let window: CycleWindow | null =
+    getCycleWindow(anchorKey, startOfDay(parseISO(anchorKey)), cycleMonths, cycleUnit);
   if (!window) return null;
 
   const refDay = startOfDay(referenceDate);
@@ -227,8 +232,14 @@ export const resolveEffectiveCycle = (params: {
       return finalizeWindow(window, lent, inWindow);
     }
     // referenceDate はこの窓より後 → 次に予約のある日（無ければ referenceDate）まで暦窓を進める
-    const next = activeDates.find((d) => d >= window.end);
-    const target = next && next < refDay ? next : refDay;
+    // ⚠️ クロージャの中で `let window` は narrowing されない（あとで
+    //    再代入されうるため、TS は null の可能性を残す）。const に取ってから渡す
+    // 🔴 型注釈は必須。付けないと
+    //      window → target → next → windowEnd → window
+    //    の循環参照になり、TS が推論できず any に落ちる（strict で TS7022）
+    const windowEnd: Date = window.end;
+    const next: Date | undefined = activeDates.find((d) => d >= windowEnd);
+    const target: Date = next && next < refDay ? next : refDay;
     window = getCycleWindow(anchorKey, target, cycleMonths, cycleUnit)!;
   }
 

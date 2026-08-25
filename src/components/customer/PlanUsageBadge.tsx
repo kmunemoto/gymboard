@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { PlanUsage } from "@/lib/planUsage";
 
 // プラン消化状況の「あと何回」を強調表示するバッジ。
-// 状態で色を変える: 残り2回以上=アクセント / 残り1回=警告 / 残り0=不可(赤) / 無制限 / 期限切れ。
+// 状態で色を変える: 残り2回以上=アクセント / 残り1回=警告 / 無制限 / 期限切れ。
+// 残り0はプラン種別で分ける: サブスク=「今回分は予約済み」(アクセント) / 回数券=「予約枠なし」(赤)。
 // GymBoard 共通部品（予約画面・ホーム・トレーナーのお客様詳細などで再利用可能）。
 const PlanUsageBadge = ({ usage }: { usage: PlanUsage }) => {
   const { t } = useTranslation();
@@ -31,6 +32,19 @@ const PlanUsageBadge = ({ usage }: { usage: PlanUsage }) => {
   const remaining = usage.remaining ?? 0;
 
   if (remaining === 0) {
+    // 🔴 月N回サブスクの残り0は「エラー」ではなく「今回分が埋まった」状態。
+    //    上限の判定は UI も DB も「予約対象日が属するサイクル」で数えるため、
+    //    次のサイクルに入る日付なら予約できる（planSessionLimit.test.ts が固定）。
+    //    赤い「予約枠なし」だと「もう予約してはいけない」に読めてしまうので、
+    //    完了としてアクセント色で見せる。
+    if (usage.kind === "subscription") {
+      return (
+        <div className={`${boxBase} bg-accent/15 text-accent`}>
+          <span className="text-xs font-bold text-center">{t("booking.cycleFullBadge")}</span>
+        </div>
+      );
+    }
+    // 回数券は次のサイクルで回復しない（使い切りで恒久）ので、従来どおり赤のまま
     return (
       <div className={`${boxBase} bg-destructive/10 text-destructive`}>
         <span className="text-xs font-bold text-center">{t("booking.noSlotsLeft")}</span>

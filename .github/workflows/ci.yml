@@ -39,6 +39,15 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit -p tsconfig.app.json
 
+      # src/lib だけ strict（strictNullChecks + noImplicitAny）で通す。
+      #
+      # 全体を strict にすると数百件出て一度には直せない。純粋なロジックが集まる
+      # src/lib から段階的に広げる（mem/ops/strict-ratchet.md）。
+      # 🔴 lib は components / hooks に依存しない。依存すると、lib を検査するだけで
+      #    画面の木まで引きずり込まれてこのゲートが意味を失う。
+      - name: Type check (strict, src/lib)
+        run: npm run typecheck:strict
+
       - name: Test
         run: npm test
 

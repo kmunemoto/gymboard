@@ -1,6 +1,6 @@
 import { ja } from "date-fns/locale";
 import { formatJST } from "@/lib/timezone";
-import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
+import { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";
 
 /**
  * 予約をチャットに引用する。

@@ -30,7 +30,10 @@ import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { useTenant } from "@/hooks/useTenant";
 import { isNavTabVisible } from "@/lib/gymDisplaySettings";
 
-export type TrainerTab = "dashboard" | "clients" | "schedule" | "messages" | "exercises" | "counseling" | "announcements" | "notifications" | "trial-followups" | "gym-settings";
+// 定義は src/lib/trainerTabs.ts に移した（lib がコンポーネントを import しないため）。
+// ここから使っている箇所を壊さないよう再エクスポートする。
+export type { TrainerTab } from "@/lib/trainerTabs";
+import type { TrainerTab } from "@/lib/trainerTabs";
 
 const TrainerView = () => {
   const { t } = useTranslation();

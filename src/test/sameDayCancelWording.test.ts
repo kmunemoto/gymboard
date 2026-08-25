@@ -57,8 +57,17 @@ describe("当日キャンセルの用語", () => {
   it("DBのstatus値は「同日キャンセル済み」のまま（変更すると既存の予約が迷子になる）", () => {
     // 本番の bookings.status に既にこの文字列が入っている。用語統一に巻き込んで
     // 書き換えると、消化数カウントも予定表の表示も既存行を拾えなくなる。
-    const src = readFileSync("src/hooks/useBookings.ts", "utf8");
+    // 定義は src/lib/bookingStatus.ts（2026-08-26 に hooks から降ろした。
+    // lib が hooks を import しないようにするため。mem/ops/strict-ratchet.md）
+    const src = readFileSync("src/lib/bookingStatus.ts", "utf8");
     expect(src).toContain(`export const SAME_DAY_FORFEIT_STATUS = "${DB_STATUS_VALUE}";`);
+  });
+
+  it("useBookings から今も import できる（呼び出し側を壊さない）", () => {
+    // 移動しても `@/hooks/useBookings` から取れるようにしてある。
+    // 再エクスポートを消すと、既存の import が静かに壊れる
+    const hook = readFileSync("src/hooks/useBookings.ts", "utf8");
+    expect(hook).toContain('export { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";');
   });
 
   it("設定画面のタイトルと説明文で用語が食い違っていない", () => {

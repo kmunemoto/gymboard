@@ -11,7 +11,19 @@
 // JSTの日付境界をまたいだ回数＝JST暦日差になる（src/lib/timezone.ts 参照）。
 
 import { getJSTNow, toJSTDate } from "@/lib/timezone";
-import type { ProfileWithBooking } from "@/hooks/useProfile";
+/**
+ * このファイルが要るのは**日付の3列だけ**。
+ *
+ * 🔴 `ProfileWithBooking`（hooks 側）を import しない。lib が hooks に依存すると、
+ *    lib を型検査するだけでコンポーネントの木まで引きずり込まれる
+ *    （tsconfig.strict.json）。必要な形だけをここで宣言する。
+ *    `ProfileWithBooking` はこの形を満たすので、そのまま渡せる。
+ */
+interface DormancyInput {
+  last_visit_date: string | null;
+  created_at: string;
+  next_booking_date: string | null;
+}
 
 /** 「しばらく来ていない（休眠）」と見なす既定のしきい値（日数）。 */
 export const DEFAULT_DORMANT_DAYS = 30;
@@ -33,7 +45,7 @@ const jstDaysBetween = (fromIso: string, nowJst: Date): number =>
  * 来店実績があれば最終来店日、無ければ登録日(created_at)を基準にする。
  */
 export const daysSinceLastActivity = (
-  c: Pick<ProfileWithBooking, "last_visit_date" | "created_at">,
+  c: Pick<DormancyInput, "last_visit_date" | "created_at">,
   nowJst: Date = getJSTNow(),
 ): number => {
   const iso = c.last_visit_date ?? c.created_at;
@@ -47,7 +59,7 @@ export const daysSinceLastActivity = (
  *  - それ以外は、最終活動から thresholdDays 日以上経過していれば true。
  */
 export const isDormant = (
-  c: Pick<ProfileWithBooking, "next_booking_date" | "last_visit_date" | "created_at">,
+  c: DormancyInput,
   thresholdDays: number,
   nowJst: Date = getJSTNow(),
 ): boolean => {

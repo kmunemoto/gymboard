@@ -1,5 +1,5 @@
-import type { Tenant } from "@/hooks/useTenant";
-import type { TrainerTab } from "@/components/trainer/TrainerView";
+import type { Tenant } from "@/lib/tenantTypes";
+import type { TrainerTab } from "@/lib/trainerTabs";
 import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 /**

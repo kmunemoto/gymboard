@@ -1129,6 +1129,7 @@ export type Database = {
           metadata: Json | null
           recipient_email: string
           status: string
+          template_data: Json | null
           template_name: string
           tenant_id: string | null
         }
@@ -1151,6 +1152,7 @@ export type Database = {
           metadata?: Json | null
           recipient_email?: string
           status?: string
+          template_data?: Json | null
           template_name?: string
           tenant_id?: string | null
         }

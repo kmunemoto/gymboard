@@ -229,3 +229,88 @@ describe("画面への配線", () => {
     expect(screen).toMatch(/e\.error_message/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 再送（2026-08-26）
+//
+// 履歴で「届かなかった」が見えるようになったので、その場から送り直せるようにした。
+// 🔴 ここが緩むと、正規ドメイン（SPF/DKIM 済み）から任意の宛先へ
+//    それらしいメールを送れる＝フィッシングの踏み台になる。
+// ---------------------------------------------------------------------------
+describe("🔴 再送", () => {
+  const RESEND = "supabase/functions/resend-email/index.ts";
+  const fn = readFileSync(RESEND, "utf8");
+  const lib = readFileSync("src/lib/emailLog.ts", "utf8");
+  const screen = readFileSync("src/components/trainer/TrainerEmailLog.tsx", "utf8");
+
+  it("材料を残す migration がある", () => {
+    const files = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
+    expect(files).toContain("20260826030000_email_log_resend.sql");
+    const sql = readFileSync("supabase/migrations/20260826030000_email_log_resend.sql", "utf8");
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS template_data jsonb/);
+  });
+
+  it("送信時に materials（templateData）を残している", () => {
+    // 残していないと再送しようがない
+    const send = readFileSync(SEND, "utf8");
+    const pending = send.slice(send.indexOf("status: 'pending'"));
+    expect(pending.slice(0, 200)).toContain("template_data: templateData");
+  });
+
+  it("🔴 キューの payload には材料を載せない（重複して持たない）", () => {
+    const send = readFileSync(SEND, "utf8");
+    const enqueue = send.slice(send.indexOf("rpc('enqueue_email'"));
+    expect(enqueue.slice(0, 900)).not.toContain("template_data");
+  });
+
+  it("そのジムのスタッフであることを tenant_members で確かめる", () => {
+    expect(fn).toContain("verifyCaller(req)");
+    expect(fn).toContain('.eq("tenant_id", tenantId)');
+    expect(fn).toContain('.eq("user_id", caller.userId)');
+    expect(fn).toContain('.in("role", ["owner", "trainer"])');
+  });
+
+  it("🔴 グローバルな trainer ロールで判定しない", () => {
+    const code = fn.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+    expect(code).not.toMatch(/hasRole\s*\(/);
+  });
+
+  it("🔴 対象の行を tenant_id で必ず絞る（他ジムの通知を再送させない）", () => {
+    const load = fn.slice(fn.indexOf('.from("email_send_log")'));
+    expect(load.slice(0, 400)).toContain('.eq("id", logId)');
+    expect(load.slice(0, 400)).toContain('.eq("tenant_id", tenantId)');
+  });
+
+  it("🔴 冪等キーを毎回新しくする（使い回すと何も起きない）", () => {
+    // 元のキーだと notification_dedupe に弾かれ duplicate を記録して 200 で返る。
+    // 店から見ると「押したのに何も起きない」
+    expect(fn).toMatch(/idempotencyKey: `resend-\$\{row\.id\}-\$\{crypto\.randomUUID\(\)\}`/);
+  });
+
+  it("材料の無い古い行は「送った」ことにしない", () => {
+    expect(fn).toMatch(/no_payload/);
+  });
+
+  it("配信停止の宛先を成功扱いにしない", () => {
+    expect(fn).toMatch(/success === false/);
+  });
+
+  it("クライアントは send-transactional-email を直接呼ばない", () => {
+    // 生のアドレス指定は「自分宛だけ」に制限されている。履歴の宛先はお客様のもの。
+    // ⚠️「なぜ直接呼ばないか」の説明でこの語が出るので、行コメントを落としてから検査する
+    const code = lib.split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*")).join("\n");
+    expect(code).toContain('invoke("resend-email"');
+    expect(code).not.toContain("send-transactional-email");
+  });
+
+  it("再送ボタンは届かなかった行にだけ出す", () => {
+    // 届いた行に出すと、誤って二重送信させる
+    expect(screen).toMatch(/tone === "bad" && \(/);
+    expect(screen).toContain("emailLog.resend");
+  });
+
+  it("押す前に宛先を読み上げて確認する", () => {
+    expect(screen).toMatch(/window\.confirm/);
+    expect(screen).toContain("emailLog.resendConfirm");
+  });
+});

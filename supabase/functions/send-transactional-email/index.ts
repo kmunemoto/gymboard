@@ -427,6 +427,7 @@ Deno.serve(async (req) => {
       recipient_email: effectiveRecipient,
       status: 'suppressed',
       tenant_id: tenantId,
+      template_data: templateData,
     })
 
     console.log('Email suppressed', { effectiveRecipient, templateName })
@@ -465,6 +466,7 @@ Deno.serve(async (req) => {
       status: 'failed',
       error_message: 'Failed to look up unsubscribe token',
       tenant_id: tenantId,
+      template_data: templateData,
     })
     return new Response(
       JSON.stringify({ error: 'Failed to prepare email' }),
@@ -500,6 +502,7 @@ Deno.serve(async (req) => {
         status: 'failed',
         error_message: 'Failed to create unsubscribe token',
         tenant_id: tenantId,
+        template_data: templateData,
       })
       return new Response(
         JSON.stringify({ error: 'Failed to prepare email' }),
@@ -530,6 +533,7 @@ Deno.serve(async (req) => {
         status: 'failed',
         error_message: 'Failed to confirm unsubscribe token storage',
         tenant_id: tenantId,
+        template_data: templateData,
       })
       return new Response(
         JSON.stringify({ error: 'Failed to prepare email' }),
@@ -554,6 +558,7 @@ Deno.serve(async (req) => {
       error_message:
         'Unsubscribe token used but email missing from suppressed list',
       tenant_id: tenantId,
+      template_data: templateData,
     })
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
@@ -651,6 +656,7 @@ Deno.serve(async (req) => {
         status: 'duplicate',
         error_message: `idempotency key already used: ${explicitIdempotencyKey}`,
         tenant_id: tenantId,
+        template_data: templateData,
       })
       console.log('Duplicate send suppressed', { templateName, idempotencyKey: explicitIdempotencyKey })
       return new Response(
@@ -672,6 +678,7 @@ Deno.serve(async (req) => {
     recipient_email: effectiveRecipient,
     status: 'pending',
     tenant_id: tenantId,
+    template_data: templateData,
   })
 
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
@@ -728,6 +735,7 @@ Deno.serve(async (req) => {
       status: 'failed',
       error_message: 'Failed to enqueue email',
       tenant_id: tenantId,
+      template_data: templateData,
     })
 
     return new Response(JSON.stringify({ error: 'Failed to enqueue email' }), {

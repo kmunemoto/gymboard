@@ -12,11 +12,12 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, Clock, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Loader2, RefreshCw, Send } from "lucide-react";
 import { useTenant } from "@/hooks/useTenant";
 import { formatJST } from "@/lib/timezone";
+import { toast } from "sonner";
 import {
-  loadEmailLog, collapseLog, toneOf, LOG_PAGE,
+  loadEmailLog, collapseLog, toneOf, resendEmail, LOG_PAGE,
   type EmailLogEntry, type EmailLogRow, type LogTone,
 } from "@/lib/emailLog";
 
@@ -33,6 +34,7 @@ const TrainerEmailLog = () => {
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
 
   const fetchPage = async (offset: number) => {
     if (!tenant?.id) return;
@@ -54,6 +56,33 @@ const TrainerEmailLog = () => {
     void fetchPage(0).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenant?.id]);
+
+  /**
+   * もう一度送る。
+   *
+   * ⚠️ お客様に届くものなので、押す前に宛先を読み上げて確認する。
+   *    履歴の一覧は行が詰まっていて、隣の行を押し間違えやすい。
+   */
+  const resend = async (e: EmailLogEntry) => {
+    if (!tenant?.id) return;
+    if (!window.confirm(t("emailLog.resendConfirm", { email: e.recipient_email }))) return;
+    setResending(e.id);
+    try {
+      const r = await resendEmail(tenant.id, e.id);
+      if (r.ok === true) {
+        toast.success(t("emailLog.resendDone", { email: e.recipient_email }));
+        await fetchPage(0);
+        return;
+      }
+      const key =
+        r.code === "no_payload" ? "emailLog.resendNoPayload"
+        : r.code === "email_suppressed" ? "emailLog.resendSuppressed"
+        : "emailLog.resendFailed";
+      toast.error(t(key));
+    } finally {
+      setResending(null);
+    }
+  };
 
   const entries: EmailLogEntry[] = collapseLog(rows);
 
@@ -122,9 +151,27 @@ const TrainerEmailLog = () => {
                       <p className="text-[11px] text-destructive/80 break-all">{e.error_message}</p>
                     )}
                   </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                    {formatJST(e.created_at, "M/d HH:mm")}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {formatJST(e.created_at, "M/d HH:mm")}
+                    </span>
+                    {/* 届かなかったものだけ。届いたものに出すと誤って二重送信させる */}
+                    {tone === "bad" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 gap-1 text-[10px]"
+                        disabled={resending !== null}
+                        onClick={() => void resend(e)}
+                      >
+                        {resending === e.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Send className="w-3 h-3" />}
+                        {t("emailLog.resend")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}

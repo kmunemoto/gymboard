@@ -73,7 +73,8 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, cycleS
           </div>
         ) : usage.consumed ? (
           /* 回数消化済み: 期限が残っていても「残り◯日」は出さない。
-             サブスクは次回のトレーニングで新しい期間が始まる旨を案内する。 */
+             サブスクは次回分の予約を先に取れる旨を案内する（次のサイクルで回復するため）。
+             回数券は回復しないので「使い切りました」のみ。 */
           <div className="flex items-center gap-2">
             <CalendarCheck className="w-4 h-4 shrink-0 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">
@@ -103,7 +104,9 @@ const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, cycleS
           <div className="space-y-1">
             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${usage.remaining === 0 ? "bg-destructive" : usage.remaining === 1 ? "bg-warning" : "bg-accent"}`}
+                /* 残り0のバー色もバッジと同じ理屈で分ける: サブスクは次のサイクルで回復する
+                   （先の日付の予約も取れる）ので満了＝完了としてアクセント、回数券は恒久なので赤 */
+                className={`h-full rounded-full transition-all ${usage.remaining === 0 ? (usage.kind === "subscription" ? "bg-accent" : "bg-destructive") : usage.remaining === 1 ? "bg-warning" : "bg-accent"}`}
                 style={{ width: `${Math.min(100, Math.round((usage.used / usage.total) * 100))}%` }}
               />
             </div>

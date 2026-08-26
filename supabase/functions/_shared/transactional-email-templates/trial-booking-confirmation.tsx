@@ -135,13 +135,13 @@ const TrialBookingConfirmationEmail = ({
               </>
             ) : gymContactEmail ? (
               <>
-                <SafeText style={text}>ご都合が悪くなった場合は、前日までに下記のジムのメールアドレスへご連絡ください。</SafeText>
+                <SafeText style={text}>ご都合が悪くなった場合は、下記のジムのメールアドレスへご連絡ください。</SafeText>
                 <Text style={text}>
                   <Link href={`mailto:${gymContactEmail}`} style={inlineLink}>{gymContactEmail}</Link>
                 </Text>
               </>
             ) : (
-              <SafeText style={text}>ご都合が悪くなった場合は、前日までにジムへご連絡ください。</SafeText>
+              <SafeText style={text}>ご都合が悪くなった場合は、ジムへご連絡ください。</SafeText>
             )}
           </Section>
 

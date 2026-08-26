@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   if (tenantIds.length > 0) {
     const { data: tenantRows, error: tenantErr } = await supabase
       .from('tenants')
-      .select('id, gym_name, address, email, website_url, trial_price_yen, reminder_email_note')
+      .select('id, gym_name, address, email, website_url, trial_price_yen, reminder_email_note, trial_email_cancel_note')
       .in('id', tenantIds)
     if (tenantErr) console.error('Failed to fetch tenants for reminder:', tenantErr)
     for (const row of tenantRows ?? []) {
@@ -123,6 +123,8 @@ Deno.serve(async (req) => {
           showAmenities: booking.tenant_id === SALUTE_TENANT_ID,
           // リマインドに足す、店からのご案内。空/未設定ならブロックごと出さない。
           gymNote: ((tenant?.reminder_email_note as string | null | undefined) ?? '').trim() || null,
+          // 「キャンセル・変更」欄の文章（確認メールと共用）。設定されていればこの文章だけが出る。
+          cancelNote: ((tenant?.trial_email_cancel_note as string | null | undefined) ?? '').trim() || null,
           // セルフキャンセルは廃止（メール連絡に一本化）のため cancelUrl は渡さない。
           // テンプレート側は cancelUrl が空ならメール連絡の案内にフォールバックする。
         },

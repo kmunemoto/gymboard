@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
     // (ジムごとに正しい情報を載せる。旧実装は Salute 固定だったため他ジムには送っていなかった)。
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen, booking_email_note")
+      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen, booking_email_note, trial_email_cancel_note")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -195,6 +195,9 @@ Deno.serve(async (req) => {
     // 確認メールに足す、店からのご案内。空/未設定ならメールにブロックごと出さない。
     // 列がまだ無い環境では undefined になり、同じく何も出ない（安全側）。
     const gymNote = ((tenant.booking_email_note as string | null | undefined) ?? "").trim() || null;
+    // 「キャンセル・変更」欄の文章。設定されていればこの文章だけが出る（固定文もリンクも出ない）。
+    // 空/未設定・列がまだ無い環境では null → テンプレートは従来の固定文（安全側）。
+    const cancelNote = ((tenant.trial_email_cancel_note as string | null | undefined) ?? "").trim() || null;
 
     // ===== 連続予約ガード =====
     // (1) 同一メール 24時間で3件まで (ジム側でキャンセルして取り直すケースは数えない)
@@ -322,8 +325,10 @@ Deno.serve(async (req) => {
           // 呼称は全ジム共通「体験トレーニング」。金額だけジムごとに出す。
           trialPriceYen,
           gymNote,
-          // cancelUrl は渡さない。テンプレートは gymContactEmail（＝登録したジムのアカウントの
-          // メールアドレス tenants.email）へのメール連絡案内をフォールバック表示する。
+          cancelNote,
+          // cancelUrl は渡さない。テンプレートは cancelNote（店の設定した文章）があればそれだけを、
+          // 無ければ gymContactEmail（＝登録したジムのアカウントのメールアドレス tenants.email）への
+          // メール連絡案内をフォールバック表示する。
         },
       }).then((ok) => { notify.customer_email = ok; }),
     );

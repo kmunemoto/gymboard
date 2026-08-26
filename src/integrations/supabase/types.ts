@@ -3079,6 +3079,7 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
+          trial_email_cancel_note: string | null
           trial_ends_at: string | null
           trial_info_body: string | null
           trial_info_title: string | null
@@ -3142,6 +3143,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          trial_email_cancel_note?: string | null
           trial_ends_at?: string | null
           trial_info_body?: string | null
           trial_info_title?: string | null
@@ -3205,6 +3207,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          trial_email_cancel_note?: string | null
           trial_ends_at?: string | null
           trial_info_body?: string | null
           trial_info_title?: string | null

@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import { trialPriceLine } from '../trial-pricing.ts'
 import type { TemplateEntry } from './registry.ts'
-import { GymNoteSection } from './gym-note.tsx'
+import { GymNoteSection, splitNoteLines } from './gym-note.tsx'
 
 // 以前はジム名・住所・連絡先が Salute御所南 で固定されていたため、他ジムのお客様に
 // 送ると「別のジムの住所」が書かれたメールになってしまい、送信側(send-trial-reminders)を
@@ -76,6 +76,11 @@ interface Props {
   showAmenities?: boolean
   /** リマインドメールに足す、店からのご案内（tenants.reminder_email_note）。空なら何も出さない。 */
   gymNote?: string | null
+  /**
+   * 「キャンセル・変更」欄の文章（tenants.trial_email_cancel_note、確認メールと共用）。
+   * 🔴 設定されていれば**この文章だけ**を出す。null/空なら従来の固定文の分岐。
+   */
+  cancelNote?: string | null
 }
 
 const TrialBookingReminderEmail = ({
@@ -90,6 +95,7 @@ const TrialBookingReminderEmail = ({
   trialPriceYen = null,
   showAmenities = false,
   gymNote = null,
+  cancelNote = null,
 }: Props) => {
   const addressLines = splitAddressLines(gymAddress)
   // 呼称は全ジム共通。**料金を含めないこと**（金額はジムごとに違う）。
@@ -147,7 +153,12 @@ const TrialBookingReminderEmail = ({
             <SafeText style={sectionTitle}>キャンセル・変更</SafeText>
             {/* セルフキャンセルは廃止し、メール連絡に一本化した（send-trial-reminders は cancelUrl を渡さない）。
                 分岐自体は残し、再度セルフキャンセルに戻す際にすぐ有効化できるようにしている。 */}
-            {cancelUrl ? (
+            {splitNoteLines(cancelNote).length > 0 ? (
+              // 店が設定した案内。この文章だけを出す（下の固定文の分岐は通らない）
+              splitNoteLines(cancelNote).map((line, i) => (
+                <SafeText key={i} style={text}>{line}</SafeText>
+              ))
+            ) : cancelUrl ? (
               <>
                 <SafeText style={text}>ご都合が悪くなった場合は、下記のボタンからキャンセルできます。</SafeText>
                 <Button href={cancelUrl} style={cancelButton}><SafeInlineText>予約をキャンセルする</SafeInlineText></Button>

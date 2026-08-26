@@ -92,6 +92,12 @@ export interface Tenant {
   booking_email_note: string | null;
   /** 前日リマインドメールに足す、店からの案内。null/空なら何も足さない。 */
   reminder_email_note: string | null;
+  /**
+   * 体験の確認・リマインドメールの「キャンセル・変更」欄の文章。
+   * null/空なら従来の固定文（ジムのメールアドレスへの案内）。
+   * 🔴 設定時は**この文章だけ**を出す（アドレスのリンクも自動では足さない）。
+   */
+  trial_email_cancel_note: string | null;
   invite_code?: string;
   status: string;
   gymboard_plan: string;

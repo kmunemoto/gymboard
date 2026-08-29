@@ -21,6 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import InviteCodeCard from "./InviteCodeCard";
 import TrainerStaffManager from "./TrainerStaffManager";
 import TrialLinkCard from "./TrialLinkCard";
+import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
@@ -1316,6 +1317,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                 </Button>
               </CardContent>
             </Card>
+          </section>
+
+          {/* === 体験メールのキャンセル・変更のご案内 ===
+              実装は TrialCancelNoteCard（このファイルは行数の上限に達しているため別ファイル）。 */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialCancelNoteSection")}</h3>
+            <TrialCancelNoteCard />
           </section>
         </>
       )}

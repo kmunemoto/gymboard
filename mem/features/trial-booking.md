@@ -162,3 +162,23 @@ Salute御所南のマーケティングサイトの「Book Now」ボタン用に
   Salute での新規予約作成をやめた今はこの前提が成立する。もし Salute アプリでの
   会員予約を継続する場合は、この前提が崩れ二重予約が起こり得るため、Salute へ
   体験予約をミラーする必要がある。
+
+## メールの「キャンセル・変更」欄は店ごとの文章にできる（2026-08-26）
+
+`tenants.trial_email_cancel_note`（上限500・確認とリマインドで共用）。
+発端は「勝手に文章決めないで」（宗本さん）。キャンセルの連絡先・方針は店ごとに
+違うので、上流が文章を代弁しない（cancel_policy_body / email_note と同じ方針）。
+
+- **NULL/空 = 従来の固定文**「ご都合が悪くなった場合は、下記のジムのメールアドレスへ
+  ご連絡ください。」＋ `tenants.email` への mailto リンク（#361 で「前日までに」を削った文）
+- **設定時はその文章だけ**が出る。mailto リンクも自動では足さない
+  （「お電話ください」と書いたのにリンクが残る食い違いを作らない。宗本さん決定）
+- 編集は 設定 > 体験予約 > `TrialCancelNoteCard`（TrainerGymSettings が行数上限に
+  達しているため別ファイル。qualityRatchet が実際に止めた最初の例）
+- `get_tenant_public` には**公開していない**（メール専用。読むのはサーバーだけ）
+- 見張りは `src/test/trialCancelNote.test.ts`（変異4種で赤を確認済み）
+
+本番適用済み（2026-08-26、マージ前に適用 = types.ts の再生成レース対策）。
+3段構え: 列とCHECKの存在・全19店 NULL・`get_tenant_public` 非公開を確認 →
+Salute オーナーを演じて UPDATE→読み戻し成功（ROLLBACK）→ 501文字は
+check_violation・お客様ロールの UPDATE は0行・残骸ゼロ。

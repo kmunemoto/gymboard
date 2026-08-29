@@ -125,7 +125,8 @@ describe("🔴 5枚のテンプレートすべてに出る", () => {
   for (const f of TEMPLATES) {
     it(`${f} が gymNote を描いている`, () => {
       const src = readFileSync(join(TEMPLATE_DIR, f), "utf8");
-      expect(src).toMatch(/import \{ GymNoteSection \} from '\.\/gym-note\.tsx'/);
+      // 体験2枚は splitNoteLines（キャンセル案内の行分割）も同じファイルから import する
+      expect(src).toMatch(/import \{ [^}]*GymNoteSection[^}]*\} from '\.\/gym-note\.tsx'/);
       expect(src).toMatch(/gymNote\?: string \| null/);
       expect(src).toMatch(/<GymNoteSection note=\{gymNote\}/);
       // 既定は null＝渡されなければ何も出ない（既存の店のメールが変わらない）

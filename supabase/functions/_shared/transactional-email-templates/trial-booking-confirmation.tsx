@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import { trialPriceLine } from '../trial-pricing.ts'
 import type { TemplateEntry } from './registry.ts'
-import { GymNoteSection } from './gym-note.tsx'
+import { GymNoteSection, splitNoteLines } from './gym-note.tsx'
 
 // 本文の表示テキストは事前に ASCII 数値文字参照へエンコードして dangerouslySetInnerHTML で描画する。
 // 理由: react-email の renderAsync（Deno のストリーミング描画）が、UTF-8 チャンク境界で
@@ -63,6 +63,13 @@ interface TrialBookingConfirmationProps {
   trialPriceYen?: number | null
   /** 予約確認メールに足す、店からのご案内（tenants.booking_email_note）。空なら何も出さない。 */
   gymNote?: string | null
+  /**
+   * 「キャンセル・変更」欄の文章（tenants.trial_email_cancel_note）。
+   * 🔴 設定されていれば**この文章だけ**を出す（固定文もアドレスのリンクも出さない。
+   *    「お電話ください」と書いたのに mailto リンクが残る食い違いを作らないため。2026-08-26）。
+   * null/空なら従来どおり下の固定文の分岐。
+   */
+  cancelNote?: string | null
 }
 
 const TrialBookingConfirmationEmail = ({
@@ -76,6 +83,7 @@ const TrialBookingConfirmationEmail = ({
   gymWebsiteUrl = '',
   trialPriceYen = null,
   gymNote = null,
+  cancelNote = null,
 }: TrialBookingConfirmationProps) => {
   const addressLines = splitAddressLines(gymAddress)
   // 呼称は全ジム共通。**料金を含めないこと**（金額はジムごとに違う）。
@@ -124,7 +132,12 @@ const TrialBookingConfirmationEmail = ({
             {/* セルフキャンセルのボタンは出さず、メール連絡に一本化している（trial-book は
                 cancelUrl を渡さない）。案内先は gymContactEmail（＝登録したジムのアカウントの
                 メールアドレス tenants.email）。cancelUrl 分岐は将来ボタンに戻す場合に備え存置。 */}
-            {cancelUrl ? (
+            {splitNoteLines(cancelNote).length > 0 ? (
+              // 店が設定した案内。この文章だけを出す（下の固定文の分岐は通らない）
+              splitNoteLines(cancelNote).map((line, i) => (
+                <SafeText key={i} style={text}>{line}</SafeText>
+              ))
+            ) : cancelUrl ? (
               <>
                 <SafeText style={text}>ご都合が悪くなった場合は、下記のボタンからいつでもキャンセルできます。</SafeText>
                 <Button href={cancelUrl} style={cancelButton}><SafeInlineText>予約をキャンセルする</SafeInlineText></Button>

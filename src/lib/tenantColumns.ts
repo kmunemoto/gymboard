@@ -60,6 +60,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "booking_window_days",
   // 予約確認メール／リマインドメールに足す、店からの案内。NULL/空なら何も足さない。
   "booking_email_note, reminder_email_note",
+  // 体験メールの「キャンセル・変更」欄の文章。NULL/空なら従来の固定文。
+  "trial_email_cancel_note",
 ];
 
 /**
@@ -132,6 +134,8 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 既定文は持たせない（cancel_policy_body と同じ理由）。
   booking_email_note: null,
   reminder_email_note: null,
+  // 列が読めない環境では「従来の固定文」に倒す（＝何も変わらない）。
+  trial_email_cancel_note: null,
 };
 
 /**

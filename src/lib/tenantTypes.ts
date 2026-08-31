@@ -67,6 +67,7 @@ export interface Tenant {
   show_nav_exercises: boolean;
   show_nav_counseling: boolean;
   show_nav_announcements: boolean;
+  show_nav_videos: boolean;
   show_nav_notifications: boolean;
   show_nav_trial_followups: boolean;
   /** 体験予約ページの案内カード見出し。null/空なら既定文言を表示 */

@@ -38,7 +38,7 @@ export const DEV_OWNER_ID = "00000000-0000-4000-8000-0000000000a1";
 export const DEV_CUSTOMER_ID = "00000000-0000-4000-8000-0000000000c1";
 
 const CUSTOMERS = [
-  { id: "00000000-0000-4000-8000-0000000000c1", name: "田中 花子", plan: 0, cycleOffset: -12 },
+  { id: "00000000-0000-4000-8000-0000000000c1", name: "田中 花子", plan: 1, cycleOffset: -3 },
   { id: "00000000-0000-4000-8000-0000000000c2", name: "佐藤 健", plan: 1, cycleOffset: -40 },
   { id: "00000000-0000-4000-8000-0000000000c3", name: "鈴木 美咲", plan: 0, cycleOffset: -5 },
   { id: "00000000-0000-4000-8000-0000000000c4", name: "高橋 大輔", plan: 2, cycleOffset: -70 },

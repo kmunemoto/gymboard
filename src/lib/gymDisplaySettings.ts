@@ -29,6 +29,7 @@ export type GymDisplayColumn =
   | "show_nav_exercises"
   | "show_nav_counseling"
   | "show_nav_announcements"
+  | "show_nav_videos"
   | "show_nav_notifications"
   | "show_nav_trial_followups";
 
@@ -71,6 +72,7 @@ export const NAV_TAB_TOGGLES: { column: GymDisplayColumn; tab: TrainerTab; label
   { column: "show_nav_exercises", tab: "exercises", labelKey: "trainerNav.exercises" },
   { column: "show_nav_counseling", tab: "counseling", labelKey: "trainerNav.counseling" },
   { column: "show_nav_announcements", tab: "announcements", labelKey: "trainerNav.announcements" },
+  { column: "show_nav_videos", tab: "videos", labelKey: "trainerNav.videos" },
   { column: "show_nav_notifications", tab: "notifications", labelKey: "trainerNav.notifications" },
   { column: "show_nav_trial_followups", tab: "trial-followups", labelKey: "trainerNav.trialFollowUps" },
 ];
@@ -85,7 +87,7 @@ export const ALL_DISPLAY_TOGGLES: GymDisplayToggle[] = [
 /**
  * 表示量のプリセット。
  *
- * ジムボードは機能を足し続けた結果、新しいジムがいきなり17項目すべて表示された状態で
+ * ジムボードは機能を足し続けた結果、新しいジムがいきなり18項目すべて表示された状態で
  * 始まるようになっていた。パーソナルジム1人運営で「稼働率ヒートマップ」「カウンセリング」
  * 「体験フォロー」まで最初から出ているのは、率直に言って多すぎる。
  *
@@ -118,6 +120,7 @@ const STANDARD_COLUMNS: GymDisplayColumn[] = [
   "show_revenue_chart",
   "show_nav_messages",
   "show_nav_announcements",
+  "show_nav_videos",
 ];
 
 const PRESET_COLUMNS: Record<GymDisplayPreset, GymDisplayColumn[] | "all"> = {
@@ -128,7 +131,7 @@ const PRESET_COLUMNS: Record<GymDisplayPreset, GymDisplayColumn[] | "all"> = {
 
 export const GYM_DISPLAY_PRESETS: GymDisplayPreset[] = ["simple", "standard", "full"];
 
-/** プリセットを、17項目すべてを明示した値の組に展開する（DBへはこの形で書く） */
+/** プリセットを、18項目すべてを明示した値の組に展開する（DBへはこの形で書く） */
 export const presetToValues = (preset: GymDisplayPreset): Record<GymDisplayColumn, boolean> => {
   const on = PRESET_COLUMNS[preset];
   const values = {} as Record<GymDisplayColumn, boolean>;

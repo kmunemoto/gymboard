@@ -1,5 +1,5 @@
 import { lazy, useEffect, useRef, useState } from "react";
-import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera, Star, X } from "lucide-react";
+import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera, Star, X, Video as VideoIcon } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
 import PlanUsageCard from "./PlanUsageCard";
 import StreakCard from "./StreakCard";
+import { useGymVideoCount } from "@/hooks/useGymVideos";
 import MilestoneGoalCard from "./MilestoneGoalCard";
 import {
   STREAK_ENABLED,
@@ -57,6 +58,9 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { bookings, loading: bookingsLoading } = useMyBookings();
   const { chartData, latest, loading: metricsLoading, saveMeasurement } = useMeasurements(user?.id);
   const { currentStreak, bestStreak, hasFutureBookingThisWeek, loading: streakLoading } = useStreak(user?.id);
+  // 動画ライブラリの入口は「公開中の動画が1本以上あるジム」にしか出さない。
+  // お客様側にジムごとの表示ON/OFFが無いので、これが実質の出し分けになる。
+  const { count: videoCount } = useGymVideoCount();
   const streakNotifiedRef = useRef(false);
   const [latestWorkouts, setLatestWorkouts] = useState<RawWorkout[]>([]);
   const [latestDate, setLatestDate] = useState<string | null>(null);
@@ -635,6 +639,28 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                 <div>
                   <p className="font-bold text-sm flex items-center gap-1.5"><Camera className="w-4 h-4" />{t("home.bodyProgress")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{t("home.bodyProgressDesc")}</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+      )}
+
+      {/* 7.8 自宅でできる動画（ストレッチ等）。0本のジムには出さない */}
+      {videoCount > 0 && (
+      <section>
+        <Card className="card-hover border-l-4 border-l-accent cursor-pointer" onClick={() => onNavigate?.("videos")}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl accent-gradient flex items-center justify-center">
+                  <VideoIcon className="w-5 h-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm flex items-center gap-1.5"><VideoIcon className="w-4 h-4" />{t("videos.title")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("videos.homeCardDesc", { count: videoCount })}</p>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />

@@ -16,6 +16,7 @@ export type TrainerTab =
   | "exercises"
   | "counseling"
   | "announcements"
+  | "videos"
   | "notifications"
   | "trial-followups"
   | "gym-settings";

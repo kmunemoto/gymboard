@@ -48,8 +48,10 @@ function parseEmbeds(select: string): { key: string; table: string; fk: string }
       // `tenants:tenant_id(...)` → 別名(=参照先テーブル) tenants を FK 列 tenant_id で引く
       embeds.push({ key: alias, table: alias, fk: name });
     } else {
-      // `exercises(name)` → 参照先テーブル exercises を、単数形+_id の列で引く
-      embeds.push({ key: name, table: name, fk: `${name.replace(/e?s$/, "")}_id` });
+      // `exercises(name)` → 参照先テーブル exercises を、単数形+_id の列で引く。
+      // ⚠️ 落とすのは末尾の "s" だけ。`/e?s$/` にすると "exercises" が "exercis" になり、
+      //    `exercis_id` を引いて必ず null（記録画面の種目名が全部「不明」になっていた）。
+      embeds.push({ key: name, table: name, fk: `${name.replace(/s$/, "")}_id` });
     }
   }
   return embeds;

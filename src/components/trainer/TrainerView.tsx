@@ -14,6 +14,7 @@ import TrainerMessages from "./TrainerMessages";
 import TrainerExerciseManager from "./TrainerExerciseManager";
 import TrainerGymSettings from "./TrainerGymSettings";
 import TrainerAnnouncementManager from "./TrainerAnnouncementManager";
+import TrainerVideoManager from "./TrainerVideoManager";
 import TrainerNotificationSettings from "./TrainerNotificationSettings";
 import CounselingResponseList from "./CounselingResponseList";
 import TrainerTrialFollowUps from "./TrainerTrialFollowUps";
@@ -179,6 +180,7 @@ const TrainerView = () => {
               {tab === "exercises" && <TrainerExerciseManager />}
               {tab === "counseling" && <CounselingResponseList />}
               {tab === "announcements" && <TrainerAnnouncementManager />}
+              {tab === "videos" && <TrainerVideoManager />}
               {tab === "notifications" && <TrainerNotificationSettings />}
               {tab === "trial-followups" && <TrainerTrialFollowUps />}
               {tab === "gym-settings" && <TrainerGymSettings onSignOut={signOut} />}

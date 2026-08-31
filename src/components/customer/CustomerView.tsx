@@ -18,6 +18,8 @@ import LazyBoundary from "@/components/LazyBoundary";
 const CustomerTraining = lazy(() => import("./CustomerTraining"));
 const CustomerPosture = lazy(() => import("./CustomerPosture"));
 const CustomerMonthlyReport = lazy(() => import("./CustomerMonthlyReport"));
+// 動画ライブラリ。ホームのカードからだけ入る（下部ナビには足していない）
+const CustomerVideos = lazy(() => import("./CustomerVideos"));
 
 import { useUnreadCount } from "@/hooks/useMessages";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
@@ -31,7 +33,7 @@ import {
   MONTHLY_REPORT_ENABLED,
 } from "@/lib/featureFlags";
 
-export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report" | "photos";
+export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report" | "photos" | "videos";
 
 const CustomerView = () => {
   const { t } = useTranslation();
@@ -143,6 +145,7 @@ const CustomerView = () => {
           {tab === "settings" && <CustomerSettings />}
           {tab === "posture" && POSTURE_ENABLED && <CustomerPosture />}
           {tab === "report" && MONTHLY_REPORT_ENABLED && <CustomerMonthlyReport onBack={() => setTab("home")} />}
+          {tab === "videos" && <CustomerVideos onBack={() => setTab("home")} />}
         </LazyBoundary>
       </div>
       <BottomNav activeTab={tab} onTabChange={setTab} unreadChat={unreadChat} />

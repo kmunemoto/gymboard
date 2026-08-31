@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Megaphone, Bell, UserCheck } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Megaphone, Bell, UserCheck, Video as VideoIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TrainerTab } from "./TrainerView";
 import { useTenant } from "@/hooks/useTenant";
@@ -19,6 +19,7 @@ const desktopTabs: { id: TrainerTab; labelKey: string; icon: typeof LayoutDashbo
   { id: "exercises", labelKey: "trainerNav.exercises", icon: Dumbbell },
   { id: "counseling", labelKey: "trainerNav.counseling", icon: ClipboardList },
   { id: "announcements", labelKey: "trainerNav.announcements", icon: Megaphone },
+  { id: "videos", labelKey: "trainerNav.videos", icon: VideoIcon },
   { id: "notifications", labelKey: "trainerNav.notifications", icon: Bell },
   { id: "trial-followups", labelKey: "trainerNav.trialFollowUps", icon: UserCheck },
   { id: "gym-settings", labelKey: "trainerNav.gymSettings", icon: Settings2 },
@@ -30,6 +31,7 @@ const mobileTabs: { id: TrainerTab; labelKey: string; icon: typeof LayoutDashboa
   { id: "schedule", labelKey: "trainerNav.mSchedule", icon: CalendarDays },
   { id: "exercises", labelKey: "trainerNav.mExercises", icon: Dumbbell },
   { id: "announcements", labelKey: "trainerNav.mAnnouncements", icon: Megaphone },
+  { id: "videos", labelKey: "trainerNav.mVideos", icon: VideoIcon },
   { id: "notifications", labelKey: "trainerNav.mNotifications", icon: Bell },
   { id: "gym-settings", labelKey: "trainerNav.mGymSettings", icon: Settings2 },
 ];

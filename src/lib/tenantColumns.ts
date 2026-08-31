@@ -62,6 +62,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "booking_email_note, reminder_email_note",
   // 体験メールの「キャンセル・変更」欄の文章。NULL/空なら従来の固定文。
   "trial_email_cancel_note",
+  // メニューに「動画」を出すか。既定 true（TENANT_DEFAULT_TRUE_COLS 側）。
+  "show_nav_videos",
 ];
 
 /**
@@ -99,6 +101,7 @@ export const TENANT_DEFAULT_TRUE_COLS: readonly string[] = [
   "show_nav_exercises",
   "show_nav_counseling",
   "show_nav_announcements",
+  "show_nav_videos",
   "show_nav_notifications",
   "show_nav_trial_followups",
 ];

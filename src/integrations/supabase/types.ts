@@ -1456,6 +1456,51 @@ export type Database = {
         }
         Relationships: []
       }
+      gym_videos: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string
+          published_at: string
+          sort_order: number
+          tenant_id: string
+          title: string
+          updated_at: string
+          video_url: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          published_at?: string
+          sort_order?: number
+          tenant_id: string
+          title: string
+          updated_at?: string
+          video_url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          published_at?: string
+          sort_order?: number
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
       meals: {
         Row: {
           analyzed: boolean
@@ -3062,6 +3107,7 @@ export type Database = {
           show_nav_exercises: boolean
           show_nav_messages: boolean
           show_nav_notifications: boolean
+          show_nav_videos: boolean
           show_nav_trial_followups: boolean
           show_renewal_alerts: boolean
           show_retention_alerts: boolean
@@ -3126,6 +3172,7 @@ export type Database = {
           show_nav_exercises?: boolean
           show_nav_messages?: boolean
           show_nav_notifications?: boolean
+          show_nav_videos?: boolean
           show_nav_trial_followups?: boolean
           show_renewal_alerts?: boolean
           show_retention_alerts?: boolean
@@ -3190,6 +3237,7 @@ export type Database = {
           show_nav_exercises?: boolean
           show_nav_messages?: boolean
           show_nav_notifications?: boolean
+          show_nav_videos?: boolean
           show_nav_trial_followups?: boolean
           show_renewal_alerts?: boolean
           show_retention_alerts?: boolean

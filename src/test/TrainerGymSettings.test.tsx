@@ -170,7 +170,7 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
     render(<TrainerGymSettings onSignOut={vi.fn()} />);
     openDisplayCategory();
 
-    expect(ALL_TOGGLES.length).toBe(17);
+    expect(ALL_TOGGLES.length).toBe(18);
     for (const { column, labelKey } of ALL_TOGGLES) {
       const isTrialRow = column === "show_trial_followup_alert" || column === "show_nav_trial_followups";
       if (isTrialRow && !TRIAL_BOOKING_ENABLED) {

@@ -2290,7 +2290,9 @@
     "mExercises": "動作",
     "mAnnouncements": "公告",
     "mNotifications": "通知",
-    "mGymSettings": "設定"
+    "mGymSettings": "設定",
+    "videos": "影片管理",
+    "mVideos": "影片"
   },
   "customerView": {
     "purchaseComplete": "購買已完成！"
@@ -2875,5 +2877,48 @@
     "payment": "入帳 ¥{{amount}}",
     "agreement": "已記錄同意書",
     "photo": "已記錄照片"
+  },
+  "videos": {
+    "title": "在家可做的影片",
+    "subtitle": "健身房準備的伸展與自我保養影片。在家跟著做吧。",
+    "empty": "尚無影片。",
+    "uncategorized": "其他",
+    "openExternal": "在應用程式外開啟",
+    "homeCardDesc": "可觀看 {{count}} 部影片"
+  },
+  "gymVideo": {
+    "title": "影片管理",
+    "desc": "貼上 YouTube、Vimeo 的「不公開」影片連結，就會顯示在會員的應用程式裡。不會上傳影片檔案。",
+    "add": "新增影片",
+    "empty": "尚未新增影片。",
+    "urlLabel": "影片連結",
+    "urlHelp": "在 YouTube 以「不公開」方式上傳，然後把分享連結貼到這裡。搜尋不到，但在應用程式裡可以觀看。",
+    "previewTitle": "確認貼上的連結",
+    "titleLabel": "標題",
+    "titlePlaceholder": "放鬆肩膀的伸展",
+    "descLabel": "說明（選填）",
+    "descPlaceholder": "洗澡後左右各 10 秒。感到疼痛請立刻停止。",
+    "categoryLabel": "分類",
+    "durationLabel": "長度（選填）",
+    "scheduleLabel": "發布",
+    "scheduleNow": "立即發布",
+    "scheduleLater": "指定日期時間",
+    "scheduled": "已預約發布",
+    "badUrl": "無法開啟此連結",
+    "openExternal": "開啟影片",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "deleteTitle": "要把這部影片從清單中刪除嗎？",
+    "deleteDesc": "只會從應用程式清單中消失，YouTube 上的影片仍然保留。",
+    "errTitle": "請輸入標題。",
+    "errUrl": "請貼上 YouTube 或 Vimeo 的影片連結。",
+    "errSchedule": "請選擇發布的日期時間。",
+    "errDuration": "長度請以「3:20」或「200」（秒）的格式輸入。",
+    "createdToast": "已新增影片",
+    "updatedToast": "已更新影片",
+    "deletedToast": "已刪除影片",
+    "saveFailed": "無法儲存：{{msg}}",
+    "deleteFailed": "無法刪除：{{msg}}",
+    "loadFailed": "無法載入影片：{{msg}}"
   }
 }

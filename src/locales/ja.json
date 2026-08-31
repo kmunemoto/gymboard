@@ -2290,7 +2290,9 @@
     "mExercises": "種目",
     "mAnnouncements": "お知らせ",
     "mNotifications": "通知",
-    "mGymSettings": "設定"
+    "mGymSettings": "設定",
+    "videos": "動画管理",
+    "mVideos": "動画"
   },
   "customerView": {
     "purchaseComplete": "購入が完了しました！"
@@ -2875,5 +2877,48 @@
     "payment": "入金 ¥{{amount}}",
     "agreement": "同意書を記録",
     "photo": "写真を記録"
+  },
+  "videos": {
+    "title": "自宅でできる動画",
+    "subtitle": "ジムからのストレッチ・セルフケア動画です。おうちで見ながらどうぞ。",
+    "empty": "まだ動画がありません。",
+    "uncategorized": "その他",
+    "openExternal": "アプリの外で見る",
+    "homeCardDesc": "{{count}}本の動画が見られます"
+  },
+  "gymVideo": {
+    "title": "動画管理",
+    "desc": "YouTube・Vimeo の「限定公開」動画のURLを貼ると、お客様のアプリに並びます。動画ファイルはアップロードしません。",
+    "add": "動画を追加",
+    "empty": "まだ動画を登録していません。",
+    "urlLabel": "動画のURL",
+    "urlHelp": "YouTube で「限定公開」にしてアップロードし、その共有URLをここに貼ってください。検索には出ませんが、アプリからは見られます。",
+    "previewTitle": "貼ったURLの確認",
+    "titleLabel": "タイトル",
+    "titlePlaceholder": "肩まわりをほぐすストレッチ",
+    "descLabel": "説明（任意）",
+    "descPlaceholder": "お風呂上がりに、左右10秒ずつ。痛みが出たらすぐ止めてください。",
+    "categoryLabel": "カテゴリー",
+    "durationLabel": "長さ（任意）",
+    "scheduleLabel": "公開",
+    "scheduleNow": "すぐ公開",
+    "scheduleLater": "日時を指定",
+    "scheduled": "公開予約中",
+    "badUrl": "URLを開けません",
+    "openExternal": "動画を開く",
+    "moveUp": "上へ",
+    "moveDown": "下へ",
+    "deleteTitle": "この動画を一覧から消しますか？",
+    "deleteDesc": "アプリの一覧から消えるだけで、YouTube 側の動画は残ります。",
+    "errTitle": "タイトルを入れてください。",
+    "errUrl": "YouTube か Vimeo の動画URLを貼ってください。",
+    "errSchedule": "公開する日時を選んでください。",
+    "errDuration": "長さは「3:20」や「200」（秒）の形で入れてください。",
+    "createdToast": "動画を追加しました",
+    "updatedToast": "動画を更新しました",
+    "deletedToast": "動画を削除しました",
+    "saveFailed": "保存できませんでした: {{msg}}",
+    "deleteFailed": "削除できませんでした: {{msg}}",
+    "loadFailed": "動画の読み込みに失敗しました: {{msg}}"
   }
 }

@@ -2290,7 +2290,9 @@
     "mExercises": "Exercises",
     "mAnnouncements": "News",
     "mNotifications": "Alerts",
-    "mGymSettings": "Settings"
+    "mGymSettings": "Settings",
+    "videos": "Videos",
+    "mVideos": "Videos"
   },
   "customerView": {
     "purchaseComplete": "Purchase complete!"
@@ -2875,5 +2877,48 @@
     "payment": "Payment ¥{{amount}}",
     "agreement": "Agreement recorded",
     "photo": "Photo recorded"
+  },
+  "videos": {
+    "title": "Videos to try at home",
+    "subtitle": "Stretching and self-care videos from your gym. Follow along at home.",
+    "empty": "No videos yet.",
+    "uncategorized": "Other",
+    "openExternal": "Open outside the app",
+    "homeCardDesc": "{{count}} videos available"
+  },
+  "gymVideo": {
+    "title": "Videos",
+    "desc": "Paste the URL of an unlisted YouTube or Vimeo video and it appears in your members' app. No video files are uploaded.",
+    "add": "Add video",
+    "empty": "No videos yet.",
+    "urlLabel": "Video URL",
+    "urlHelp": "Upload to YouTube as Unlisted, then paste the share URL here. It won't appear in search, but members can watch it in the app.",
+    "previewTitle": "Preview of the pasted URL",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Shoulder loosening stretch",
+    "descLabel": "Description (optional)",
+    "descPlaceholder": "After a bath, 10 seconds each side. Stop right away if it hurts.",
+    "categoryLabel": "Category",
+    "durationLabel": "Length (optional)",
+    "scheduleLabel": "Publish",
+    "scheduleNow": "Publish now",
+    "scheduleLater": "Pick a date and time",
+    "scheduled": "Scheduled",
+    "badUrl": "Can't open this URL",
+    "openExternal": "Open video",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "deleteTitle": "Remove this video from the list?",
+    "deleteDesc": "It disappears from the app only. The video on YouTube stays where it is.",
+    "errTitle": "Please enter a title.",
+    "errUrl": "Please paste a YouTube or Vimeo video URL.",
+    "errSchedule": "Please pick a publish date and time.",
+    "errDuration": "Enter the length as \"3:20\" or \"200\" (seconds).",
+    "createdToast": "Video added",
+    "updatedToast": "Video updated",
+    "deletedToast": "Video deleted",
+    "saveFailed": "Couldn't save: {{msg}}",
+    "deleteFailed": "Couldn't delete: {{msg}}",
+    "loadFailed": "Couldn't load the videos: {{msg}}"
   }
 }

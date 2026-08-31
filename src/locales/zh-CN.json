@@ -2290,7 +2290,9 @@
     "mExercises": "动作",
     "mAnnouncements": "公告",
     "mNotifications": "通知",
-    "mGymSettings": "设置"
+    "mGymSettings": "设置",
+    "videos": "视频管理",
+    "mVideos": "视频"
   },
   "customerView": {
     "purchaseComplete": "购买已完成！"
@@ -2875,5 +2877,48 @@
     "payment": "入账 ¥{{amount}}",
     "agreement": "已记录同意书",
     "photo": "已记录照片"
+  },
+  "videos": {
+    "title": "在家可做的视频",
+    "subtitle": "健身房准备的拉伸与自我保养视频。在家跟着做吧。",
+    "empty": "暂无视频。",
+    "uncategorized": "其他",
+    "openExternal": "在应用外打开",
+    "homeCardDesc": "可观看 {{count}} 个视频"
+  },
+  "gymVideo": {
+    "title": "视频管理",
+    "desc": "粘贴 YouTube、Vimeo 的「不公开」视频链接，就会显示在会员的应用里。不上传视频文件。",
+    "add": "添加视频",
+    "empty": "还没有添加视频。",
+    "urlLabel": "视频链接",
+    "urlHelp": "在 YouTube 上以「不公开」方式上传，然后把分享链接粘贴到这里。搜索不到，但在应用里可以观看。",
+    "previewTitle": "确认粘贴的链接",
+    "titleLabel": "标题",
+    "titlePlaceholder": "放松肩部的拉伸",
+    "descLabel": "说明（可选）",
+    "descPlaceholder": "洗澡后左右各 10 秒。感到疼痛请立即停止。",
+    "categoryLabel": "分类",
+    "durationLabel": "时长（可选）",
+    "scheduleLabel": "发布",
+    "scheduleNow": "立即发布",
+    "scheduleLater": "指定日期时间",
+    "scheduled": "已预约发布",
+    "badUrl": "无法打开该链接",
+    "openExternal": "打开视频",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "deleteTitle": "要把这个视频从列表中删除吗？",
+    "deleteDesc": "只会从应用列表中消失，YouTube 上的视频仍然保留。",
+    "errTitle": "请输入标题。",
+    "errUrl": "请粘贴 YouTube 或 Vimeo 的视频链接。",
+    "errSchedule": "请选择发布的日期时间。",
+    "errDuration": "时长请按「3:20」或「200」（秒）的格式输入。",
+    "createdToast": "已添加视频",
+    "updatedToast": "已更新视频",
+    "deletedToast": "已删除视频",
+    "saveFailed": "保存失败：{{msg}}",
+    "deleteFailed": "删除失败：{{msg}}",
+    "loadFailed": "加载视频失败：{{msg}}"
   }
 }

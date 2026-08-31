@@ -336,12 +336,18 @@ const TrainerVideoManager = () => {
               <Card key={v.id}>
                 <CardContent className="p-3 flex gap-3">
                   <div className="w-24 shrink-0 rounded-lg overflow-hidden bg-muted relative" style={{ aspectRatio: "16 / 9" }}>
-                    {parsed?.thumbnailUrl ? (
-                      <img src={parsed.thumbnailUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <VideoIcon className="w-5 h-5 text-muted-foreground" />
-                      </div>
+                    {/* 代替の絵を常に下に敷く（サムネが読めなくても壊れた画像を出さない） */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <VideoIcon className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    {parsed?.thumbnailUrl && (
+                      <img
+                        src={parsed.thumbnailUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                      />
                     )}
                   </div>
 

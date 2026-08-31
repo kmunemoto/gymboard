@@ -133,12 +133,20 @@ const CustomerVideos = ({ onBack }: Props) => {
                     className="w-full text-left bg-card border border-border/60 rounded-xl overflow-hidden flex gap-3 items-center hover:bg-muted/40 transition-colors"
                   >
                     <div className="w-28 shrink-0 bg-muted relative" style={{ aspectRatio: "16 / 9" }}>
-                      {parsed?.thumbnailUrl ? (
-                        <img src={parsed.thumbnailUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <VideoIcon className="w-6 h-6 text-muted-foreground" />
-                        </div>
+                      {/* 代替の絵を常に下に敷いておく。サムネが読めなかったとき
+                          （限定公開ではなく非公開だった・消された・圏外）に
+                          壊れた画像アイコンが出るのを防ぐ */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <VideoIcon className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                      {parsed?.thumbnailUrl && (
+                        <img
+                          src={parsed.thumbnailUrl}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                        />
                       )}
                       <span className="absolute inset-0 flex items-center justify-center">
                         <PlayCircle className="w-8 h-8 text-white drop-shadow" />

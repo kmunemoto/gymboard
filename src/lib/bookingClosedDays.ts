@@ -7,7 +7,20 @@
  *
  * 止め方は2つあるが、**お客様から見れば同じ「受付終了」**なので1つに束ねている:
  *   手で閉めた（manual）… その日をワンタップで閉めた。ワンタップで解除できる
- *   上限に達した          … その日の予約件数が `daily_booking_limit` に届いた
+ *   上限に達した          … その日の会員予約が `daily_booking_limit` に届いた
+ *
+ * ## 🔴 体験・ドロップインは仕組みから完全に外れている（2026-09-01）
+ *
+ * 宗本さんの指示:「体験予約はこのシステムの例外にします。体験予約は上限なく受け付けます」。
+ * したがって体験・ドロップインは **止まらないし、1日の人数にも数えない**。
+ * 上限5人の日に体験が3件入っても、会員はまだ5人まで取れる（合計は5人を超える）。
+ *
+ * 体験とドロップインは**同じ `trial_bookings` テーブル**にあり（`booking_kind` で区別）、
+ * 画面側は両者を区別せず `user_id === "trial-guest"` として扱っている。DB だけ
+ * `booking_kind` で分けると、画面の人数と DB の判定がずれる——このリポジトリで最も
+ * 避けたいズレ（画面は空きと見せるのに DB が拒否する）。本番のドロップインは0件なので、
+ * テーブルごと外している。分けたくなったら useBookings に `booking_kind` を運ばせてから、
+ * DB と画面を同時に変えること。
  *
  * 他の予約制限との違い:
  *   容量の帯（bookingCapacity.ts）      … **その時間**に何人まで（同時に受けられる数）
@@ -23,8 +36,8 @@
  *
  * ## ここにある規則は DB と同じもの
  *
- * 最終判定は DB（`tenant_day_closed` → `guard_booking_day_closed` /
- * `guard_trial_booking_day_closed`、SQLSTATE `GB007`）。このファイルは同じ規則を
+ * 最終判定は DB（`tenant_day_closed` → `guard_booking_day_closed`、SQLSTATE `GB007`。
+ * `trial_bookings` にトリガーは無い）。このファイルは同じ規則を
  * 画面で先に見せるためにある。規則を変えるときは必ず両方。
  * `src/test/bookingClosedDays.test.ts` が両者の一致を見張る。
  */
@@ -63,6 +76,10 @@ export const closedDayReason = (
  *    **文字どおり同じ条件**にしてある。つまり「同日キャンセル済み」（消化扱い）は
  *    **数える**。予定表に枠として残り続けるものを空きとして数えると、
  *    受付終了にしたはずの日がひとりでに開いてしまう。
+ *
+ * ⚠️ これは**会員予約の行だけに使うこと**。体験・ドロップインの行は呼び出す前に
+ *    落とす（`useDayReception` を参照）。この関数は status しか見ないので、
+ *    体験行を渡すと数に入ってしまう。
  */
 export const countsTowardDailyLimit = (status: string | null | undefined): boolean =>
   status !== "キャンセル済み";

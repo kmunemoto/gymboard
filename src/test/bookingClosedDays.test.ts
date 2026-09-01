@@ -36,6 +36,7 @@ const readSql = (p: string) =>
     .join("\n");
 
 const MIGRATION = "supabase/migrations/20260901000000_booking_daily_cap.sql";
+const TRIAL_EXEMPT = "supabase/migrations/20260901010000_trial_exempt_from_daily_cap.sql";
 const LIB = "src/lib/bookingClosedDays.ts";
 const CUSTOMER = "src/components/customer/CustomerBooking.tsx";
 const TRIAL = "src/pages/TrialBooking.tsx";
@@ -117,6 +118,7 @@ describe("エラーの見分け", () => {
 
 describe("DB の規則と画面の規則が一致している", () => {
   const sql = readSql(MIGRATION);
+  const exempt = readSql(TRIAL_EXEMPT);
   const lib = readCode(LIB);
 
   it("🔴 SQLSTATE が一致している", () => {
@@ -125,21 +127,60 @@ describe("DB の規則と画面の規則が一致している", () => {
   });
 
   it("🔴 数える条件が一致している（キャンセル済みだけ除く）", () => {
-    // DB 側。bookings と trial_bookings の両方に同じ条件が要る。
-    const occurrences = sql.match(/status <> 'キャンセル済み'/g) ?? [];
-    expect(occurrences.length).toBeGreaterThanOrEqual(4);
+    const occurrences = exempt.match(/status <> 'キャンセル済み'/g) ?? [];
+    expect(occurrences.length).toBeGreaterThanOrEqual(2);
     // 「同日キャンセル済み」を名指しで外していないこと（外すと画面とずれる）
-    expect(sql).not.toContain("同日キャンセル済み");
-  });
-
-  it("🔴 体験・ドロップインも1件として数えている", () => {
-    expect(sql).toContain("public.trial_bookings");
-    expect(sql).toContain("public.bookings");
+    expect(exempt).not.toContain("同日キャンセル済み");
   });
 
   it("🔴 ブロック枠は数えない（予約ではないため）", () => {
     // blocked_slots を数え始めると、休憩を入れただけで受付が止まる。
     expect(sql).not.toContain("blocked_slots");
+    expect(exempt).not.toContain("blocked_slots");
+  });
+});
+
+describe("🔴 体験・ドロップインは仕組みから完全に外れている（2026-09-01）", () => {
+  // 宗本さんの指示:「体験予約はこのシステムの例外にします。体験予約は上限なく
+  // 受け付けます」。止めないだけでなく、1日の人数にも数えない。
+  const exempt = readSql(TRIAL_EXEMPT);
+
+  it("体験のトリガーを落としている（受付を止めた日でも入る）", () => {
+    expect(exempt).toContain("DROP TRIGGER IF EXISTS trg_guard_trial_booking_day_closed");
+    expect(exempt).toContain("DROP FUNCTION IF EXISTS public.guard_trial_booking_day_closed");
+  });
+
+  it("🔴 人数の数え方から trial_bookings を外している", () => {
+    // 作り直した2つの関数のどちらにも trial_bookings が残っていないこと。
+    const rebuilt = exempt.slice(exempt.indexOf("CREATE OR REPLACE FUNCTION public.tenant_day_booking_count"));
+    expect(rebuilt).not.toContain("trial_bookings");
+  });
+
+  it("🔴 公開RPC も会員予約しか数えていない", () => {
+    const rpc = exempt.slice(exempt.indexOf("CREATE OR REPLACE FUNCTION public.get_tenant_closed_days"));
+    expect(rpc).not.toContain("trial_bookings");
+    expect(rpc).toContain("public.bookings");
+  });
+
+  it("🔴 予定表の人数も体験行を落としている（DB と同じ答えにする）", () => {
+    // ここを落とし忘れると、予定表だけ人数が多く見えて
+    // 「あと0人と出ているのにまだ取れる」になる。
+    const hook = readCode("src/hooks/useDayReception.ts");
+    expect(hook).toContain("trial-guest");
+    expect(hook).toMatch(/b\.user_id !== TRIAL_GUEST/);
+  });
+
+  it("🔴 公開の体験ページ・ドロップインページは受付終了を見ていない", () => {
+    // DB が止めないのに画面だけ止めると、予約できるはずの枠が消える。
+    for (const f of [TRIAL, DROPIN]) {
+      expect(readCode(f), f).not.toContain("isDayClosed");
+      expect(readCode(f), f).not.toContain("useBookingClosedDays");
+    }
+  });
+
+  it("会員アプリ側は今までどおり止まる", () => {
+    expect(readCode(CUSTOMER)).toContain("isDayClosed");
+    expect(readCode(CUSTOMER)).toContain("useBookingClosedDays");
   });
 });
 
@@ -161,27 +202,18 @@ describe("店側の代理予約には効かない（GB003/GB004/GB006 と同じ�
   });
 });
 
-describe("3つの予約画面が同じ答えを読んでいる", () => {
-  it("🔴 会員・体験・ドロップインのすべてが同じ RPC を使う", () => {
-    // 画面ごとに規則を組み立てさせない。組み立てさせると、どれか1つを直し忘れて
-    // 「空きに見える日が予約できない」が静かに残る。
-    for (const f of [CUSTOMER, TRIAL, DROPIN]) {
-      expect(readCode(f), f).toContain("useBookingClosedDays");
-      expect(readCode(f), f).toContain("isDayClosed");
-    }
+describe("会員の予約画面が受付終了を反映している", () => {
+  it("規則は RPC 1本に集約されている（画面ごとに組み立てない）", () => {
+    expect(readCode(CUSTOMER)).toContain("useBookingClosedDays");
     expect(readCode("src/hooks/useBookingClosedDays.ts")).toContain("get_tenant_closed_days");
   });
 
-  it("🔴 閉まっている日はカレンダーで選べない", () => {
-    for (const f of [CUSTOMER, TRIAL, DROPIN]) {
-      expect(readCode(f), f).toMatch(/if \(isDayClosed\(closedDays, yyyyMMdd\)\) return true;/);
-    }
+  it("🔴 閉まっている日はカレンダーで選べない（会員アプリ）", () => {
+    expect(readCode(CUSTOMER)).toMatch(/if \(isDayClosed\(closedDays, yyyyMMdd\)\) return true;/);
   });
 
   it("🔴 閉まっている日は1枠も出さない（キャンセル待ちにも出せない）", () => {
-    for (const f of [CUSTOMER, TRIAL, DROPIN]) {
-      expect(readCode(f), f).toMatch(/return slots;/);
-    }
+    expect(readCode(CUSTOMER)).toMatch(/if \(selectedDayClosed\) return slots;/);
   });
 
   it("公開ページは匿名でも読めるように RPC へ GRANT している", () => {

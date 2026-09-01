@@ -3,8 +3,6 @@ import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
 import { bookingSlotMinutes, isClosedDate, minutesToTime, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
 import { resolveSlotCapacity, type BookingCapacityWindow } from "@/lib/bookingCapacity";
 import { isBeyondBookingWindow, LEGACY_GUEST_WINDOW_DAYS } from "@/lib/bookingWindow";
-import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
-import { closedDayReason, isDayClosed } from "@/lib/bookingClosedDays";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
   buildAnswerSnapshot,
@@ -174,15 +172,6 @@ const TrialBooking = () => {
 
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
-  // 受付を終了した日（手で閉めた日＋1日の上限に達した日）。公開ページなので
-  // 匿名でも読める RPC（get_tenant_closed_days）から取る。最終判定は DB（GB007）。
-  // 会員アプリと**同じ答え**を同じ経路で読むので、両画面で食い違わない。
-  const { closedDays } = useBookingClosedDays(
-    getJSTToday(),
-    format(addDays(getJSTNow(), 92), "yyyy-MM-dd"),
-    tenant?.id ?? null,
-  );
-
   // ジムごとに変更可能（tenants.booking_buffer_minutes）。未ロード時のみ既定15分。
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   // ジムごとに変更可能（tenants.slot_duration_minutes）。未ロード時のみ既定60分。
@@ -247,8 +236,6 @@ const TrialBooking = () => {
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
-    // 受付終了の日は1枠も出さない（会員アプリと同じ扱い）。
-    if (isDayClosed(closedDays, dateKey)) return slots;
     // 締切は日単位（当日以降は全枠締切）。カレンダー側で当日以降は選べないため通常は発生しないが、
     // 日付選択後に日付が変わった場合の保険として枠側でも判定する。
     // 営業時間から作る（以前は 600→1260＝10:00-21:00 が直書きされていて、
@@ -632,8 +619,6 @@ const TrialBooking = () => {
                   if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), lastBookableStartOn(yyyyMMdd))) return true;
                   // 定休日（曜日別の営業時間で閉めている日）。
                   if (isClosedDate(tenant?.operating_hours, yyyyMMdd)) return true;
-                  // 店が「その日はもう受けない」とした日、または1日の上限に達した日。
-                  if (isDayClosed(closedDays, yyyyMMdd)) return true;
                   // 何日先まで受けるか。店が未設定なら従来どおり10日先まで。
                   return isBeyondBookingWindow(
                     yyyyMMdd, tenant?.booking_window_days ?? null, { days: LEGACY_GUEST_WINDOW_DAYS },
@@ -650,14 +635,6 @@ const TrialBooking = () => {
                 <Clock className="w-3.5 h-3.5" />
                 {t("trialBooking.dateOpenSlots", { date: formatDate(selectedDate, "monthDayDow") })}
               </h3>
-              {isDayClosed(closedDays, dateKey) && (
-                <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-center space-y-1">
-                  <p className="text-sm font-bold">{t("closedDays.customerClosed")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {closedDayReason(closedDays, dateKey)?.reason || t("closedDays.customerClosedHelp")}
-                  </p>
-                </div>
-              )}
               <div className="grid grid-cols-4 gap-1.5">
                 {slots.map((slot) => (
                   <button

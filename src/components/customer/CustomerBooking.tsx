@@ -42,6 +42,8 @@ import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
+import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
+import { closedDayReason, isDayClosed, isDayClosedError } from "@/lib/bookingClosedDays";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
@@ -140,6 +142,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 何日先まで受け付けるか。null=未設定なら従来どおり「1ヶ月先まで」。
   const bookingWindowDays = tenant?.booking_window_days ?? null;
   const maxBookableDate = bookingWindowEnd(bookingWindowDays, { months: LEGACY_MEMBER_WINDOW_MONTHS });
+
+  // 受付を終了した日（手で閉めた日＋1日の上限に達した日）。最終判定は DB（GB007）。
+  // 読めなければ空配列＝「閉まっている日は無い」に倒れるので、予約が取れなくなることはない。
+  const { closedDays } = useBookingClosedDays(
+    getJSTToday(),
+    format(maxBookableDate, "yyyy-MM-dd"),
+  );
   // 会員の予約で聞く質問だけ（体験専用の質問は出さない）。
   const memberQuestions = useMemo(() => questionsForSurface(allQuestions, "member"), [allQuestions]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -349,8 +358,16 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     return isBlockedStart(blockedWindows, weekday, startMinutes);
   };
 
+  // その日ぜんぶが受付終了か。日付を選んだあとに店が閉めた場合の受け皿でもある
+  // （カレンダー側でも選べなくしているが、選択済みの状態は残るため）。
+  const selectedDayClosed = isDayClosed(closedDays, dateKey);
+
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean }[] = [];
+    // 🔴 受付終了の日は1枠も出さない。定休日（営業時間が0枠）と同じ見た目になる。
+    //    半端に「押せない枠」を並べると、キャンセル待ちに登録できてしまう
+    //    （空きを待っても店が受けないので、待つだけ無駄になる）。
+    if (selectedDayClosed) return slots;
     // 曜日別の営業時間・定休日、さらに指名した担当のシフトまで反映する。
     // 指名なし／シフト未設定なら、結果は店の営業時間そのもの（従来どおり）。
     const weekday = weekdayOfDateKey(dateKey);
@@ -499,6 +516,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         // シフト外（GB002）は「別の時間」ではなく「別の担当か別の曜日」なので文言を分ける。
         toast.error(
           isPlanLimitError(error) ? t("planSessions.errorReached")
+            : isDayClosedError(error) ? t("closedDays.errorClosed")
             : isBlockedWindowError(error) ? t("blockedWindows.errorNotAccepting")
             : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
             : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
@@ -644,6 +662,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
           restoreFailed ? t("bookingLimits.errorRestoreFailed")
             : isPlanLimitError(error)
               ? (rescheduleTargetForfeits ? t("planSessions.errorRescheduleForfeitReached") : t("planSessions.errorReached"))
+            : isDayClosedError(error) ? t("closedDays.errorClosed")
             : isBlockedWindowError(error) ? t("blockedWindows.errorNotAccepting")
             : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
             : t("booking.errorRescheduleFailed"),
@@ -1007,6 +1026,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     if (isPastDay(yyyyMMdd)) return true;
                     // 定休日。toDate があっても、その間の定休日は個別に塞ぐ必要がある。
                     if (isClosedDate(businessHours, yyyyMMdd)) return true;
+                    // 店が「その日はもう受けない」とした日、または1日の上限に達した日。
+                    // 定休日と同じ見た目（選べない）にする。最終判定は DB（GB007）。
+                    if (isDayClosed(closedDays, yyyyMMdd)) return true;
                     // 指名した担当が出勤していない曜日。指名なしなら常に false。
                     if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
                       return true;
@@ -1118,6 +1140,14 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         </Button>
                       )}
                     </div>
+                  </div>
+                )}
+                {selectedDayClosed && (
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-center space-y-1">
+                    <p className="text-sm font-bold">{t("closedDays.customerClosed")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {closedDayReason(closedDays, dateKey)?.reason || t("closedDays.customerClosedHelp")}
+                    </p>
                   </div>
                 )}
                 <div className="grid grid-cols-4 gap-1.5">

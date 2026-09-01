@@ -44,6 +44,7 @@ import TrainerStaffSchedule from "./TrainerStaffSchedule";
 import TrainerBookingQuestions from "./TrainerBookingQuestions";
 import TrainerBookingLimits from "./TrainerBookingLimits";
 import TrainerCapacityWindows from "./TrainerCapacityWindows";
+import TrainerDailyBookingLimit from "./TrainerDailyBookingLimit";
 import TrainerBlockedWindows from "./TrainerBlockedWindows";
 import TrainerDataExport from "./TrainerDataExport";
 import TrainerCustomerImport from "./TrainerCustomerImport";
@@ -1168,6 +1169,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         <TrainerCapacityWindows />
       </section>
 
+
       {/* === スタッフ別のシフト === 担当を指名する店だけに関係する。2人以上のジムでのみ描画される */}
       <section className="space-y-3">
         <TrainerStaffSchedule />
@@ -1186,6 +1188,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       {/* === 受付しない時間帯 === 開始時刻を揃えて夜の枠数を確保する（両端の時刻は受け付ける） */}
       <section className="space-y-3">
         <TrainerBlockedWindows />
+      </section>
+
+      {/* === 1日の上限人数 === 達した日はお客様側の受付を自動で終了する（GB007）。
+          「回数の制限」「受付しない時間帯」と並べる: どれも「受けない条件」の設定で、
+          営業時間カード（何時から何時まで開けるか）とは目的が違う。 */}
+      <section className="space-y-3">
+        <TrainerDailyBookingLimit />
       </section>
 
       {/* === 予約時のカスタム質問（事前アンケート） === */}

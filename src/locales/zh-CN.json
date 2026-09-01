@@ -2920,5 +2920,29 @@
     "saveFailed": "保存失败：{{msg}}",
     "deleteFailed": "删除失败：{{msg}}",
     "loadFailed": "加载视频失败：{{msg}}"
+  },
+  "closedDays": {
+    "limitSection": "每日预约上限",
+    "limitDesc": "一天最多接待的预约数量。达到上限后，即使还有空余时段，也会自动停止接受顾客预约。体验和临时预约同样计入。",
+    "limitLabel": "每日上限",
+    "limitNone": "不限",
+    "limitUnit": "最多 {{count}} 位",
+    "limitProxyNote": "即使当天已达上限，您仍可从日程表手动添加预约。",
+    "limitSaved": "已保存每日预约上限",
+    "limitSaveFailed": "保存每日预约上限失败",
+    "stopReception": "停止接受预约",
+    "openWithCount": "{{count}}/{{limit}} 位",
+    "closedTapToReopen": "已停止接受",
+    "atLimit": "已达上限",
+    "atLimitHelp": "该日已达每日上限（{{limit}} 位），已停止接受预约。",
+    "closeAria": "停止接受 {{date}} 的预约",
+    "reopenAria": "重新接受 {{date}} 的预约",
+    "closedToast": "已停止接受 {{date}} 的预约",
+    "reopenedToast": "已重新接受 {{date}} 的预约",
+    "closeFailed": "停止接受预约失败",
+    "reopenFailed": "重新接受预约失败",
+    "customerClosed": "该日已停止接受预约",
+    "customerClosedHelp": "请选择其他日期。",
+    "errorClosed": "该日已停止接受预约，请选择其他日期。"
   }
 }

@@ -2920,5 +2920,29 @@
     "saveFailed": "保存できませんでした: {{msg}}",
     "deleteFailed": "削除できませんでした: {{msg}}",
     "loadFailed": "動画の読み込みに失敗しました: {{msg}}"
+  },
+  "closedDays": {
+    "limitSection": "1日の上限人数",
+    "limitDesc": "1日に受ける予約の上限です。上限に達した日は、枠が空いていてもお客様側の受付を自動で終了します。体験・ドロップインの予約も1件として数えます。",
+    "limitLabel": "1日の上限",
+    "limitNone": "上限なし",
+    "limitUnit": "{{count}}人まで",
+    "limitProxyNote": "上限に達した日でも、予定表から店側が手で入れる予約は通ります。",
+    "limitSaved": "1日の上限人数を保存しました",
+    "limitSaveFailed": "1日の上限人数の保存に失敗しました",
+    "stopReception": "受付を止める",
+    "openWithCount": "{{count}}/{{limit}}人",
+    "closedTapToReopen": "受付停止中",
+    "atLimit": "上限に達しました",
+    "atLimitHelp": "1日の上限（{{limit}}人）に達したため、この日の受付は終了しています。",
+    "closeAria": "{{date}} の受付を止める",
+    "reopenAria": "{{date}} の受付を再開する",
+    "closedToast": "{{date}} の受付を止めました",
+    "reopenedToast": "{{date}} の受付を再開しました",
+    "closeFailed": "受付の停止に失敗しました",
+    "reopenFailed": "受付の再開に失敗しました",
+    "customerClosed": "この日は受付を終了しました",
+    "customerClosedHelp": "別の日をお選びください。",
+    "errorClosed": "この日は受付を終了しました。別の日をお選びください。"
   }
 }

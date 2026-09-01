@@ -19,6 +19,7 @@ import { AttachmentButton, AttachmentPreview } from "@/components/messages/Attac
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { useConversationSearch } from "@/hooks/useConversationSearch";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { prependQuote } from "@/lib/messageQuote";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
@@ -36,6 +37,8 @@ const CustomerChat = () => {
   const [input, setInput] = useState("");
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // キーボードの高さを --kb へ流す。チャットの bottom がこれを見て持ち上がる。
+  const keyboardInset = useKeyboardInset();
 
   // 送信先は「自分が所属するジムのスタッフ」を解決する。
   // 旧実装は get_trainer_ids()[0]（全テナント横断で先頭）だったため、他ジムのトレーナーに
@@ -106,6 +109,13 @@ const CustomerChat = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, search.active]);
 
+  // キーボードの開閉でメッセージ欄の高さが変わる。位置を直さないと、
+  // キーボードを出した瞬間に**直前まで読んでいた一番下の発言が隠れる**。
+  useEffect(() => {
+    if (search.active) return;
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [keyboardInset, search.active]);
+
   // 添付だけを送る（本文が空）のは正しい操作。写真1枚だけ送りたいことのほうが多い。
   // ただしアップロード中は送らせない（行だけ先に入って添付が付かない状態を作らない）。
   const canSend = (!!input.trim() || !!attachment.prepared) && !attachment.uploading && !!trainerId;
@@ -157,7 +167,7 @@ const CustomerChat = () => {
   // 何も起きていないように見える空チャットではなく、明示的にエラーを表示する。
   if (!resolvingTrainer && !trainerId) {
     return (
-      <div className="flex flex-col h-[calc(100vh-8.5rem)] items-center justify-center px-6 text-center gap-2 slide-up">
+      <div className="flex flex-col min-h-[60vh] items-center justify-center px-6 text-center gap-2 slide-up">
         <AlertTriangle className="w-8 h-8 text-destructive" />
         <p className="text-sm font-bold">{t("customerChat.noTrainerFound")}</p>
         <p className="text-xs text-muted-foreground">{t("customerChat.noTrainerFoundHelp")}</p>
@@ -166,7 +176,17 @@ const CustomerChat = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] slide-up">
+    /* 🔴 画面に貼り付ける（2026-09-01）。以前は h-[calc(100vh-8.5rem)] だったが、
+       iOS の WKWebView では 100vh がキーボードで縮まないため、一番下にある入力欄が
+       キーボードの裏に入り、打っている文字が見えなかった。上はアプリヘッダーの下、
+       下は max(キーボード, ボトムナビ) に固定して、LINE と同じく入力欄を常に見せる。
+       max-w-md mx-auto は CustomerView の本体幅に合わせるため（fixed で外れるので明示）。 */
+    <div
+      className="flex flex-col slide-up
+        fixed left-0 right-0 z-30 w-full max-w-md mx-auto bg-background
+        top-[calc(3.5rem_+_env(safe-area-inset-top,0px))]
+        bottom-[max(var(--kb,0px),5rem)]"
+    >
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">

@@ -64,6 +64,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "trial_email_cancel_note",
   // メニューに「動画」を出すか。既定 true（TENANT_DEFAULT_TRUE_COLS 側）。
   "show_nav_videos",
+  // 1日に受ける予約の上限件数。NULL = 上限なし（従来どおり）。
+  "daily_booking_limit",
 ];
 
 /**
@@ -137,6 +139,9 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 既定文は持たせない（cancel_policy_body と同じ理由）。
   booking_email_note: null,
   reminder_email_note: null,
+  // 🔴 列が読めない環境では「上限なし」に倒す。ここに数字を置くと、未適用の環境で
+  //    全店の受付が勝手に止まる（お客様が予約できなくなるほうが、上限が効かないより重い）。
+  daily_booking_limit: null,
   // 列が読めない環境では「従来の固定文」に倒す（＝何も変わらない）。
   trial_email_cancel_note: null,
 };

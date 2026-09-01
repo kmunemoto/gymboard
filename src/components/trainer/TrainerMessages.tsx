@@ -27,6 +27,7 @@ import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { prependQuote } from "@/lib/messageQuote";
 import { useConversationSearch } from "@/hooks/useConversationSearch";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
@@ -71,6 +72,8 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const [lastMessages, setLastMessages] = useState<Record<string, LastMessageInfo>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // キーボードの高さを --kb へ流す。チャットの bottom がこれを見て持ち上がる。
+  const keyboardInset = useKeyboardInset();
   // 共有受信箱: 別のスタッフ宛ての未読も自分の一覧に出す
   const staff = useStaffDirectory();
   const staffKey = staff.ids.join(",");
@@ -216,6 +219,13 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, search.active]);
 
+  // キーボードの開閉でメッセージ欄の高さが変わる。位置を直さないと、
+  // キーボードを出した瞬間に**直前まで読んでいた一番下の発言が隠れる**。
+  useEffect(() => {
+    if (search.active) return;
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [keyboardInset, search.active]);
+
   // 添付だけ送るのは正しい操作。アップロード中は送らせない
   // （行だけ先に入って添付が付かない状態を作らない）。
   const canSend =
@@ -315,7 +325,18 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
 
         {/* Chat area */}
         {selectedCustomerId ? (
-          <Card className="flex flex-col overflow-hidden h-[calc(100vh-200px)] md:h-auto">
+          /* 🔴 スマホでは画面に貼り付ける（2026-09-01）。
+             以前は h-[calc(100vh-200px)] だったが、iOS の WKWebView では 100vh が
+             キーボードで縮まないため、カードの一番下にある入力欄がキーボードの裏に
+             入り、打っている文字が見えなかった。上はアプリヘッダーの下、下は
+             max(キーボード, ボトムナビ) に固定して、LINE と同じく入力欄を常に見せる。 */
+          <Card
+            className="flex flex-col overflow-hidden
+              fixed left-0 right-0 z-30 rounded-none border-x-0 border-b-0
+              top-[calc(3rem_+_env(safe-area-inset-top,0px))]
+              bottom-[max(var(--kb,0px),4rem)]
+              md:static md:z-auto md:rounded-lg md:border md:top-auto md:bottom-auto md:h-auto"
+          >
             {/* Chat header */}
             <div className="p-3 sm:p-4 border-b border-border flex items-center gap-3">
               <button onClick={() => setSelectedCustomerId(null)} className="md:hidden text-muted-foreground p-1">

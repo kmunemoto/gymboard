@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -26,6 +26,15 @@ interface WeekTimelineViewProps {
   tenantPlans?: ReadonlyArray<{ plan_name: string; cycle_months?: number | null; cycle_unit?: string | null }>;
   /** 営業時間（tenants.operating_hours）。時間軸の範囲に使う。 */
   operatingHours?: { start?: string | null; end?: string | null } | null;
+  /**
+   * 日付ヘッダに出す「その日の受付を止める／解除する」スイッチ。
+   *
+   * 🔴 このビューは**既定の表示**なので、ここに無いとワンタップにならない
+   *    （日別へ切り替えてから押す、では要望を満たさない。2026-09-01 に実機相当の
+   *    画面で確認して気づいた）。データの出し入れは親（TrainerSchedule）が持ち、
+   *    ここは受け取った関数を呼ぶだけにする。
+   */
+  renderDayReception?: (dateKey: string) => ReactNode;
 }
 
 // 🔴 以前は START_HOUR = 9 / END_HOUR = 22 が直書きされていて、
@@ -40,7 +49,7 @@ const timeToMin = (t: string) => {
   return h * 60 + m;
 };
 
-const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [], operatingHours }: WeekTimelineViewProps) => {
+const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [], operatingHours, renderDayReception }: WeekTimelineViewProps) => {
   const { t } = useTranslation();
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -104,6 +113,9 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
               <p className={`text-xs sm:text-sm font-bold ${isToday ? "text-accent" : ""}`}>
                 {format(day, "M/d")}
               </p>
+              {renderDayReception && (
+                <div className="mt-0.5">{renderDayReception(format(day, "yyyy-MM-dd"))}</div>
+              )}
             </div>
           );
         })}

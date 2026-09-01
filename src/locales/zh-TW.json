@@ -2920,5 +2920,29 @@
     "saveFailed": "無法儲存：{{msg}}",
     "deleteFailed": "無法刪除：{{msg}}",
     "loadFailed": "無法載入影片：{{msg}}"
+  },
+  "closedDays": {
+    "limitSection": "每日預約上限",
+    "limitDesc": "一天最多接待的預約數量。達到上限後，即使還有空檔時段，也會自動停止接受顧客預約。體驗與臨時預約同樣計入。",
+    "limitLabel": "每日上限",
+    "limitNone": "不限",
+    "limitUnit": "最多 {{count}} 位",
+    "limitProxyNote": "即使當天已達上限，您仍可從行程表手動新增預約。",
+    "limitSaved": "已儲存每日預約上限",
+    "limitSaveFailed": "儲存每日預約上限失敗",
+    "stopReception": "停止接受預約",
+    "openWithCount": "{{count}}/{{limit}} 位",
+    "closedTapToReopen": "已停止接受",
+    "atLimit": "已達上限",
+    "atLimitHelp": "該日已達每日上限（{{limit}} 位），已停止接受預約。",
+    "closeAria": "停止接受 {{date}} 的預約",
+    "reopenAria": "重新接受 {{date}} 的預約",
+    "closedToast": "已停止接受 {{date}} 的預約",
+    "reopenedToast": "已重新接受 {{date}} 的預約",
+    "closeFailed": "停止接受預約失敗",
+    "reopenFailed": "重新接受預約失敗",
+    "customerClosed": "該日已停止接受預約",
+    "customerClosedHelp": "請選擇其他日期。",
+    "errorClosed": "該日已停止接受預約，請選擇其他日期。"
   }
 }

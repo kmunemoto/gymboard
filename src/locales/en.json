@@ -2920,5 +2920,29 @@
     "saveFailed": "Couldn't save: {{msg}}",
     "deleteFailed": "Couldn't delete: {{msg}}",
     "loadFailed": "Couldn't load the videos: {{msg}}"
+  },
+  "closedDays": {
+    "limitSection": "Daily booking limit",
+    "limitDesc": "The most bookings you will take in one day. Once a day reaches this number, it stops accepting customer bookings even if time slots are still open. Trial and drop-in bookings count too.",
+    "limitLabel": "Bookings per day",
+    "limitNone": "No limit",
+    "limitUnit": "Up to {{count}}",
+    "limitProxyNote": "You can still add bookings yourself from the schedule on a day that has reached its limit.",
+    "limitSaved": "Daily booking limit saved",
+    "limitSaveFailed": "Could not save the daily booking limit",
+    "stopReception": "Stop taking bookings",
+    "openWithCount": "{{count}}/{{limit}}",
+    "closedTapToReopen": "Closed",
+    "atLimit": "Limit reached",
+    "atLimitHelp": "This day has reached the daily limit ({{limit}}), so it is no longer taking bookings.",
+    "closeAria": "Stop taking bookings on {{date}}",
+    "reopenAria": "Start taking bookings again on {{date}}",
+    "closedToast": "{{date}} is no longer taking bookings",
+    "reopenedToast": "{{date}} is taking bookings again",
+    "closeFailed": "Could not close the day",
+    "reopenFailed": "Could not reopen the day",
+    "customerClosed": "This day is no longer taking bookings",
+    "customerClosedHelp": "Please choose another date.",
+    "errorClosed": "This day is no longer taking bookings. Please choose another date."
   }
 }

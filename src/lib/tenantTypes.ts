@@ -42,6 +42,12 @@ export interface Tenant {
   show_retention_alerts: boolean;
   /** 毎朝、その日の予約一覧をオーナー/トレーナーへプッシュ通知するか。既定true */
   daily_summary_enabled: boolean;
+  /**
+   * 1日に受ける予約の上限件数（体験・ドロップイン含む）。null=上限なし。
+   * 達した日はお客様側の受付を自動で終了する（`src/lib/bookingClosedDays.ts`）。
+   * 🔴 店側の代理予約には効かない。undefined=列がまだ読めない環境。
+   */
+  daily_booking_limit?: number | null;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
   /** Googleの口コミ投稿ページURL。null/空なら口コミ依頼バナーを表示しない */

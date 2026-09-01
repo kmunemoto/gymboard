@@ -426,6 +426,41 @@ export type Database = {
           },
         ]
       }
+      booking_closed_days: {
+        Row: {
+          closed_date: string
+          created_at: string
+          created_by: string
+          id: string
+          reason: string | null
+          tenant_id: string
+        }
+        Insert: {
+          closed_date: string
+          created_at?: string
+          created_by: string
+          id?: string
+          reason?: string | null
+          tenant_id: string
+        }
+        Update: {
+          closed_date?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          reason?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_closed_days_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_frequency_limits: {
         Row: {
           created_at: string
@@ -3081,6 +3116,7 @@ export type Database = {
           cancel_policy_body: string | null
           created_at: string
           current_period_end: string | null
+          daily_booking_limit: number | null
           daily_summary_enabled: boolean
           email: string | null
           gamification_enabled: boolean | null
@@ -3146,6 +3182,7 @@ export type Database = {
           cancel_policy_body?: string | null
           created_at?: string
           current_period_end?: string | null
+          daily_booking_limit?: number | null
           daily_summary_enabled?: boolean
           email?: string | null
           gamification_enabled?: boolean | null
@@ -3211,6 +3248,7 @@ export type Database = {
           cancel_policy_body?: string | null
           created_at?: string
           current_period_end?: string | null
+          daily_booking_limit?: number | null
           daily_summary_enabled?: boolean
           email?: string | null
           gamification_enabled?: boolean | null
@@ -4321,6 +4359,14 @@ export type Database = {
           end_booking_date: string
           staff_user_id: string
           status: string
+        }[]
+      }
+      get_tenant_closed_days: {
+        Args: { from_date: string; p_tenant_id: string; to_date: string }
+        Returns: {
+          closed_date: string
+          manual: boolean
+          reason: string
         }[]
       }
       get_tenant_booking_questions: {

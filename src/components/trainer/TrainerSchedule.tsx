@@ -41,6 +41,8 @@ import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { canSelectStaff, isStaffConflictError, staffNameMap } from "@/lib/tenantStaff";
+import DayReceptionToggle from "./DayReceptionToggle";
+import { useDayReception } from "@/hooks/useDayReception";
 
 const TrainerSchedule = () => {
   const { t } = useTranslation();
@@ -475,6 +477,14 @@ const TrainerSchedule = () => {
     return bookings.filter((b) => b.date === dateStr && b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS);
   };
 
+  // ── その日の受付を止める（GB007）。読み込み・保存・人数の数え方は useDayReception に置いた
+  const dayReception = useDayReception(
+    format(weekStart, "yyyy-MM-dd"),
+    format(addDays(weekStart, 6), "yyyy-MM-dd"),
+    bookings,
+    tenant?.daily_booking_limit ?? null,
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -554,6 +564,18 @@ const TrainerSchedule = () => {
           bookings={bookings}
           tenantPlans={plans}
           operatingHours={tenant?.operating_hours}
+          renderDayReception={(dateKey) => (
+            <DayReceptionToggle
+              compact
+              dateKey={dateKey}
+              closed={dayReception.closedOn(dateKey)}
+              bookedCount={dayReception.bookedCountOn(dateKey)}
+              dailyLimit={dayReception.dailyLimit}
+              saving={dayReception.saving}
+              onClose={dayReception.closeDay}
+              onReopen={dayReception.reopenDay}
+            />
+          )}
           profiles={profiles.map((p) => ({
             user_id: p.user_id,
             plan: p.plan ?? null,
@@ -597,6 +619,19 @@ const TrainerSchedule = () => {
                           <p className={`text-sm font-bold mt-0.5 ${isToday ? "text-accent" : ""}`}>
                             {format(day, "d")}
                           </p>
+                          {/* その日の受付を止める／解除する1タップ（GB007） */}
+                          <div className="mt-1">
+                            <DayReceptionToggle
+                              compact
+                              dateKey={format(day, "yyyy-MM-dd")}
+                              closed={dayReception.closedOn(format(day, "yyyy-MM-dd"))}
+                              bookedCount={dayReception.bookedCountOn(format(day, "yyyy-MM-dd"))}
+                              dailyLimit={dayReception.dailyLimit}
+                              saving={dayReception.saving}
+                              onClose={dayReception.closeDay}
+                              onReopen={dayReception.reopenDay}
+                            />
+                          </div>
                         </th>
                       );
                     })}
@@ -678,6 +713,16 @@ const TrainerSchedule = () => {
                   {formatDate(day, "slashMonthDayDow")}
                 </span>
                 {isToday && <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">{t("common.today")}</span>}
+                {/* その日の受付を止める／解除する1タップ（GB007） */}
+                <DayReceptionToggle
+                  dateKey={format(day, "yyyy-MM-dd")}
+                  closed={dayReception.closedOn(format(day, "yyyy-MM-dd"))}
+                  bookedCount={dayReception.bookedCountOn(format(day, "yyyy-MM-dd"))}
+                  dailyLimit={dayReception.dailyLimit}
+                  saving={dayReception.saving}
+                  onClose={dayReception.closeDay}
+                  onReopen={dayReception.reopenDay}
+                />
               </div>
               {dayBookings.length > 0 ? (
                 <div className="space-y-1.5">

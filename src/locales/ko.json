@@ -2920,5 +2920,29 @@
     "saveFailed": "저장하지 못했습니다: {{msg}}",
     "deleteFailed": "삭제하지 못했습니다: {{msg}}",
     "loadFailed": "동영상을 불러오지 못했습니다: {{msg}}"
+  },
+  "closedDays": {
+    "limitSection": "하루 예약 상한",
+    "limitDesc": "하루에 받을 예약 수의 상한입니다. 상한에 도달한 날은 빈 시간이 남아 있어도 고객 예약 접수를 자동으로 종료합니다. 체험·드롭인 예약도 1건으로 계산합니다.",
+    "limitLabel": "하루 상한",
+    "limitNone": "제한 없음",
+    "limitUnit": "{{count}}명까지",
+    "limitProxyNote": "상한에 도달한 날에도 일정표에서 직접 추가하는 예약은 등록됩니다.",
+    "limitSaved": "하루 예약 상한을 저장했습니다",
+    "limitSaveFailed": "하루 예약 상한을 저장하지 못했습니다",
+    "stopReception": "접수 중지",
+    "openWithCount": "{{count}}/{{limit}}명",
+    "closedTapToReopen": "접수 중지 중",
+    "atLimit": "상한 도달",
+    "atLimitHelp": "하루 상한({{limit}}명)에 도달하여 이 날은 접수를 종료했습니다.",
+    "closeAria": "{{date}} 접수 중지",
+    "reopenAria": "{{date}} 접수 재개",
+    "closedToast": "{{date}} 접수를 중지했습니다",
+    "reopenedToast": "{{date}} 접수를 재개했습니다",
+    "closeFailed": "접수 중지에 실패했습니다",
+    "reopenFailed": "접수 재개에 실패했습니다",
+    "customerClosed": "이 날은 접수를 종료했습니다",
+    "customerClosedHelp": "다른 날짜를 선택해 주세요.",
+    "errorClosed": "이 날은 접수를 종료했습니다. 다른 날짜를 선택해 주세요."
   }
 }

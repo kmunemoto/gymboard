@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SLOT_DURATION_OPTIONS } from "@/lib/planSlotDuration";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant, type TenantPlan } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -30,10 +31,8 @@ import { useTranslation } from "react-i18next";
 
 type PlanType = "subscription" | "ticket" | "period";
 
-// tenants.slot_duration_minutes（ジム全体の予約枠の間隔）の選択肢と揃える
-// （TrainerGymSettings.tsx の BUSINESS_SLOT_OPTIONS）。プランはここに無い値
-// （例: 15分）を持たせたくなったら両方に足すこと。
-const PLAN_SLOT_OPTIONS = [30, 45, 60, 90, 120];
+// 1枠の長さの選択肢は src/lib/planSlotDuration.ts に集約。
+// 以前はここと TrainerGymSettings が別々に配列を持ち、ドリフトしうる形だった。
 
 interface FormState {
   plan_name: string;
@@ -377,7 +376,7 @@ const TrainerPlanManager = () => {
                 <option value="">
                   {t("settings.plans.slotDurationInherit", { minutes: tenant?.slot_duration_minutes ?? 60 })}
                 </option>
-                {PLAN_SLOT_OPTIONS.map((min) => (
+                {SLOT_DURATION_OPTIONS.map((min) => (
                   <option key={min} value={min}>
                     {t("settings.plans.slotDurationSuffix", { count: min })}
                   </option>

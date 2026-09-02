@@ -695,12 +695,14 @@ export type Database = {
       bookings: {
         Row: {
           booking_date: string
+          booking_options: Json | null
           booking_type: string
           created_at: string
           created_via: string | null
           custom_answers: Json | null
           google_event_id: string | null
           id: string
+          option_minutes: number
           source: string | null
           staff_user_id: string | null
           status: string
@@ -710,12 +712,14 @@ export type Database = {
         }
         Insert: {
           booking_date: string
+          booking_options?: Json | null
           booking_type?: string
           created_at?: string
           created_via?: string | null
           custom_answers?: Json | null
           google_event_id?: string | null
           id?: string
+          option_minutes?: number
           source?: string | null
           staff_user_id?: string | null
           status?: string
@@ -725,12 +729,14 @@ export type Database = {
         }
         Update: {
           booking_date?: string
+          booking_options?: Json | null
           booking_type?: string
           created_at?: string
           created_via?: string | null
           custom_answers?: Json | null
           google_event_id?: string | null
           id?: string
+          option_minutes?: number
           source?: string | null
           staff_user_id?: string | null
           status?: string

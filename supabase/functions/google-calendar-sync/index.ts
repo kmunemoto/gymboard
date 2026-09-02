@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     const caller = await verifyCaller(req);
     if (!caller) return json({ error: "Unauthorized" }, 401);
 
-    const { action, booking_id, booking_date, booking_type, client_name, google_event_id, is_trial } = await req.json();
+    const { action, booking_id, booking_date, booking_type, client_name, google_event_id, is_trial, option_minutes } = await req.json();
     if (!action || !ALLOWED_ACTIONS.has(action)) {
       console.warn("google-calendar-sync: invalid action", action);
       return json({ error: "Invalid action" }, 400);
@@ -183,7 +183,12 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       const startDt = new Date(booking_date);
-      const endDt = new Date(startDt.getTime() + resolveSessionMinutes(is_trial ? null : booking_type) * 60 * 1000);
+      // オプション（トレーニング後のストレッチ等）ぶんも予定の長さに入れる。ここを足さないと
+      // トレーナー自身の Google カレンダーだけ60分のままになり、ジムボードの予定表と食い違う。
+      // 呼び出し側が option_minutes を渡さない場合は 0（＝従来どおり）。
+      const createOptionMinutes = Math.max(0, Number(option_minutes ?? 0) || 0);
+      const endDt = new Date(startDt.getTime()
+        + (resolveSessionMinutes(is_trial ? null : booking_type) + createOptionMinutes) * 60 * 1000);
 
       const event = {
         summary: `🏋️ ${client_name || "顧客"} - ${booking_type || "トレーニング"}`,
@@ -239,7 +244,7 @@ Deno.serve(async (req) => {
       // 確認し、無ければ（過去の不具合で別カレンダーに作られた/消えた場合）作り直す。
       const nowIso = new Date().toISOString();
       const { data: bookings } = await supabase.from("bookings")
-        .select("id, booking_date, booking_type, user_id, google_event_id")
+        .select("id, booking_date, booking_type, user_id, google_event_id, option_minutes")
         .eq("tenant_id", tenantId)
         .neq("status", "キャンセル済み")
         .gte("booking_date", nowIso);
@@ -282,7 +287,10 @@ Deno.serve(async (req) => {
         }
 
         const startDt = new Date(item.booking_date);
-        const itemSessionMinutes = item.source === "bookings" ? resolveSessionMinutes(item.booking_type) : sessionMinutes;
+        const itemSessionMinutes = item.source === "bookings"
+          ? resolveSessionMinutes(item.booking_type)
+            + Math.max(0, Number((item as { option_minutes?: number | null }).option_minutes ?? 0) || 0)
+          : sessionMinutes;
         const endDt = new Date(startDt.getTime() + itemSessionMinutes * 60 * 1000);
         const cName = item.source === "trial_bookings"
           ? (item as any).guest_name || "体験ゲスト"

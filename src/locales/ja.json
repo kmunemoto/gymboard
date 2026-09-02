@@ -35,7 +35,8 @@
     "customer": "顧客",
     "gymLogo": "ジムロゴ",
     "unknownError": "不明なエラー",
-    "messageRead": "既読"
+    "messageRead": "既読",
+    "minutesCount": "{{count}}分"
   },
   "operatorFeedback": {
     "title": "運営への要望",
@@ -1084,7 +1085,6 @@
     "peopleUnit": "{{count}}名",
     "todaySchedule": "本日のスケジュール",
     "noTodayBookings": "本日の予約はありません",
-    "minutes60": "60分",
     "counselingSection": "新規カウンセリング回答",
     "unreadCount": "{{count}}件",
     "revenueSection": "月別売上",
@@ -2971,6 +2971,10 @@
       "price": "料金が正しくありません（0〜1,000,000円）"
     },
     "footprintNote": "トレーニングとオプションの間に準備時間は入れません。1枠60分＋オプション30分＋次の方までの間15分なら、105分を押さえます。",
-    "notYetCustomerNote": "いまはここで設定するところまでです。お客様の予約画面での選択は次の更新で対応します。"
+    "notYetCustomerNote": "いまはここで設定するところまでです。お客様の予約画面での選択は次の更新で対応します。",
+    "pickerTitle": "オプション",
+    "pickerHint": "トレーニングに続けて行います。付けると終了時刻が延びます。",
+    "pickerPlusMinutes": "+{{count}}分",
+    "pickerPrice": "¥{{price}}"
   }
 }

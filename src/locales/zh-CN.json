@@ -35,7 +35,8 @@
     "customer": "客户",
     "gymLogo": "健身房 Logo",
     "unknownError": "未知错误",
-    "messageRead": "已读"
+    "messageRead": "已读",
+    "minutesCount": "{{count}} 分钟"
   },
   "operatorFeedback": {
     "title": "向运营方提出建议",
@@ -1084,7 +1085,6 @@
     "peopleUnit": "{{count}}人",
     "todaySchedule": "今日日程",
     "noTodayBookings": "今日无预约",
-    "minutes60": "60分钟",
     "counselingSection": "新咨询回复",
     "unreadCount": "{{count}}条",
     "revenueSection": "月度营收",
@@ -2971,6 +2971,10 @@
       "price": "价格不正确（0～1,000,000）"
     },
     "footprintNote": "训练与附加项之间不插入准备时间。60 分钟预约 + 30 分钟附加项 + 15 分钟间隔，共占用 105 分钟。",
-    "notYetCustomerNote": "目前仅支持在此设置。客户预约页面的选择将在下次更新中提供。"
+    "notYetCustomerNote": "目前仅支持在此设置。客户预约页面的选择将在下次更新中提供。",
+    "pickerTitle": "附加项",
+    "pickerHint": "紧接训练之后进行。加购后结束时间会顺延。",
+    "pickerPlusMinutes": "+{{count}} 分钟",
+    "pickerPrice": "¥{{price}}"
   }
 }

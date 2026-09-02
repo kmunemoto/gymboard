@@ -1,4 +1,5 @@
 import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, MessageCircle, UserCheck, Banknote } from "lucide-react";
+import { minutesBetween } from "@/lib/bookingOptions";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -432,7 +433,12 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold">{b.startTime}</p>
-                        <p className="text-xs text-muted-foreground">{t("dashboard.minutes60")}</p>
+                        {/* 🔴 以前はここが「60分」の直書きだった。50分・90分で回している店では
+                            今日まで嘘の表示になっていた（オプションを足す前から既に誤り）。
+                            b.endTime は parseBooking が 1枠＋オプション で計算済み。 */}
+                        <p className="text-xs text-muted-foreground">
+                          {t("common.minutesCount", { count: minutesBetween(b.startTime, b.endTime) })}
+                        </p>
                       </div>
                     </CardContent>
                   </Card>

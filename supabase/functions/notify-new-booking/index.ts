@@ -100,7 +100,9 @@ Deno.serve(async (req) => {
 
     const { data: booking, error: bkErr } = await supabase
       .from("bookings")
-      .select("id, tenant_id, user_id, booking_date, booking_type, status, created_via")
+      // option_minutes: 予約に付けたオプション（例: トレーニング後の30分ストレッチ）。
+      // メールとプッシュの時間帯に足す。列が無い環境でも落ちないよう COALESCE で 0 に倒す。
+      .select("id, tenant_id, user_id, booking_date, booking_type, status, created_via, option_minutes")
       .eq("id", booking_id)
       .maybeSingle();
     if (bkErr) throw bkErr;
@@ -168,10 +170,15 @@ Deno.serve(async (req) => {
     const gymNote = (tenantRes.data?.booking_email_note as string | null) ?? null;
     // プラン側に設定があれば優先、無ければテナント既定、どちらも無ければ60分
     // （resolvePlanSlotMinutes / sendCancelEmailNotification と同じ「null=継承」の作法）
-    const sessionMinutes =
+    const slotMinutes =
       ((planRes.data as { slot_duration_minutes: number | null }[] | null)?.[0]?.slot_duration_minutes ?? null) ??
       (tenantRes.data?.slot_duration_minutes as number | null) ??
       60;
+    // 🔴 オプションぶんは「同じ1回のセッション」なので表示する時間に含める
+    //    （src/lib/bookingOptions.ts の sessionMinutes と同じ規則。Deno からは
+    //     src/ を import できないので、規則だけ写している）。次のお客様までの間は含めない。
+    const optionMinutes = Math.max(0, Number(booking.option_minutes ?? 0) || 0);
+    const sessionMinutes = slotMinutes + optionMinutes;
     const customerName = (profileRes.data?.display_name as string | null)?.trim() || "お客様";
 
     // 代表スタッフ: trainer（joined_at昇順）→ owner（同）。fetchMyTenantStaffIds と同じ順序。

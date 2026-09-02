@@ -336,5 +336,32 @@ export function buildDevFixtures(): Record<string, Record<string, unknown>[]> {
         created_at: now,
       },
     ],
+    // 予約オプション（トレーニング後のストレッチ等）。開発中に画面で確認するため。
+    booking_options: [
+      {
+        id: "00000000-0000-4000-8000-0000000000o1",
+        tenant_id: DEV_TENANT_ID,
+        name: "ストレッチ",
+        duration_minutes: 30,
+        price_yen: 3000,
+        description: null,
+        enabled: true,
+        sort_order: 0,
+        created_at: now,
+        updated_at: now,
+      },
+      {
+        id: "00000000-0000-4000-8000-0000000000o2",
+        tenant_id: DEV_TENANT_ID,
+        name: "プロテイン",
+        duration_minutes: 0,
+        price_yen: 500,
+        description: null,
+        enabled: true,
+        sort_order: 1,
+        created_at: now,
+        updated_at: now,
+      },
+    ],
   };
 }

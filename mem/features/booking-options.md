@@ -28,38 +28,94 @@
 お客様に見せる「セッションの長さ」は `sessionMinutes`（1枠＋オプション、**間は含めない**）。
 間は店の都合の時間で、お客様の時間ではない。`09:00〜10:30` の表示に混ぜてはいけない。
 
-## いまの版（PR #367）でできること
+## 第1段（PR #367）でできたこと
 
 - 店が `booking_options` を作れる（名前 / 追加時間 / 料金 / 受付中・停止中 / 並び順）
 - 設定 → 予約のルール → **予約のオプション**
-- 公開ページ用の RPC `get_tenant_booking_options` も用意済み（anon 可）
+- 公開ページ用の RPC `get_tenant_booking_options`（anon 可）
 
-## まだできないこと（次の版）
+## 第2段（PR #368）でできたこと
 
-1. **お客様の予約画面での選択**（`CustomerBooking` / 公開の体験・ドロップイン）
-2. **占有への加算**（`check_booking_overlap`）
+**お客様が予約するときに選べるようになり、占有にも入るようになった。**
 
-  🔴 2 をやるときに踏みやすい穴が2つある:
+### 🔴 占有を計算している場所は**4つ**ある（全部そろって初めて正しい）
 
-  **穴1: footprint の計算箇所は3つある。**
-  `supabase/migrations/20260821030000_booking_capacity_windows.sql` の
-  `check_booking_overlap` の中に `COALESCE(buffer_min, 15)` が3回出てくる:
+`supabase/migrations/20260903000000_booking_option_minutes.sql` で4つとも直した。
 
-  ```
-  1. これから入れる予約の footprint
-  2. 既存の bookings の footprint
-  3. 既存の trial_bookings の footprint
-  ```
+| # | 場所 | 直した？ | 忘れるとどうなるか |
+|---|---|---|---|
+| 1 | `check_booking_overlap` これから入れる予約 | ✅ | 長い予約が入ってしまう |
+| 2 | `check_booking_overlap` 既存の `bookings` | ✅ | **本物の二重予約**（ストレッチの最中に次の人が入る） |
+| 3 | `check_booking_overlap` 既存の `trial_bookings` | ❌ 触らない | 体験にオプションは無い。列も無い |
+| 4 | `guard_booking_staff_reassign`（担当の差し替え） | ✅ | 「担当を変更」で1人に2件を割り当てられる |
+| ＋ | `get_tenant_booked_slots`（画面が見る埋まり枠） | ✅ | **空きに見えるのに送信すると断られる**（何度押しても直らない） |
 
-  片方だけ直すと「Aの後にBは取れるのに、BのあとにAは取れない」という
-  **左右非対称の判定**になる。見張り: `src/test/bookingOptions.test.ts` の
-  「まだ変えていないもの」。
+### 🔴 `NEW.option_minutes` と直接書いてはいけない
 
-  **穴2: オプションを付け外ししたら、空き枠の一覧を計算し直す。**
-  75分で空きを出したあとにストレッチを足すと占有は105分になる。
-  一覧を作り直さないと、**お客様が選べた時刻で DB が拒否する**——
-  このリポジトリで最も避けたいズレ。`useBookings` / `get_tenant_booked_slots`
-  の両方が同じ分数を使うようにしてから画面を出すこと。
+`check_booking_overlap` は **`bookings` と `trial_bookings` の両方**のトリガーから
+呼ばれる。`trial_bookings` にこの列は無いので、直接書くと
+
+```
+record "new" has no field "option_minutes"
+```
+
+で**体験予約の登録だけが実行時に落ちる**。しかもこの文言は `trial-book` の
+「この時間帯」判定にも `/overlap/i` にも当たらないので、お客様には
+「サーバーで問題が発生しました」としか出ない。`to_jsonb(NEW) ->> ...` で読むこと。
+2026-08-04 に `staff_user_id` で同じ穴を踏んでいる。
+見張り: `src/test/bookingOptionFootprint.test.ts`。
+
+### 画面側で直した場所
+
+- `parseBooking`（`useBookings.ts`）に足したことで、**8つの表示が一度に直る**
+  （お客様の予約一覧・ホームの次回予約・履歴・店の予定表の週/日・週タイムラインの
+  ブロックの高さ・カルテ・キャンセル確認・Googleカレンダーのリンク）
+- `parseBooking` を通らない**独自の写し**が2つあるので個別に直した:
+  `TrainerClientDetail.tsx`（カルテの予約一覧）と、予約直後の確認ダイアログ
+- お客様の予約画面: 空き枠・終業前の打ち切り・「09:00〜10:30（90分）」の3つ
+- 店側の代理予約（`TrainerSchedule`）にも同じ選択欄を出した。
+  出さないと**店から入れた予約だけ占有が短くなる**
+- Edge Function 3本（Deno なので `src/` を import できず、写し忘れが起きる場所）:
+  `notify-new-booking`（新規予約のメール・プッシュ）/ `calendar-feed`（お客様のICS購読）/
+  `google-calendar-sync`（トレーナーのGoogleカレンダー）
+
+### 🔴 オプションを選び直したら、選択中の枠を必ず外す
+
+占有が伸びる＝選べる枠が変わる。外さないと「画面では選べているのに送信すると
+DB に断られる」になる。`useBookingOptionSelection({ onChange })` がその口。
+選択欄は**時間を選ぶ前**に置いてある。
+
+実測（fixtures モード、終業21:00・1枠60分）:
+ストレッチ（+30分）を付けると最終開始が **20:00 → 19:30** に縮み、
+確認欄が **09:00〜10:30（90分）** になる。
+
+### 予約変更（リスケ）の扱い
+
+- 変更中はオプションを**選び直させない**（事前アンケートと同じ）。元の予約のぶんを引き継ぐ
+- 引き継ぎは `createBooking` の3箇所すべてに渡す（**失敗時の復元も含む**）。
+  リスケは「旧行を削除 → 新行を INSERT」なので、渡さなかった列は消える
+- 空き枠の判定にも**元の予約の分数**を使う。0 にすると必ず DB に拒否される
+
+### ついでに直した既存の不具合
+
+`TrainerDashboard` の今日の予定が **「60分」の直書き**だった。50分・90分で回している
+店では、オプション以前から嘘の表示になっていた。予約行の実際の長さを出すようにし、
+`dashboard.minutes60` は5言語とも削除した。
+
+## まだできないこと（次の版以降）
+
+- **体験・ドロップインにはオプションを付けられない。** `trial_bookings` は別テーブルで
+  列が無い。付けるなら、列の追加・トリガーの3番目の枝・`get_tenant_booked_slots` の
+  体験の枝・公開ページ2つ・Edge Function 3本（`trial-book` / `drop-in-book` /
+  `trial-cancel`）を同時に直すこと
+- **既存の予約にあとからオプションを足す導線は作らない。** 重複判定は
+  **BEFORE INSERT のみ**（20260804000000 の方針）なので、UPDATE で占有を伸ばしても
+  **何も検査されない**。作るならその UPDATE を見るトリガーを同時に足すこと
+- `calendar-feed` は以前から**間（buffer）も DTEND に入れている**。お客様のカレンダーに
+  次の人までの間が乗るのは本来おかしいが、既存の挙動なので今回は変えていない
+  （縮めると、これまで「予定あり」だった時間が急に空きに見える）
+- `resolve_booking_capacity` は**開始時刻だけ**で帯を決める。60+30 の予約が 17:45 開始でも
+  17:45 の帯だけで判定される。長いプランでも同じなので、今回は変えていない
 
 ## 設計の判断
 
@@ -78,7 +134,7 @@
 毎回 id が変わるが、オプションは将来 `bookings` 側から id で指す（何を付けたかを
 残す）ので、差し替えると過去の予約から辿れなくなる。既存行は `update` する。
 
-## 本番への適用（2026-09-02）
+## 本番への適用（第1段: 2026-09-02）
 
 Lovable の `query_database` で適用済み。3段構えで確認した:
 
@@ -98,8 +154,37 @@ Lovable の `query_database` で適用済み。3段構えで確認した:
 
 ## 参照
 
-- `src/lib/bookingOptions.ts` — 分数の計算と入力検査（ここが唯一の規則）
+- `src/lib/bookingOptions.ts` — 分数の計算・入力検査・控えの読み書き（ここが唯一の規則）
+- `src/hooks/useBookingOptions.ts` — 店のオプション一覧（読めなければ空配列）
+- `src/hooks/useBookingOptionSelection.ts` — 選択の state ＋ 合計分数 ＋ 保存用の控え
+- `src/components/booking/BookingOptionPicker.tsx` — 選択欄（お客様・店側で共用）
 - `src/components/trainer/TrainerBookingOptions.tsx` — 店側の設定
-- `supabase/migrations/20260902000000_booking_options.sql`
-- `supabase/migrations/20260902000100_delete_gym_booking_options.sql`
-- `src/test/bookingOptions.test.ts` — 見張り（40件）
+- `supabase/migrations/20260902000000_booking_options.sql` — 表と RPC（第1段）
+- `supabase/migrations/20260902000100_delete_gym_booking_options.sql` — 閉店時の消し込み
+- `supabase/migrations/20260903000000_booking_option_minutes.sql` — 占有への加算（第2段）
+- `src/test/bookingOptions.test.ts` — 設定の見張り（40件）
+- `src/test/bookingOptionFootprint.test.ts` — 占有と表示の見張り（38件）
+
+## 本番への適用（第2段: 2026-09-03）
+
+Lovable の `query_database` で適用済み。3段構えで確認した（書き込みは全部 `ROLLBACK`）:
+
+| 確認 | 結果 |
+|---|---|
+| `option_minutes` / `booking_options` を追加 | 既存782件はすべて 0 / NULL（＝挙動は変わらない） |
+| 🔴 体験予約が今でも入るか（`to_jsonb` の罠） | 入る |
+| 10:00 に「60分＋オプション30分」→ 埋まり枠RPC | **105分**（10:00〜11:45） |
+| 同じ日のオプション無しの予約 | 75分（対照） |
+| 体験予約 | 75分（対照・オプションは効かない） |
+| 境界ちょうど 11:45 の予約 | 通る（半開区間） |
+| **陰性** 11:30 の予約 | `P0001 この時間帯はすでに予約が入っています` |
+| **陽性の対照** 同じ2件をオプション0分で | 両方入る＝拒否の原因はオプション |
+| **陰性** 11:30 の**体験**予約 | 拒否（既存 bookings の枝が効いている） |
+| **陽性の対照** オプション0分なら | 体験が入る |
+| **陰性** 担当の差し替え（10:00にオプション有り→11:30に同じ担当） | `GB001` |
+| **陽性の対照** オプション0分なら | 差し替えられる |
+
+適用後の実測で `bookings` 782 / `trial_bookings` 73 / `tenants` 20 は適用前と同じ、
+`option_minutes <> 0` は 0件。
+
+変異検証8件（DB側4・画面側4）すべてで見張りが赤くなることを確認した。

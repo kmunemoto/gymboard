@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   const now = new Date().toISOString();
   const { data: bookings, error: bookingsError } = await supabase
     .from("bookings")
-    .select("id, booking_date, booking_type, status, tenant_id")
+    .select("id, booking_date, booking_type, status, tenant_id, option_minutes")
     .eq("user_id", profile.user_id)
     .neq("status", "キャンセル済み")
     // 同日キャンセル消化（来店しない予約）も購読カレンダーに出さない
@@ -84,9 +84,15 @@ Deno.serve(async (req) => {
   const events = (bookings || []).map((b) => {
     const bufferMinutes = (b.tenant_id && bufferByTenant.get(b.tenant_id)) ?? 15;
     const tenantDefaultMinutes = (b.tenant_id && sessionByTenant.get(b.tenant_id)) ?? 60;
-    const sessionMinutes = (b.tenant_id && sessionByTenantPlan.get(`${b.tenant_id}::${b.booking_type}`)) ?? tenantDefaultMinutes;
+    const slotMinutes = (b.tenant_id && sessionByTenantPlan.get(`${b.tenant_id}::${b.booking_type}`)) ?? tenantDefaultMinutes;
+    // オプション（トレーニング後のストレッチ等）ぶんも予定の長さに入れる。
+    // ⚠️ このフィードは以前から**間（buffer）も DTEND に入れている**。お客様の
+    //    カレンダーに次の人までの間が乗るのは本来おかしいが、既存の挙動なので変えない
+    //    （ここで縮めると、これまで「予定あり」だった時間が急に空きに見える）。
+    //    オプションぶんを足すことだけが今回の変更。
+    const optionMinutes = Math.max(0, Number((b as { option_minutes?: number | null }).option_minutes ?? 0) || 0);
     const start = new Date(b.booking_date);
-    const end = new Date(start.getTime() + (sessionMinutes + bufferMinutes) * 60 * 1000);
+    const end = new Date(start.getTime() + (slotMinutes + optionMinutes + bufferMinutes) * 60 * 1000);
     return [
       "BEGIN:VEVENT",
       `UID:${b.id}@gymboard`,

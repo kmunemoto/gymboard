@@ -2983,6 +2983,19 @@
     "editSaved": "已修改加購項目",
     "editFailed": "加購項目修改失敗",
     "editBlocked": "無法為此預約新增加購項目",
-    "editBlockedHelp": "緊接其後的時間已被佔用。請改約時間，或選擇較短的加購項目。"
+    "editBlockedHelp": "緊接其後的時間已被佔用。請改約時間，或選擇較短的加購項目。",
+    "confirmTitle": "需要加購附加項目嗎？",
+    "confirmNone": "不加購",
+    "confirmSummary": "將連同{{names}}一起預約",
+    "notFitTitle": "{{time}} 的訓練仍可預約",
+    "notFitOccupied": "緊接其後的時間不足，無法加購{{name}}。",
+    "notFitHours": "加購{{name}}後將超過營業結束時間（教練的工作時間）。",
+    "notFitMove": "改到 {{time}} 並加購{{name}}",
+    "notFitKeep": "不加{{name}}，以 {{time}} 預約",
+    "notFitNone": "當天沒有可以加購{{name}}的時間。請另選日期或與門市聯繫。",
+    "inheritedTitle": "將保留{{names}}",
+    "inheritedHelp": "如需新增或取消附加項目，請聯繫門市。",
+    "repeatNote": "無法安排附加項目時間的那一週，將連同訓練一起略過。",
+    "repeatSkippedWithOption": "有 {{count}} 次因已額滿或無法安排附加項目時間而略過（{{dates}}）"
   }
 }

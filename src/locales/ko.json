@@ -2983,6 +2983,19 @@
     "editSaved": "옵션을 변경했습니다",
     "editFailed": "옵션 변경에 실패했습니다",
     "editBlocked": "이 예약에는 옵션을 추가할 수 없습니다",
-    "editBlockedHelp": "바로 뒤 시간이 비어 있지 않습니다. 예약을 옮기거나 더 짧은 옵션을 선택해 주세요."
+    "editBlockedHelp": "바로 뒤 시간이 비어 있지 않습니다. 예약을 옮기거나 더 짧은 옵션을 선택해 주세요.",
+    "confirmTitle": "옵션을 추가하시겠습니까?",
+    "confirmNone": "추가 안 함",
+    "confirmSummary": "{{names}} 을(를) 포함해 예약합니다",
+    "notFitTitle": "{{time}} 트레이닝은 예약하실 수 있습니다",
+    "notFitOccupied": "{{name}}을(를) 추가하기에는 바로 뒤 시간에 여유가 없습니다.",
+    "notFitHours": "{{name}}을(를) 추가하면 영업 종료 시간(담당자 근무 시간)을 넘깁니다.",
+    "notFitMove": "{{time}}(으)로 변경하고 {{name}} 추가",
+    "notFitKeep": "{{name}} 없이 {{time}}에 예약",
+    "notFitNone": "이 날은 {{name}}을(를) 추가할 수 있는 시간이 없습니다. 다른 날을 선택하시거나 매장에 문의해 주세요.",
+    "inheritedTitle": "{{names}} 을(를) 이어서 적용합니다",
+    "inheritedHelp": "옵션 추가·해제는 매장으로 연락해 주세요.",
+    "repeatNote": "옵션 시간을 확보할 수 없는 주는 트레이닝까지 함께 건너뜁니다.",
+    "repeatSkippedWithOption": "{{count}}건은 예약이 찼거나 옵션 시간을 확보할 수 없어 건너뛰었습니다 ({{dates}})"
   }
 }

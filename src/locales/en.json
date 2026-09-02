@@ -2983,6 +2983,19 @@
     "editSaved": "Add-ons updated",
     "editFailed": "Could not update the add-ons",
     "editBlocked": "Add-ons cannot be added to this booking",
-    "editBlockedHelp": "The time right after is not free. Move the booking, or pick a shorter add-on."
+    "editBlockedHelp": "The time right after is not free. Move the booking, or pick a shorter add-on.",
+    "confirmTitle": "Would you like to add an option?",
+    "confirmNone": "No thanks",
+    "confirmSummary": "Booking with {{names}}",
+    "notFitTitle": "You can still book training at {{time}}",
+    "notFitOccupied": "There isn't enough free time right after it to add {{name}}.",
+    "notFitHours": "Adding {{name}} would run past closing time (or your trainer's shift).",
+    "notFitMove": "Move to {{time}} and add {{name}}",
+    "notFitKeep": "Book {{time}} without {{name}}",
+    "notFitNone": "There is no time on this day that fits {{name}}. Please pick another day or contact the gym.",
+    "inheritedTitle": "Keeping {{names}}",
+    "inheritedHelp": "Please contact the gym to add or remove options.",
+    "repeatNote": "Weeks where the option doesn't fit are skipped entirely, training included.",
+    "repeatSkippedWithOption": "{{count}} were skipped because they were full or the option time wasn't available ({{dates}})"
   }
 }

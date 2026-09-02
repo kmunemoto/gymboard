@@ -82,12 +82,19 @@ const contentSignature = async (page: Page) => {
   return text.replace(/\s+/g, " ").trim().slice(0, 400);
 };
 
-/** 描画が落ち着くまで待って指紋を返す（2回続けて同じになったら確定とみなす）。 */
-const settledSignature = async (page: Page) => {
+/**
+ * 描画が落ち着くまで待って指紋を返す（2回続けて同じになったら確定とみなす）。
+ *
+ * ⚠️ `minLength` を渡すこと。読み込み中の骨組みは**それ自体が安定している**ので、
+ *    2回続けて同じ＝確定、だけで抜けると短い指紋をつかんで「中身が空です」で落ちる
+ *    （2026-09-03 に実際に踏んだ。記録タブで長さ 20 ちょうど）。短いうちは待ち続け、
+ *    それでも伸びなければ最後の値を返す＝本当に空なら呼び出し側の断言で落ちる。
+ */
+const settledSignature = async (page: Page, minLength = 0) => {
   let prev = "";
   for (let i = 0; i < 12; i++) {
     const now = await contentSignature(page);
-    if (now && now === prev) return now;
+    if (now && now === prev && now.length > minLength) return now;
     prev = now;
     await page.waitForTimeout(150);
   }
@@ -108,7 +115,7 @@ const walkNav = async (page: Page, items: ReturnType<Page["getByRole"]>) => {
     const item = items.nth(i);
     const label = (await item.innerText()).trim() || `#${i}`;
     await item.click();
-    const sig = await settledSignature(page);
+    const sig = await settledSignature(page, 20);
     expect(sig.length, `「${label}」の中身が空です`).toBeGreaterThan(20);
     seen.push(sig);
   }

@@ -329,12 +329,18 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
              以前は h-[calc(100vh-200px)] だったが、iOS の WKWebView では 100vh が
              キーボードで縮まないため、カードの一番下にある入力欄がキーボードの裏に
              入り、打っている文字が見えなかった。上はアプリヘッダーの下、下は
-             max(キーボード, ボトムナビ) に固定して、LINE と同じく入力欄を常に見せる。 */
+             max(キーボード, ボトムナビ) に固定して、LINE と同じく入力欄を常に見せる。
+
+             🔴 上下の逃がし幅は**実測値**（--app-header-h / --nav-h）を使う。
+             最初は 4rem と直書きしていて、safe-area が 0 の手元のブラウザでは
+             6px 余って通ったが、**Android の実機ではシステムバーぶんナビが 106px に
+             なり、入力欄が 34px 潜り込んで押せない・打てない**状態になった。
+             既定値は大きめに倒す（足りないと操作不能、余っても隙間が空くだけ）。 */
           <Card
             className="flex flex-col overflow-hidden
               fixed left-0 right-0 z-30 rounded-none border-x-0 border-b-0
-              top-[calc(3rem_+_env(safe-area-inset-top,0px))]
-              bottom-[max(var(--kb,0px),4rem)]
+              top-[var(--app-header-h,3.5rem)]
+              bottom-[max(var(--kb,0px),var(--nav-h,6rem))]
               md:static md:z-auto md:rounded-lg md:border md:top-auto md:bottom-auto md:h-auto"
           >
             {/* Chat header */}

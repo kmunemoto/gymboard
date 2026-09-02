@@ -1,4 +1,4 @@
-import { lazy, useState, useEffect } from "react";
+import { lazy, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageSquare } from "lucide-react";
 
@@ -24,6 +24,7 @@ import GymLogo from "@/components/GymLogo";
 import PlanLimitBanner from "@/components/PlanLimitBanner";
 import SubscriptionBlockedBanner from "@/components/SubscriptionBlockedBanner";
 import { useUnreadCount } from "@/hooks/useMessages";
+import { useMeasuredHeightVar, APP_HEADER_VAR } from "@/hooks/useMeasuredHeightVar";
 import { useStaffDirectory } from "@/hooks/useStaffDirectory";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +38,9 @@ export type { TrainerTab } from "@/lib/trainerTabs";
 import type { TrainerTab } from "@/lib/trainerTabs";
 
 const TrainerView = () => {
+  // ヘッダーの実測の高さを --app-header-h へ。チャットの上端がこれを避ける。
+  const headerRef = useRef<HTMLDivElement>(null);
+  useMeasuredHeightVar(headerRef, APP_HEADER_VAR);
   const { t } = useTranslation();
   const [tab, setTab] = useState<TrainerTab>("dashboard");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -122,7 +126,10 @@ const TrainerView = () => {
   return (
     <div className="min-h-screen bg-background fade-in overflow-x-hidden">
       {/* Header */}
+      {/* 🔴 高さを --app-header-h に流す。チャットの上端がこれを避ける。
+          ノッチ・文字サイズで変わるので直書きしない（ナビ側と同じ理由）。 */}
       <div
+        ref={headerRef}
         className="fixed top-0 left-0 right-0 z-50 glass border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >

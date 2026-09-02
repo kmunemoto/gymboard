@@ -82,10 +82,69 @@ describe("チャットの入力欄がキーボードに隠れない", () => {
     }
   });
 
-  it("上端はアプリのヘッダーとノッチを避けている", () => {
+  it("上端はアプリのヘッダーを避けている（実測値）", () => {
     for (const code of [trainer, customer]) {
-      expect(code).toMatch(/top-\[calc\([\d.]+rem_\+_env\(safe-area-inset-top,0px\)\)\]/);
+      expect(code).toContain("top-[var(--app-header-h,");
     }
+  });
+});
+
+describe("🔴 逃がし幅を数字で直書きしない（2026-09-01 に実機で踏んだ）", () => {
+  const trainer = readCode(TRAINER);
+  const customer = readCode(CUSTOMER);
+
+  // 実際に起きたこと: 下端の逃がしを 4rem と直書きしていた。safe-area が 0 の
+  // 手元のブラウザではナビが 58px で 6px 余り、通ってしまった。ところが
+  // **Android の実機はシステムバーぶんナビが 106px になり、入力欄が 34px
+  // ナビの裏に潜り込んで、押せない・打てない**状態で出荷された。
+  //
+  // ナビの高さは端末のシステムバー・文字サイズ・タブの本数（お客様側は中央の
+  // 丸ボタンで更に高い）で変わる。決め打ちできる数字ではない。
+
+  it("🔴 チャットの下端はナビの実測値を見ている", () => {
+    for (const code of [trainer, customer]) {
+      expect(code).toContain("var(--nav-h,");
+    }
+  });
+
+  it("🔴 ナビとヘッダーが自分の高さを流している", () => {
+    // 変数を読む側だけ直しても、誰も書かなければ既定値のままになる。
+    for (const f of [
+      "src/components/trainer/TrainerSidebar.tsx",
+      "src/components/customer/BottomNav.tsx",
+    ]) {
+      expect(readCode(f), f).toContain("useMeasuredHeightVar");
+      expect(readCode(f), f).toContain("NAV_HEIGHT_VAR");
+    }
+    for (const f of [
+      "src/components/trainer/TrainerView.tsx",
+      "src/components/customer/CustomerView.tsx",
+    ]) {
+      expect(readCode(f), f).toContain("useMeasuredHeightVar");
+      expect(readCode(f), f).toContain("APP_HEADER_VAR");
+    }
+  });
+
+  it("🔴 border-box で観測している（padding＝safe-area の変化を拾うため）", () => {
+    // 既定の content-box だと、画面回転やジェスチャーナビ切替でインセットが
+    // 変わっても変数が古いままになり、また入力欄がナビの裏へ入る。
+    // これはブラウザでの再現中に実際に取りこぼした。
+    const hook = readCode("src/hooks/useMeasuredHeightVar.ts");
+    expect(hook).toMatch(/box:\s*"border-box"/);
+  });
+
+  it("既定値は大きめ（足りないと操作不能、余っても隙間が空くだけ）", () => {
+    for (const code of [trainer, customer]) {
+      const m = code.match(/var\(--nav-h,([\d.]+)rem\)/);
+      expect(m, "--nav-h の既定値が読めません").not.toBeNull();
+      expect(Number(m![1])).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it("変数が無くても片付けが走る（購読しっぱなしにしない）", () => {
+    const hook = readCode("src/hooks/useMeasuredHeightVar.ts");
+    expect(hook).toContain("ro.disconnect()");
+    expect(hook).toContain("removeProperty");
   });
 });
 

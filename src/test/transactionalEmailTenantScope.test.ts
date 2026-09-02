@@ -81,13 +81,17 @@ describe("send-transactional-email: 認可の中身", () => {
     expect(code).toMatch(/await\s+authorizeClientCall\(/);
   });
 
-  it("クライアントから呼べるテンプレートは予約系の3種だけ", () => {
+  it("クライアントから呼べるテンプレートは予約系の4種だけ", () => {
     const m = code.match(/CLIENT_ALLOWED_TEMPLATES = new Set\(\[([\s\S]*?)\]\)/);
     expect(m, "CLIENT_ALLOWED_TEMPLATES が見つからない").toBeTruthy();
     const listed = [...m![1].matchAll(/'([a-z0-9-]+)'/g)].map((x) => x[1]).sort();
+    // 🔴 足すときは「宛先が自由入力にならないか」を必ず確かめること。
+    //    booking-option-changed は `_resolve_user_` 経路で、下の (2) の判定により
+    //    「自分がスタッフをしているジムの在籍者」にしか届かない（2026-09-03 に追加）。
     expect(listed).toEqual([
       "booking-cancellation",
       "booking-confirmation",
+      "booking-option-changed",
       "new-booking-notification",
     ]);
     // 許可リストを**通り抜けられない**こと（false を返して終わり）。
@@ -130,7 +134,7 @@ describe("send-transactional-email: 認可の中身", () => {
   });
 });
 
-describe("実際に飛んでいる4本が、この規則で通ること", () => {
+describe("実際に飛んでいる5本が、この規則で通ること", () => {
   // 直したことで**現在の送信が1通も止まらない**ことを、呼び出し元の形で固定する。
   // ここが変わったら、Edge Function 側の規則も見直しが要る。
   // 予約作成の2本はサーバー側送信へ移行済み（2026-08-21、notify-new-booking。
@@ -138,16 +142,23 @@ describe("実際に飛んでいる4本が、この規則で通ること", () => 
   // キャンセルの2本は今もクライアント発＝この認可規則を通る。
   const notif = readFileSync("supabase/functions/notify-new-booking/index.ts", "utf8");
   const hooks = readFileSync("src/hooks/useBookings.ts", "utf8");
+  // オプションの変更通知（2026-09-03）。店が既存の予約のオプションを変えたときに
+  // お客様へ出す。クライアント発なのでこの認可規則を通る。
+  const optEdit = readFileSync("src/hooks/bookingOptionEdit.ts", "utf8");
 
   const invocations = [
     { file: "notify-new-booking/index.ts", src: notif, template: "new-booking-notification", recipient: "_resolve_trainer_", key: "trainerUserId" },
     { file: "notify-new-booking/index.ts", src: notif, template: "booking-confirmation", recipient: null, key: "resolveUserId" },
     { file: "useBookings.ts", src: hooks, template: "booking-cancellation", recipient: "_resolve_trainer_", key: "trainerUserId" },
     { file: "useBookings.ts", src: hooks, template: "booking-cancellation", recipient: "_resolve_user_", key: "resolveUserId" },
+    { file: "bookingOptionEdit.ts", src: optEdit, template: "booking-option-changed", recipient: "_resolve_user_", key: "resolveUserId" },
   ];
 
-  it("使っているテンプレートは3種のうちのどれか", () => {
-    const allowed = new Set(["booking-confirmation", "booking-cancellation", "new-booking-notification"]);
+  it("使っているテンプレートは許可リストのどれか", () => {
+    const allowed = new Set([
+      "booking-confirmation", "booking-cancellation",
+      "new-booking-notification", "booking-option-changed",
+    ]);
     for (const inv of invocations) {
       expect(allowed.has(inv.template), `${inv.file}: ${inv.template}`).toBe(true);
       expect(inv.src).toMatch(new RegExp(`templateName:\\s*"${inv.template}"`));
@@ -168,6 +179,8 @@ describe("実際に飛んでいる4本が、この規則で通ること", () => 
     // 「自分がスタッフをしているジムの在籍者」まで許している。
     expect(notif).toMatch(/resolveUserId: booking\.user_id/);
     expect(hooks).toMatch(/resolveUserId: booking\.user_id/);
+    // オプション変更は予約行から取り出した user_id をそのまま渡す
+    expect(optEdit).toMatch(/resolveUserId: userId/);
   });
 
   it("生のメールアドレスは誰も渡さない（宛先解決は必ず Edge Function 側）", () => {

@@ -64,6 +64,9 @@ const CLIENT_ALLOWED_TEMPLATES = new Set([
   'booking-confirmation',
   'booking-cancellation',
   'new-booking-notification',
+  // 店が既存の予約のオプションを変えたときのお知らせ。宛先はそのジムの在籍者だけ
+  // （下の allow 判定が tenant_members で見る）ので、宛先の自由入力にはならない。
+  'booking-option-changed',
 ])
 
 interface Membership { tenantId: string; isStaff: boolean }

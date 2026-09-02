@@ -2974,6 +2974,15 @@
     "pickerTitle": "Add-ons",
     "pickerHint": "Runs straight after your training. Adding one makes the session end later.",
     "pickerPlusMinutes": "+{{count}} min",
-    "pickerPrice": "¥{{price}}"
+    "pickerPrice": "¥{{price}}",
+    "editOpen": "Edit add-ons",
+    "editTitle": "Edit add-ons",
+    "editSubject": "{{name}} / {{date}} {{time}}",
+    "editNoOptions": "No add-ons are set up yet. Create them under Settings → Booking rules.",
+    "editLengthenNote": "Adding an add-on makes the session end later. It cannot be added if a booking or break starts right after.",
+    "editSaved": "Add-ons updated",
+    "editFailed": "Could not update the add-ons",
+    "editBlocked": "Add-ons cannot be added to this booking",
+    "editBlockedHelp": "The time right after is not free. Move the booking, or pick a shorter add-on."
   }
 }

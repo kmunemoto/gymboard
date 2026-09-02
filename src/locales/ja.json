@@ -2974,6 +2974,15 @@
     "pickerTitle": "オプション",
     "pickerHint": "トレーニングに続けて行います。付けると終了時刻が延びます。",
     "pickerPlusMinutes": "+{{count}}分",
-    "pickerPrice": "¥{{price}}"
+    "pickerPrice": "¥{{price}}",
+    "editOpen": "オプションを変更",
+    "editTitle": "オプションの変更",
+    "editSubject": "{{name}}さん / {{date}} {{time}}",
+    "editNoOptions": "オプションがまだ設定されていません。設定 → 予約のルール から作れます。",
+    "editLengthenNote": "オプションを増やすと終了時刻が延びます。すぐ後ろに予約や休憩が入っている場合は追加できません。",
+    "editSaved": "オプションを変更しました",
+    "editFailed": "オプションの変更に失敗しました",
+    "editBlocked": "この予約にはオプションを追加できません",
+    "editBlockedHelp": "すぐ後ろの時間が空いていません。予約を動かすか、短いオプションをお選びください。"
   }
 }

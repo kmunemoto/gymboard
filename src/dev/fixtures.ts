@@ -88,19 +88,27 @@ export function buildDevFixtures(): Record<string, Record<string, unknown>[]> {
   for (let d = -14; d <= 7; d++) {
     // 週末は少なめにして、稼働率ヒートマップに濃淡が出るようにする
     const weekday = shift(d).getUTCDay();
-    const slots = weekday === 0 ? 1 : weekday === 6 ? 2 : 3;
-    for (let s = 0; s < slots; s++) {
+    // 平日は夕方にも1件入れる。パーソナルジムの実際の混み方に近いのと、
+    // 「後ろが詰まっているとオプションが付けられない」を画面で確認できるようにするため
+    // （夕方に予約が無いと、空いている枠の後ろに何も無くなって再現できない）。
+    const hours = weekday === 0 ? [10] : weekday === 6 ? [10, 12] : [10, 12, 14, 18];
+    for (let s = 0; s < hours.length; s++) {
       const customer = CUSTOMERS[(d + s + 14) % CUSTOMERS.length];
       bookings.push({
         id: `00000000-0000-4000-8000-00000000b${String(++n).padStart(3, "0")}`,
         tenant_id: DEV_TENANT_ID,
         user_id: customer.id,
-        booking_date: iso(shift(d, 10 + s * 2)),
+        booking_date: iso(shift(d, hours[s])),
         status: "予約済み",
         booking_type: "通常",
         source: null,
         trainer_note: d < 0 && s === 0 ? "フォーム改善中。次回は重量を上げる。" : null,
         google_event_id: null,
+        // 予定表でオプション付きの見え方を確認できるよう、各日の2枠目にだけ付ける
+        option_minutes: s === 1 ? 30 : 0,
+        booking_options: s === 1
+          ? [{ id: "00000000-0000-4000-8000-0000000000o1", name: "ストレッチ", duration_minutes: 30, price_yen: 3000 }]
+          : null,
         created_at: now,
       });
     }

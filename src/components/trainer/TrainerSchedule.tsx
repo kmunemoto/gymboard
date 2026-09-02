@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Plus, Trash2, Ban, Repeat, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Plus, Trash2, Ban, Repeat, Sparkles, UserRound } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
+import { useAllBookings, checkSlotBlocked, createBooking, createRecurringBookings, cancelBooking, SAME_DAY_FORFEIT_STATUS, type BookingWithTime } from "@/hooks/useBookings";
 import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
@@ -38,7 +38,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import WeekTimelineView from "./WeekTimelineView";
-import CourseProgressBadge from "./CourseProgressBadge";
+import BookingProgressBadge from "./BookingProgressBadge";
+import BookingOptionEditDialog from "./BookingOptionEditDialog";
+import BookingOptionLine from "./BookingOptionLine";
 import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
@@ -79,6 +81,8 @@ const TrainerSchedule = () => {
   const [blockRepeatWeeks, setBlockRepeatWeeks] = useState(1);
   // ブロック解除: 同じくり返しグループの「この日以降」もまとめて解除するか
   const [releaseSeriesChecked, setReleaseSeriesChecked] = useState(false);
+  // あとからオプションを足す／外す対象（店側専用。可否の判定は DB の GB008）
+  const [optionTarget, setOptionTarget] = useState<BookingWithTime | null>(null);
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
@@ -679,21 +683,8 @@ const TrainerSchedule = () => {
                                   {!session.isBlocked && staffSelectable && session.staff_user_id && (
                                     <p className="opacity-60 truncate text-[9px]">{staffNames[session.staff_user_id] ?? ""}</p>
                                   )}
-                                  {!session.isBlocked && (() => {
-                                    const p = getProgress(session);
-                                    if (!p) return null;
-                                    return (
-                                      <CourseProgressBadge
-                                        index={p.index}
-                                        total={p.total}
-                                        isUnlimited={p.isUnlimited}
-                                        isUnconfigured={p.isUnconfigured}
-                                        isOverflow={p.isOverflow}
-                                        isGraceCarryover={p.isGraceCarryover}
-                                        className="mt-1"
-                                      />
-                                    );
-                                  })()}
+                                  {!session.isBlocked && <BookingOptionLine options={session.bookingOptions} variant="grid" />}
+                                  <BookingProgressBadge progress={getProgress(session)} className="mt-1" />
                                 </div>
                               )}
                             </td>
@@ -756,21 +747,8 @@ const TrainerSchedule = () => {
                                   {booking.staff_user_id ? (staffNames[booking.staff_user_id] ?? t("common.unknown")) : t("staff.unassigned")}
                                 </p>
                               )}
-                              {!booking.isBlocked && (() => {
-                                const p = getProgress(booking);
-                                if (!p) return null;
-                                return (
-                                  <CourseProgressBadge
-                                    index={p.index}
-                                    total={p.total}
-                                    isUnlimited={p.isUnlimited}
-                                    isUnconfigured={p.isUnconfigured}
-                                    isOverflow={p.isOverflow}
-                                    isGraceCarryover={p.isGraceCarryover}
-                                    className="mt-1"
-                                  />
-                                );
-                              })()}
+                              <BookingProgressBadge progress={getProgress(booking)} className="mt-1" />
+                              {!booking.isBlocked && <BookingOptionLine options={booking.bookingOptions} variant="card" />}
                             </div>
                           </div>
                           {/* 事前アンケートの回答。無い予約には何も出さない（既存の見た目は変わらない）。
@@ -1121,6 +1099,22 @@ const TrainerSchedule = () => {
               </Label>
             </div>
           )}
+          {/* 予約をタップした先の導線。消す以外にできることがここしか無いので、
+              「オプションを変更」もここから開く（ブロック枠には出さない） */}
+          {deleteTarget && !deleteTarget.isBlocked && (
+            <Button
+              variant="outline"
+              className="h-11"
+              onClick={() => {
+                const b = bookings.find((x) => x.id === deleteTarget.id) ?? null;
+                setDeleteTarget(null);
+                setOptionTarget(b);
+              }}
+            >
+              <Sparkles className="w-4 h-4 mr-1" />
+              {t("bookingOptions.editOpen")}
+            </Button>
+          )}
           {deleteTargetForfeitable && (
             <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3">
               <Checkbox
@@ -1292,6 +1286,12 @@ const TrainerSchedule = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BookingOptionEditDialog
+        booking={optionTarget}
+        onClose={() => setOptionTarget(null)}
+        onSaved={() => refetch()}
+      />
     </div>
   );
 };

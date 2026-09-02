@@ -232,3 +232,55 @@ export const minutesBetween = (startTime: string, endTime: string): number => {
   const diff = toMin(endTime) - toMin(startTime);
   return Number.isFinite(diff) && diff > 0 ? diff : 0;
 };
+
+/**
+ * その予約に付いているオプションを1行で表す。「ストレッチ（+30分）／プロテイン」。
+ *
+ * 予定表は狭いので、これを**そのまま**カードにもツールチップにも出す。
+ * 時間が増えないオプションには「+0分」を付けない（意味の無い数字を並べない）。
+ */
+export const summarizeOptions = (
+  options: ReadonlyArray<BookingOptionSnapshot> | null | undefined,
+  minutesLabel: (minutes: number) => string,
+): string =>
+  (options ?? [])
+    .map((o) => (o.duration_minutes > 0 ? `${o.name}（${minutesLabel(o.duration_minutes)}）` : o.name))
+    .join("／");
+
+/**
+ * 「あとからオプションを足そうとしたが、後ろが空いていなかった」。
+ *
+ * SQLSTATE `GB008`（`20260904000000_booking_option_update_guard.sql` がこの用途専用に
+ * 付けている）。満枠（文言のみ・SQLSTATE 無し）や GB001（担当が埋まっている）と
+ * 混ぜないのは、店員に出す案内が違うため——満枠は「別の時間なら取れる」だが、
+ * これは「この予約は伸ばせない」で、対処が別（予約を動かすか、短いオプションにする）。
+ */
+export const OPTION_BLOCKED_SQLSTATE = "GB008";
+
+export const isOptionBlockedError = (error: unknown): boolean =>
+  !!error && typeof error === "object" &&
+  (error as { code?: string }).code === OPTION_BLOCKED_SQLSTATE;
+
+/**
+ * 「この枠を取ると、既にある予約とぶつかるか」。半開区間で比べる。
+ *
+ * 予約の占有は [開始, 開始+1枠+オプション+間) で、**終わりは含まない**。
+ * 10:00〜11:45 を押さえている予約の直後、11:45 ちょうどから次の予約を取れる
+ * （含めてしまうと、実際には空いている15分刻みの枠が1つ消える）。
+ *
+ * 🔴 「後ろが詰まっているとオプションを付けられない」は、この式に
+ * `sessionFootprintMinutes` の結果を渡すことで自動的に成り立つ。
+ * オプションを付けると `footprintMinutes` が伸び、後ろの予約に届いた枠が満枠になる。
+ * 例（1枠60分・間15分・18:00に予約がある日）:
+ *
+ *   16:30 + 75分 = 17:45  → 18:00 に届かない  … 取れる
+ *   16:30 + 105分 = 18:15 → 18:00 に食い込む  … 取れない（オプションを付けた場合）
+ *   16:15 + 105分 = 18:00 → ちょうど          … 取れる
+ */
+export const footprintOverlaps = (
+  candidateStartMin: number,
+  footprintMinutes: number,
+  existing: { startMin: number; endMin: number },
+): boolean =>
+  candidateStartMin < existing.endMin &&
+  existing.startMin < candidateStartMin + footprintMinutes;

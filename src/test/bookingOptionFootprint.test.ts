@@ -5,6 +5,7 @@ import {
   minutesBetween,
   parseOptionSnapshot,
   readOptionMinutes,
+  footprintOverlaps,
   sessionFootprintMinutes,
   sessionMinutes,
   type BookingOption,
@@ -135,6 +136,57 @@ describe("マイグレーション: 4つの占有すべてにオプションが�
     expect(readSql(MIGRATION)).toMatch(
       /GRANT EXECUTE ON FUNCTION public\.get_tenant_booked_slots\(uuid, date, date\) TO anon, authenticated/,
     );
+  });
+});
+
+describe("🔴 後ろが詰まっているとオプションを付けられない（宗本さん 2026-09-03）", () => {
+  // 実店舗の指示:「お客さんが予約する時にオプションを付けて予約するときは
+  //               後ろが詰まってたらオプションはつけれないようにね」
+  //
+  // これは専用の判定を足して実現しているのではなく、**占有が伸びる**ことから
+  // 自動的にそうなる。だから「伸びること」と「半開区間で比べること」の2つを固定する。
+  //
+  // 1枠60分・間15分・18:00 に予約がある日（18:00〜19:15 を占有）で確認した。
+  // fixtures モードの実画面でも 16:30 / 16:45 が満枠に変わることを確かめている。
+  const existing = { startMin: 18 * 60, endMin: 18 * 60 + 75 };
+  const canBook = (startMin: number, optionMin: number) =>
+    !footprintOverlaps(startMin, sessionFootprintMinutes(60, optionMin, 15), existing);
+
+  it("16:30 は普通なら取れる（16:30〜17:45 で 18:00 に届かない）", () => {
+    expect(canBook(16 * 60 + 30, 0)).toBe(true);
+  });
+
+  it("🔴 16:30 はオプションを付けると取れない（16:30〜18:15 で食い込む）", () => {
+    expect(canBook(16 * 60 + 30, 30)).toBe(false);
+  });
+
+  it("16:15 はオプションを付けても取れる（16:15〜18:00 でちょうど）", () => {
+    expect(canBook(16 * 60 + 15, 30)).toBe(true);
+  });
+
+  it("境界は含まない（終了ちょうどから次を取れる）", () => {
+    expect(canBook(19 * 60 + 15, 0)).toBe(true);
+    expect(canBook(19 * 60, 0)).toBe(false);
+  });
+
+  it("長いオプションほど早い時刻から取れなくなる", () => {
+    expect(canBook(15 * 60, 90)).toBe(true);   // 15:00〜17:45
+    expect(canBook(15 * 60, 120)).toBe(false); // 15:00〜18:15
+  });
+
+  it("お客様の予約画面がこの式を使っている", () => {
+    const src = readCode(CUSTOMER);
+    expect(src).toContain("footprintOverlaps(newMin, footprint, { startMin: bMin, endMin: bEnd })");
+    expect(src).toContain("sessionFootprintMinutes(slotMinutes, optionMinutes, bookingBufferMinutes)");
+  });
+
+  it("🔴 開発用フィクスチャが埋まり枠を返す（返さないと空き枠の判定を画面で確認できない）", () => {
+    // 2026-09-03 まで `get_tenant_booked_slots: () => []` だったため、dev:fixtures では
+    // どの枠もいつも「空き」に見えていた。ここへ戻るのを止める。
+    const shim = readCode("src/dev/fixtureClient.ts");
+    expect(shim).not.toMatch(/get_tenant_booked_slots:\s*\(\)\s*=>\s*\[\]/);
+    expect(shim).toContain("option_minutes");
+    expect(shim).toContain('rowsOf("blocked_slots")');
   });
 });
 

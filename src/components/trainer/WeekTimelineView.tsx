@@ -6,6 +6,7 @@ import { getJSTNow } from "@/lib/timezone";
 import { BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { timelineHourRange } from "@/lib/businessHours";
+import { summarizeOptions } from "@/lib/bookingOptions";
 
 export interface ProfileLite {
   user_id: string;
@@ -182,6 +183,13 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                     ? "—"
                     : b.clientName.replace(/^[^A-Za-z\u3040-\u30FF\u4E00-\u9FFF]+/, "").slice(0, 3);
 
+                  // オプション付きの予約。狭すぎて名前は出せないので、色・左の帯・「＋」印で示し、
+                  // 名前はツールチップ（title）に入れる。
+                  const optionText = summarizeOptions(
+                    b.bookingOptions, (m) => t("bookingOptions.pickerPlusMinutes", { count: m }),
+                  );
+                  const hasOptions = !b.isBlocked && optionText.length > 0;
+
                   const profile = profiles.find((p) => p.user_id === b.user_id);
                   const progress =
                     !b.isBlocked && profile
@@ -212,12 +220,20 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                       className={`absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 text-left overflow-hidden text-[10px] leading-tight shadow-sm transition-transform hover:scale-[1.02] hover:z-10 ${
                         b.isBlocked
                           ? "bg-muted border border-dashed border-destructive/40 text-muted-foreground"
-                          : "bg-accent text-accent-foreground"
+                          : hasOptions
+                            // 🔴 オプション付きは色で区別する（2026-09-03 宗本さん。ここは幅が
+                            //    数文字ぶんしかなく、名前を出す場所が無い）。左の帯＋印の2つで
+                            //    示すのは、色だけだと色覚や画面の明るさで区別できない人がいるため。
+                            ? "bg-primary text-primary-foreground border-l-4 border-l-warning"
+                            : "bg-accent text-accent-foreground"
                       }`}
                       style={{ top, height }}
-                      title={`${b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}`}
+                      title={`${b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}`}
                     >
-                      <div className="font-bold truncate">{shortName}</div>
+                      <div className="font-bold truncate">
+                        {shortName}
+                        {hasOptions && <span className="ml-0.5" aria-hidden="true">＋</span>}
+                      </div>
                       {height > 24 && (
                         <div className="opacity-80 truncate">{b.startTime}</div>
                       )}

@@ -47,7 +47,7 @@ import { closedDayReason, isDayClosed, isDayClosedError } from "@/lib/bookingClo
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
 import BookingOptionPicker from "@/components/booking/BookingOptionPicker";
-import { sessionFootprintMinutes, sessionMinutes } from "@/lib/bookingOptions";
+import { footprintOverlaps, sessionFootprintMinutes, sessionMinutes } from "@/lib/bookingOptions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
   buildAnswerSnapshot,
@@ -281,7 +281,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     const newMin = timeToMin(time);
-    const newEnd = newMin + sessionFootprintMinutes(slotMinutes, optionMinutes, bookingBufferMinutes);
+    const footprint = sessionFootprintMinutes(slotMinutes, optionMinutes, bookingBufferMinutes);
     // Bookings occupy the gym's configured session length (既定60分) plus the gym's
     // configured buffer (既定15分). Apply the same footprint to both existing bookings
     // and the candidate so the buffer is enforced
@@ -297,7 +297,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       // 二重計上で1枠ぶん余計に満枠化するため足さない
       // （公開の体験予約ページ TrialBooking.isSlotBlocked と同一ロジック）。
       const bEnd = timeToMin(b.endTime);
-      return newMin < bEnd && bMin < newEnd;
+      return footprintOverlaps(newMin, footprint, { startMin: bMin, endMin: bEnd });
     });
     // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定する。
     if (overlapping.some((b) => b.isBlock)) return true;

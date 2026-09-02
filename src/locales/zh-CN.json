@@ -2974,6 +2974,15 @@
     "pickerTitle": "附加项",
     "pickerHint": "紧接训练之后进行。加购后结束时间会顺延。",
     "pickerPlusMinutes": "+{{count}} 分钟",
-    "pickerPrice": "¥{{price}}"
+    "pickerPrice": "¥{{price}}",
+    "editOpen": "修改附加项",
+    "editTitle": "修改附加项",
+    "editSubject": "{{name}} / {{date}} {{time}}",
+    "editNoOptions": "还没有设置附加项。可在「设置 → 预约规则」中创建。",
+    "editLengthenNote": "增加附加项会顺延结束时间。若紧接其后已有预约或休息，则无法添加。",
+    "editSaved": "已修改附加项",
+    "editFailed": "附加项修改失败",
+    "editBlocked": "无法为该预约添加附加项",
+    "editBlockedHelp": "紧接其后的时间已被占用。请改约时间，或选择更短的附加项。"
   }
 }

@@ -325,13 +325,22 @@ describe("🔴 DB 側の容量の解決がクライアントと一致してい�
 describe("🔴 画面が時間帯別の容量を見ている", () => {
   it("会員の予約画面・ジムの予定表・公開ページの4画面すべてで解決する", () => {
     for (const f of [
-      "src/components/customer/CustomerBooking.tsx",
       "src/components/trainer/TrainerSchedule.tsx",
       "src/pages/TrialBooking.tsx",
       "src/pages/DropInBooking.tsx",
     ]) {
       expect(readFileSync(f, "utf8"), `${f} が帯を見ていない`).toContain("resolveSlotCapacity(");
     }
+    // 会員の予約画面は 2026-09-03（第4段）に判定の本体を lib へ移した。
+    // 画面 → isFootprintBlocked → resolveSlotCapacity と辿れることを見る。
+    expect(
+      readFileSync("src/components/customer/CustomerBooking.tsx", "utf8"),
+      "会員の予約画面が判定の入り口を呼んでいない",
+    ).toContain("isFootprintBlocked({");
+    expect(
+      readFileSync("src/lib/bookingOptionFit.ts", "utf8"),
+      "判定の本体が帯を見ていない",
+    ).toContain("resolveSlotCapacity(");
   });
 
   it("公開ページは表ではなく RPC から読む（anon に表は開けない）", () => {

@@ -50,6 +50,7 @@ const readSql = (p: string) =>
 const MIGRATION = "supabase/migrations/20260903000000_booking_option_minutes.sql";
 const HOOK = "src/hooks/useBookings.ts";
 const CUSTOMER = "src/components/customer/CustomerBooking.tsx";
+const FIT = "src/lib/bookingOptionFit.ts";
 const TRAINER = "src/components/trainer/TrainerSchedule.tsx";
 
 const opt = (o: Partial<BookingOption> & { id: string }): BookingOption => ({
@@ -174,10 +175,17 @@ describe("🔴 後ろが詰まっているとオプションを付けられな�
     expect(canBook(15 * 60, 120)).toBe(false); // 15:00〜18:15
   });
 
-  it("お客様の予約画面がこの式を使っている", () => {
+  it("お客様の予約画面がこの式を使っている（判定の本体は lib に1本）", () => {
+    // 2026-09-03（第4段）で isSlotBlocked の本体を bookingOptionFit.ts へ**移した**。
+    // 写しではないので、画面側に本体が残っていないことまで見る（両方にあると必ず
+    // 片方だけ直され、画面と DB の判定がずれる＝押しても取れない画面になる）。
+    const fit = readCode(FIT);
+    expect(fit).toContain("footprintOverlaps(startMinutes, footprintMinutes, { startMin: bMin, endMin: bEnd })");
+    expect(fit).toContain("sessionFootprintMinutes(\n      input.slotMinutes, input.optionMinutes, input.bufferMinutes,\n    )");
     const src = readCode(CUSTOMER);
-    expect(src).toContain("footprintOverlaps(newMin, footprint, { startMin: bMin, endMin: bEnd })");
-    expect(src).toContain("sessionFootprintMinutes(slotMinutes, optionMinutes, bookingBufferMinutes)");
+    expect(src).toContain("isFootprintBlocked({");
+    expect(src, "画面側に判定の本体が残っている").not.toContain("footprintOverlaps(");
+    expect(src, "画面側に容量の判定が残っている").not.toContain("resolveSlotCapacity(");
   });
 
   it("🔴 開発用フィクスチャが埋まり枠を返す（返さないと空き枠の判定を画面で確認できない）", () => {
@@ -227,19 +235,45 @@ describe("クライアント: 表示と判定が DB と同じ規則になって�
 describe("お客様の予約画面", () => {
   const src = readCode(CUSTOMER);
 
-  it("空き枠・締切・表示のすべてが 1枠＋オプション を見ている", () => {
-    expect(src).toContain("sessionFootprintMinutes(slotMinutes, optionMinutes, bookingBufferMinutes)");
+  it("空き枠・締切・グリッドの長さが 1枠＋オプション を見ている", () => {
+    expect(src).toContain("sessionFootprintMinutes(slotMinutes, gridOptionMinutes, bookingBufferMinutes)");
     expect(src).toContain("return day.close - totalMinutes;");
     expect(src).toContain("businessHours, totalMinutes, weekday, staffSchedules, selectedStaffId,");
-    expect(src).toContain('t("booking.slotMinutes", { count: totalMinutes })');
   });
 
-  it("🔴 オプションを選び直したら選択中の枠を外す（占有が変わるため）", () => {
-    expect(src).toContain("useBookingOptionSelection({ onChange: () => setSelectedSlot(null) })");
+  it("🔴 確認カードの長さは「実際に載るオプション」で出す（入らないなら 60分のまま）", () => {
+    // ON でも入らない枠では 0 に倒す。ここがずれると「90分」と見せて 60分 で予約される。
+    expect(src).toContain('t("booking.slotMinutes", { count: confirmMinutes })');
+    expect(src).toContain("const confirmMinutes = sessionMinutes(slotMinutes, effectiveOptionMinutes)");
+    expect(src).toContain(": (optionNotFit ? 0 : bookingOpts.minutes)");
+    expect(src).toContain("const effectiveOptionSnapshot = optionNotFit ? [] : bookingOpts.snapshot");
   });
 
-  it("🔴 予約変更中は元の予約のオプション分数で判定する（0にすると必ず拒否される）", () => {
-    expect(src).toContain("rescheduleTarget ? (rescheduleTarget.optionMinutes ?? 0) : bookingOpts.minutes");
+  it("🔴 オプションを選び直しても枠を外さない（第4段: 確認カードで枠ごとに見る）", () => {
+    // 第2〜3段は onChange で枠を外していた。第4段でカードに移したので外さない
+    // ——外すと、毎回付ける人が枠を選び直すたびに付け直すことになる。
+    expect(src).toContain("const bookingOpts = useBookingOptionSelection();");
+    expect(src, "枠を外す旧設計に戻っている").not.toContain("onChange: () => setSelectedSlot(null)");
+    // 代わりに、その枠に入るかを枠ごとに見ている
+    expect(src).toContain("const optionNotFit: OptionFitReason | null =");
+    expect(src).toContain("suggestSlotForOption(slots, selectedTime,");
+  });
+
+  it("🔴 グリッドは素の枠で作る（新規は0・予約変更だけ引き継ぐ）", () => {
+    // 新規で引き継ぎ分を入れると「満枠」の意味が変わり、実際は空いている枠に
+    // キャンセル待ちが付く。逆に予約変更で 0 にすると 75分の枠を空きに見せて
+    // DB に 105分 で拒否される。
+    expect(src).toContain(
+      "const gridOptionMinutes = rescheduleTarget ? (rescheduleTarget.optionMinutes ?? 0) : 0;",
+    );
+  });
+
+  it("🔴 入らない枠では予約ボタンを押させない（黙ってオプションが外れないため）", () => {
+    expect(src).toContain("disabled={submitting || !!optionNotFit}");
+  });
+
+  it("🔴 DB に断られたら埋まり枠を取り直す（他端末で埋まった直後に堂々巡りしない）", () => {
+    expect(src).toContain("void fetchBookedSlots(dateKey);");
   });
 
   it("予約が終わったらオプションの選択を消す（次の予約に引き継がない）", () => {

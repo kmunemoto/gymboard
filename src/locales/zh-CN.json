@@ -2983,6 +2983,19 @@
     "editSaved": "已修改附加项",
     "editFailed": "附加项修改失败",
     "editBlocked": "无法为该预约添加附加项",
-    "editBlockedHelp": "紧接其后的时间已被占用。请改约时间，或选择更短的附加项。"
+    "editBlockedHelp": "紧接其后的时间已被占用。请改约时间，或选择更短的附加项。",
+    "confirmTitle": "需要添加附加项目吗？",
+    "confirmNone": "不添加",
+    "confirmSummary": "将连同{{names}}一起预约",
+    "notFitTitle": "{{time}} 的训练仍可预约",
+    "notFitOccupied": "紧接其后的时间不足，无法添加{{name}}。",
+    "notFitHours": "添加{{name}}后将超过营业结束时间（教练的工作时间）。",
+    "notFitMove": "改到 {{time}} 并添加{{name}}",
+    "notFitKeep": "不加{{name}}，按 {{time}} 预约",
+    "notFitNone": "当天没有可以添加{{name}}的时间。请另选日期或与门店联系。",
+    "inheritedTitle": "将保留{{names}}",
+    "inheritedHelp": "如需增加或取消附加项目，请联系门店。",
+    "repeatNote": "无法安排附加项目时间的那一周，将连同训练一起跳过。",
+    "repeatSkippedWithOption": "有 {{count}} 次因已约满或无法安排附加项目时间而跳过（{{dates}}）"
   }
 }

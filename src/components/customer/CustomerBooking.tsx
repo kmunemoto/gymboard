@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Check, Trash2, CalendarPlus, Swords, Info, Repeat, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound, ClipboardList } from "lucide-react";
+import { CalendarDays, Clock, Trash2, CalendarPlus, Swords, Info, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound, ClipboardList, Sparkles } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
@@ -37,7 +37,6 @@ import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingFrequencyLimits } from "@/hooks/useBookingFrequencyLimits";
 import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { useBookingBlockedWindows } from "@/hooks/useBookingBlockedWindows";
-import { resolveSlotCapacity } from "@/lib/bookingCapacity";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
@@ -46,8 +45,12 @@ import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, isDayClosed, isDayClosedError } from "@/lib/bookingClosedDays";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
-import BookingOptionPicker from "@/components/booking/BookingOptionPicker";
-import { footprintOverlaps, sessionFootprintMinutes, sessionMinutes } from "@/lib/bookingOptions";
+import BookingOptionConfirm from "@/components/booking/BookingOptionConfirm";
+import BookingRepeatPicker from "@/components/booking/BookingRepeatPicker";
+import BookingSlotGrid from "@/components/booking/BookingSlotGrid";
+import { sessionFootprintMinutes, sessionMinutes, summarizeOptions } from "@/lib/bookingOptions";
+import { toBookedSlots, type BookedSlot, type BookedSlotRow } from "@/lib/bookedSlots";
+import { isFootprintBlocked, optionFitReason, suggestSlotForOption, type OptionFitReason } from "@/lib/bookingOptionFit";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
   buildAnswerSnapshot,
@@ -174,12 +177,22 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 予約の日時変更（リスケジュール）モード: 対象の既存予約（null=通常の新規予約モード）
   const [rescheduleTarget, setRescheduleTarget] = useState<BookingWithTime | null>(null);
   // 予約に付けるオプション（例: トレーニング後の30分ストレッチ）。
-  // 🔴 予約変更のときは選び直させず、元の予約のぶんを引き継ぐ（事前アンケートと同じ扱い）。
-  //    ここを 0 にすると、75分ぶんの枠を「空き」と見せて DB に105分で拒否される。
-  const bookingOpts = useBookingOptionSelection({ onChange: () => setSelectedSlot(null) });
-  const optionMinutes = rescheduleTarget ? (rescheduleTarget.optionMinutes ?? 0) : bookingOpts.minutes;
-  // お客様に見せる長さ（1枠＋オプション）。間（buffer）は含めない。
-  const totalMinutes = sessionMinutes(slotMinutes, optionMinutes);
+  //
+  // 🔴 第4段（2026-09-03）で「時間を選ぶ前に選ばせる」のをやめ、**枠を選んだあとの
+  //    確認カードで聞く**形にした（宗本さん「下にスクロールしてオプションの存在に
+  //    お客さんが予約する時に気づかない。確認の時にオプションを付けるか聞くように
+  //    してください」）。そのため選び直しても選択中の枠は外さない——外すと、毎回
+  //    付ける人が枠を選び直すたびに付け直すことになる。代わりに、その枠にオプションが
+  //    入るかを optionFitReason で枠ごとに見る（判定式は DB と同じ1本）。
+  const bookingOpts = useBookingOptionSelection();
+  // 🔴 枠グリッドは**素の枠**（オプション無し）で作る。オプションの ON/OFF でグリッドが
+  //    指の下で組み替わらず、「満枠」の意味も変わらない（オプションのせいで満枠に見えた
+  //    枠にキャンセル待ちが付く、という歪みが構造的に起きない）。
+  //    ただし予約変更中だけは引き継ぐ分数で作る。0 にすると 75分ぶんの枠を「空き」と
+  //    見せて DB に 105分 で拒否される（変更モードではオプションを選び直せないため）。
+  const gridOptionMinutes = rescheduleTarget ? (rescheduleTarget.optionMinutes ?? 0) : 0;
+  // 枠グリッド・閉店の打ち切りに使う長さ（1枠＋オプション）。間（buffer）は含めない。
+  const totalMinutes = sessionMinutes(slotMinutes, gridOptionMinutes);
   // 当日予約の変更を「変更する」で即実行せず、一度警告表示に留めるための2段階確認フラグ
   const [rescheduleForfeitPending, setRescheduleForfeitPending] = useState(false);
   // キャンセル待ちの登録/解除も、タップで即実行せず一度確認を挟む
@@ -188,7 +201,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const [waitlistSaving, setWaitlistSaving] = useState(false);
 
   // Booked slots fetched via SECURITY DEFINER RPC — sees ALL bookings regardless of RLS
-  const [bookedSlots, setBookedSlots] = useState<{ date: string; startTime: string; endTime: string; isBlock: boolean; staffUserId: string | null }[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([]);
 
   // Active raid boss periods (not defeated). Map of yyyy-MM-dd → { isStart, isEnd }
   const [raidDates, setRaidDates] = useState<Map<string, { isStart: boolean; isEnd: boolean }>>(new Map());
@@ -245,24 +258,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       from_date: dateStr,
       to_date: dateStr,
     });
-    if (!data) { setBookedSlots([]); return; }
-    // ここは意図的に SAME_DAY_FORFEIT_STATUS を除外しない: 同日キャンセル消化の枠は
-    // 再販できない前提のため、カレンダー上は引き続き「埋まっている」枠として表示する
-    // （checkSlotBlocked 等と同じ扱い。mem/features/booking-cancellation.md 参照）。
-    const slots = (data as { booking_date: string; end_booking_date: string; status: string; staff_user_id: string | null }[])
-      .filter((r) => r.status !== "キャンセル済み")
-      .map((r) => {
-        const dt = toJSTDate(r.booking_date);
-        const endDt = toJSTDate(r.end_booking_date);
-        return {
-          date: format(dt, "yyyy-MM-dd"),
-          startTime: `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
-          endTime: `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`,
-          isBlock: r.status === "ブロック済み",
-          staffUserId: r.staff_user_id ?? null,
-        };
-      });
-    setBookedSlots(slots);
+    // 整形は src/lib/bookedSlots.ts（同日キャンセル消化を残す規則もあちらに書いてある）
+    setBookedSlots(toBookedSlots(data as BookedSlotRow[]));
   }, [tenant?.id]);
 
   useEffect(() => {
@@ -278,39 +275,24 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 店の既定の同時受入数。時間帯の帯がある枠では、下の isSlotBlocked が帯の値で上書きする。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
-  const isSlotBlocked = (date: string, time: string): boolean => {
-    const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
-    const newMin = timeToMin(time);
-    const footprint = sessionFootprintMinutes(slotMinutes, optionMinutes, bookingBufferMinutes);
-    // Bookings occupy the gym's configured session length (既定60分) plus the gym's
-    // configured buffer (既定15分). Apply the same footprint to both existing bookings
-    // and the candidate so the buffer is enforced
-    // before and after every booking.
-    const overlapping = bookedSlots.filter((b) => {
-      if (b.date !== date) return false;
-      // 予約変更中は、変更対象（旧枠）を占有としてカウントしない。
-      // これで同日の近い時刻（旧枠のバッファ内）にも移動できる（旧枠は削除して作り直すため）。
-      if (rescheduleTarget && b.date === rescheduleTarget.date && b.startTime === rescheduleTarget.startTime) return false;
-      const bMin = timeToMin(b.startTime);
-      // get_tenant_booked_slots の end_booking_date は既に「開始+60分+ジムのバッファ分」
-      // （tenants.booking_buffer_minutes、既定15分）で計算済み。ここで更に足すと
-      // 二重計上で1枠ぶん余計に満枠化するため足さない
-      // （公開の体験予約ページ TrialBooking.isSlotBlocked と同一ロジック）。
-      const bEnd = timeToMin(b.endTime);
-      return footprintOverlaps(newMin, footprint, { startMin: bMin, endMin: bEnd });
+  // 予約変更中に「元の枠」を占有から外すための指定（旧枠は削除して作り直すため）。
+  const excludeSlot = rescheduleTarget
+    ? { date: rescheduleTarget.date, startTime: rescheduleTarget.startTime }
+    : null;
+
+  // 🔴 判定の本体は src/lib/bookingOptionFit.ts に**移してある**（写しではない）。
+  //    確認カードの「この枠にオプションを付けられるか」と同じ式でなければ、画面が
+  //    「空き」と見せた枠を DB が断る＝何度押しても取れない画面になる。
+  //    get_tenant_booked_slots の endTime は既に「開始+1枠+オプション+間」で計算済み
+  //    なので、既存側に足し直さない（公開の体験予約ページと同一ロジック）。
+  const isSlotBlocked = (date: string, time: string): boolean =>
+    isFootprintBlocked({
+      bookedSlots, date, weekday: weekdayOfDateKey(date),
+      startMinutes: parseTimeToMinutes(time) ?? 0,
+      footprintMinutes: sessionFootprintMinutes(slotMinutes, gridOptionMinutes, bookingBufferMinutes),
+      capacityWindows, defaultCapacity: bookingCapacity,
+      staffUserId: selectedStaffId, exclude: excludeSlot,
     });
-    // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定する。
-    if (overlapping.some((b) => b.isBlock)) return true;
-    // 同時受入数は時間帯で変わりうる（昼は2人・夜は1人など）。帯が無ければ店の既定値。
-    const capacityHere = resolveSlotCapacity(
-      capacityWindows, weekdayOfDateKey(date), newMin, bookingCapacity,
-    );
-    if (overlapping.length >= capacityHere) return true;
-    // 店に空きがあっても、指名した担当がその時間帯に別の予約を持っていれば取れない。
-    // 指名なし（selectedStaffId === null）のときはこの判定を通らない＝従来どおり。
-    // DB 側 check_booking_overlap も同じ二段構えで最終判定する。
-    return !!selectedStaffId && overlapping.some((b) => b.staffUserId === selectedStaffId);
-  };
 
   // 締切はジム設定（tenants.booking_cutoff_*）に従う。読めなければ prev_day（従来の挙動）。
   const cutoff = { type: tenant?.booking_cutoff_type, hours: tenant?.booking_cutoff_hours };
@@ -399,6 +381,49 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   };
 
   const slots = dateKey ? generateSlots() : [];
+
+  // ── 確認カードの「この枠にオプションを付けられるか」────────────────────
+  // 🔴 useMemo にしないこと。この下には読み込み中の早期 return があり、hooks は
+  //    すべてそれより前に置く決まりになっている（Rules of Hooks）。素の const でよい。
+  const selectedTime = slots.find((s) => s.id === selectedSlot)?.time ?? "";
+  const optionFitAt = (time: string): OptionFitReason | null =>
+    optionFitReason({
+      bookedSlots, date: dateKey, weekday: weekdayOfDateKey(dateKey), time,
+      slotMinutes, optionMinutes: bookingOpts.minutes, bufferMinutes: bookingBufferMinutes,
+      capacityWindows, defaultCapacity: bookingCapacity,
+      staffUserId: selectedStaffId, exclude: excludeSlot,
+      businessHours, staffSchedules,
+    });
+  // 予約変更中はオプションを選び直せない（元の予約のぶんを引き継ぐ）ので判定しない。
+  const optionNotFit: OptionFitReason | null =
+    !rescheduleTarget && selectedTime !== "" && bookingOpts.minutes > 0
+      ? optionFitAt(selectedTime)
+      : null;
+  // 「オプションの時間分、予約を早める」の相手。素の枠として取れるものだけから探す
+  // （締切・回数上限・受付しない帯で押せない枠を提案すると、押した先で断られる）。
+  const optionSuggestTime = optionNotFit
+    ? suggestSlotForOption(slots, selectedTime, (time) => optionFitAt(time) === null)
+    : null;
+  // 🔴 実際に予約へ載る分数。ON でも入らない枠なら 0 に倒す。
+  //    「画面に見えている内容 ＝ 送信する内容 ＝ 入ることを確かめた内容」を1本にする。
+  const effectiveOptionMinutes = rescheduleTarget
+    ? (rescheduleTarget.optionMinutes ?? 0)
+    : (optionNotFit ? 0 : bookingOpts.minutes);
+  const effectiveOptionSnapshot = optionNotFit ? [] : bookingOpts.snapshot;
+  // 確認カードに出す長さ（1枠＋実際に載るオプション）。間（buffer）は含めない。
+  const confirmMinutes = sessionMinutes(slotMinutes, effectiveOptionMinutes);
+
+  // 枠を選ぶ動作は1本にする。グリッドのタップも、カードの「◯◯ に変更して付ける」も
+  // 同じ経路を通す——カードを画面の頭に出し直すことで、変わった時刻（21:00〜22:30）を
+  // 必ず目に入れる。差し替えで案内の高さが縮んだぶん、下の欄が指の位置に来るのも防ぐ。
+  const selectSlot = (slotId: string) => {
+    setSelectedSlot(slotId);
+    setTimeout(() => {
+      // 🔴 block:"center" にしない。確認カードにオプション欄が乗って画面より高くなると、
+      //    カードの上端（＝オプション欄）が画面の外に切れる。「気づかない」が再発する。
+      document.getElementById("booking-confirm-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
   const { isOnWaitlist, toggle: toggleWaitlist, refresh: refreshWaitlist } = useWaitlist(dateKey || null);
 
   const handleWaitlistConfirm = async () => {
@@ -462,7 +487,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     }
     setMissingAnswerIds([]);
     const answerSnapshot = buildAnswerSnapshot(memberQuestions, answers);
-    const optionSnapshot = bookingOpts.snapshot;
+    // 🔴 画面が「入る」と確かめたぶんだけを送る（optionNotFit なら 0 と空配列）。
+    const optionSnapshot = effectiveOptionSnapshot;
+    const optionMinutes = effectiveOptionMinutes;
 
     setSubmitting(true);
 
@@ -510,7 +537,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         (sk) => !isBookingLimitError({ code: sk.code }) && !isPlanLimitError({ code: sk.code }),
       );
       if (otherSkipped.length > 0) {
-        toast.info(t("booking.repeatSkipped", { count: otherSkipped.length, dates: fmtDates(otherSkipped) }));
+        // 🔴 DB の拒否は「素の枠が満枠」も「オプション分だけ入らない」も同じ経路
+        //    （SQLSTATE 無し）で返るため、画面では区別できない。オプションを付けている
+        //    ときだけ、原因を断定しない文言に差し替える（「ストレッチが入らないため」と
+        //    言い切ると、単に満枠だった週にも嘘の説明をすることになる）。
+        toast.info(
+          optionMinutes > 0
+            ? t("bookingOptions.repeatSkippedWithOption", { count: otherSkipped.length, dates: fmtDates(otherSkipped) })
+            : t("booking.repeatSkipped", { count: otherSkipped.length, dates: fmtDates(otherSkipped) }),
+        );
       }
       if (limitSkipped.length > 0) {
         toast.info(t("bookingLimits.repeatSkippedLimit", { count: limitSkipped.length, dates: fmtDates(limitSkipped) }));
@@ -527,6 +562,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         },
       );
       if (error) {
+        // 🔴 他の端末が直前に後ろの枠を取っていた場合、画面の埋まり枠は古いままなので
+        //    「押しても取れない」が繰り返される。取り直しておけば、次の描画で確認カードが
+        //    「◯◯:◯◯ に変更して付ける」に切り替わる（枠は外さない）。
+        void fetchBookedSlots(dateKey);
         // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
         // シフト外（GB002）は「別の時間」ではなく「別の担当か別の曜日」なので文言を分ける。
         toast.error(
@@ -840,6 +879,14 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
                               {planLabel(b.booking_type)}
                             </Badge>
+                            {/* 付けたオプション。終了時刻が延びている理由をここで示す。 */}
+                            {(b.bookingOptions?.length ?? 0) > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-accent/50 text-accent">
+                                <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                                {summarizeOptions(b.bookingOptions, (m) =>
+                                  t("bookingOptions.pickerPlusMinutes", { count: m }))}
+                              </Badge>
+                            )}
                             {(() => {
                               try {
                                 const progress = getBookingProgressIndex(
@@ -1166,100 +1213,61 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     </p>
                   </div>
                 )}
-                {/* オプションは**時間を選ぶ前**に置く（あとから付けると占有が伸びて選択済みの枠が無効になる） */}
-                {!rescheduleTarget && (
-                  <BookingOptionPicker options={bookingOpts.options} selectedIds={bookingOpts.selectedIds}
-                    onToggle={bookingOpts.toggle} className="mb-3" />
-                )}
-                <div className="grid grid-cols-4 gap-1.5">
-                  {slots.map((slot) => {
-                    // 🔴 受付しない帯の枠は、表示も挙動も「普通に埋まっている枠」と**完全に同一**にする
-                    //    （2026-08-23 店の要望）。ラベルだけ揃えても、帯だけ押せない・文字が薄い・
-                    //    空き待ちに出せない、が同じグリッドに並ぶと「この時間だけ扱いが違う」と分かる。
-                    //    そこで表示層では帯を blocked（他の予約で埋まっている）と同一視する。
-                    //    空き通知は実際の予約のキャンセルでしか発火しないので、帯の枠に待機者が
-                    //    付いても「誰もキャンセルしない満枠」として静かに待つだけになる。
-                    const displayBlocked = slot.blocked || slot.notAccepting;
-                    // 満枠（埋まっている＝displayBlocked かつ 締切前）はキャンセル待ち登録可能（フラグON時のみ）。
-                    // 回数上限の枠はキャンセル待ちの対象にもしない（空きを待っても自分は取れない）。
-                    const waitlistable = WAITLIST_ENABLED && !slot.available && displayBlocked && !slot.tooSoon && !slot.overLimit;
-                    const onWaitlist = waitlistable && isOnWaitlist(dateKey, slot.time);
-                    // 当日など締切済みの日の「空いている枠」。予約は不可だが空き状況として区別表示する。
-                    const viewOnlyOpen = slot.tooSoon && !displayBlocked;
-                    return (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      disabled={!slot.available && !waitlistable}
-                      onClick={() => {
-                        if (slot.available) {
-                          setSelectedSlot(slot.id);
-                          setTimeout(() => {
-                            document.getElementById("booking-confirm-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                          }, 100);
-                        } else if (waitlistable) {
-                          setWaitlistTarget({ time: slot.time, alreadyOn: onWaitlist });
-                        }
-                      }}
-                      className={`relative rounded-lg p-2 text-center text-xs font-semibold transition-all duration-200 min-h-[44px] ${
-                        slot.available
-                          ? selectedSlot === slot.id
-                            ? "accent-gradient text-accent-foreground shadow-md scale-105"
-                            : "bg-card border border-border hover:border-accent hover:shadow-sm"
-                          : viewOnlyOpen
-                            ? "bg-accent/10 border border-accent/40 text-foreground cursor-default"
-                            : waitlistable
-                              ? "bg-muted text-muted-foreground/60 hover:bg-muted/80"
-                              : "bg-muted text-muted-foreground/40 cursor-not-allowed"
-                      }`}
-                    >
-                      <span>{slot.time}</span>
-                      {!slot.available && (
-                        <span className="block text-[9px] font-medium">
-                          {/* 受付しない帯は「満枠」と完全に同じ表示にする（2026-08-23 店の要望）。
-                              「受付外」と出すと帯で意図的に閉めていることがお客様に見えるため、
-                              普通に埋まった枠と見分けが付かないようにする。判定は displayBlocked
-                              （帯を「埋まっている」とみなす）に寄せてあるので、ここは満枠の枠と
-                              同じ経路を通る＝帯だけ別のラベルになることが構造的に起きない */}
-                          {slot.overLimit && !displayBlocked
-                            ? <span className="text-muted-foreground">{t("bookingLimits.slotLimitReached")}</span>
-                            : viewOnlyOpen
-                              ? <span className="text-accent">{t("booking.slotOpen")}</span>
-                              : <span className="text-destructive/70">{t("booking.slotFull")}</span>}
-                        </span>
-                      )}
-                      {/* キャンセル待ち登録済みは満枠の見た目のまま、隅の小さいドットだけで示す
-                          （文字ラベルを変えると満枠だらけのグリッドが「キャンセル待ち」で埋まって見づらくなるため） */}
-                      {onWaitlist && (
-                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
-                      )}
-                      {selectedSlot === slot.id && (
-                        <Check className="w-2.5 h-2.5 absolute top-0.5 right-0.5" />
-                      )}
-                    </button>
-                    );
-                  })}
-                </div>
-
+                <BookingSlotGrid
+                  slots={slots}
+                  selectedSlotId={selectedSlot}
+                  onSelect={selectSlot}
+                  onWaitlist={(time, alreadyOn) => setWaitlistTarget({ time, alreadyOn })}
+                  waitlistEnabled={WAITLIST_ENABLED}
+                  isOnWaitlist={(time) => isOnWaitlist(dateKey, time)}
+                />
                 {selectedSlot && (
-                  <div id="booking-confirm-section" className="mt-3 p-3 rounded-xl bg-accent/10 border border-accent/20">
+                  <div id="booking-confirm-section" className="mt-3 scroll-mt-4 p-3 rounded-xl bg-accent/10 border border-accent/20">
                     <p className="text-sm text-center mb-3">
                       <Badge variant="outline" className="mb-1.5">{planLabel(selectedPlan)}</Badge>
                       <br />
-                      <span className="font-bold">{slots.find((s) => s.id === selectedSlot)?.time}</span>
+                      <span className="font-bold">{selectedTime}</span>
                       〜
                       <span className="font-bold">
                         {(() => {
-                          const t = slots.find((s) => s.id === selectedSlot)?.time;
-                          if (!t) return "";
-                          const [h, m] = t.split(":").map(Number);
-                          const end = h * 60 + m + totalMinutes;
-                          return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
+                          const start = parseTimeToMinutes(selectedTime);
+                          if (start === null) return "";
+                          return minutesToTime(start + confirmMinutes);
                         })()}
                       </span>
                       {/* 括弧は翻訳文字列側が持っている。ここで囲むと（（60分））になる */}
-                      {t("booking.slotMinutes", { count: totalMinutes })}
+                      {t("booking.slotMinutes", { count: confirmMinutes })}
                     </p>
+                    {/* 🔴 オプションは**ここ**で聞く（2026-09-03 第4段）。枠グリッドの手前に
+                        置いていたときは、グリッドへ向かうスクロールの途中で素通りされていた。 */}
+                    {!rescheduleTarget && (
+                      <BookingOptionConfirm
+                        options={bookingOpts.options}
+                        selectedIds={bookingOpts.selectedIds}
+                        onToggle={bookingOpts.toggle}
+                        selectedTime={selectedTime}
+                        notFitReason={optionNotFit}
+                        suggestTime={optionSuggestTime}
+                        onMoveTo={(time) => selectSlot(`${dateKey}-${time}`)}
+                        onBookWithout={handleBook}
+                        disabled={submitting}
+                      />
+                    )}
+                    {/* 予約変更では選び直させない（元の予約のぶんを引き継ぐ）。ただし
+                        「なぜ90分なのか」が分からないと、キャンセルして取り直されるので出す。 */}
+                    {rescheduleTarget && (rescheduleTarget.bookingOptions?.length ?? 0) > 0 && (
+                      <p className="mb-3 text-[11px] text-muted-foreground flex items-start gap-1">
+                        <Sparkles className="w-3 h-3 mt-0.5 shrink-0" />
+                        <span>
+                          {t("bookingOptions.inheritedTitle", {
+                            names: summarizeOptions(rescheduleTarget.bookingOptions, (m) =>
+                              t("bookingOptions.pickerPlusMinutes", { count: m })),
+                          })}
+                          <br />
+                          {t("bookingOptions.inheritedHelp")}
+                        </span>
+                      </p>
+                    )}
                     {/* 事前アンケート（店が設定した質問）。1つも無ければ何も出ない。
                         予約変更モードでは聞かない（元の予約の回答を引き継ぐため）。 */}
                     {!rescheduleTarget && memberQuestions.length > 0 && (
@@ -1280,54 +1288,32 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                       </div>
                     )}
                     {/* 定期予約: 毎週同じ曜日・時間でまとめて予約（変更モードでは非表示） */}
-                    {!rescheduleTarget && selectedDate && (() => {
-                      // 選択中の日から、予約可能期間（1ヶ月先まで）に収まる回数の上限
-                      const repeatCap = maxRepeatWeeksFor(selectedDate, maxBookableDate);
-                      return (
-                      <div className="mb-3 text-left">
-                        <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
-                          <Repeat className="w-3 h-3" />
-                          {t("booking.repeatTitle")}
-                        </p>
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {[1, 2, 3, 4].map((n) => (
-                            <button
-                              key={n}
-                              type="button"
-                              onClick={() => setRepeatWeeks(n)}
-                              aria-pressed={repeatWeeks === n}
-                              disabled={n > repeatCap}
-                              className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                n > repeatCap
-                                  ? "bg-secondary/50 text-muted-foreground/40 cursor-not-allowed"
-                                  : repeatWeeks === n
-                                    ? "bg-accent text-accent-foreground shadow-sm"
-                                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              {n === 1 ? t("booking.repeatOnce") : t("booking.repeatTimes", { count: n })}
-                            </button>
-                          ))}
-                        </div>
-                        {repeatCap < 4 && (
-                          <p className="text-[11px] text-muted-foreground mt-1.5">
-                            {t("booking.repeatLimitedByWindow")}
-                          </p>
-                        )}
-                        {repeatWeeks > 1 && (
-                          <p className="text-[11px] text-muted-foreground mt-1.5">
-                            {t("booking.repeatWeeklyDesc", { count: repeatWeeks })}
-                          </p>
-                        )}
-                      </div>
-                      );
-                    })()}
+                    {!rescheduleTarget && selectedDate && (
+                      <BookingRepeatPicker
+                        value={repeatWeeks}
+                        onChange={setRepeatWeeks}
+                        cap={maxRepeatWeeksFor(selectedDate, maxBookableDate)}
+                        optionNote={effectiveOptionMinutes > 0}
+                      />
+                    )}
+                    {/* 何が予約されるかの最終確認。ボタンの文言は変えない
+                        （くり返し予約の「毎週×3回」という、より重い情報が消えるため）。 */}
+                    {effectiveOptionMinutes > 0 && !rescheduleTarget && (
+                      <p className="mb-2 text-[11px] text-center text-muted-foreground" data-testid="booking-option-summary">
+                        {t("bookingOptions.confirmSummary", {
+                          names: summarizeOptions(effectiveOptionSnapshot, (m) =>
+                            t("bookingOptions.pickerPlusMinutes", { count: m })),
+                        })}
+                      </p>
+                    )}
                     <Button
                       variant="accent"
                       size="lg"
                       className="w-full"
                       onClick={rescheduleTarget ? handleReschedule : handleBook}
-                      disabled={submitting}
+                      // 🔴 オプションが入らない枠では押させない。押せてしまうと、選んだはずの
+                      //    オプションが黙って外れて予約される。上の2つのボタンで選ばせる。
+                      disabled={submitting || !!optionNotFit}
                     >
                       {submitting ? (
                         <DumbbellLoader className="w-4 h-4 mr-2" />
@@ -1464,6 +1450,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         endTime={lastBooked?.endTime || ""}
         planName={lastBooked ? planLabel(lastBooked.booking_type) : ""}
         gymName={tenant?.gym_name}
+        optionsLabel={summarizeOptions(lastBooked?.bookingOptions, (m) =>
+          t("bookingOptions.pickerPlusMinutes", { count: m }))}
       />
 
       <BookingCancelledDialog

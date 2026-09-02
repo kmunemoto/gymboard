@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Check, CalendarDays, Clock } from "lucide-react";
+import { Check, CalendarDays, Clock, Sparkles } from "lucide-react";
 import { ja } from "date-fns/locale";
 import { formatJST } from "@/lib/timezone";
 
@@ -13,6 +13,12 @@ interface BookingCompleteDialogProps {
   endTime: string; // HH:mm
   planName: string;
   gymName?: string;
+  /**
+   * 付けたオプションの表示名（`summarizeOptions` の結果）。空なら何も出さない。
+   * 🔴 出さないと、終了時刻が 23:00 になっている理由がどこにも残らない。
+   *    「23:00 まで？ 間違えたかも」とキャンセル→取り直しが起きる（当日なら消化扱い）。
+   */
+  optionsLabel?: string;
 }
 
 function buildCalendarUrl(date: string, startTime: string, endTime: string, eventTitle: string, gymName: string) {
@@ -45,6 +51,7 @@ const BookingCompleteDialog = ({
   endTime,
   planName,
   gymName,
+  optionsLabel,
 }: BookingCompleteDialogProps) => {
   const { t } = useTranslation();
   const resolvedGym = gymName || t("workoutShare.brandFallback");
@@ -76,6 +83,12 @@ const BookingCompleteDialog = ({
             <p className="text-xs text-muted-foreground pt-1 border-t border-accent/10">
               {planName}
             </p>
+            {optionsLabel && (
+              <p className="text-xs font-bold flex items-center justify-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" />
+                {optionsLabel}
+              </p>
+            )}
           </div>
 
           <a

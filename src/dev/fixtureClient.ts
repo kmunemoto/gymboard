@@ -257,7 +257,54 @@ const RPC_RESULTS: Record<string, () => unknown> = {
   get_my_tenant_invite_code: () => rowsOf("tenants")[0]?.invite_code ?? "DEMO1234",
   get_tenant_public: () => [clone(rowsOf("tenants")[0])],
   lookup_tenant_by_invite_code: () => [{ tenant_id: DEV_TENANT_ID }],
-  get_tenant_booked_slots: () => [],
+  /**
+   * 埋まり枠。**以前はここが常に `[]` を返していた**ので、dev:fixtures では
+   * どの枠もいつも「空き」に見え、**空き枠の判定を画面で一度も確認できなかった**
+   * （2026-09-03 に、オプションを付けると後ろの予約に当たって枠が消えることを
+   * 確かめようとして発覚した）。本物の RPC と同じ式で占有を組み立てる:
+   *
+   *   予約   … 1枠（プラン優先）+ オプション + 間
+   *   体験   … 1枠（テナント既定）+ 間  ※オプションは持たない
+   *   ブロック… 保存されている開始・終了そのまま
+   *
+   * ⚠️ この shim は rpc の引数を受け取らないので日付で絞れない。呼び出し側が
+   *    日付で絞っているのでそのまま全部返す。
+   */
+  get_tenant_booked_slots: () => {
+    const tenant = rowsOf("tenants")[0] as
+      { slot_duration_minutes?: number | null; booking_buffer_minutes?: number | null } | undefined;
+    const slotMin = tenant?.slot_duration_minutes ?? 60;
+    const bufferMin = tenant?.booking_buffer_minutes ?? 15;
+    const plans = rowsOf("tenant_plans") as { plan_name?: string; slot_duration_minutes?: number | null }[];
+    const planMinutes = (planName: unknown) =>
+      plans.find((p) => p.plan_name === planName)?.slot_duration_minutes ?? slotMin;
+    const endOf = (start: unknown, minutes: number) =>
+      new Date(new Date(String(start)).getTime() + minutes * 60_000).toISOString();
+
+    return [
+      ...rowsOf("bookings").map((b) => ({
+        booking_date: b.booking_date,
+        end_booking_date: endOf(
+          b.booking_date,
+          planMinutes(b.booking_type) + (Number(b.option_minutes) || 0) + bufferMin,
+        ),
+        status: b.status,
+        staff_user_id: b.staff_user_id ?? null,
+      })),
+      ...rowsOf("trial_bookings").map((tb) => ({
+        booking_date: tb.booking_date,
+        end_booking_date: endOf(tb.booking_date, slotMin + bufferMin),
+        status: tb.status,
+        staff_user_id: null,
+      })),
+      ...rowsOf("blocked_slots").map((bs) => ({
+        booking_date: bs.blocked_date,
+        end_booking_date: bs.end_blocked_date,
+        status: "ブロック済み",
+        staff_user_id: null,
+      })),
+    ];
+  },
   // 上限はフィクスチャのテナント行から引く。ここに数値を直書きすると、プラン定義
   // （src/lib/gymboardPlans.ts）を変えたときにプランカードの「N名まで」と
   // 上限バナーの数字が dev:fixtures 上だけ食い違う（実際に 50 のまま取り残されていた）。

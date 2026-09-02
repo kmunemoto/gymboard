@@ -204,6 +204,46 @@ DB に断られる」になる。`useBookingOptionSelection({ onChange })` が�
 占有を組み立てるように直した。あわせて、平日の夕方（18:00）に予約を1件足した
 ——夕方に予約が無いと、空いている枠の後ろに何も無くなって再現できないため。
 
+### ④ 変えたらお客様に知らせる（PR #371）
+
+> 通知を足して
+
+店側からの操作なので、黙って変えると**お客様は終了時刻が変わったことを知らない**。
+逆に「勝手に付けられた」とも見える。**プッシュ＋メールの2本**で知らせる
+（キャンセル通知と同じ形）。
+
+🔴 **プッシュだけにしない。** 許可していないお客様には何も届かないので、
+メールが唯一の控えになる。
+
+送らない場合が2つある:
+
+- **中身が変わっていないとき**（同じものを選び直して保存しただけ）
+- **過ぎた予約**（記録の手直しであって、お客様への連絡ではない）
+
+同じ内容を2回押しても2通にならないよう、`option-change-<予約id>-<分数>-<オプションid>`
+を冪等キーにしている。分数と中身の両方を鍵に入れているので、**外して付け直したときは
+ちゃんともう1通出る**。
+
+知らせる時間帯は**変更後**のもの（1枠＋オプション。間は入れない）。
+
+- テンプレート: `supabase/functions/_shared/transactional-email-templates/booking-option-changed.tsx`
+- 外したときは「オプションはございません」ではなく**「取り消しました」**と書く
+  （何も出ないと、何が起きたのか分からない）
+- `CLIENT_ALLOWED_TEMPLATES` に足した。宛先は `_resolve_user_` 経路なので
+  「**自分がスタッフをしているジムの在籍者**」にしか届かない（宛先の自由入力にならない）。
+  見張り: `src/test/transactionalEmailTenantScope.test.ts`
+
+🔴 **文言はコードに直接書いている（i18n を通していない）。** この層——通知の送信——は
+既存のキャンセル通知・予約変更通知も日本語直書きで、翻訳を通していない。ここだけ
+i18n にすると「どこで訳すのか」が2通りになる。多言語にするなら通知層をまとめて変えること。
+
+🔴 **メールは Edge Function のデプロイが要る。** テンプレートは
+`send-transactional-email` のバンドルに入るので、**GitHub にマージしただけでは出ない**
+（`mem/ops/edge-function-deploy.md`）。デプロイ前は「Template not found」で
+**静かに失敗する**——プッシュは出るのでお客様には届くが、メールの控えは残らない。
+デプロイ後に必ず自分で確かめること（`preview-transactional-email` が
+テンプレート名の一覧を返すので、そこに `booking-option-changed` が居るかで判定できる）。
+
 ### ついでに整理したもの
 
 予定表がコース進捗バッジの**同じ17行の即時関数を2箇所に写して**いた
@@ -218,9 +258,6 @@ DB に断られる」になる。`useBookingOptionSelection({ onChange })` が�
   `trial-cancel`）を同時に直すこと
 - ~~既存の予約にあとからオプションを足す導線は作らない~~ → **第3段で作った**
   （`guard_booking_option_change` / GB008）。ただし**店側専用**。お客様からは変更できない
-- **オプションを足しても、お客様に通知は飛ばない。** 新規予約の通知は AFTER INSERT の
-  トリガーなので、UPDATE では何も鳴らない。店が口頭で受けた前提の機能なので今はこれでよいが、
-  「勝手に足された」と見えないよう、必要になったら通知を足すこと
 - `calendar-feed` は以前から**間（buffer）も DTEND に入れている**。お客様のカレンダーに
   次の人までの間が乗るのは本来おかしいが、既存の挙動なので今回は変えていない
   （縮めると、これまで「予定あり」だった時間が急に空きに見える）
@@ -275,7 +312,8 @@ Lovable の `query_database` で適用済み。3段構えで確認した:
 - `src/test/bookingOptions.test.ts` — 設定の見張り（40件）
 - `src/components/trainer/BookingOptionEditDialog.tsx` — あとから足す（店側）
 - `src/components/trainer/BookingOptionLine.tsx` — 予定表での1行（週グリッド／日別）
-- `src/hooks/bookingOptionEdit.ts` — `updateBookingOptions`
+- `src/hooks/bookingOptionEdit.ts` — `updateBookingOptions` ＋ 変更通知（プッシュ／メール）
+- `supabase/functions/_shared/transactional-email-templates/booking-option-changed.tsx`
 - `supabase/migrations/20260904000000_booking_option_update_guard.sql` — GB008（第3段）
 - `src/test/bookingOptionFootprint.test.ts` — 占有と表示の見張り（38件）
 - `src/test/bookingOptionEdit.test.ts` — あとから足すの見張り（30件）

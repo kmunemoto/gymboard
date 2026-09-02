@@ -140,7 +140,7 @@ describe("店側の変更画面", () => {
   it("長さが変わるのでGoogleカレンダーを作り直す", () => {
     expect(edit).toContain('action: "delete"');
     expect(edit).toContain('action: "create"');
-    expect(edit).toContain("option_minutes: readOptionMinutes(");
+    expect(edit).toContain("option_minutes: minutes,");
   });
 
   it("外したときは控えを null に戻す（「付いていない」の表現を1つにする）", () => {
@@ -151,6 +151,72 @@ describe("店側の変更画面", () => {
     const customer = readCode("src/components/customer/CustomerBooking.tsx");
     expect(customer).not.toContain("updateBookingOptions");
     expect(customer).not.toContain("BookingOptionEditDialog");
+  });
+});
+
+describe("🔴 変えたらお客様に知らせる（宗本さん 2026-09-03「通知を足して」）", () => {
+  const edit = readCode(EDIT);
+
+  it("プッシュとメールの2本で送る", () => {
+    // プッシュだけにしない。許可していないお客様には何も届かないので、
+    // メールが唯一の控えになる（キャンセル通知と同じ考え方）。
+    expect(edit).toContain('invoke("send-push-notification"');
+    expect(edit).toContain('invoke("send-transactional-email"');
+    expect(edit).toContain('templateName: "booking-option-changed"');
+  });
+
+  it("宛先はお客様本人（店ではない。変えたのは店なので知らせる必要が無い）", () => {
+    expect(edit).toContain("user_ids: [userId]");
+    expect(edit).toContain('recipientEmail: "_resolve_user_"');
+    expect(edit).toContain("resolveUserId: userId");
+  });
+
+  it("🔴 中身が変わっていないときは送らない（同じものを選び直して保存しただけ）", () => {
+    expect(edit).toContain("if (changed) await notifyCustomer(");
+    expect(edit).toContain("readOptionMinutes(row.option_minutes) !== minutes");
+  });
+
+  it("🔴 過ぎた予約には送らない（記録の手直しであって連絡ではない）", () => {
+    expect(edit).toMatch(/new Date\(bookingDate\)\.getTime\(\) < Date\.now\(\)[\s\S]{0,20}return/);
+  });
+
+  it("同じ内容を2回押しても2通にならない（外して付け直したときは送る）", () => {
+    // 鍵に分数と中身の両方を入れる
+    expect(edit).toContain("const key = `option-change-${row.id}-${minutes}-${options.map((o) => o.id).sort().join(\",\")}`");
+    expect(edit).toContain("idempotencyKey: key");
+    expect(edit).toContain("tag: key");
+  });
+
+  it("知らせる時間帯は変更後のもの（1枠＋オプション。間は入れない）", () => {
+    expect(edit).toContain("sessionMinutes(slotMinutes, minutes)");
+    // 間（buffer）を足していない
+    expect(edit).not.toContain("booking_buffer_minutes");
+  });
+
+  it("外したときは「取り消しました」と言う（何も出ないと何が起きたか分からない）", () => {
+    expect(edit).toContain("const removed = options.length === 0");
+    const tpl = readFileSync(
+      "supabase/functions/_shared/transactional-email-templates/booking-option-changed.tsx", "utf8");
+    expect(tpl).toContain("options.length === 0");
+    expect(tpl).toContain("取り消しました");
+  });
+
+  it("メールのテンプレートが登録されている（登録漏れは「Template not found」で静かに落ちる）", () => {
+    const registry = readFileSync(
+      "supabase/functions/_shared/transactional-email-templates/registry.ts", "utf8");
+    expect(registry).toContain("'booking-option-changed': bookingOptionChanged");
+    expect(registry).toContain("from './booking-option-changed.tsx'");
+  });
+
+  it("クライアントから呼べる許可リストに入っている", () => {
+    const fn = readFileSync("supabase/functions/send-transactional-email/index.ts", "utf8");
+    const m = fn.match(/CLIENT_ALLOWED_TEMPLATES = new Set\(\[([\s\S]*?)\]\)/);
+    expect(m?.[1]).toContain("booking-option-changed");
+  });
+
+  it("送信に失敗しても予約の変更自体は成立させる（fire-and-forget）", () => {
+    expect(edit).toContain('.catch((e) => console.error("オプション変更のプッシュ送信に失敗:", e))');
+    expect(edit).toContain('.catch((e) => console.error("オプション変更のメール送信に失敗:", e))');
   });
 });
 

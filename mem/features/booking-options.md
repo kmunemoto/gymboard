@@ -237,12 +237,12 @@ DB に断られる」になる。`useBookingOptionSelection({ onChange })` が�
 既存のキャンセル通知・予約変更通知も日本語直書きで、翻訳を通していない。ここだけ
 i18n にすると「どこで訳すのか」が2通りになる。多言語にするなら通知層をまとめて変えること。
 
-🔴 **メールは Edge Function のデプロイが要る。** テンプレートは
-`send-transactional-email` のバンドルに入るので、**GitHub にマージしただけでは出ない**
-（`mem/ops/edge-function-deploy.md`）。デプロイ前は「Template not found」で
-**静かに失敗する**——プッシュは出るのでお客様には届くが、メールの控えは残らない。
-デプロイ後に必ず自分で確かめること（`preview-transactional-email` が
-テンプレート名の一覧を返すので、そこに `booking-option-changed` が居るかで判定できる）。
+✅ **メールのデプロイは 2026-09-03 に完了・確認済み。** `send-transactional-email` と
+`preview-transactional-email` を同時にデプロイし、`preview-transactional-email` の
+テンプレート一覧に `booking-option-changed` が含まれることを確認した
+（`send-transactional-email` への直接プローブは Lovable サンドボックス側の
+service_role キー不一致で 401 になったため、代替経路で確認。詳細は
+`mem/ops/edge-function-deploy.md` の「実際にやってみた記録」）。
 
 ### ついでに整理したもの
 

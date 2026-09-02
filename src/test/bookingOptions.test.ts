@@ -265,8 +265,10 @@ describe("店側の設定画面", () => {
     expect(src).toContain("bookingOptions.invalid.");
   });
 
-  it("🔴 お客様の画面にはまだ出ないことを画面に明記している", () => {
-    expect(src).toContain("bookingOptions.notYetCustomerNote");
+  it("🔴 「まだお客様には出ません」の注意書きが残っていない（2026-09-03 に出るようになった）", () => {
+    // 第1段（#367）では設定だけだったので注意書きを出していた。#368 でお客様が
+    // 選べるようになったので消した。残っていると設定画面が嘘をつく。
+    expect(src).not.toContain("notYetCustomerNote");
   });
 });
 
@@ -276,7 +278,7 @@ describe("文言（5言語）", () => {
     "nameLabel", "namePlaceholder", "durationLabel", "durationNone", "durationUnit",
     "priceLabel", "pricePlaceholder", "priceHint",
     "enabledLabel", "disabledLabel", "saved", "cleared", "saveFailed",
-    "footprintNote", "notYetCustomerNote",
+    "footprintNote",
   ];
 
   for (const lang of LOCALES) {
@@ -301,13 +303,15 @@ describe("文言（5言語）", () => {
   });
 });
 
-describe("🔴 まだ変えていないもの（次の版で触るところの目印）", () => {
-  it("check_booking_overlap はオプションの分を足していない（足すときは2箇所を同時に）", () => {
+describe("済んだマイグレーションを後から書き換えない", () => {
+  // 占有へのオプション加算は 20260903000000（PR #368）で入れた。**古い方の
+  // マイグレーションを書き換えて直してはいけない**——本番には適用済みなので、
+  // 書き換えても本番は変わらず、リポジトリだけが「直っている」ように見える。
+  // 実際の加算の見張りは src/test/bookingOptionFootprint.test.ts。
+  it("20260821030000（容量の帯）は当時のまま", () => {
     const trigger = readSql("supabase/migrations/20260821030000_booking_capacity_windows.sql");
     expect(trigger).not.toContain("option_minutes");
-    // footprint を計算している箇所は**3つ**ある:
-    //   1. これから入れる予約   2. 既存の bookings   3. 既存の trial_bookings
-    // 片方だけ直すと「Aの後にBは取れるのにBの後にAは取れない」非対称になる。
+    // 当時の footprint は3箇所（これから入れる予約 / 既存の bookings / 既存の trial_bookings）
     const sites = [...trigger.matchAll(/COALESCE\(buffer_min, 15\)/g)];
     expect(sites.length).toBe(3);
   });

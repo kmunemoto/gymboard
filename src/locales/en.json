@@ -2971,7 +2971,6 @@
       "price": "That price is not valid (0–1,000,000)"
     },
     "footprintNote": "No buffer is inserted between the training and the add-on. A 60-minute slot plus a 30-minute add-on plus a 15-minute buffer holds 105 minutes.",
-    "notYetCustomerNote": "For now this is settings only. Choosing add-ons on the customer booking screen comes in the next update.",
     "pickerTitle": "Add-ons",
     "pickerHint": "Runs straight after your training. Adding one makes the session end later.",
     "pickerPlusMinutes": "+{{count}} min",

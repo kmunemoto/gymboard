@@ -2971,7 +2971,6 @@
       "price": "价格不正确（0～1,000,000）"
     },
     "footprintNote": "训练与附加项之间不插入准备时间。60 分钟预约 + 30 分钟附加项 + 15 分钟间隔，共占用 105 分钟。",
-    "notYetCustomerNote": "目前仅支持在此设置。客户预约页面的选择将在下次更新中提供。",
     "pickerTitle": "附加项",
     "pickerHint": "紧接训练之后进行。加购后结束时间会顺延。",
     "pickerPlusMinutes": "+{{count}} 分钟",

@@ -2971,7 +2971,6 @@
       "price": "價格不正確（0～1,000,000）"
     },
     "footprintNote": "訓練與加購項目之間不插入準備時間。60 分鐘預約 + 30 分鐘加購 + 15 分鐘間隔，共佔用 105 分鐘。",
-    "notYetCustomerNote": "目前僅支援在此設定。客戶預約畫面的選擇將於下次更新提供。",
     "pickerTitle": "加購項目",
     "pickerHint": "緊接訓練之後進行。加購後結束時間會順延。",
     "pickerPlusMinutes": "+{{count}} 分鐘",

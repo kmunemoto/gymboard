@@ -290,11 +290,6 @@ const TrainerBookingOptions = () => {
           </div>
 
           <p className="text-xs text-muted-foreground">{t("bookingOptions.footprintNote")}</p>
-          {/* 🔴 いまの版では設定だけ。お客様の予約画面にはまだ出ない。
-              「設定したのに出てこない」と思わせないよう、画面で明示する。 */}
-          <p className="text-xs text-amber-600 dark:text-amber-500">
-            {t("bookingOptions.notYetCustomerNote")}
-          </p>
         </CardContent>
       </Card>
     </div>

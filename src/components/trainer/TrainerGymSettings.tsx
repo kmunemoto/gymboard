@@ -60,6 +60,7 @@ import {
   type GymDisplayColumn,
   type GymDisplayPreset,
 } from "@/lib/gymDisplaySettings";
+import { SLOT_DURATION_OPTIONS } from "@/lib/planSlotDuration";
 
 interface TrainerGymSettingsProps {
   onSignOut: () => void;
@@ -84,7 +85,7 @@ const hourOption = (baseHour: number, i: number) => {
 // 「終了は開始より後」の検査は残してある（深夜またぎの営業には未対応）。
 const BUSINESS_START_HOURS = Array.from({ length: 48 }, (_, i) => hourOption(0, i));
 const BUSINESS_END_HOURS = Array.from({ length: 48 }, (_, i) => hourOption(0, i + 1));
-const BUSINESS_SLOT_OPTIONS = [30, 45, 60, 90, 120];
+// 1枠の長さの選択肢は src/lib/planSlotDuration.ts に集約（プラン別と食い違わせないため）
 // 予約と予約の間に必ず空ける時間（分）。15分刻み。
 const BUSINESS_BUFFER_OPTIONS = [0, 15, 30, 45, 60];
 // 同じ時間帯に受けられる予約の数（ベッド数・施術者数など）。1＝従来どおり同時1件のみ。
@@ -1122,7 +1123,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {BUSINESS_SLOT_OPTIONS.map((m) => (
+                  {SLOT_DURATION_OPTIONS.map((m) => (
                     <SelectItem key={m} value={String(m)}>{t("onboarding.slotMinutes", { n: m })}</SelectItem>
                   ))}
                 </SelectContent>

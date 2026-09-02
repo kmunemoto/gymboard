@@ -409,7 +409,7 @@ const TrialBooking = () => {
         `DTEND;TZID=Asia/Tokyo:${dateClean}T${endClean}`,
         `SUMMARY:${t("trialBooking.icsSummary", { gym: gymName })}`,
         `LOCATION:${t("trialBooking.icsLocation")}`,
-        `DESCRIPTION:${t("trialBooking.icsDescription")}`,
+        `DESCRIPTION:${t("trialBooking.icsDescription", { count: sessionMinutes })}`,
         "END:VEVENT",
         "END:VCALENDAR",
       ].join("\r\n");
@@ -437,7 +437,7 @@ const TrialBooking = () => {
             </div>
             <div className="bg-accent/10 rounded-xl p-4 space-y-1">
               <p className="text-sm font-bold">{completedInfo.date}</p>
-              <p className="text-sm">{completedInfo.time}{t("trialBooking.completedMinutes")}</p>
+              <p className="text-sm">{completedInfo.time}{t("trialBooking.completedMinutes", { count: sessionMinutes })}</p>
               <p className="text-xs text-muted-foreground mt-2">{t("trialBooking.completedSubtitle")}</p>
             </div>
             <a
@@ -515,7 +515,7 @@ const TrialBooking = () => {
             )}
           </div>
           <h1 className="text-xl font-bold">{headerTitle}</h1>
-          <p className="text-sm opacity-80">{t("trialBooking.headerSub")}</p>
+          <p className="text-sm opacity-80">{t("trialBooking.headerSub", { count: sessionMinutes })}</p>
         </div>
       </div>
 

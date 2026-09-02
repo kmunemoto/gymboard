@@ -1236,7 +1236,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                           return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
                         })()}
                       </span>
-                      （{t("booking.slotMinutes", { count: slotMinutes })}）
+                      {/* 括弧は翻訳文字列側が持っている。ここで囲むと（（60分））になる */}
+                      {t("booking.slotMinutes", { count: slotMinutes })}
                     </p>
                     {/* 事前アンケート（店が設定した質問）。1つも無ければ何も出ない。
                         予約変更モードでは聞かない（元の予約の回答を引き継ぐため）。 */}

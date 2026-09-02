@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { Home, CalendarDays, Utensils, Dumbbell, Settings } from "lucide-react";
+import { useMeasuredHeightVar, NAV_HEIGHT_VAR } from "@/hooks/useMeasuredHeightVar";
 import { useTranslation } from "react-i18next";
 import type { CustomerTab } from "./CustomerView";
 import { WORKOUT_LOG_ENABLED, MEALS_ENABLED } from "@/lib/featureFlags";
@@ -75,6 +77,9 @@ const tabs = ALL_TABS.filter((t) => t.enabled);
 type NavTab = (typeof ALL_TABS)[number];
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
+  // ボトムナビの実測の高さを --nav-h へ。チャットの下端がこれを避ける。
+  const navRef = useRef<HTMLElement>(null);
+  useMeasuredHeightVar(navRef, NAV_HEIGHT_VAR);
   const { t } = useTranslation();
 
   const centerIndex = tabs.findIndex((tab) => tab.center);
@@ -136,7 +141,12 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   };
 
   return (
+    /* 🔴 高さを --nav-h に流す。チャットの下端がこれを避ける。
+       直書きの数字だと、システムバーぶん高くなる Android の実機で
+       入力欄がこのナビの裏に隠れる（2026-09-01 に実機で発覚）。
+       中央の丸ボタンがある店では更に高くなるので、なおさら実測が要る。 */
     <nav
+      ref={navRef}
       className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-border"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >

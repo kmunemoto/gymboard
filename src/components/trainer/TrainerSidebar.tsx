@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { LayoutDashboard, Users, CalendarDays, MessageCircle, Dumbbell, Settings2, ClipboardList, Megaphone, Bell, UserCheck, Video as VideoIcon } from "lucide-react";
+import { useMeasuredHeightVar, NAV_HEIGHT_VAR } from "@/hooks/useMeasuredHeightVar";
 import { useTranslation } from "react-i18next";
 import type { TrainerTab } from "./TrainerView";
 import { useTenant } from "@/hooks/useTenant";
@@ -37,6 +39,9 @@ const mobileTabs: { id: TrainerTab; labelKey: string; icon: typeof LayoutDashboa
 ];
 
 const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCounseling = 0 }: TrainerSidebarProps) => {
+  // ボトムナビの実測の高さを --nav-h へ。チャットの下端がこれを避ける。
+  const navRef = useRef<HTMLElement>(null);
+  useMeasuredHeightVar(navRef, NAV_HEIGHT_VAR);
   const { t } = useTranslation();
   const { tenant } = useTenant();
   const getBadgeCount = (tabId: TrainerTab) => {
@@ -82,7 +87,11 @@ const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCoun
       </aside>
 
       {/* Mobile bottom nav */}
+      {/* 🔴 高さを --nav-h に流す。チャットの下端がこれを避ける。
+          直書きの数字だと、システムバーぶん高くなる Android の実機で
+          入力欄がこのナビの裏に隠れる（2026-09-01 に実機で発覚）。 */}
       <nav
+        ref={navRef}
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-border"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >

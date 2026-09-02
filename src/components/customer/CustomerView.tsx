@@ -1,4 +1,4 @@
-import { lazy, useState, useEffect } from "react";
+import { lazy, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageCircle, Bell, Phone } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ const CustomerMonthlyReport = lazy(() => import("./CustomerMonthlyReport"));
 const CustomerVideos = lazy(() => import("./CustomerVideos"));
 
 import { useUnreadCount } from "@/hooks/useMessages";
+import { useMeasuredHeightVar, APP_HEADER_VAR } from "@/hooks/useMeasuredHeightVar";
 import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
 import AnnouncementsDialog from "./AnnouncementsDialog";
 import PlanLimitBanner from "@/components/PlanLimitBanner";
@@ -36,6 +37,9 @@ import {
 export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report" | "photos" | "videos";
 
 const CustomerView = () => {
+  // ヘッダーの実測の高さを --app-header-h へ。チャットの上端がこれを避ける。
+  const headerRef = useRef<HTMLDivElement>(null);
+  useMeasuredHeightVar(headerRef, APP_HEADER_VAR);
   const { t } = useTranslation();
   const [tab, setTab] = useState<CustomerTab>("home");
   const { count: unreadChat, refetch: refetchUnread } = useUnreadCount();
@@ -68,7 +72,9 @@ const CustomerView = () => {
   return (
     <div className="min-h-screen bg-background pb-20 w-full max-w-md mx-auto overflow-x-hidden fade-in" translate="no">
       {/* Header */}
+      {/* 🔴 高さを --app-header-h に流す。チャットの上端がこれを避ける。 */}
       <div
+        ref={headerRef}
         className="fixed top-0 left-0 right-0 z-50 glass border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >

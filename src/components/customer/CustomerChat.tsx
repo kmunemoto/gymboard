@@ -180,12 +180,16 @@ const CustomerChat = () => {
        iOS の WKWebView では 100vh がキーボードで縮まないため、一番下にある入力欄が
        キーボードの裏に入り、打っている文字が見えなかった。上はアプリヘッダーの下、
        下は max(キーボード, ボトムナビ) に固定して、LINE と同じく入力欄を常に見せる。
-       max-w-md mx-auto は CustomerView の本体幅に合わせるため（fixed で外れるので明示）。 */
+       max-w-md mx-auto は CustomerView の本体幅に合わせるため（fixed で外れるので明示）。
+
+       🔴 上下の逃がし幅は**実測値**（--app-header-h / --nav-h）。直書きの 5rem では
+       システムバーぶんナビが高くなる Android の実機で、入力欄がナビの裏に
+       潜り込んで押せなくなった（2026-09-01 に実機で発覚）。 */
     <div
       className="flex flex-col slide-up
         fixed left-0 right-0 z-30 w-full max-w-md mx-auto bg-background
-        top-[calc(3.5rem_+_env(safe-area-inset-top,0px))]
-        bottom-[max(var(--kb,0px),5rem)]"
+        top-[var(--app-header-h,3.5rem)]
+        bottom-[max(var(--kb,0px),var(--nav-h,6rem))]"
     >
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       {/* Header */}

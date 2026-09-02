@@ -4,8 +4,10 @@ import { computeKeyboardInset, KEYBOARD_INSET_VAR } from "@/lib/keyboardInset";
 /**
  * キーボードの高さを CSS 変数 `--kb` に流し込み、その px 値を返す。
  *
- * 使う側は `bottom-[max(var(--kb,0px),4rem)]` のように書く。キーボードが出ていなければ
+ * 使う側は下端を `max(var(--kb,0px), var(--nav-h,…))` にする。キーボードが出ていなければ
  * ボトムナビの高さ、出ていればキーボードの高さが採用され、入力欄が常に見える位置に来る。
+ * 🔴 ナビの高さは**直書きしない**。実測して `--nav-h` に流す（useMeasuredHeightVar.ts）。
+ *    直書きの 4rem で Android の実機の入力欄がナビの裏に隠れた（2026-09-01）。
  *
  * visualViewport が無い環境（テストの jsdom、古いブラウザ）では 0 のまま何もしない。
  */

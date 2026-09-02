@@ -101,6 +101,11 @@ export function buildDevFixtures(): Record<string, Record<string, unknown>[]> {
         source: null,
         trainer_note: d < 0 && s === 0 ? "フォーム改善中。次回は重量を上げる。" : null,
         google_event_id: null,
+        // 予定表でオプション付きの見え方を確認できるよう、各日の2枠目にだけ付ける
+        option_minutes: s === 1 ? 30 : 0,
+        booking_options: s === 1
+          ? [{ id: "00000000-0000-4000-8000-0000000000o1", name: "ストレッチ", duration_minutes: 30, price_yen: 3000 }]
+          : null,
         created_at: now,
       });
     }

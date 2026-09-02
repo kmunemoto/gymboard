@@ -2974,6 +2974,15 @@
     "pickerTitle": "加購項目",
     "pickerHint": "緊接訓練之後進行。加購後結束時間會順延。",
     "pickerPlusMinutes": "+{{count}} 分鐘",
-    "pickerPrice": "¥{{price}}"
+    "pickerPrice": "¥{{price}}",
+    "editOpen": "修改加購項目",
+    "editTitle": "修改加購項目",
+    "editSubject": "{{name}} / {{date}} {{time}}",
+    "editNoOptions": "尚未設定加購項目。可在「設定 → 預約規則」中建立。",
+    "editLengthenNote": "增加加購項目會順延結束時間。若緊接其後已有預約或休息，則無法新增。",
+    "editSaved": "已修改加購項目",
+    "editFailed": "加購項目修改失敗",
+    "editBlocked": "無法為此預約新增加購項目",
+    "editBlockedHelp": "緊接其後的時間已被佔用。請改約時間，或選擇較短的加購項目。"
   }
 }

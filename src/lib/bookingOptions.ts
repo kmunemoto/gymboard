@@ -232,3 +232,31 @@ export const minutesBetween = (startTime: string, endTime: string): number => {
   const diff = toMin(endTime) - toMin(startTime);
   return Number.isFinite(diff) && diff > 0 ? diff : 0;
 };
+
+/**
+ * その予約に付いているオプションを1行で表す。「ストレッチ（+30分）／プロテイン」。
+ *
+ * 予定表は狭いので、これを**そのまま**カードにもツールチップにも出す。
+ * 時間が増えないオプションには「+0分」を付けない（意味の無い数字を並べない）。
+ */
+export const summarizeOptions = (
+  options: ReadonlyArray<BookingOptionSnapshot> | null | undefined,
+  minutesLabel: (minutes: number) => string,
+): string =>
+  (options ?? [])
+    .map((o) => (o.duration_minutes > 0 ? `${o.name}（${minutesLabel(o.duration_minutes)}）` : o.name))
+    .join("／");
+
+/**
+ * 「あとからオプションを足そうとしたが、後ろが空いていなかった」。
+ *
+ * SQLSTATE `GB008`（`20260904000000_booking_option_update_guard.sql` がこの用途専用に
+ * 付けている）。満枠（文言のみ・SQLSTATE 無し）や GB001（担当が埋まっている）と
+ * 混ぜないのは、店員に出す案内が違うため——満枠は「別の時間なら取れる」だが、
+ * これは「この予約は伸ばせない」で、対処が別（予約を動かすか、短いオプションにする）。
+ */
+export const OPTION_BLOCKED_SQLSTATE = "GB008";
+
+export const isOptionBlockedError = (error: unknown): boolean =>
+  !!error && typeof error === "object" &&
+  (error as { code?: string }).code === OPTION_BLOCKED_SQLSTATE;

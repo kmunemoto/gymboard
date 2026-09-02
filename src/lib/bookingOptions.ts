@@ -14,13 +14,33 @@
  * 「60分 + 間15分 + 30分 + 間15分 = 120分」ではない。間を2回取ると、実際には
  * 空いている15分が予定表から消える。`sessionFootprintMinutes` がこの唯一の計算。
  *
- * ## いまの版でできること
+ * ## 占有を計算している場所は**5つ**ある（2026-09-03・PR #368 で全部そろえた）
  *
- * 店が**オプションを定義できる**ところまで（`TrainerBookingOptions`）。
- * お客様側の選択と、`check_booking_overlap` の占有への加算は次の版。
- * DB を変えるときは、トリガーの中の footprint 計算が**3箇所**にあることに注意する
- * （これから入れる予約 / 既存の `bookings` / 既存の `trial_bookings`）。
- * 片方だけ直すと「Aの後にBは取れるのにBの後にAは取れない」という左右非対称の判定になる。
+ *   1. `check_booking_overlap`  これから入れる予約
+ *   2. `check_booking_overlap`  既存の `bookings`
+ *   3. `check_booking_overlap`  既存の `trial_bookings`  ← **足さない**（列が無い）
+ *   4. `guard_booking_staff_reassign`  担当の差し替え（BEFORE UPDATE）
+ *   5. `get_tenant_booked_slots`  画面が見る埋まり枠
+ *
+ * 1つでも欠けると静かに壊れる。2 を忘れると**本物の二重予約**（ストレッチの最中に
+ * 次のお客様が入る）、5 を忘れると**「空きに見えるのに送信すると断られる」**。
+ * 定義は `supabase/migrations/20260903000000_booking_option_minutes.sql`、
+ * 見張りは `src/test/bookingOptionFootprint.test.ts`。
+ *
+ * 🔴 `check_booking_overlap` は `bookings` と `trial_bookings` の**両方**のトリガーから
+ * 呼ばれる。`NEW.option_minutes` と直接書くと**体験予約の登録だけが実行時に落ちる**
+ * （`trial_bookings` にこの列は無い）。`to_jsonb(NEW) ->> ...` で読むこと。
+ *
+ * ## 選び直したら空き枠を作り直すこと
+ *
+ * 占有が伸びる＝選べる枠が変わる。作り直さないと「画面では選べているのに送信すると
+ * DB に断られる」になる。`useBookingOptionSelection({ onChange })` がその口で、
+ * 選択欄は**時間を選ぶ前**に置いてある。
+ *
+ * ## 入れたあとの予約に、後からオプションを足す導線は作らないこと
+ *
+ * 重複判定は **BEFORE INSERT のみ**（20260804000000 の方針）。UPDATE で占有を伸ばしても
+ * **何も検査されず**、次のお客様の枠を静かに飲み込む。作るならそのトリガーを同時に足す。
  *
  * ## 料金は表示のための数字
  *

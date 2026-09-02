@@ -26,6 +26,13 @@ import {
  * 🔴 保存は「更新 → 追加 → 削除」の順。削除を先にすると、追加だけ失敗したときに
  *    オプションが静かに全部消える（TrainerCapacityWindows と同じ理由）。
  *
+ * 🔴 追加した行の id は insert の `.select("id")` で必ず受け取る。受け取らないと
+ *    最後の削除の「残す id」に入らず、**いま入れた行を自分で消す**。
+ *    条件なしの全削除は「画面が0件のとき」だけ。残す id の件数で判断してはいけない
+ *    （2026-09-03: 最初の1件を追加すると保存直後に消える不具合を出荷した）。
+ *    順番だけを見る検査では捕まらないので、src/test/trainerBookingOptionsSave.test.tsx
+ *    で偽の DB を相手に実際に保存させて見張っている。
+ *
  * 🔴 行の id は保存しても変わらない（差し替えではなく更新する）。
  *    予約側がオプションを id で指すようになるため、保存のたびに id が変わると
  *    過去の予約から「何を付けたか」が辿れなくなる。
@@ -144,9 +151,15 @@ const TrainerBookingOptions = () => {
     }
 
     // 2) 追加ぶんを入れる
+    //    🔴 `.select("id")` で採番された id を必ず受け取る。受け取らないと 3) の
+    //       keepIds に入らず、いま入れたばかりの行を自分で消してしまう。
     const added = rows.filter((r) => !r.id).map(({ id: _id, ...values }) => values);
+    const addedIds: string[] = [];
     if (added.length > 0) {
-      const { error } = await supabase.from("booking_options").insert(added as never);
+      const { data: inserted, error } = await supabase
+        .from("booking_options")
+        .insert(added as never)
+        .select("id");
       if (error) {
         console.error("予約オプションの追加に失敗:", error);
         toast.error(t("bookingOptions.saveFailed"));
@@ -154,14 +167,35 @@ const TrainerBookingOptions = () => {
         void load();
         return;
       }
+      addedIds.push(...((inserted ?? []) as { id: string }[]).map((r) => r.id));
     }
 
     // 3) 画面から消したぶんを消す（最後にやる）
-    const keepIds = rows.map((r) => r.id).filter((v): v is string => Boolean(v));
-    const del = supabase.from("booking_options").delete().eq("tenant_id", tenant.id);
-    const { error: delErr } = keepIds.length > 0
-      ? await del.not("id", "in", `(${keepIds.join(",")})`)
-      : await del;
+    const keepIds = [
+      ...rows.map((r) => r.id).filter((v): v is string => Boolean(v)),
+      ...addedIds,
+    ];
+    // 🔴 条件なしの全削除は「画面が0件のとき」だけ。keepIds の件数で分岐すると、
+    //    初めてオプションを1つ追加した保存（既存0件・keepIds が空に見える）で
+    //    いま入れた行ごと消える。2026-09-03 に実際にそうなった。
+    let delErr: { message?: string } | null = null;
+    if (rows.length === 0) {
+      ({ error: delErr } = await supabase
+        .from("booking_options")
+        .delete()
+        .eq("tenant_id", tenant.id));
+    } else if (keepIds.length > 0) {
+      ({ error: delErr } = await supabase
+        .from("booking_options")
+        .delete()
+        .eq("tenant_id", tenant.id)
+        .not("id", "in", `(${keepIds.join(",")})`));
+    } else {
+      // 行はあるのに残すべき id が1つも分からない（insert が id を返さない等）。
+      // 消す根拠が無いので何もしない。消し損ねは load() で画面に出るが、
+      // ここで全削除すると取り返せない。
+      console.error("予約オプション: 残す id が取れなかったので削除を見送った");
+    }
     if (delErr) {
       console.error("予約オプションの削除に失敗:", delErr);
       toast.error(t("bookingOptions.saveFailed"));

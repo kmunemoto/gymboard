@@ -249,10 +249,22 @@ describe("店側の設定画面", () => {
   it("🔴 削除は最後（追加が失敗したときにオプションが静かに消えないため）", () => {
     const update = src.indexOf('.update(values as never)');
     const insert = src.indexOf('.insert(added as never)');
-    const remove = src.indexOf('.delete().eq("tenant_id"');
+    const remove = src.indexOf(".delete()");
     expect(update).toBeGreaterThan(-1);
     expect(insert).toBeGreaterThan(update);
     expect(remove).toBeGreaterThan(insert);
+  });
+
+  it("🔴 追加した行の id を insert から受け取る（受け取らないと自分で消す）", () => {
+    // 動きの検証は trainerBookingOptionsSave.test.tsx。ここは
+    // 「id を受け取る呼び方をやめていないか」だけを見る。
+    expect(src).toMatch(/\.insert\(added as never\)\s*\n?\s*\.select\("id"\)/);
+  });
+
+  it("🔴 条件なしの全削除は「画面が0件のとき」だけ", () => {
+    // keepIds の件数で分岐すると、初めての1件を追加した保存で全部消える
+    expect(src).toContain("if (rows.length === 0) {");
+    expect(src).not.toMatch(/keepIds\.length > 0\s*\n?\s*\?/);
   });
 
   it("🔴 保存しても id が変わらない（過去の予約から何を付けたか辿れなくなるため）", () => {

@@ -167,3 +167,33 @@ service_role で叩ける環境が要るので、セッションからは
 **Lovable のエージェントに「この本文で1回叩いて、返ってきた一覧を貼って」と頼む**のが早い。
 「デプロイしました」「401 でした（404 ではない）」は**根拠にならない**——
 401 は関数の存在を示すだけで、**新しいテンプレートが入ったかは何も示さない。**
+
+### 実際にやってみた記録（2026-09-03、booking-option-changed）
+
+上の手順どおり `send-transactional-email` を service_role で叩くよう Lovable に頼んだが、
+**Lovable のサンドボックス環境が持つ `SUPABASE_SERVICE_ROLE_KEY` と、デプロイ済み
+Edge Function のランタイムが持つ値が一致せず、401 になった**（署名鍵の移行後、
+サンドボックス側が古い値を持っていた模様）。つまり「service_role で叩ける環境」の
+**内側**にいたはずの Lovable でもこれが起きた——service_role が使える環境は
+思ったより狭い、ということ。
+
+Lovable が自分で見つけた代替経路: **`preview-transactional-email`** も同じ
+`registry.ts` を import しており、`LOVABLE_API_KEY`（Lovable のサンドボックスが
+持っている）で認証できる。これを呼んでテンプレート名の一覧を取得し、
+`booking-option-changed` が含まれることを確認した。
+
+```
+new-booking-notification, booking-confirmation, trial-booking-confirmation,
+drop-in-booking-confirmation, booking-cancellation, booking-option-changed,
+new-account-notification, trial-booking-reminder, booking-reminder, customer-invite
+```
+
+これで確認になるのは、**2つの関数を1回の `deploy_edge_functions` 呼び出しで
+同時にデプロイした**（同じソースツリーから同時にビルドされた）から。
+別々にデプロイした場合は、片方が更新されもう片方が古いままという状態が
+理屈のうえではありうるので、この代替は「2つを同時にデプロイした」という前提とセット。
+
+**次にやるときの近道:** 最初から `send-transactional-email` を直接叩こうとせず、
+`preview-transactional-email` を `LOVABLE_API_KEY` で叩いて一覧を見てもらうほうが早い
+（`send-transactional-email` 側の service_role 認証は、Lovable のサンドボックスからも
+通らないことがある）。

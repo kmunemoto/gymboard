@@ -12,6 +12,9 @@ import { blockEndMinutes, businessGridMinutes, isClosedDate, minutesToTime, pars
 import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
+import BookingOptionPicker from "@/components/booking/BookingOptionPicker";
+import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
+import { sessionMinutes as withOptions } from "@/lib/bookingOptions";
 import {
   buildAnswerSnapshot,
   missingRequiredQuestions,
@@ -94,7 +97,10 @@ const TrainerSchedule = () => {
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   // 代理予約する候補（proxyBookingType）の占有時間。プランごとの設定があればそちらを使う。
   // 「枠をブロックする」（時間帯を手動指定）はプランと無関係なので sessionMinutes のまま。
-  const proxySessionMinutes = resolvePlanSlotMinutes(proxyBookingType, plans, sessionMinutes);
+  const proxySlotMinutes = resolvePlanSlotMinutes(proxyBookingType, plans, sessionMinutes);
+  // 代理予約でもオプションを付けられる（付けないと店側の予約だけ占有が短くなる）。選び直したら枠を外す。
+  const proxyOpts = useBookingOptionSelection({ onChange: () => setProxyTime("") });
+  const proxySessionMinutes = withOptions(proxySlotMinutes, proxyOpts.minutes);
   // 同時に受けられる予約数（ベッド数・施術者数）。未ロード時は安全側の1。
   // 予約を入れるときだけ使う。ブロック枠の作成は「1件でも予約があれば不可」のままにする
   // （ブロックは店全体を閉めるので、空きベッドがあっても既存予約を巻き込むため）。
@@ -207,8 +213,7 @@ const TrainerSchedule = () => {
     if (proxyRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
         proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true,
-        proxyStaffId || null, proxyAnswerSnapshot,
-      );
+        proxyStaffId || null, proxyAnswerSnapshot, proxyOpts.minutes, proxyOpts.snapshot);
       if (booked.length === 0) {
         toast.error(t("schedule.errorAddFailed"));
         setSubmitting(false);
@@ -230,7 +235,8 @@ const TrainerSchedule = () => {
     } else {
       const { data: bookingData, error } = await createBooking(
         proxyClient, proxyDateKey, proxyTime, proxyBookingType, true,
-        { staffUserId: proxyStaffId || null, customAnswers: proxyAnswerSnapshot },
+        { staffUserId: proxyStaffId || null, customAnswers: proxyAnswerSnapshot,
+          optionMinutes: proxyOpts.minutes, bookingOptions: proxyOpts.snapshot },
       );
       if (error) {
         // 店に空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
@@ -254,6 +260,7 @@ const TrainerSchedule = () => {
     setProxyDialogOpen(false);
     setProxyDate(undefined);
     setProxyAnswers({});
+    proxyOpts.reset();
     setMissingProxyAnswerIds([]);
     setProxyTime("");
     setProxyClient("");
@@ -937,6 +944,7 @@ const TrainerSchedule = () => {
             {proxyDate && (
               <div id="proxy-time-slots-section" className="scroll-mt-4">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelStartTime")}</label>
+                <BookingOptionPicker options={proxyOpts.options} selectedIds={proxyOpts.selectedIds} onToggle={proxyOpts.toggle} disabled={submitting} className="mb-3" />
                 <div className="grid grid-cols-4 gap-1.5 max-h-48 overflow-y-auto">
                   {(() => {
                     const slots: { time: string; blocked: boolean }[] = [];
@@ -944,7 +952,7 @@ const TrainerSchedule = () => {
                     // 直書きで、営業時間を延ばしても 21:00 で止まっていた。
                     // 曜日別の営業時間と、指名した担当のシフトまで反映する。
                     for (const totalMin of staffBookingSlotMinutes(
-                      tenant?.operating_hours, sessionMinutes, weekdayOfDateKey(proxyDateKey),
+                      tenant?.operating_hours, proxySessionMinutes, weekdayOfDateKey(proxyDateKey),
                       staffSchedules, proxyStaffId || null,
                     )) {
                       const time = minutesToTime(totalMin);

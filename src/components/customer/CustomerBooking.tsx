@@ -45,6 +45,9 @@ import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindow
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, isDayClosed, isDayClosedError } from "@/lib/bookingClosedDays";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
+import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
+import BookingOptionPicker from "@/components/booking/BookingOptionPicker";
+import { sessionFootprintMinutes, sessionMinutes } from "@/lib/bookingOptions";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
   buildAnswerSnapshot,
@@ -170,6 +173,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const [repeatWeeks, setRepeatWeeks] = useState(1);
   // 予約の日時変更（リスケジュール）モード: 対象の既存予約（null=通常の新規予約モード）
   const [rescheduleTarget, setRescheduleTarget] = useState<BookingWithTime | null>(null);
+  // 予約に付けるオプション（例: トレーニング後の30分ストレッチ）。
+  // 🔴 予約変更のときは選び直させず、元の予約のぶんを引き継ぐ（事前アンケートと同じ扱い）。
+  //    ここを 0 にすると、75分ぶんの枠を「空き」と見せて DB に105分で拒否される。
+  const bookingOpts = useBookingOptionSelection({ onChange: () => setSelectedSlot(null) });
+  const optionMinutes = rescheduleTarget ? (rescheduleTarget.optionMinutes ?? 0) : bookingOpts.minutes;
+  // お客様に見せる長さ（1枠＋オプション）。間（buffer）は含めない。
+  const totalMinutes = sessionMinutes(slotMinutes, optionMinutes);
   // 当日予約の変更を「変更する」で即実行せず、一度警告表示に留めるための2段階確認フラグ
   const [rescheduleForfeitPending, setRescheduleForfeitPending] = useState(false);
   // キャンセル待ちの登録/解除も、タップで即実行せず一度確認を挟む
@@ -271,7 +281,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     const newMin = timeToMin(time);
-    const newEnd = newMin + slotMinutes + bookingBufferMinutes;
+    const newEnd = newMin + sessionFootprintMinutes(slotMinutes, optionMinutes, bookingBufferMinutes);
     // Bookings occupy the gym's configured session length (既定60分) plus the gym's
     // configured buffer (既定15分). Apply the same footprint to both existing bookings
     // and the candidate so the buffer is enforced
@@ -312,7 +322,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const lastBookableStartOn = (date: string): number => {
     const day = resolveDayBusinessMinutes(businessHours, weekdayOfDateKey(date));
     if (!day) return 0;
-    return day.close - slotMinutes;
+    return day.close - totalMinutes;
   };
 
   // 今日(JST)で、かつ締切を過ぎていて1枠も取れない日か。「空き状況の閲覧のみ」の案内を出す対象。
@@ -372,7 +382,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     // 指名なし／シフト未設定なら、結果は店の営業時間そのもの（従来どおり）。
     const weekday = weekdayOfDateKey(dateKey);
     for (const totalMin of staffBookingSlotMinutes(
-      businessHours, slotMinutes, weekday, staffSchedules, selectedStaffId,
+      businessHours, totalMinutes, weekday, staffSchedules, selectedStaffId,
     )) {
       const time = minutesToTime(totalMin);
       const blocked = isSlotBlocked(dateKey, time);
@@ -452,6 +462,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     }
     setMissingAnswerIds([]);
     const answerSnapshot = buildAnswerSnapshot(memberQuestions, answers);
+    const optionSnapshot = bookingOpts.snapshot;
 
     setSubmitting(true);
 
@@ -466,6 +477,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     if (effectiveRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
         user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks, false, selectedStaffId, answerSnapshot,
+        optionMinutes, optionSnapshot,
       );
       if (booked.length === 0) {
         // 全週スキップ。全部が回数上限（GB003）／プラン上限（GB004）なら満枠ではない
@@ -509,7 +521,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     } else {
       const { data, error } = await createBooking(
         user.id, dateKey, slot.time, selectedPlan, false,
-        { staffUserId: selectedStaffId, customAnswers: answerSnapshot },
+        {
+          staffUserId: selectedStaffId, customAnswers: answerSnapshot,
+          optionMinutes, bookingOptions: optionSnapshot,
+        },
       );
       if (error) {
         // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
@@ -531,7 +546,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     const firstBooking = createdBookings[0];
 
     const [h, m] = slot.time.split(":").map(Number);
-    const endMin = h * 60 + m + slotMinutes;
+    const endMin = h * 60 + m + totalMinutes;
     const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
     const newBooking: BookingWithTime = {
@@ -553,6 +568,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     // 聞き直す前提なので、残すと2件目に前回の回答が黙って付いてくる。
     setAnswers({});
     setMissingAnswerIds([]);
+    bookingOpts.reset(); // オプションも消す（回答と同じ理由。残すと次の予約に黙って引き継がれる）
     // plan is auto-assigned, no need to reset
     setSubmitting(false);
     refetch();
@@ -1150,6 +1166,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     </p>
                   </div>
                 )}
+                {/* オプションは**時間を選ぶ前**に置く（あとから付けると占有が伸びて選択済みの枠が無効になる） */}
+                {!rescheduleTarget && (
+                  <BookingOptionPicker options={bookingOpts.options} selectedIds={bookingOpts.selectedIds}
+                    onToggle={bookingOpts.toggle} className="mb-3" />
+                )}
                 <div className="grid grid-cols-4 gap-1.5">
                   {slots.map((slot) => {
                     // 🔴 受付しない帯の枠は、表示も挙動も「普通に埋まっている枠」と**完全に同一**にする
@@ -1232,12 +1253,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                           const t = slots.find((s) => s.id === selectedSlot)?.time;
                           if (!t) return "";
                           const [h, m] = t.split(":").map(Number);
-                          const end = h * 60 + m + slotMinutes;
+                          const end = h * 60 + m + totalMinutes;
                           return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
                         })()}
                       </span>
                       {/* 括弧は翻訳文字列側が持っている。ここで囲むと（（60分））になる */}
-                      {t("booking.slotMinutes", { count: slotMinutes })}
+                      {t("booking.slotMinutes", { count: totalMinutes })}
                     </p>
                     {/* 事前アンケート（店が設定した質問）。1つも無ければ何も出ない。
                         予約変更モードでは聞かない（元の予約の回答を引き継ぐため）。 */}

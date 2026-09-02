@@ -51,6 +51,7 @@ import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { resolveGraceDays } from "@/lib/courseProgress";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
+import { readOptionMinutes, sessionMinutes as withOptions } from "@/lib/bookingOptions";
 import { formatDate } from "@/lib/dateFormat";
 import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { isMilestoneOverdue } from "@/lib/milestoneGoal";
@@ -275,8 +276,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
           const h = dt.getHours();
           const m = dt.getMinutes();
           const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-          const rowSessionMinutes = resolvePlanSlotMinutes(row.booking_type, tenantPlans, sessionMinutes);
-          const endMin = h * 60 + m + rowSessionMinutes;
+          const rowSlotMinutes = resolvePlanSlotMinutes(row.booking_type, tenantPlans, sessionMinutes);
+          // オプション（トレーニング後のストレッチ等）ぶんも足す。ここは parseBooking を
+          // 通らない**独自の写し**なので、足し忘れると店の画面だけお客様と違う時間になる。
+          const endMin = h * 60 + m
+            + withOptions(rowSlotMinutes, readOptionMinutes((row as { option_minutes?: number | null }).option_minutes));
           const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
           return {
             id: row.id,

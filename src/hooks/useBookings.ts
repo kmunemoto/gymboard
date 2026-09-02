@@ -14,6 +14,10 @@ import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { devLog } from "@/lib/devLog";
 import { parseAnswerSnapshot, type BookingAnswer } from "@/lib/bookingQuestions";
+import {
+  parseOptionSnapshot, readOptionMinutes, sessionFootprintMinutes, sessionMinutes,
+  type BookingOptionSnapshot,
+} from "@/lib/bookingOptions";
 
 export interface BookingRow {
   id: string;
@@ -27,6 +31,9 @@ export interface BookingRow {
   staff_user_id?: string | null;
   /** 事前アンケートの回答スナップショット（src/lib/bookingQuestions.ts 参照） */
   custom_answers?: unknown;
+  /** 付けたオプション（src/lib/bookingOptions.ts 参照）。列が無い環境では undefined */
+  option_minutes?: number | null;
+  booking_options?: unknown;
 }
 
 // Feature flag: customer-side LINE notifications for booking creation/cancellation.
@@ -70,6 +77,10 @@ export interface BookingWithTime {
   staff_user_id?: string | null;
   /** 事前アンケートの回答（読み出し済み）。無ければ空配列。 */
   customAnswers?: BookingAnswer[];
+  /** 付けたオプションの合計時間（分）。🔴 `endTime` には**すでに足してある**（足し直さない）。 */
+  optionMinutes?: number;
+  /** 付けたオプションの控え（名前・時間・料金）。無ければ空配列。 */
+  bookingOptions?: BookingOptionSnapshot[];
 }
 
 // tenantDefaultMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
@@ -80,13 +91,17 @@ function parseBooking(
   tenantDefaultMinutes: number = 60,
   tenantPlans?: ReadonlyArray<{ plan_name: string; slot_duration_minutes?: number | null }> | null,
 ): BookingWithTime {
-  const sessionMinutes = resolvePlanSlotMinutes(row.booking_type, tenantPlans, tenantDefaultMinutes);
+  const slotMinutes = resolvePlanSlotMinutes(row.booking_type, tenantPlans, tenantDefaultMinutes);
+  // 🔴 オプションは「同じ1回のセッション」なのでお客様に見せる長さに含める。
+  //    間（buffer）は含めない（店の都合の時間）。src/lib/bookingOptions.ts
+  const optionMinutes = readOptionMinutes(row.option_minutes);
+  const totalMinutes = sessionMinutes(slotMinutes, optionMinutes);
   // booking_date is a UTC ISO; render it in JST wall-clock.
   const dt = toJSTDate(row.booking_date);
   const h = dt.getHours();
   const m = dt.getMinutes();
   const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  const endMin = h * 60 + m + sessionMinutes;
+  const endMin = h * 60 + m + totalMinutes;
   const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
   const date = format(dt, "yyyy-MM-dd");
 
@@ -101,6 +116,8 @@ function parseBooking(
     booking_type: row.booking_type,
     staff_user_id: row.staff_user_id ?? null,
     customAnswers: parseAnswerSnapshot(row.custom_answers),
+    optionMinutes,
+    bookingOptions: parseOptionSnapshot(row.booking_options),
   };
 }
 
@@ -310,6 +327,8 @@ export const checkSlotBlocked = (
   // 店に空きがあっても、その担当が埋まっていればその人では取れない。
   // DB 側 check_booking_overlap も店全体→担当者の二段構えで判定する。
   staffUserId: string | null = null,
+  // これから取る予約に付けるオプションの合計時間（分）。間は後ろに1回だけ（60+30+15=105）。
+  optionMinutes: number = 0,
 ): boolean => {
   const BUFFER_MINUTES = bufferMinutes;
   const timeToMin = (t: string) => {
@@ -321,7 +340,9 @@ export const checkSlotBlocked = (
   // Default booking footprint is the gym's configured session length plus buffer.
   // This symmetric window prevents bookings from being placed too close
   // before or after an existing booking.
-  const newEnd = endTimeOverride ? timeToMin(endTimeOverride) : newMin + sessionMinutes + BUFFER_MINUTES;
+  const newEnd = endTimeOverride
+    ? timeToMin(endTimeOverride)
+    : newMin + sessionFootprintMinutes(sessionMinutes, optionMinutes, BUFFER_MINUTES);
 
   const overlapping = bookings.filter((b) => {
     if (b.date !== date || b.status === "キャンセル済み") return false;
@@ -425,6 +446,10 @@ export const createBooking = async (
     silent?: boolean;
     staffUserId?: string | null;
     customAnswers?: BookingAnswer[] | null;
+    /** 付けたオプションの合計時間（分）。占有はこのぶん伸びる（間は増えない）。 */
+    optionMinutes?: number | null;
+    /** 付けたオプションの控え。あとから booking_options を直しても内容が変わらないように残す。 */
+    bookingOptions?: BookingOptionSnapshot[] | null;
   } = {},
 ) => {
   const bookingDate = `${date}T${startTime}:00+09:00`;
@@ -439,6 +464,10 @@ export const createBooking = async (
   // custom_answers も同じ理由で「回答があるときだけ」入れる（未適用のDBで
   // PGRST204 になり、全予約が作れなくなるのを避ける）。
   const customAnswers = opts.customAnswers?.length ? opts.customAnswers : null;
+  // オプションも同じ理由で「付いているときだけ」入れる。列が無いDBでも
+  // オプション無しの予約は従来どおり通る（option_minutes は NOT NULL DEFAULT 0）。
+  const optionMinutes = readOptionMinutes(opts.optionMinutes);
+  const bookingOptions = opts.bookingOptions?.length ? opts.bookingOptions : null;
   const basePayload = {
     user_id: userId,
     booking_date: bookingDate,
@@ -446,6 +475,8 @@ export const createBooking = async (
     source: "gymboard",
     ...(staffUserId ? { staff_user_id: staffUserId } : {}),
     ...(customAnswers ? { custom_answers: customAnswers } : {}),
+    ...(optionMinutes > 0 ? { option_minutes: optionMinutes } : {}),
+    ...(bookingOptions ? { booking_options: bookingOptions } : {}),
   };
   // silent＝予約変更（reschedule）の内部 INSERT。サーバー側の通知トリガー
   // （notify_booking_created）が「新規予約」通知を出さないようマーカーを付ける
@@ -502,6 +533,8 @@ export const createBooking = async (
             booking_date: data.booking_date,
             booking_type: bookingType,
             client_name: prof?.display_name || "顧客",
+            // トレーナーのGoogleカレンダーもオプションぶん長くする（渡さないと60分のまま）
+            option_minutes: optionMinutes,
           },
         }).catch(console.error);
       });
@@ -529,6 +562,9 @@ export const createRecurringBookings = async (
   // 事前アンケートの回答は全回に同じものを付ける（1回の操作でまとめて取る予約なので、
   // 回ごとに聞き直すと入力が4回に増える）。
   customAnswers: BookingAnswer[] | null = null,
+  // オプションも全回に同じものを付ける（回答と同じ理由）。
+  optionMinutes: number = 0,
+  bookingOptions: BookingOptionSnapshot[] | null = null,
 ): Promise<{ booked: { id: string; date: string }[]; skipped: { date: string; code?: string }[] }> => {
   const booked: { id: string; date: string }[] = [];
   // スキップ理由の code（SQLSTATE）も返す。満枠と回数上限（GB003）では案内が違う
@@ -540,7 +576,9 @@ export const createRecurringBookings = async (
     // ローカル日付で +7日ずつ（時刻を持たない日付演算のためTZずれ無し）
     const d = new Date(y, mo - 1, da + i * 7);
     const dateKey = format(d, "yyyy-MM-dd");
-    const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, { staffUserId, customAnswers });
+    const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, {
+      staffUserId, customAnswers, optionMinutes, bookingOptions,
+    });
     if (error || !data) {
       skipped.push({ date: dateKey, code: (error as { code?: string } | null)?.code });
     } else {
@@ -559,7 +597,7 @@ export const createRecurringBookings = async (
 async function resyncCalendarCreate(bookingId: string): Promise<void> {
   const { data: b } = await supabase
     .from("bookings")
-    .select("id, user_id, booking_date, booking_type")
+    .select("id, user_id, booking_date, booking_type, option_minutes")
     .eq("id", bookingId)
     .maybeSingle();
   if (!b) return;
@@ -575,6 +613,7 @@ async function resyncCalendarCreate(bookingId: string): Promise<void> {
       booking_date: b.booking_date,
       booking_type: b.booking_type,
       client_name: prof?.display_name || "顧客",
+      option_minutes: readOptionMinutes((b as { option_minutes?: number | null }).option_minutes),
     },
   });
 }
@@ -606,6 +645,18 @@ export const rescheduleBooking = async (
   // 新しい日時でその担当が埋まっていれば、DB のトリガーが拒否して変更自体が失敗する
   // ＝旧枠が復元されるので、担当だけ静かに外れることは起きない。
   const oldStaffUserId = ((old as { staff_user_id?: string | null }).staff_user_id) ?? null;
+  // 🔴 オプションも引き継ぐ。日時変更は「旧行を削除 → 新行を INSERT」なので、渡さなかった列は
+  //    **消える**。渡し忘れると、代金を払って付けたストレッチが日時変更だけで消え、しかも
+  //    占有が75分に戻ってストレッチの最中に別のお客様が入る。
+  //    （custom_answers は以前から落ちている既知の穴。別途直す。）
+  const oldOptionMinutes = readOptionMinutes((old as { option_minutes?: number | null }).option_minutes);
+  const oldBookingOptions = parseOptionSnapshot((old as { booking_options?: unknown }).booking_options);
+  const carryOver = {
+    silent: true as const,
+    staffUserId: oldStaffUserId,
+    optionMinutes: oldOptionMinutes,
+    bookingOptions: oldBookingOptions,
+  };
 
   const newBookingDate = `${newDate}T${newStartTime}:00+09:00`;
   // booking_date は timestamptz（SELECT時はUTC表記）なので瞬時(getTime)で同一判定する
@@ -627,7 +678,7 @@ export const rescheduleBooking = async (
     if (fErr) return { data: null, error: fErr };
     // 2) 新枠で作成（別日なら重複判定は日付違いで対象外。満枠等は作成側が拒否）
     const { data: created, error: createError } = await createBooking(
-      old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true, staffUserId: oldStaffUserId },
+      old.user_id, newDate, newStartTime, old.booking_type, false, carryOver,
     );
     if (createError || !created) {
       // 失敗 → 旧枠の消化を取り消して元の予約に戻す（予約消失を防ぐ）
@@ -653,7 +704,7 @@ export const rescheduleBooking = async (
 
   // 2) 新枠で作成（重複防止トリガーで満枠を検証。通知は出さない）
   const { data: created, error: createError } = await createBooking(
-    old.user_id, newDate, newStartTime, old.booking_type, false, { silent: true, staffUserId: oldStaffUserId },
+    old.user_id, newDate, newStartTime, old.booking_type, false, carryOver,
   );
 
   if (createError || !created) {
@@ -664,8 +715,7 @@ export const rescheduleBooking = async (
     // 復元に失敗したら restoreFailed で呼び出し側へ明示する（予約を無音で消さない）。
     // 担当（staffUserId）も引き継ぐ（以前は復元時に担当が静かに外れていた）。
     const { error: restoreError } = await createBooking(
-      old.user_id, oldJstDate, oldJstTime, old.booking_type, false,
-      { silent: true, staffUserId: oldStaffUserId },
+      old.user_id, oldJstDate, oldJstTime, old.booking_type, false, carryOver,
     );
     if (restoreError) {
       console.error("reschedule rollback failed:", restoreError);
@@ -817,7 +867,9 @@ export const cancelBooking = async (
   // Fetch booking details before deleting
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("id, user_id, booking_date, booking_type, google_event_id, tenant_id")
+    // option_minutes（キャンセルメールの時間帯）に要る。列を明示列挙すると未適用のDBで
+    // 42703 になりキャンセルが落ちるので `*`（reschedule の SELECT と同じ理由）。
+    .select("*")
     .eq("id", bookingId)
     .maybeSingle();
 
@@ -949,7 +1001,10 @@ async function sendCancelLineNotification(
 }
 
 async function sendCancelEmailNotification(
-  booking: { id: string; user_id: string; booking_date: string; booking_type: string; tenant_id?: string | null },
+  booking: {
+    id: string; user_id: string; booking_date: string; booking_type: string;
+    tenant_id?: string | null; option_minutes?: number | null;
+  },
   cancelledByTrainer: boolean,
   forfeit: boolean,
 ) {
@@ -961,7 +1016,7 @@ async function sendCancelEmailNotification(
   // ジムごとに変更可能（tenants.slot_duration_minutes）。プラン（booking.booking_type）側に
   // 設定があればそちらを優先する（resolvePlanSlotMinutes と同じ「null=継承」の作法）。
   // 取得できない場合のみ既定60分。gym_name はメールの差出人名に使う（渡さないと製品名にフォールバックしてしまう）。
-  let sessionMinutes = 60;
+  let slotMinutes = 60;
   let gymName: string | null = null;
   if (booking.tenant_id) {
     const [{ data: tenantRow }, { data: planRow }] = await Promise.all([
@@ -973,11 +1028,12 @@ async function sendCancelEmailNotification(
         .eq("plan_name", booking.booking_type)
         .maybeSingle(),
     ]);
-    if (tenantRow?.slot_duration_minutes) sessionMinutes = tenantRow.slot_duration_minutes;
-    if (planRow?.slot_duration_minutes != null) sessionMinutes = planRow.slot_duration_minutes;
+    if (tenantRow?.slot_duration_minutes) slotMinutes = tenantRow.slot_duration_minutes;
+    if (planRow?.slot_duration_minutes != null) slotMinutes = planRow.slot_duration_minutes;
     gymName = (tenantRow?.gym_name as string | null) ?? null;
   }
-  const endMin = h * 60 + m + sessionMinutes;
+  // オプションぶんも足す。時間帯を間違えたキャンセルメールはお客様に転送される。
+  const endMin = h * 60 + m + sessionMinutes(slotMinutes, readOptionMinutes(booking.option_minutes));
   const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
   const bookingTime = `${startTime}〜${endTime}`;
 

@@ -132,3 +132,83 @@ export const sessionFootprintMinutes = (
   optionMinutes: number,
   bufferMinutes: number,
 ): number => sessionMinutes(slotMinutes, optionMinutes) + Math.max(0, bufferMinutes);
+
+/** 予約に控える1件ぶんの内容（`bookings.booking_options` の要素）。 */
+export interface BookingOptionSnapshot {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price_yen: number;
+}
+
+/**
+ * 保存用の控えを作る。選ばれた順ではなく**一覧の並び順**で入れる
+ * （店側の予定表とお客様の控えで並びが違うと、同じ予約に見えない）。
+ */
+export const buildOptionSnapshot = (
+  options: ReadonlyArray<BookingOption> | null | undefined,
+  selectedIds: ReadonlyArray<string> | null | undefined,
+): BookingOptionSnapshot[] => {
+  if (!options || !selectedIds || selectedIds.length === 0) return [];
+  const chosen = new Set(selectedIds);
+  return options
+    .filter((o) => chosen.has(o.id))
+    .map((o) => ({
+      id: o.id,
+      name: o.name,
+      duration_minutes: o.duration_minutes,
+      price_yen: o.price_yen,
+    }));
+};
+
+/**
+ * 保存済みの控え（jsonb）を安全に読み出す。
+ *
+ * DB に何が入っていても画面を落とさないのが目的（`parseAnswerSnapshot` と同じ）。
+ * 形が違う行は捨てる。
+ */
+export const parseOptionSnapshot = (raw: unknown): BookingOptionSnapshot[] => {
+  if (!Array.isArray(raw)) return [];
+  const out: BookingOptionSnapshot[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const name = typeof rec.name === "string" ? rec.name.trim() : "";
+    if (!name) continue;
+    out.push({
+      id: typeof rec.id === "string" ? rec.id : "",
+      name,
+      duration_minutes:
+        typeof rec.duration_minutes === "number" && Number.isFinite(rec.duration_minutes)
+          ? Math.max(0, Math.trunc(rec.duration_minutes))
+          : 0,
+      price_yen:
+        typeof rec.price_yen === "number" && Number.isFinite(rec.price_yen)
+          ? Math.max(0, Math.trunc(rec.price_yen))
+          : 0,
+    });
+  }
+  return out;
+};
+
+/**
+ * DB から読んだ `option_minutes` を安全な数値にする。
+ * 列がまだ無い環境（マイグレーション未適用）では undefined が来るので 0 に倒す。
+ */
+export const readOptionMinutes = (raw: unknown): number =>
+  typeof raw === "number" && Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
+
+/**
+ * "09:00" と "10:30" から 90 を返す。日をまたぐ予約は無いので単純な差でよい。
+ *
+ * 予約行の `endTime`（`parseBooking` が 1枠＋オプション で作る）から
+ * 「何分のセッションか」を復元するのに使う。画面に「60分」と直書きしないための道具。
+ */
+export const minutesBetween = (startTime: string, endTime: string): number => {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : NaN;
+  };
+  const diff = toMin(endTime) - toMin(startTime);
+  return Number.isFinite(diff) && diff > 0 ? diff : 0;
+};

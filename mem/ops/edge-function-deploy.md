@@ -127,3 +127,43 @@ SELECT id, status_code, left(content, 200) FROM net._http_response WHERE id = <i
 対策は1つだけ: **成功マーカーではなく、結果そのものを見にいく。**
 IPA なら App Store Connect のビルド一覧、テストなら `echo "exit=$?"`、
 Edge Function なら叩いて 404 かどうか。
+
+
+---
+
+## メールテンプレートを足したときの確認（2026-09-03）
+
+**テンプレートは Edge Function のバンドルに入る。** つまり
+`_shared/transactional-email-templates/` にファイルを足して `registry.ts` に登録しても、
+**`send-transactional-email` と `preview-transactional-email` を再デプロイするまで
+本番には出ない。** マージだけでは出ない（上と同じ理由）。
+
+出ていないときの見え方が厄介で、**404 にはならない**。関数はあるので 200 系の経路に入り、
+テンプレート探索で `Template '<名前>' not found. Available: ...` を返す。
+呼び出し側は fire-and-forget なので**画面には何も出ない**。プッシュは出る、メールだけ来ない。
+
+### 🔴 この関数は pg_net から叩けない（確認方法が他と違う）
+
+`push-announcements` などは `x-cron-secret` を受けるので DB から叩けるが、
+**`send-transactional-email` は `verifyCaller` しか見ない**。つまり
+service_role キー**そのもの**（Edge Function ランタイムの環境変数と文字列一致）か、
+本物のユーザー JWT が要る。
+
+vault の `email_queue_service_role_key` では**通らない**。正規のキーではあるが
+ランタイムの環境変数と同じ文字列とは限らないため（20260812040000 に既出。
+2026-09-03 に再確認し、`{"error":"Unauthorized"}` の 401 になった）。
+
+### 確認のしかた
+
+**存在しないテンプレート名で1回叩き、`Available:` の一覧を読む。**
+宛先を書かなければメールは送られない（テンプレート探索は宛先解決より前）。
+
+```
+{"templateName":"zzz-probe-not-a-real-template"}
+→ 404 Template '...' not found. Available: <ここに一覧>
+```
+
+service_role で叩ける環境が要るので、セッションからは
+**Lovable のエージェントに「この本文で1回叩いて、返ってきた一覧を貼って」と頼む**のが早い。
+「デプロイしました」「401 でした（404 ではない）」は**根拠にならない**——
+401 は関数の存在を示すだけで、**新しいテンプレートが入ったかは何も示さない。**

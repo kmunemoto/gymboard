@@ -562,6 +562,53 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_options: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          enabled: boolean
+          id: string
+          name: string
+          price_yen: number
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          enabled?: boolean
+          id?: string
+          name: string
+          price_yen?: number
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          enabled?: boolean
+          id?: string
+          name?: string
+          price_yen?: number
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_options_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_questions: {
         Row: {
           ask_on_member: boolean
@@ -4367,6 +4414,17 @@ export type Database = {
           closed_date: string
           manual: boolean
           reason: string
+        }[]
+      }
+      get_tenant_booking_options: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          description: string
+          duration_minutes: number
+          id: string
+          name: string
+          price_yen: number
+          sort_order: number
         }[]
       }
       get_tenant_booking_questions: {

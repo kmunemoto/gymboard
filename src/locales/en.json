@@ -2923,7 +2923,7 @@
   },
   "closedDays": {
     "limitSection": "Daily booking limit",
-    "limitDesc": "The most bookings you will take in one day. Once a day reaches this number, it stops accepting customer bookings even if time slots are still open. Trial and drop-in bookings count too.",
+    "limitDesc": "The most bookings you will take in one day. Once a day reaches this number, it stops accepting customer bookings even if time slots are still open. Trial and drop-in bookings are not counted — they are always accepted.",
     "limitLabel": "Bookings per day",
     "limitNone": "No limit",
     "limitUnit": "Up to {{count}}",
@@ -2944,5 +2944,33 @@
     "customerClosed": "This day is no longer taking bookings",
     "customerClosedHelp": "Please choose another date.",
     "errorClosed": "This day is no longer taking bookings. Please choose another date."
+  },
+  "bookingOptions": {
+    "section": "Booking add-ons",
+    "desc": "Extras a customer can add to a booking (for example a 30-minute stretch after training). The added time is part of the same session and is held on the schedule.",
+    "empty": "No add-ons yet. Use “Add option” to create one.",
+    "loadFailed": "Could not load add-ons",
+    "reload": "Reload",
+    "addOption": "Add option",
+    "nameLabel": "Name",
+    "namePlaceholder": "Stretch",
+    "durationLabel": "Extra time",
+    "durationNone": "No extra time",
+    "durationUnit": "{{count}} min",
+    "priceLabel": "Price (JPY)",
+    "pricePlaceholder": "3000",
+    "priceHint": "Leave blank to hide the price. Payment is taken at the gym; the app does not charge for this.",
+    "enabledLabel": "Available",
+    "disabledLabel": "Paused",
+    "saved": "Add-ons saved",
+    "cleared": "All add-ons removed",
+    "saveFailed": "Could not save add-ons",
+    "invalid": {
+      "name": "Enter a name for the add-on (up to 40 characters)",
+      "duration": "That extra time is not valid",
+      "price": "That price is not valid (0–1,000,000)"
+    },
+    "footprintNote": "No buffer is inserted between the training and the add-on. A 60-minute slot plus a 30-minute add-on plus a 15-minute buffer holds 105 minutes.",
+    "notYetCustomerNote": "For now this is settings only. Choosing add-ons on the customer booking screen comes in the next update."
   }
 }

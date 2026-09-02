@@ -273,3 +273,39 @@ describe("列が読めない環境でも予約が止まらない", () => {
     expect(hook).toMatch(/if \(error \|\| !data\) \{\s*setClosedDays\(\[\]\);/);
   });
 });
+
+describe("🔴 設定画面の説明文が実装とずれていない", () => {
+  // 2026-09-02 に実際にずれていた。体験・ドロップインを仕組みから外した
+  // （20260901010000）のに、5言語すべての説明文が「体験・ドロップインの予約も
+  // 1件として数えます」のままだった。読んだ店主は上限を実態より小さく設定する。
+  //
+  // ⚠️ 文言そのものは断言しない（フォークがオーバーレイできなくなる）。
+  //    「数える」と書いていないことだけを見る。
+  const LOCALES = ["ja", "en", "ko", "zh-CN", "zh-TW"] as const;
+  const COUNTS_TRIAL = [
+    /体験・ドロップインの予約も1件として数えます/,
+    /Trial and drop-in bookings count/i,
+    /체험·드롭인 예약도 1건으로 계산합니다/,
+    /体验和临时预约同样计入/,
+    /體驗與臨時預約同樣計入/,
+  ];
+
+  for (const lang of LOCALES) {
+    it(`${lang}: 1日の上限の説明が「体験も数える」と言っていない`, () => {
+      const json = JSON.parse(readFileSync(`src/locales/${lang}.json`, "utf8"));
+      const desc: string = json.closedDays.limitDesc;
+      expect(desc).toBeTruthy();
+      for (const re of COUNTS_TRIAL) {
+        expect(desc, `${lang}.json closedDays.limitDesc が古い（体験は数えない）`).not.toMatch(re);
+      }
+    });
+  }
+
+  it("数え方の実装は体験を含まない（説明文の根拠）", () => {
+    // useDayReception は trial-guest を除いて数えている
+    expect(readCode("src/hooks/useDayReception.ts")).toContain("TRIAL_GUEST");
+    // DB 側にも体験用のトリガーは残っていない
+    const exempt = readSql(TRIAL_EXEMPT);
+    expect(exempt).toContain("DROP TRIGGER IF EXISTS trg_guard_trial_booking_day_closed");
+  });
+});

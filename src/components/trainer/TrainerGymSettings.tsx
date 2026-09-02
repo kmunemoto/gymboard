@@ -46,6 +46,7 @@ import TrainerBookingLimits from "./TrainerBookingLimits";
 import TrainerCapacityWindows from "./TrainerCapacityWindows";
 import TrainerDailyBookingLimit from "./TrainerDailyBookingLimit";
 import TrainerBlockedWindows from "./TrainerBlockedWindows";
+import TrainerBookingOptions from "./TrainerBookingOptions";
 import TrainerDataExport from "./TrainerDataExport";
 import TrainerCustomerImport from "./TrainerCustomerImport";
 import TrainerEmailLog from "./TrainerEmailLog";
@@ -1196,6 +1197,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           営業時間カード（何時から何時まで開けるか）とは目的が違う。 */}
       <section className="space-y-3">
         <TrainerDailyBookingLimit />
+      </section>
+
+      {/* === 予約のオプション === トレーニング後の30分ストレッチなど。追加した時間は
+          同じ1回のセッションとして占有する（間の準備時間は挟まない） */}
+      <section className="space-y-3">
+        <TrainerBookingOptions />
       </section>
 
       {/* === 予約時のカスタム質問（事前アンケート） === */}

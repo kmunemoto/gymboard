@@ -2923,7 +2923,7 @@
   },
   "closedDays": {
     "limitSection": "每日预约上限",
-    "limitDesc": "一天最多接待的预约数量。达到上限后，即使还有空余时段，也会自动停止接受顾客预约。体验和临时预约同样计入。",
+    "limitDesc": "一天最多接待的预约数量。达到上限后，即使还有空余时段，也会自动停止接受顾客预约。体验和临时预约不计入（不受上限限制）。",
     "limitLabel": "每日上限",
     "limitNone": "不限",
     "limitUnit": "最多 {{count}} 位",
@@ -2944,5 +2944,33 @@
     "customerClosed": "该日已停止接受预约",
     "customerClosedHelp": "请选择其他日期。",
     "errorClosed": "该日已停止接受预约，请选择其他日期。"
+  },
+  "bookingOptions": {
+    "section": "预约附加项",
+    "desc": "可以在预约时加购的项目（例如训练后 30 分钟拉伸）。加购的时长作为同一次课程占用日程。",
+    "empty": "还没有附加项。点“添加附加项”创建。",
+    "loadFailed": "无法读取附加项",
+    "reload": "重新读取",
+    "addOption": "添加附加项",
+    "nameLabel": "名称",
+    "namePlaceholder": "拉伸",
+    "durationLabel": "额外时长",
+    "durationNone": "不增加时长",
+    "durationUnit": "{{count}} 分钟",
+    "priceLabel": "价格（日元）",
+    "pricePlaceholder": "3000",
+    "priceHint": "留空则不显示价格。费用在门店支付，App 不代收。",
+    "enabledLabel": "开放中",
+    "disabledLabel": "已停用",
+    "saved": "已保存附加项",
+    "cleared": "已删除全部附加项",
+    "saveFailed": "附加项保存失败",
+    "invalid": {
+      "name": "请输入附加项名称（最多 40 字）",
+      "duration": "额外时长不正确",
+      "price": "价格不正确（0～1,000,000）"
+    },
+    "footprintNote": "训练与附加项之间不插入准备时间。60 分钟预约 + 30 分钟附加项 + 15 分钟间隔，共占用 105 分钟。",
+    "notYetCustomerNote": "目前仅支持在此设置。客户预约页面的选择将在下次更新中提供。"
   }
 }

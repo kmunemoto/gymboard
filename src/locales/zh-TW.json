@@ -2923,7 +2923,7 @@
   },
   "closedDays": {
     "limitSection": "每日預約上限",
-    "limitDesc": "一天最多接待的預約數量。達到上限後，即使還有空檔時段，也會自動停止接受顧客預約。體驗與臨時預約同樣計入。",
+    "limitDesc": "一天最多接待的預約數量。達到上限後，即使還有空檔時段，也會自動停止接受顧客預約。體驗與臨時預約不計入（不受上限限制）。",
     "limitLabel": "每日上限",
     "limitNone": "不限",
     "limitUnit": "最多 {{count}} 位",
@@ -2944,5 +2944,33 @@
     "customerClosed": "該日已停止接受預約",
     "customerClosedHelp": "請選擇其他日期。",
     "errorClosed": "該日已停止接受預約，請選擇其他日期。"
+  },
+  "bookingOptions": {
+    "section": "預約加購項目",
+    "desc": "可在預約時加購的項目（例如訓練後 30 分鐘拉筋）。加購的時間視為同一次課程，會一併佔用行程。",
+    "empty": "還沒有加購項目。請按「新增加購項目」建立。",
+    "loadFailed": "無法讀取加購項目",
+    "reload": "重新讀取",
+    "addOption": "新增加購項目",
+    "nameLabel": "名稱",
+    "namePlaceholder": "拉筋",
+    "durationLabel": "額外時間",
+    "durationNone": "不增加時間",
+    "durationUnit": "{{count}} 分鐘",
+    "priceLabel": "價格（日圓）",
+    "pricePlaceholder": "3000",
+    "priceHint": "留空則不顯示價格。費用於門市支付，App 不代收。",
+    "enabledLabel": "開放中",
+    "disabledLabel": "已停用",
+    "saved": "已儲存加購項目",
+    "cleared": "已刪除全部加購項目",
+    "saveFailed": "加購項目儲存失敗",
+    "invalid": {
+      "name": "請輸入加購項目名稱（最多 40 字）",
+      "duration": "額外時間不正確",
+      "price": "價格不正確（0～1,000,000）"
+    },
+    "footprintNote": "訓練與加購項目之間不插入準備時間。60 分鐘預約 + 30 分鐘加購 + 15 分鐘間隔，共佔用 105 分鐘。",
+    "notYetCustomerNote": "目前僅支援在此設定。客戶預約畫面的選擇將於下次更新提供。"
   }
 }

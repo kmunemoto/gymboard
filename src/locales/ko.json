@@ -2923,7 +2923,7 @@
   },
   "closedDays": {
     "limitSection": "하루 예약 상한",
-    "limitDesc": "하루에 받을 예약 수의 상한입니다. 상한에 도달한 날은 빈 시간이 남아 있어도 고객 예약 접수를 자동으로 종료합니다. 체험·드롭인 예약도 1건으로 계산합니다.",
+    "limitDesc": "하루에 받을 예약 수의 상한입니다. 상한에 도달한 날은 빈 시간이 남아 있어도 고객 예약 접수를 자동으로 종료합니다. 체험·드롭인 예약은 계산하지 않습니다(상한 없이 접수합니다).",
     "limitLabel": "하루 상한",
     "limitNone": "제한 없음",
     "limitUnit": "{{count}}명까지",
@@ -2944,5 +2944,33 @@
     "customerClosed": "이 날은 접수를 종료했습니다",
     "customerClosedHelp": "다른 날짜를 선택해 주세요.",
     "errorClosed": "이 날은 접수를 종료했습니다. 다른 날짜를 선택해 주세요."
+  },
+  "bookingOptions": {
+    "section": "예약 옵션",
+    "desc": "예약에 추가할 수 있는 메뉴입니다(예: 트레이닝 후 30분 스트레칭). 추가된 시간은 같은 한 번의 세션으로 일정을 차지합니다.",
+    "empty": "옵션이 아직 없습니다. “옵션 추가”에서 만들 수 있습니다.",
+    "loadFailed": "옵션을 불러오지 못했습니다",
+    "reload": "다시 불러오기",
+    "addOption": "옵션 추가",
+    "nameLabel": "이름",
+    "namePlaceholder": "스트레칭",
+    "durationLabel": "추가 시간",
+    "durationNone": "시간 추가 없음",
+    "durationUnit": "{{count}}분",
+    "priceLabel": "금액(엔)",
+    "pricePlaceholder": "3000",
+    "priceHint": "비워 두면 금액을 표시하지 않습니다. 결제는 매장에서 받으며 앱에서는 결제하지 않습니다.",
+    "enabledLabel": "접수 중",
+    "disabledLabel": "중지됨",
+    "saved": "옵션을 저장했습니다",
+    "cleared": "옵션을 모두 삭제했습니다",
+    "saveFailed": "옵션 저장에 실패했습니다",
+    "invalid": {
+      "name": "옵션 이름을 입력해 주세요(40자까지)",
+      "duration": "추가 시간이 올바르지 않습니다",
+      "price": "금액이 올바르지 않습니다(0~1,000,000엔)"
+    },
+    "footprintNote": "트레이닝과 옵션 사이에는 준비 시간을 넣지 않습니다. 60분 예약 + 옵션 30분 + 다음 분까지 15분이라면 105분을 차지합니다.",
+    "notYetCustomerNote": "지금은 설정까지입니다. 고객 예약 화면에서의 선택은 다음 업데이트에서 대응합니다."
   }
 }

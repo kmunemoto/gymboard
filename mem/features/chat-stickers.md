@@ -9,9 +9,9 @@
 |---|---|---|
 | 誰のキャラか | **ジムボード全体の公式キャラ**（Salute御所南専用にしない） | 他のジムに売るときそのまま資産になる |
 | 文字 | 🔴 **絵に焼き込む**（2026-09-03 宗本さん決定） | LINE のスタンプらしさ。下記の代償を承知のうえ |
-| 体の色 | **クリーム色**。タオル等の小物だけティファニーブルー `#2EB8AA` | ジムごとにテーマ色を変えられる（`ThemeColorSwitcher`）ので、体をブランド色にすると
-テーマを変えた店で浮く。濃い輪郭＋クリームの体なら**ダークモードでも沈まない** |
-| キャラの既定 | **案A（まんまる）** | 小さくしたときの読みやすさが最優先の制約。円のシルエットがいちばん強い |
+| 体の色 | **明るいグレー**の体＋**ティファニー系のティール**のプレート | ジムごとにテーマ色を変えられる（`ThemeColorSwitcher`）ので、体をブランド色一色にすると
+テーマを変えた店で浮く。グレーの体＋濃い輪郭なら**明暗どちらの背景でも沈まない** |
+| キャラ | 🔴 **ダンベル型に決定**（2026-09-03・生成した絵で確定） | シルエットが強く、120pxまで縮んでも形が分かる |
 | 枚数 | 16枚（うち★8枚を先に） | LINE の最小セットが8。まず8枚出して反応を見る |
 
 ### 🔴 文字を焼き込む代償（承知のうえで選んでいる）
@@ -24,233 +24,92 @@
    1〜2字だけ違う場合は、その1枚だけ「文字なしで生成 → Canva 等で文字を乗せる」に
    切り替えるのが速い（フォントで入れれば絶対に崩れない）
 
-## 🔴 作る順番（間違えると全部やり直し）
+## 🔴 キャラは確定済み。参照画像を必ず渡す
+
+2026-09-03 に宗本さんが生成した**キャラクターシートで確定**。
+以後のスタンプは、**必ずその画像を参照画像として渡しながら**作る。
+渡せない道具なら、その画像そのものを「この絵柄でポーズだけ変えて」と編集させる。
+
+### ⚠️ 最初に書いた案Cの説明と、実物は2箇所ちがう
+
+書き直してあるが、次に触る人が古い記述に引きずられないよう残しておく。
+
+| 当初の指示 | 実物 |
+|---|---|
+| プレートは**肩** | プレートは**頭の横**（耳の位置） |
+| 中心バーが胴体 | **中心バーが頭**で、胴体は下に別にある |
+| タオルと手首バンドを装着 | **どちらも無い**（タオルは「おつかれさま」で手に持つ小道具として使う） |
+
+### キャラの説明文（16枚すべてで使い回す）
 
 ```
-① キャラクターシートを1枚作る（文字なし）← ここで絵柄を確定させる
-② ①を参照画像として渡しながら、1枚ずつスタンプを作る（文字あり）
+Cute original dumbbell mascot, exactly as in the reference image: a rounded
+light grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick
+teal (#6FC4C4) circular weight plate attached to each side of the head like ears,
+each plate drawn as a slightly 3D disc with a visible darker teal rim. Below the
+head, a small rounded light grey body with very short stubby arms and legs,
+no fingers, no nose. Large round black eyes with a small white highlight, small
+pink oval blush on each cheek, a simple curved mouth. Thick uniform dark slate
+outline (#4A5560), flat vector cel-shaded colours, no gradients, chibi
+proportions with the head about half the total height.
 ```
 
-**①に文字を入れないこと。** 参照画像に文字があると、全スタンプにその文字が引きずられる。
-
-②で参照画像を渡せない道具を使う場合は、**①の画像そのものを「この絵柄でポーズだけ変えて」と
-編集させる**のが確実。
+🔴 **色は文字で指定するより参照画像のほうが正確に揃う。** 上の hex は参照画像を
+渡せない場合の保険。
 
 ---
 
-## ① キャラクターシート（文字なし・1回だけ）
+## スタンプ16枚（そのまま貼る）
+
+★＝先に作る8枚。**`POSE:` と `Japanese text` の2行だけが各枚の違い。**
+
+### 共通のひな形
 
 ```
-Character expression sheet for a cute original mascot, one full-body reference
-on the left and a grid of six head-and-shoulders expressions on the right
-(neutral, big smile, sparkling happy, worried, exhausted, determined).
-Identical original character on every view.
+[キャラの説明文（上のブロックをそのまま）]
 
-The character: a small round plump mascot shaped like a soft rice cake,
-cream-white body (#F7F1E6), simple bean-shaped black eyes, tiny pink blush ovals
-on the cheeks, a small rounded mouth, very short stubby arms and legs,
-no fingers, no nose. Wearing a small teal (#2EB8AA) gym towel draped around
-its neck and a matching teal wristband on one arm.
+POSE: <ポーズ>
 
-Style: clean flat vector illustration, thick uniform dark charcoal outline
-(#3A3A3A), cel-shaded flat colors with one soft shadow tone, no gradients,
-no textures, chibi proportions with a head about half the total height,
-extremely readable silhouette, kawaii Japanese mascot design, sticker art style.
-
-Pure white seamless background, even flat lighting, high resolution, crisp lineart.
-
-no text, no watermark, no logos, no frame borders, no drop shadow,
-no realistic rendering, no 3D, no gradient background, single character only,
-no other characters, no props beyond the towel and wristband.
-```
-
-### キャラを変えるとき
-
-上の「The character:」の段落と、下の16枚の同じ段落を差し替える。
-
-**案B（柴犬）**
-```
-a chubby round shiba inu puppy mascot standing on two legs, cream and light tan
-fur (#F2E3C9 / #E0B87A), small triangular ears, a curled tail, simple round black
-eyes, a tiny dark nose, small blush ovals on the cheeks, short stubby limbs with
-no visible fingers, wearing a teal (#2EB8AA) headband and a matching teal gym
-towel around its neck
-```
-
-**案C（ダンベル）**
-```
-a living dumbbell mascot — a horizontal dumbbell whose centre bar is its round
-body, with two chunky weight plates as its shoulders, soft matte steel grey body
-(#C9D1D3) with teal (#2EB8AA) weight plates, simple bean-shaped black eyes,
-small blush ovals, a tiny rounded mouth, short stubby arms and legs
-```
-
----
-
-## ② スタンプ16枚（そのまま貼る）
-
-★＝先に作る8枚。
-
-### 1 ★ よろしくお願いします
-
-```
-Cute original mascot sticker illustration. A small round plump mascot shaped like
-a soft rice cake, cream-white body (#F7F1E6), simple bean-shaped black eyes, tiny
-pink blush ovals on the cheeks, a small rounded mouth, very short stubby arms and
-legs, no fingers, no nose, wearing a teal (#2EB8AA) gym towel around its neck and
-a teal wristband on one arm.
-
-POSE: bowing politely with both tiny arms at its sides, eyes closed, gentle smile.
-
-Japanese text "よろしくお願いします" at the bottom, bold rounded Japanese gothic
-font (maru gothic), dark charcoal (#3A3A3A) letters with a thick white outline,
+Japanese text "<文字>" at the bottom, bold rounded Japanese gothic font
+(maru gothic), dark charcoal (#3A3A3A) letters with a thick white outline,
 text height about 18% of the canvas, centered, slightly tilted, overlapping the
 character slightly.
 
-Style: clean flat vector illustration, thick uniform dark charcoal outline
-(#3A3A3A), cel-shaded flat colors, no gradients, chibi proportions with a head
-about half the total height, extremely readable silhouette, kawaii Japanese
-sticker art. Transparent background, square canvas, character and text together
-fill about 85% of the frame with even margin on all sides.
+Style: clean flat vector illustration, thick uniform dark slate outline
+(#4A5560), cel-shaded flat colors, no gradients, extremely readable silhouette,
+kawaii Japanese sticker art. Transparent background, square canvas, character
+and text together fill about 85% of the frame with even margin on all sides.
 
 no watermark, no logo, no frame, no drop shadow, no background, no English text,
 no gibberish or malformed characters, single character only.
 ```
 
-### 2 ★ ありがとうございます
+🔴 **`no drop shadow` を消さないこと。** 確定したキャラクターシートの左の1体には
+足元に影が付いている。透過スタンプで影が付くと、吹き出しの上に浮いて見える。
 
-上と同じ。`POSE` と `Japanese text` だけ差し替える。
+### ポーズと文字
 
-```
-POSE: pressing both tiny hands together in front of its chest, eyes closed, warm
-happy smile, small floating hearts around it.
+| # | | POSE（英語のまま） | Japanese text |
+|---|---|---|---|
+| 1 | ★ | `bowing politely with both tiny arms at its sides, eyes closed, gentle smile` | `よろしくお願いします` |
+| 2 | ★ | `pressing both tiny hands together in front of its chest, eyes closed, warm happy smile, small floating hearts around it` | `ありがとうございます` |
+| 3 | ★ | `making a big OK circle with both arms above its head, confident cheerful face` | `了解です！` |
+| 4 | ★ | `flexing one arm showing a tiny muscle, determined fired-up expression, a small flame above its head` | `がんばります！` |
+| 5 | ★ | `holding out a folded teal towel toward the viewer with both hands, kind gentle smile` | `おつかれさま！` |
+| 6 | ★ | `giving a big thumbs up with one arm, winking with one eye, bright smile` | `ナイス！` |
+| 7 | ★ | `running fast to the right, arms swinging, panicked wide eyes, sweat drops and motion lines behind it` | `ちょっと遅れます` |
+| 8 | ★ | `pressing both hands together apologetically, bowing its head, one large sweat drop, sorry troubled eyebrows` | `ごめんなさい` |
+| 9 | | `legs trembling with wobble lines, arms stiff and straight out, strained squeezed-shut eyes, small lightning marks on its legs` | `筋肉痛です…` |
+| 10 | | `lying face down on the floor completely flat, arms and legs sprawled out, swirl eyes, a small puff of steam above it` | `もう限界…` |
+| 11 | | `jumping in the air with both arms raised, sparkling star eyes, huge open smile, sparkles around it` | `うれしい！` |
+| 12 | | `clapping both tiny hands together, impressed sparkling eyes, small sparkles around it` | `すごい！` |
+| 13 | | `waving one arm at the viewer while standing next to a small round wall clock, calm happy smile` | `お待ちしてます` |
+| 14 | | `holding both hands out gently in a stop gesture, worried caring eyebrows, soft concerned smile` | `無理しないで` |
+| 15 | | `raising one arm straight up, curious tilted head, a large question mark floating above its head` | `質問です！` |
+| 16 | | `waving goodbye with one arm, cheerful smile, slight head tilt` | `またね！` |
 
-Japanese text "ありがとうございます"
-```
-
-### 3 ★ 了解です
-
-```
-POSE: making a big OK circle with both arms above its head, confident cheerful face.
-
-Japanese text "了解です！"
-```
-
-### 4 ★ がんばります
-
-```
-POSE: flexing one arm showing a tiny muscle, determined fired-up expression,
-a small flame above its head.
-
-Japanese text "がんばります！"
-```
-
-### 5 ★ おつかれさま
-
-```
-POSE: holding out a folded teal towel toward the viewer with both hands, kind
-gentle smile.
-
-Japanese text "おつかれさま！"
-```
-
-### 6 ★ ナイス
-
-```
-POSE: giving a big thumbs up with one arm, winking with one eye, bright smile.
-
-Japanese text "ナイス！"
-```
-
-### 7 ★ ちょっと遅れます
-
-```
-POSE: running fast to the right, arms swinging, panicked wide eyes, sweat drops
-and motion lines behind it.
-
-Japanese text "ちょっと遅れます"
-```
-
-### 8 ★ ごめんなさい
-
-```
-POSE: pressing both hands together apologetically, bowing its head, one large
-sweat drop, sorry troubled eyebrows.
-
-Japanese text "ごめんなさい"
-```
-
-### 9 筋肉痛です
-
-```
-POSE: legs trembling with wobble lines, arms stiff and straight out, strained
-wide-eyed face, small lightning marks on its thighs.
-
-Japanese text "筋肉痛です…"
-```
-
-### 10 もう限界
-
-```
-POSE: lying face down on the floor completely flat, arms and legs sprawled out,
-swirl eyes, a small puff of steam above it.
-
-Japanese text "もう限界…"
-```
-
-### 11 うれしい
-
-```
-POSE: jumping in the air with both arms raised, sparkling star eyes, huge open
-smile, sparkles around it.
-
-Japanese text "うれしい！"
-```
-
-### 12 すごい
-
-```
-POSE: clapping both tiny hands together, impressed sparkling eyes, small sparkles
-around it.
-
-Japanese text "すごい！"
-```
-
-### 13 お待ちしてます
-
-```
-POSE: waving one arm at the viewer while sitting next to a small round wall clock,
-calm happy smile.
-
-Japanese text "お待ちしてます"
-```
-
-### 14 無理しないで
-
-```
-POSE: holding both hands out gently in a stop gesture, worried caring eyebrows,
-soft concerned smile.
-
-Japanese text "無理しないで"
-```
-
-### 15 質問です
-
-```
-POSE: raising one arm straight up, curious tilted head, a large question mark
-floating above its head.
-
-Japanese text "質問です！"
-```
-
-### 16 またね
-
-```
-POSE: waving goodbye with one arm, the other arm holding the towel, cheerful
-smile, slight head tilt.
-
-Japanese text "またね！"
-```
+⚠️ 5番のタオルは**手に持つ小道具**。キャラ自身はタオルを着けていない
+（着けさせると他の15枚と食い違う）。
 
 ---
 
@@ -263,7 +122,7 @@ Japanese text "またね！"
 - **上下左右に8%の余白**。目一杯だと吹き出しの中で窮屈に見える
 - **影を落とさない**（背景が透過なので浮く）
 - **輪郭線と文字の縁取りは太め**。チャットでは 120〜150px まで縮む
-- 🔴 **1枚をダークモードのチャットに置いて確認する。** クリームの体＋濃い輪郭＋
+- 🔴 **1枚をダークモードのチャットに置いて確認する。** 明るいグレーの体＋濃い輪郭＋
   白の縁取りなら明暗どちらでも読めるはずだが、ここは実物を見ないと分からない
 
 ## まだ決めていないこと（実装に入る前に）

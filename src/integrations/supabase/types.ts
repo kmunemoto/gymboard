@@ -1808,6 +1808,7 @@ export type Database = {
           read: boolean
           receiver_id: string
           sender_id: string
+          sticker_id: string | null
           tenant_id: string | null
           unsent_at: string | null
         }
@@ -1820,6 +1821,7 @@ export type Database = {
           read?: boolean
           receiver_id: string
           sender_id: string
+          sticker_id?: string | null
           tenant_id?: string | null
           unsent_at?: string | null
         }
@@ -1832,6 +1834,7 @@ export type Database = {
           read?: boolean
           receiver_id?: string
           sender_id?: string
+          sticker_id?: string | null
           tenant_id?: string | null
           unsent_at?: string | null
         }

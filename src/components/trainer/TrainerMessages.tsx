@@ -18,6 +18,8 @@ import MessageActions from "@/components/messages/MessageActions";
 import ReplyQuote from "@/components/messages/ReplyQuote";
 import UnsentNotice from "@/components/messages/UnsentNotice";
 import MessageReactions from "@/components/messages/MessageReactions";
+import MessageSticker from "@/components/messages/MessageSticker";
+import StickerPicker, { StickerPickerButton } from "@/components/messages/StickerPicker";
 import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import MessageTemplateChips from "@/components/trainer/MessageTemplateChips";
@@ -31,6 +33,7 @@ import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import KeyboardMetrics from "@/components/KeyboardMetrics";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
+import { findSticker } from "@/lib/stickers";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
 import { needsDateSeparator, dayKeyJST } from "@/lib/chatDate";
 import { sortConversations, type LastMessageInfo } from "@/lib/conversationOrder";
@@ -72,6 +75,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
   const [newMsg, setNewMsg] = useState("");
   const [lastMessages, setLastMessages] = useState<Record<string, LastMessageInfo>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [stickerOpen, setStickerOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   // キーボードの高さを --kb へ流す。チャットの bottom がこれを見て持ち上がる。
   const keyboardInset = useKeyboardInset();
@@ -246,6 +250,23 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
     }
   };
 
+  /**
+   * スタンプを送る。**1タップで送信まで行く**（LINE と同じ）。
+   * 本文にはスタンプの文字をそのまま入れる（`src/lib/stickers.ts` の `text`）。
+   * 古いアプリでも文章として読め、通知の本文も空にならない。
+   */
+  const handleSendSticker = async (stickerId: string) => {
+    const sticker = findSticker(stickerId);
+    if (!sticker || !selectedCustomerId) return;
+    setStickerOpen(false);
+    try {
+      await sendMessage(sticker.text, selectedCustomerId, null, sticker.id);
+    } catch (e) {
+      console.error("スタンプの送信に失敗:", e);
+      toast.error(t("trainerMessages.sendFailed"));
+    }
+  };
+
   const handleUnsend = async (messageId: string) => {
     try {
       await unsendMessage(messageId);
@@ -401,6 +422,10 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                 const { quote, body } = splitReplyQuote(msg.content);
                 const isHit = search.currentId === msg.id;
                 const unsent = isUnsent(msg);
+                // 知らない id なら null。そのときは絵を出さず、本文（＝スタンプの文字）を
+                // いつもの吹き出しで見せる（お客様が新しいスタンプを送ってきて、店側の
+                // アプリがまだ古いときにここへ来る）。
+                const sticker = unsent ? null : findSticker(msg.sticker_id);
                 return (
                   <div key={msg.id} ref={search.registerRef(msg.id)}>
                     {showDate && <DateSeparator at={msg.created_at} />}
@@ -436,6 +461,21 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                           )
                         }
                       >
+                      {sticker ? (
+                        /* 🔴 スタンプは吹き出しに入れない。絵だけが宙に浮くのが「スタンプ」で、
+                           吹き出しに入れると、ただの小さい添付写真に見える。 */
+                        <div
+                          className={`flex flex-col ${
+                            isTrainer ? "items-end" : "items-start"
+                          } ${isHit ? "ring-2 ring-accent rounded-2xl" : ""}`}
+                        >
+                          <MessageSticker sticker={sticker} />
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                            {isTrainer && msg.read && <span>{t("common.messageRead")}</span>}
+                            <span>{formatJST(msg.created_at, "HH:mm")}</span>
+                          </p>
+                        </div>
+                      ) : (
                       <div
                         className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 transition-shadow ${
                           isTrainer
@@ -474,6 +514,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                           <span>{formatJST(msg.created_at, "HH:mm")}</span>
                         </p>
                       </div>
+                      )}
                       </MessageActions>
                       {!unsent && (
                         <MessageReactions
@@ -489,6 +530,12 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
               })}
               <div ref={bottomRef} />
             </div>
+
+            {/* スタンプ欄。🔴 外枠（fixed の Card）の**中**で開く。外枠の高さは触らない
+                （触るとキーボードまわりが作り直しになる。StickerPicker の注記を読むこと） */}
+            {stickerOpen && (
+              <StickerPicker onPick={handleSendSticker} disabled={!selectedCustomerId} />
+            )}
 
             {/* Input */}
             <div className="p-2 sm:p-3 border-t border-border">
@@ -516,6 +563,11 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
                 onPick={attachment.pick}
                 onOpen={attachment.openPicker}
                 disabled={attachment.uploading}
+              />
+              <StickerPickerButton
+                open={stickerOpen}
+                onToggle={() => setStickerOpen((v) => !v)}
+                disabled={!selectedCustomerId}
               />
               <textarea
                 placeholder={t("customerChat.inputPlaceholder")}

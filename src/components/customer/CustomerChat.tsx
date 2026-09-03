@@ -14,6 +14,8 @@ import MessageActions from "@/components/messages/MessageActions";
 import ReplyQuote from "@/components/messages/ReplyQuote";
 import UnsentNotice from "@/components/messages/UnsentNotice";
 import MessageReactions from "@/components/messages/MessageReactions";
+import MessageSticker from "@/components/messages/MessageSticker";
+import StickerPicker, { StickerPickerButton } from "@/components/messages/StickerPicker";
 import ConversationSearch from "@/components/messages/ConversationSearch";
 import { AttachmentButton, AttachmentPreview } from "@/components/messages/AttachmentComposer";
 import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
@@ -24,6 +26,7 @@ import KeyboardMetrics from "@/components/KeyboardMetrics";
 import { prependQuote } from "@/lib/messageQuote";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
+import { findSticker } from "@/lib/stickers";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
 import { needsDateSeparator } from "@/lib/chatDate";
 import { formatJST } from "@/lib/timezone";
@@ -37,6 +40,7 @@ const CustomerChat = () => {
   const [resolvingTrainer, setResolvingTrainer] = useState(true);
   const [input, setInput] = useState("");
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [stickerOpen, setStickerOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   // キーボードの高さを --kb へ流す。チャットの bottom がこれを見て持ち上がる。
   const keyboardInset = useKeyboardInset();
@@ -132,6 +136,25 @@ const CustomerChat = () => {
     } catch (e) {
       // 以前はここで例外が捕捉されず、送信が黙って失敗し入力欄もそのままだった。
       console.error("メッセージの送信に失敗:", e);
+      toast.error(t("customerChat.sendFailed"));
+    }
+  };
+
+  /**
+   * スタンプを送る。**1タップで送信まで行く**（LINE と同じ）。
+   * 選んだあと「送信」を押させると、絵を選ぶ手軽さが消える。
+   *
+   * 本文にはスタンプの文字をそのまま入れる（`src/lib/stickers.ts` の `text`）。
+   * 古いアプリでも文章として読め、通知の本文も空にならない。
+   */
+  const handleSendSticker = async (stickerId: string) => {
+    const sticker = findSticker(stickerId);
+    if (!sticker || !trainerId) return;
+    setStickerOpen(false);
+    try {
+      await sendMessage(sticker.text, trainerId, null, sticker.id);
+    } catch (e) {
+      console.error("スタンプの送信に失敗:", e);
       toast.error(t("customerChat.sendFailed"));
     }
   };
@@ -249,6 +272,10 @@ const CustomerChat = () => {
           const { quote, body } = splitReplyQuote(msg.content);
           const isHit = search.currentId === msg.id;
           const unsent = isUnsent(msg);
+          // 知らない id なら null。そのときは絵を出さず、本文（＝スタンプの文字）を
+          // いつもの吹き出しで見せる。新しいスタンプを持つ端末から、まだ更新していない
+          // 端末へ送られたときにここへ来る（落とさずに文字で伝わるのが狙い）。
+          const sticker = unsent ? null : findSticker(msg.sticker_id);
 
           return (
             <div key={msg.id} ref={search.registerRef(msg.id)}>
@@ -281,6 +308,21 @@ const CustomerChat = () => {
                     )
                   }
                 >
+                {sticker ? (
+                  /* 🔴 スタンプは吹き出しに入れない。絵だけが宙に浮くのが「スタンプ」で、
+                     吹き出しに入れると、ただの小さい添付写真に見える。 */
+                  <div
+                    className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${
+                      isHit ? "ring-2 ring-accent rounded-2xl" : ""
+                    }`}
+                  >
+                    <MessageSticker sticker={sticker} />
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                      {isMe && msg.read && <span>{t("common.messageRead")}</span>}
+                      <span>{formatJST(msg.created_at, "HH:mm")}</span>
+                    </p>
+                  </div>
+                ) : (
                 <div
                   className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 transition-shadow ${
                     isMe
@@ -318,6 +360,7 @@ const CustomerChat = () => {
                     <span>{formatJST(msg.created_at, "HH:mm")}</span>
                   </p>
                 </div>
+                )}
                 </MessageActions>
                 {!unsent && (
                   <MessageReactions
@@ -333,6 +376,10 @@ const CustomerChat = () => {
         })}
         <div ref={bottomRef} />
       </div>
+
+      {/* スタンプ欄。🔴 外枠の**中**で開く（外枠の高さは触らない。
+          触るとキーボードの計算が4回目の作り直しになる。StickerPicker の注記を読むこと） */}
+      {stickerOpen && <StickerPicker onPick={handleSendSticker} disabled={!trainerId} />}
 
       {/* Input */}
       <div className="px-4 py-3 border-t border-border glass">
@@ -354,6 +401,11 @@ const CustomerChat = () => {
             onPick={attachment.pick}
             onOpen={attachment.openPicker}
             disabled={attachment.uploading}
+          />
+          <StickerPickerButton
+            open={stickerOpen}
+            onToggle={() => setStickerOpen((v) => !v)}
+            disabled={!trainerId}
           />
           <textarea
             value={input}

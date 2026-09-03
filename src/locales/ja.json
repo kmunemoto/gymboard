@@ -2610,6 +2610,8 @@
     "searchNext": "次へ",
     "unsentNotice": "送信を取り消しました",
     "unsendFailed": "送信を取り消せませんでした（24時間を過ぎている可能性があります）",
+    "stickers": "スタンプ",
+    "stickerHint": "タップして送る",
     "reaction": {
       "thumbsUp": "いいね",
       "heart": "うれしい",

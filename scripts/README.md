@@ -5,6 +5,25 @@
 | `translate-locales.mjs` | `ja.json` を正として `en` / `ko` などの欠けを機械翻訳で補完（下記） |
 | `extract-vertical-overlay.mjs` | 兄弟アプリが直接書き換えた `ja.json` から業種オーバーレイを抜き出す（下記） |
 | `generate-app-icon.py` / `patch-android.mjs` / `build-android.bat` | ネイティブビルド補助 |
+| `convert-sticker.py` | チャットのスタンプの絵を配布用の透過PNGにする（下記） |
+
+---
+
+# スタンプの書き出し（convert-sticker.py）
+
+チャットのスタンプ（`mem/features/chat-stickers.md`）の絵を、生成したままの
+JPG から配布用の透過 PNG（512×512・余白8%）にする。
+
+```bash
+python3 scripts/convert-sticker.py ~/Downloads/nice.jpg src/assets/stickers/nice.png
+```
+
+🔴 **白を「色で」消していない。** 外周から繋がっている白だけを塗りつぶしで消す。
+単純に「白なら透明」にすると、**文字の白い縁取り・目のハイライト・切り抜き風の
+白フチまで消える**。特に縁取りが消えると、濃い面の上で文字が読めなくなる。
+
+書き出したら `src/lib/stickers.ts` に1行足すだけ（マイグレーションは不要）。
+透過・寸法・重さ・一覧との対応は `src/test/chatStickers.test.ts` が見ている。
 
 ---
 

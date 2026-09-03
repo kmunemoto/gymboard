@@ -50,7 +50,10 @@ const StickerPicker = ({ onPick, disabled }: Props) => {
       className="h-56 overflow-y-auto border-t border-border bg-muted/30 p-2"
     >
       <p className="text-[10px] text-muted-foreground px-1 pb-1">{t("chat.stickerHint")}</p>
-      <div className="grid grid-cols-4 gap-1.5">
+      {/* 列数は幅に任せる。スマホ（max-w-md）で6列＝8枚が2段に収まり、
+          スタッフ側の広い画面でも1つが大きくなりすぎない。
+          固定の列数だと、どちらかで必ず不格好になる。 */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-1.5">
         {STICKERS.map((s) => (
           <button
             key={s.id}

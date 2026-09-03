@@ -41,6 +41,9 @@ import arigatou from "@/assets/stickers/arigatou.png";
 import ryokai from "@/assets/stickers/ryokai.png";
 import ganbarimasu from "@/assets/stickers/ganbarimasu.png";
 import otsukaresama from "@/assets/stickers/otsukaresama.png";
+import nice from "@/assets/stickers/nice.png";
+import okuremasu from "@/assets/stickers/okuremasu.png";
+import gomennasai from "@/assets/stickers/gomennasai.png";
 
 export interface Sticker {
   /** `messages.sticker_id` に入る値。DB の CHECK は `^[a-z0-9_]{1,40}$`。 */
@@ -57,6 +60,9 @@ export const STICKERS: readonly Sticker[] = [
   { id: "ryokai", src: ryokai, text: "了解です！" },
   { id: "ganbarimasu", src: ganbarimasu, text: "がんばります！" },
   { id: "otsukaresama", src: otsukaresama, text: "おつかれさま！" },
+  { id: "nice", src: nice, text: "ナイス！" },
+  { id: "okuremasu", src: okuremasu, text: "ちょっと遅れます" },
+  { id: "gomennasai", src: gomennasai, text: "ごめんなさい" },
 ] as const;
 
 const BY_ID = new Map(STICKERS.map((s) => [s.id, s]));

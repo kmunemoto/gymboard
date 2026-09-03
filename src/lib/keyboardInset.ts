@@ -31,7 +31,27 @@ export type ViewportMetrics = {
 };
 
 export const computeKeyboardInset = (m: ViewportMetrics): number => {
-  const overlap = m.innerHeight - (m.viewportHeight + m.offsetTop);
-  if (!Number.isFinite(overlap) || overlap < MIN_KEYBOARD_PX) return 0;
-  return Math.round(overlap);
+  // キーボードが覆っている高さ。レイアウトビューポートごと縮む環境
+  // （Android の adjustResize）ではここが 0 になり、放っておいてもつじつまが合う。
+  const covered = m.innerHeight - m.viewportHeight;
+
+  // 🔴 「キーボードが出ているか」の足切りは **covered** に対して行う（2026-09-03）。
+  //
+  // 2026-09-01 の版は、下の offsetTop を引いた**あと**の値に足切りをかけていた。
+  // iOS はキーボードを出すとき、フォーカスした入力欄を見せようとビジュアルビューポートを
+  // ずらす（offsetTop > 0）。入力欄は画面のいちばん下にあるので、ずれる量はキーボードの
+  // 高さに近くなる。すると引いたあとの値が MIN_KEYBOARD_PX を下回って足切りに落ち、
+  // **持ち上げが丸ごと 0 になって入力欄がキーボードの裏へ戻っていた。**
+  //
+  // Android が直っていたのは、この式が効いていたからではない。WebView ごと縮むので
+  // covered も offsetTop も 0 になり、**そもそもこの計算を通らなかった**だけ。
+  // 「Android で直った」ことは iOS の式が正しい証拠にならなかった。
+  if (!Number.isFinite(covered) || covered < MIN_KEYBOARD_PX) return 0;
+
+  // position:fixed の要素は**レイアウトビューポート基準**に置かれる。iOS がビジュアル
+  // ビューポートをずらしているぶんは持ち上げから引く（引かないと必要以上に浮く）。
+  // ずれがキーボードの高さに達していれば持ち上げ 0 が正しい（レイアウトの下端が
+  // そのまま見えている状態）。
+  const lift = covered - Math.max(0, m.offsetTop);
+  return Math.max(0, Math.round(lift));
 };

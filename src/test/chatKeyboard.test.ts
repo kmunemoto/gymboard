@@ -40,6 +40,27 @@ describe("キーボードの高さの算出", () => {
     expect(computeKeyboardInset({ innerHeight: 800, viewportHeight: 460, offsetTop: 120 })).toBe(220);
   });
 
+  it("🔴 ずれが大きくても持ち上げを 0 に落とさない（2026-09-03・iOS で実際に踏んだ）", () => {
+    // iOS はキーボードを出すとき、入力欄を見せようとビジュアルビューポートをずらす。
+    // 入力欄は画面のいちばん下にあるので、ずれる量はキーボードの高さに近くなる。
+    //
+    // 2026-09-01 の版は、ずらしぶんを引いた**あと**の値に足切り（MIN_KEYBOARD_PX）を
+    // かけていた。キーボード 340・ずれ 270 なら 340-270=70 が足切りに落ちて **0** を返し、
+    // **持ち上げが丸ごと消えて入力欄がキーボードの裏へ戻っていた。**
+    // 足切りは「キーボードが出ているか」の判定に使うもので、持ち上げ量には使わない。
+    expect(computeKeyboardInset({ innerHeight: 844, viewportHeight: 504, offsetTop: 270 })).toBe(70);
+  });
+
+  it("ずれがキーボードの高さに達したら持ち上げ 0（レイアウトの下端がそのまま見えている）", () => {
+    expect(computeKeyboardInset({ innerHeight: 844, viewportHeight: 504, offsetTop: 340 })).toBe(0);
+    expect(computeKeyboardInset({ innerHeight: 844, viewportHeight: 504, offsetTop: 400 })).toBe(0);
+  });
+
+  it("🔴 キーボードが出ていないのにずれているだけなら 0（アドレスバーの伸縮）", () => {
+    // 足切りを covered に対してかけているので、ずれだけでは反応しない。
+    expect(computeKeyboardInset({ innerHeight: 800, viewportHeight: 760, offsetTop: 40 })).toBe(0);
+  });
+
   it("🔴 アドレスバーの伸縮くらいの差は 0 に丸める", () => {
     // これを 0 にしないと、スクロールするたびにチャットが数十px ぴょこぴょこ動く。
     expect(computeKeyboardInset({ innerHeight: 800, viewportHeight: 800 - (MIN_KEYBOARD_PX - 1), offsetTop: 0 })).toBe(0);
@@ -165,5 +186,33 @@ describe("キーボードの高さの取り込み方", () => {
   it("🔴 後片付けをしている（購読しっぱなしにしない）", () => {
     expect(hook).toContain("removeEventListener");
     expect(hook).toContain("removeProperty");
+  });
+});
+
+describe("🔴 実機の数字を見るための「ものさし」", () => {
+  // この不具合はクラウドのセッションからは1度も再現できない（jsdom に visualViewport が
+  // 無く、ネイティブも動かせない）。2回直して2回とも iOS で直っていなかったのは、
+  // 実測値を1度も見ないまま数式を推測で直していたから。`?kb=1` で数字を出す。
+  const badge = readCode("src/components/KeyboardMetrics.tsx");
+
+  it("既定では何も描かない（お客様の画面に出ない）", () => {
+    expect(badge).toContain('get("kb") === "1"');
+    expect(badge).toMatch(/if \(!on\) return null;/);
+  });
+
+  it("両方のチャット画面に置いてある", () => {
+    for (const code of [readCode(TRAINER), readCode(CUSTOMER)]) {
+      expect(code).toContain("<KeyboardMetrics />");
+    }
+  });
+
+  it("生の実測値を出す（計算後の値だけだと切り分けられない）", () => {
+    for (const key of ["inner=", "vh=", "off=", "covered=", "kb="]) {
+      expect(badge).toContain(key);
+    }
+  });
+
+  it("後片付けをしている（購読しっぱなしにしない）", () => {
+    expect(badge).toContain("removeEventListener");
   });
 });

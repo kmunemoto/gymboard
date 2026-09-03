@@ -20,8 +20,14 @@ export interface Message {
   /** "image" | "video"。attachment_path とは必ずセット（DBの CHECK 制約） */
   attachment_type: AttachmentType | null;
   /**
+   * 送ったスタンプの id（`src/lib/stickers.ts` の一覧に対応）。null なら通常のメッセージ。
+   * 🔴 絵は DB に無い。**content にはスタンプの文字が入っている**ので、
+   *    この列を知らない古いアプリでも本文として読める（`findSticker` が null のときも同じ）。
+   */
+  sticker_id: string | null;
+  /**
    * 送信を取り消した時刻。null なら通常のメッセージ。
-   * 取り消すと content は空・attachment_* は null になり、**行だけ残る**。
+   * 取り消すと content は空・attachment_* と sticker_id は null になり、**行だけ残る**。
    */
   unsent_at: string | null;
   /**
@@ -168,10 +174,16 @@ export const useMessages = (otherUserId: string | null, options?: UseMessagesOpt
    *   アップロードは呼び出し元が先に済ませる。**行の INSERT が失敗しても
    *   ファイルだけ残る**ので、失敗時は呼び出し元が `discardAttachment` で片付けること。
    */
+  /**
+   * @param stickerId スタンプを送るときだけ渡す。
+   *   🔴 このとき `content` には**スタンプの文字**を入れること（空にしない）。
+   *   空にすると通知の本文が空で届き、古いアプリでは何も表示されない。
+   */
   const sendMessage = async (
     content: string,
     receiverId: string,
     attachment?: PreparedAttachment | null,
+    stickerId?: string | null,
   ) => {
     if (!user) return;
     const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
@@ -186,6 +198,7 @@ export const useMessages = (otherUserId: string | null, options?: UseMessagesOpt
         content,
         attachment_path: attachment?.path ?? null,
         attachment_type: attachment?.type ?? null,
+        sticker_id: stickerId ?? null,
       }, tenantId) as any)
       .select()
       .single();
@@ -248,6 +261,7 @@ export const useMessages = (otherUserId: string | null, options?: UseMessagesOpt
               attachment_path: null,
               attachment_type: null,
               attachment_url: undefined,
+              sticker_id: null,
               unsent_at: new Date().toISOString(),
             }
           : m,

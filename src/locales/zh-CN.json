@@ -2610,6 +2610,8 @@
     "searchNext": "下一个",
     "unsentNotice": "已撤回消息",
     "unsendFailed": "无法撤回（可能已超过24小时）",
+    "stickers": "贴图",
+    "stickerHint": "点击发送",
     "reaction": {
       "thumbsUp": "赞",
       "heart": "喜欢",

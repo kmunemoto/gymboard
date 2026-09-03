@@ -2610,6 +2610,8 @@
     "searchNext": "下一個",
     "unsentNotice": "已收回訊息",
     "unsendFailed": "無法收回（可能已超過24小時）",
+    "stickers": "貼圖",
+    "stickerHint": "點擊傳送",
     "reaction": {
       "thumbsUp": "讚",
       "heart": "喜歡",

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { proxyBookingErrorKey } from "@/lib/bookingErrors";
 import {
   isBlockedStart,
   isBlockedWindowError,
@@ -295,8 +296,10 @@ describe("🔴 画面が受付しない時間帯を見ている", () => {
   it("🔴 店側の代理予約（TrainerSchedule）はクライアント判定を持たない", () => {
     // 効かせないのは仕様（帯の中に入れてあげるのは店の裁量）。DB 側の素通しとセット。
     expect(trainerSchedule).not.toContain("isBlockedStart(");
-    // GB006 の文言分岐だけは持つ（トレーナーが自分をお客様として選んだときに出る）
-    expect(trainerSchedule).toContain("isBlockedWindowError(");
+    // GB006 の文言分岐だけは持つ（トレーナーが自分をお客様として選んだときに出る）。
+    // 判定は 2026-09-03 に src/lib/bookingErrors.ts へ1本化した。
+    expect(trainerSchedule).toContain("proxyBookingErrorKey(error)");
+    expect(proxyBookingErrorKey({ code: "GB006" })).toBe("blockedWindows.errorNotAcceptingProxy");
   });
 
   it("設定画面に編集セクションが載っている", () => {

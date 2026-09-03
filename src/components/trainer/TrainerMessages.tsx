@@ -28,6 +28,7 @@ import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { prependQuote } from "@/lib/messageQuote";
 import { useConversationSearch } from "@/hooks/useConversationSearch";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import KeyboardMetrics from "@/components/KeyboardMetrics";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
@@ -343,6 +344,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
               bottom-[max(var(--kb,0px),var(--nav-h,6rem))]
               md:static md:z-auto md:rounded-lg md:border md:top-auto md:bottom-auto md:h-auto"
           >
+            <KeyboardMetrics />
             {/* Chat header */}
             <div className="p-3 sm:p-4 border-b border-border flex items-center gap-3">
               <button onClick={() => setSelectedCustomerId(null)} className="md:hidden text-muted-foreground p-1">

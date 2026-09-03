@@ -597,7 +597,8 @@
     "rescheduleForfeitWarningDesc": "당일 예약을 변경하면 원래 시간대는 다른 분께 안내할 수 없어 1회 소진 처리됩니다.",
     "rescheduleForfeitConfirmBtn": "소진 처리하고 변경",
     "rescheduling": "변경 중...",
-    "cancelPolicyTitle": "취소에 대하여"
+    "cancelPolicyTitle": "취소에 대하여",
+    "errorAppOutdated": "앱이 최신 버전이 아니어서 예약하지 못했습니다. 최신 버전으로 업데이트한 후 다시 시도해 주세요."
   },
   "training": {
     "title": "기록",

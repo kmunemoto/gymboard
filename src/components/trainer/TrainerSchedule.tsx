@@ -20,10 +20,9 @@ import {
   missingRequiredQuestions,
   questionsForSurface,
 } from "@/lib/bookingQuestions";
-import { isStaffOffShiftError, staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
+import { staffBookingSlotMinutes, staffWorksOnWeekday } from "@/lib/staffSchedule";
 import { isBookingLimitError } from "@/lib/bookingLimits";
-import { isBlockedWindowError } from "@/lib/bookingBlockedWindows";
-import { isPlanLimitError } from "@/lib/planSessionLimit";
+import { proxyBookingErrorKey } from "@/lib/bookingErrors";
 import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { matchedWindowCapacity, resolveSlotCapacity } from "@/lib/bookingCapacity";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
@@ -247,14 +246,7 @@ const TrainerSchedule = () => {
         // シフト外（GB002）は別の曜日か別の担当なら取れるので文言を分ける。
         // GB003（予約回数の制限）が代理予約で出るのは、トレーナーが**自分を**お客様として
         // 選んだときだけ（auth.uid() = user_id になり自己予約扱い）。設定で調整できると案内する。
-        toast.error(
-          isPlanLimitError(error) ? t("planSessions.errorReachedProxy")
-            : isBlockedWindowError(error) ? t("blockedWindows.errorNotAcceptingProxy")
-            : isBookingLimitError(error) ? t("bookingLimits.errorOverLimitProxy")
-            : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
-            : isStaffConflictError(error) ? t("staff.errorStaffBusy")
-            : t("schedule.errorAddFailed"),
-        );
+        toast.error(t(proxyBookingErrorKey(error)));
         setSubmitting(false);
         return;
       }

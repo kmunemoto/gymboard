@@ -597,7 +597,8 @@
     "rescheduleForfeitWarningDesc": "当日の予約を変更すると、元の枠は他の方にご案内できないため、1回分の消化扱いになります。",
     "rescheduleForfeitConfirmBtn": "消化して変更する",
     "rescheduling": "変更中...",
-    "cancelPolicyTitle": "キャンセルについて"
+    "cancelPolicyTitle": "キャンセルについて",
+    "errorAppOutdated": "アプリが最新ではないため予約できませんでした。最新版に更新してから、もう一度お試しください。"
   },
   "training": {
     "title": "記録",

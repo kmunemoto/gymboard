@@ -20,6 +20,7 @@ import BookingQuoteChips from "@/components/messages/BookingQuoteChips";
 import { useQuotableBookings } from "@/hooks/useQuotableBookings";
 import { useConversationSearch } from "@/hooks/useConversationSearch";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import KeyboardMetrics from "@/components/KeyboardMetrics";
 import { prependQuote } from "@/lib/messageQuote";
 import { formatReplyQuote, prependReply, splitReplyQuote } from "@/lib/messageReply";
 import { canUnsend, isUnsent } from "@/lib/messageUnsend";
@@ -191,6 +192,7 @@ const CustomerChat = () => {
         top-[var(--app-header-h,3.5rem)]
         bottom-[max(var(--kb,0px),var(--nav-h,6rem))]"
     >
+      <KeyboardMetrics />
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">

@@ -39,6 +39,7 @@ import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { useBookingBlockedWindows } from "@/hooks/useBookingBlockedWindows";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
+import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/lib/bookingErrors";
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
@@ -58,11 +59,10 @@ import {
   questionsForSurface,
 } from "@/lib/bookingQuestions";
 import {
-  isStaffOffShiftError,
   staffBookingSlotMinutes,
   staffWorksOnWeekday,
 } from "@/lib/staffSchedule";
-import { canSelectStaff, isStaffConflictError } from "@/lib/tenantStaff";
+import { canSelectStaff } from "@/lib/tenantStaff";
 import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
 // セッション長・バッファはどちらもジムごとに変更可能（tenants.slot_duration_minutes /
@@ -507,17 +507,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         optionMinutes, optionSnapshot,
       );
       if (booked.length === 0) {
-        // 全週スキップ。全部が回数上限（GB003）／プラン上限（GB004）なら満枠ではない
-        // ので文言を分ける（空き待ちしても取れないことを伝える）。
-        toast.error(
-          skipped.every((sk) => isPlanLimitError({ code: sk.code }))
-            ? t("planSessions.errorReached")
-            : skipped.every((sk) => isBlockedWindowError({ code: sk.code }))
-              ? t("blockedWindows.errorNotAccepting")
-            : skipped.every((sk) => isBookingLimitError({ code: sk.code }))
-              ? t("bookingLimits.errorOverLimit")
-              : t("booking.errorBookingFailed"),
-        );
+        // 全週スキップ。全部が同じ理由なら、その理由を出す（回数上限やプラン上限は
+        // 満枠と違って「空き待ちしても取れない」ので、案内を分ける意味がある）。
+        // 判定は src/lib/bookingErrors.ts に1本化してある。
+        toast.error(t(bookingErrorKeyForAll(skipped.map((sk) => ({ code: sk.code })))));
         setSubmitting(false);
         return;
       }
@@ -566,17 +559,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         //    「押しても取れない」が繰り返される。取り直しておけば、次の描画で確認カードが
         //    「◯◯:◯◯ に変更して付ける」に切り替わる（枠は外さない）。
         void fetchBookedSlots(dateKey);
-        // 店には空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
-        // シフト外（GB002）は「別の時間」ではなく「別の担当か別の曜日」なので文言を分ける。
-        toast.error(
-          isPlanLimitError(error) ? t("planSessions.errorReached")
-            : isDayClosedError(error) ? t("closedDays.errorClosed")
-            : isBlockedWindowError(error) ? t("blockedWindows.errorNotAccepting")
-            : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
-            : isStaffOffShiftError(error) ? t("staff.errorStaffOffShift")
-            : isStaffConflictError(error) ? t("staff.errorStaffBusy")
-            : t("booking.errorBookingFailed"),
-        );
+        // 断られた理由ごとに案内を変える（担当だけ埋まっている・シフト外・受付終了…）。
+        // 🔴 このアプリが知らない GB0xx なら「アプリが古い」と言い当てる。
+        //    2026-09-03 に、古いアプリのお客様が「1日の上限」（GB007）で断られ、
+        //    「予約に失敗しました」としか出ずに店へ問い合わせる、が実際に起きた。
+        toast.error(t(bookingErrorKey(error)));
         setSubmitting(false);
         return;
       }
@@ -720,6 +707,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
             : isDayClosedError(error) ? t("closedDays.errorClosed")
             : isBlockedWindowError(error) ? t("blockedWindows.errorNotAccepting")
             : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
+            // 🔴 このアプリが知らない GB0xx ＝ サーバーの規則のほうが新しい＝アプリが古い
+            : isAppOutdatedError(error) ? t("booking.errorAppOutdated")
             : t("booking.errorRescheduleFailed"),
         );
         if (restoreFailed) refetch();

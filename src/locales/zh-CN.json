@@ -597,7 +597,8 @@
     "rescheduleForfeitWarningDesc": "更改当天的预约后，原时段无法再安排给其他人，将计为消耗1次。",
     "rescheduleForfeitConfirmBtn": "计次并更改",
     "rescheduling": "更改中...",
-    "cancelPolicyTitle": "关于取消"
+    "cancelPolicyTitle": "关于取消",
+    "errorAppOutdated": "由于App不是最新版本，预约未能完成。请更新到最新版本后重试。"
   },
   "training": {
     "title": "记录",

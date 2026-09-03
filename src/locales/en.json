@@ -597,7 +597,8 @@
     "rescheduleForfeitWarningDesc": "Changing a same-day booking forfeits the original slot as one session, since it can't be offered to someone else.",
     "rescheduleForfeitConfirmBtn": "Change (counts as used)",
     "rescheduling": "Changing...",
-    "cancelPolicyTitle": "About cancellations"
+    "cancelPolicyTitle": "About cancellations",
+    "errorAppOutdated": "We couldn't book this because the app is out of date. Please update to the latest version and try again."
   },
   "training": {
     "title": "Records",

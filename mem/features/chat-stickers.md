@@ -61,55 +61,463 @@ proportions with the head about half the total height.
 
 ## スタンプ16枚（そのまま貼る）
 
-★＝先に作る8枚。**`POSE:` と `Japanese text` の2行だけが各枚の違い。**
+★＝先に作る8枚。**どれも単体で完結しているので、そのままコピーして使える。**
+🔴 **毎回、確定したキャラクターシートの画像を参照画像として一緒に渡すこと。**
+色と造形は文字で書くより参照画像のほうが正確に揃う（hex は保険）。
 
-### 共通のひな形
+⚠️ 5番のタオルは**手に持つ小道具**。キャラ自身はタオルを着けていない
+（着けさせると他の15枚と食い違う）。
+
+🔴 **`no drop shadow` を消さないこと。** 確定したキャラクターシートの左の1体には
+足元に影が付いている。透過スタンプで影が付くと、吹き出しの上に浮いて見える。
+
+### 1 ★　よろしくお願いします
 
 ```
-[キャラの説明文（上のブロックをそのまま）]
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
 
-POSE: <ポーズ>
+POSE: bowing politely forward with both tiny arms at its sides, eyes closed, gentle smile.
 
-Japanese text "<文字>" at the bottom, bold rounded Japanese gothic font
-(maru gothic), dark charcoal (#3A3A3A) letters with a thick white outline,
-text height about 18% of the canvas, centered, slightly tilted, overlapping the
+Japanese text "よろしくお願いします" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
 character slightly.
 
-Style: clean flat vector illustration, thick uniform dark slate outline
-(#4A5560), cel-shaded flat colors, no gradients, extremely readable silhouette,
-kawaii Japanese sticker art. Transparent background, square canvas, character
-and text together fill about 85% of the frame with even margin on all sides.
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
 
 no watermark, no logo, no frame, no drop shadow, no background, no English text,
 no gibberish or malformed characters, single character only.
 ```
 
-🔴 **`no drop shadow` を消さないこと。** 確定したキャラクターシートの左の1体には
-足元に影が付いている。透過スタンプで影が付くと、吹き出しの上に浮いて見える。
+### 2 ★　ありがとうございます
 
-### ポーズと文字
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
 
-| # | | POSE（英語のまま） | Japanese text |
-|---|---|---|---|
-| 1 | ★ | `bowing politely with both tiny arms at its sides, eyes closed, gentle smile` | `よろしくお願いします` |
-| 2 | ★ | `pressing both tiny hands together in front of its chest, eyes closed, warm happy smile, small floating hearts around it` | `ありがとうございます` |
-| 3 | ★ | `making a big OK circle with both arms above its head, confident cheerful face` | `了解です！` |
-| 4 | ★ | `flexing one arm showing a tiny muscle, determined fired-up expression, a small flame above its head` | `がんばります！` |
-| 5 | ★ | `holding out a folded teal towel toward the viewer with both hands, kind gentle smile` | `おつかれさま！` |
-| 6 | ★ | `giving a big thumbs up with one arm, winking with one eye, bright smile` | `ナイス！` |
-| 7 | ★ | `running fast to the right, arms swinging, panicked wide eyes, sweat drops and motion lines behind it` | `ちょっと遅れます` |
-| 8 | ★ | `pressing both hands together apologetically, bowing its head, one large sweat drop, sorry troubled eyebrows` | `ごめんなさい` |
-| 9 | | `legs trembling with wobble lines, arms stiff and straight out, strained squeezed-shut eyes, small lightning marks on its legs` | `筋肉痛です…` |
-| 10 | | `lying face down on the floor completely flat, arms and legs sprawled out, swirl eyes, a small puff of steam above it` | `もう限界…` |
-| 11 | | `jumping in the air with both arms raised, sparkling star eyes, huge open smile, sparkles around it` | `うれしい！` |
-| 12 | | `clapping both tiny hands together, impressed sparkling eyes, small sparkles around it` | `すごい！` |
-| 13 | | `waving one arm at the viewer while standing next to a small round wall clock, calm happy smile` | `お待ちしてます` |
-| 14 | | `holding both hands out gently in a stop gesture, worried caring eyebrows, soft concerned smile` | `無理しないで` |
-| 15 | | `raising one arm straight up, curious tilted head, a large question mark floating above its head` | `質問です！` |
-| 16 | | `waving goodbye with one arm, cheerful smile, slight head tilt` | `またね！` |
+POSE: pressing both tiny hands together in front of its chest, eyes closed, warm happy smile, small floating hearts around it.
 
-⚠️ 5番のタオルは**手に持つ小道具**。キャラ自身はタオルを着けていない
-（着けさせると他の15枚と食い違う）。
+Japanese text "ありがとうございます" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 3 ★　了解です！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: making a big OK circle with both arms raised above its head, confident cheerful face.
+
+Japanese text "了解です！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 4 ★　がんばります！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: flexing one arm to show a tiny muscle, determined fired-up expression, a small flame above its head.
+
+Japanese text "がんばります！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 5 ★　おつかれさま！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: holding out a folded teal towel toward the viewer with both hands, kind gentle smile.
+
+Japanese text "おつかれさま！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 6 ★　ナイス！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: giving a big thumbs up with one arm, winking with one eye, bright smile.
+
+Japanese text "ナイス！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 7 ★　ちょっと遅れます
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: running fast to the right, arms swinging, panicked wide eyes, sweat drops and motion lines behind it.
+
+Japanese text "ちょっと遅れます" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 8 ★　ごめんなさい
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: pressing both hands together apologetically, head bowed low, one large sweat drop, sorry troubled eyebrows.
+
+Japanese text "ごめんなさい" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 9　筋肉痛です…
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: legs trembling with wobble lines, arms stiff and straight out to the sides, strained squeezed-shut eyes, small lightning marks near its legs.
+
+Japanese text "筋肉痛です…" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 10　もう限界…
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: lying face down on the floor completely flat, arms and legs sprawled out, swirl eyes, a small puff of steam above it.
+
+Japanese text "もう限界…" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 11　うれしい！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: jumping in the air with both arms raised, sparkling star eyes, huge open smile, sparkles around it.
+
+Japanese text "うれしい！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 12　すごい！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: clapping both tiny hands together, impressed sparkling eyes, small sparkles around it.
+
+Japanese text "すごい！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 13　お待ちしてます
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: waving one arm at the viewer while standing beside a small round wall clock, calm happy smile.
+
+Japanese text "お待ちしてます" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 14　無理しないで
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: holding both hands out gently in a stop gesture, worried caring eyebrows, soft concerned smile.
+
+Japanese text "無理しないで" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 15　質問です！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: raising one arm straight up, head tilted with a curious look, a large question mark floating above its head.
+
+Japanese text "質問です！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
+
+### 16　またね！
+
+```
+Cute original dumbbell mascot, exactly as in the reference image: a rounded light
+grey head (#C2C8CD) shaped like the centre bar of a dumbbell, with a thick teal
+(#6FC4C4) circular weight plate attached to each side of the head like ears, each
+plate a slightly 3D disc with a visible darker teal rim. Below the head, a small
+rounded light grey body with very short stubby arms and legs, no fingers, no nose.
+Large round black eyes with a small white highlight, small pink oval blush on each
+cheek, a simple curved mouth. Thick uniform dark slate outline (#4A5560), flat
+vector cel-shaded colours, no gradients, chibi proportions, head about half the
+total height.
+
+POSE: waving goodbye with one arm raised, cheerful smile, slight head tilt.
+
+Japanese text "またね！" at the bottom, bold rounded Japanese gothic font (maru
+gothic), dark charcoal (#3A3A3A) letters with a thick white outline, text height
+about 18% of the canvas, centered, one line, slightly tilted, overlapping the
+character slightly.
+
+Kawaii Japanese sticker art, extremely readable silhouette. Transparent
+background, square canvas, character and text together fill about 85% of the
+frame with even margin on all sides.
+
+no watermark, no logo, no frame, no drop shadow, no background, no English text,
+no gibberish or malformed characters, single character only.
+```
 
 ---
 

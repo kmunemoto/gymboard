@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { bookingErrorKey, proxyBookingErrorKey } from "@/lib/bookingErrors";
 import {
   SHIFT_WEEKDAY_ORDER,
   hasStaffShift,
@@ -257,15 +258,18 @@ describe("🔴 画面が担当のシフトを見ている", () => {
     const src = readFileSync("src/components/customer/CustomerBooking.tsx", "utf8");
     expect(src).toMatch(/staffBookingSlotMinutes\(/);
     expect(src).toMatch(/staffWorksOnWeekday\(/);
-    // シフト外は満枠と別の文言で案内する
-    expect(src).toMatch(/isStaffOffShiftError\(error\)/);
+    // シフト外は満枠と別の文言で案内する。判定は 2026-09-03 に
+    // src/lib/bookingErrors.ts へ1本化した（画面ごとに書き直すと片方だけ古くなる）。
+    expect(src).toContain("bookingErrorKey(error)");
+    expect(bookingErrorKey({ code: "GB002" })).toBe("staff.errorStaffOffShift");
   });
 
   it("店側の代理予約も同じ判定をしている", () => {
     const src = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
     expect(src).toMatch(/staffBookingSlotMinutes\(/);
     expect(src).toMatch(/staffWorksOnWeekday\(/);
-    expect(src).toMatch(/isStaffOffShiftError\(error\)/);
+    expect(src).toContain("proxyBookingErrorKey(error)");
+    expect(proxyBookingErrorKey({ code: "GB002" })).toBe("staff.errorStaffOffShift");
   });
 
   it("設定画面の選択肢が営業時間と同じ範囲になっている", () => {

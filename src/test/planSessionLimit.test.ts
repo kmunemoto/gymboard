@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { computePlanUsage } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
+import { bookingErrorKeyForAll, proxyBookingErrorKey } from "@/lib/bookingErrors";
 import { shouldRebaseCycleStart } from "@/lib/courseProgress";
 
 // プランの回数上限（tenant_plans.max_sessions × allow_overflow）。
@@ -439,8 +440,11 @@ describe("🔴 画面がプランの回数上限を見ている", () => {
     // 待ち続けてしまう（絶対に取れないのに）。
     expect(customerBooking).toMatch(/const planSkipped = skipped\.filter\(\(sk\) => isPlanLimitError\(\{ code: sk\.code \}\)\)/);
     expect(customerBooking).toContain('t("planSessions.repeatSkippedPlan"');
-    // 全週スキップ時も GB004 だけなら専用文言
-    expect(customerBooking).toMatch(/skipped\.every\(\(sk\) => isPlanLimitError\(\{ code: sk\.code \}\)\)/);
+    // 全週スキップ時も GB004 だけなら専用文言。判定は 2026-09-03 に
+    // src/lib/bookingErrors.ts へ1本化した（画面ごとに書き直すと片方だけ古くなる）。
+    expect(customerBooking).toContain("bookingErrorKeyForAll(");
+    expect(bookingErrorKeyForAll([{ code: "GB004" }, { code: "GB004" }]))
+      .toBe("planSessions.errorReached");
     // 予約変更の失敗分岐にも GB004 がある（復元失敗が最優先のまま）
     expect(customerBooking).toMatch(
       /restoreFailed \? t\("bookingLimits\.errorRestoreFailed"\)\s*\n\s*: isPlanLimitError\(error\)/,
@@ -454,7 +458,9 @@ describe("🔴 画面がプランの回数上限を見ている", () => {
     // 制限しないのは仕様。DB 側の素通しとセットで成立する非対称なので、
     // どちらか片方だけ変えると挙動がねじれる。
     expect(trainerSchedule).not.toContain("isPlanSessionLimitReached(");
-    expect(trainerSchedule).toContain("isPlanLimitError(");
+    // 文言の出し分けは共通の判定を通す（2026-09-03 に1本化）。
+    expect(trainerSchedule).toContain("proxyBookingErrorKey(error)");
+    expect(proxyBookingErrorKey({ code: "GB004" })).toBe("planSessions.errorReachedProxy");
   });
 
   it("プラン設定の「上限を超えた予約を許さない」はサブスクだけ", () => {

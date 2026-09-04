@@ -31,6 +31,9 @@ const SCHEDULE = readCode("src/components/trainer/TrainerSchedule.tsx");
 const WEEK = readCode("src/components/trainer/WeekTimelineView.tsx");
 const HOOK = readCode("src/hooks/useBookings.ts");
 const FIELD = readCode("src/components/trainer/BlockPurposeField.tsx");
+const GRID = readCode("src/components/booking/BookingSlotGrid.tsx");
+const TRIAL = readCode("src/pages/TrialBooking.tsx");
+const DROPIN = readCode("src/pages/DropInBooking.tsx");
 
 const LOCALES = ["ja", "en", "ko", "zh-CN", "zh-TW"] as const;
 const locale = (lng: string) =>
@@ -235,5 +238,82 @@ describe("文言", () => {
     for (const lng of LOCALES) {
       expect(typeof locale(lng).schedule.blockReason, lng).toBe("string");
     }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// お客様の予約画面での見え方（2026-09-04 宗本さんの念押し）
+//
+//   「予定名（任意）は予約側のお客様に表示されないように。
+//     お客様には満枠で表示する」
+//
+// 用事名が読めないこと（RLS）は上で見た。ここで見るのは**その手前**、
+// 「ブロックの枠が、ふつうに埋まった枠と見分けが付かないこと」。
+// ラベルを1つ足すだけで「この時間だけ扱いが違う」と分かってしまう。
+//
+// 受付しない帯（booking_blocked_windows）には同じ番人が既にある
+// （bookingBlockedWindows.test.ts）。用事名が付いた以上、ブロック枠にも要る。
+// ────────────────────────────────────────────────────────────────
+
+describe("🔴 お客様には満枠として見せる", () => {
+  it("会員の予約画面: ブロックの枠は「満枠」＝ふつうに埋まった枠と同じラベル", () => {
+    // 空きでない枠のラベルは3分岐。ブロックはどれにも当たらず既定の slotFull に落ちる
+    expect(GRID).toContain('t("booking.slotFull")');
+    expect(GRID).not.toContain("slotBlocked");
+    expect(GRID).not.toContain("blockedLabel");
+  });
+
+  it("🔴 会員の予約画面: slot.blocked で表示を分けていない", () => {
+    // slot.blocked が出てよいのは displayBlocked の定義1箇所だけ。
+    // ここが2箇所以上になったら「ブロックの枠だけ別の見た目」が生まれている。
+    const hits = (GRID.match(/slot\.blocked/g) ?? []).length;
+    expect(hits, "slot.blocked は displayBlocked の定義1箇所だけであるべき").toBe(1);
+    expect(GRID).toMatch(/const displayBlocked = slot\.blocked \|\| slot\.notAccepting;/);
+  });
+
+  it("体験予約: ブロックの枠は「満枠」", () => {
+    expect(TRIAL).toContain('t("trialBooking.slotFull")');
+    for (const lng of LOCALES) {
+      expect(typeof locale(lng).trialBooking.slotFull, lng).toBe("string");
+    }
+  });
+
+  it("ドロップイン: ブロックの枠は Full（このページは意図的に英語のみ）", () => {
+    // mem/features/drop-in-booking.md「画面が英語のみ（訪日観光客向けという前提）」
+    expect(DROPIN).toContain('slot.blocked ? "Full" : "Closed"');
+  });
+
+  it("🔴 お客様側の画面が用事名に触れていない", () => {
+    for (const [name, code] of [["会員の予約枠", GRID], ["体験予約", TRIAL], ["ドロップイン", DROPIN]] as const) {
+      expect(code, name).not.toContain("blockPurposeName");
+      expect(code, name).not.toContain("reason");
+    }
+  });
+
+  it("🔴 空き枠の RPC が用事名を返していない", () => {
+    // お客様側は RPC 経由でしか埋まり具合を知らない。ここに reason が混ざったら
+    // RLS を締めた意味が消える。**いちばん新しい定義**を見る
+    const dir = "supabase/migrations";
+    const latest = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .filter((f) => readFileSync(`${dir}/${f}`, "utf8").includes("FUNCTION public.get_tenant_booked_slots"))
+      .pop();
+    expect(latest, "get_tenant_booked_slots の定義が見つからない").toBeTruthy();
+    const src = readFileSync(`${dir}/${latest}`, "utf8");
+    // CREATE 〜 GRANT の手前まで（末尾の GRANT 行に引っかからないように切る）
+    const from = src.lastIndexOf("CREATE OR REPLACE FUNCTION public.get_tenant_booked_slots");
+    const grant = src.indexOf("GRANT EXECUTE ON FUNCTION public.get_tenant_booked_slots", from);
+    const body = src.slice(from, grant > from ? grant : src.length);
+    expect(body.length, "関数の本体を切り出せていない").toBeGreaterThan(200);
+    expect(body).not.toContain("reason");
+    // ブロックの status は定数。行ごとの文字列を返していない
+    expect(body).toContain("ブロック済み");
+  });
+
+  it("画面が使う status の文字列が RPC と一致している", () => {
+    // ここがずれると、ブロックの枠が「空き」に見えて二重予約になる
+    const lib = readCode("src/lib/bookedSlots.ts");
+    expect(lib).toContain('r.status === "ブロック済み"');
   });
 });

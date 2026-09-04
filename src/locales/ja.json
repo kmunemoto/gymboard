@@ -1165,6 +1165,7 @@
     "deleteTitle": "予約を削除しますか？",
     "releaseTitle": "ブロックを解除しますか？",
     "releaseDesc": "{{date}} {{time}} のブロックを解除します。この時間帯に予約が入れられるようになります。",
+    "releaseDescNamed": "「{{name}}」（{{date}} {{time}}）のブロックを解除します。この時間帯に予約が入れられるようになります。",
     "deleteDesc": "{{name}}さんの予約（{{date}} {{time}}）を削除します。本当にこの予約を削除しますか？元に戻すことはできません。",
     "yesRelease": "はい、解除する",
     "yesDelete": "はい、削除する",
@@ -1191,6 +1192,9 @@
     "blockDialogDesc": "選択した時間帯に予約が入らないようにブロックします。",
     "blockBtn": "ブロックする",
     "blockReason": "ブロック（{{start}}〜{{end}}）",
+    "blockPurposeLabel": "予定名（任意）",
+    "blockPurposePlaceholder": "面談、掃除、設営 など",
+    "blockPurposeNote": "ジムのスタッフだけに見えます（会員には表示されません）。",
     "errorSlotTakenCapacityHint": "すでに予約が入っています。同時に複数の予約を受けられる場合は、ジム設定 → 営業時間 の「同時に受けられる予約数」を変更してください。",
     "errorSlotTakenWindowHint": "すでにこの時間帯の受け入れ数に達しています。この枠には「時間帯別の同時受け入れ数」の設定が使われています。件数を変えるには ジム設定 → 時間帯別の同時受け入れ数 を変更してください。"
   },

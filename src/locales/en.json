@@ -1165,6 +1165,7 @@
     "deleteTitle": "Delete this booking?",
     "releaseTitle": "Unblock this slot?",
     "releaseDesc": "This will unblock {{date}} {{time}}. Bookings will be allowed during this time.",
+    "releaseDescNamed": "Unblock “{{name}}” ({{date}} {{time}}). This time will become bookable again.",
     "deleteDesc": "This will delete {{name}}'s booking ({{date}} {{time}}). Are you sure? This cannot be undone.",
     "yesRelease": "Yes, unblock",
     "yesDelete": "Yes, delete",
@@ -1191,6 +1192,9 @@
     "blockDialogDesc": "Block the selected time slot so no bookings can be made.",
     "blockBtn": "Block",
     "blockReason": "Block ({{start}}–{{end}})",
+    "blockPurposeLabel": "Label (optional)",
+    "blockPurposePlaceholder": "e.g. Meeting, Cleaning, Setup",
+    "blockPurposeNote": "Only gym staff can see this. Members cannot.",
     "errorSlotTakenCapacityHint": "This slot is already booked. If you can take more than one booking at a time, change \"Bookings at the same time\" under Gym settings → Business hours.",
     "errorSlotTakenWindowHint": "This time slot has reached its capacity. A time-window capacity setting applies to this slot. To change it, go to Gym Settings → Capacity by time window."
   },

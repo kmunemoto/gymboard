@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { blockPurposeName } from "@/lib/blockPurpose";
 import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
@@ -179,8 +180,14 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                   const height = Math.max(20, (endMin - startMin) * PX_PER_MIN - 2);
                   if (top + height < 0 || top > totalHeight) return null;
 
+                  // ブロック枠は用事名（「面談」「掃除」）を出す。付いていなければ既定の文言。
+                  // 🔴 8文字で切るのは、スマホ（1列 約47px）で truncate に頼ると「設営…」に
+                  //    退化し、PC（約12文字分）では逆に切りすぎるため。8 が両方の落としどころ。
+                  const blockName = b.isBlocked
+                    ? blockPurposeName(b.clientName) || t("schedule.blockedLabel")
+                    : "";
                   const shortName = b.isBlocked
-                    ? "—"
+                    ? blockName.slice(0, 8)
                     : b.clientName.replace(/^[^A-Za-z\u3040-\u30FF\u4E00-\u9FFF]+/, "").slice(0, 3);
 
                   // オプション付きの予約。狭すぎて名前は出せないので、色・左の帯・「＋」印で示し、
@@ -228,7 +235,7 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                             : "bg-accent text-accent-foreground"
                       }`}
                       style={{ top, height }}
-                      title={`${b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}`}
+                      title={`${b.isBlocked ? blockName : b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}`}
                     >
                       <div className="font-bold truncate">
                         {shortName}

@@ -1165,6 +1165,7 @@
     "deleteTitle": "要删除预约吗？",
     "releaseTitle": "要解除封锁吗？",
     "releaseDesc": "将解除 {{date}} {{time}} 的封锁。该时段将可以接受预约。",
+    "releaseDescNamed": "将解除「{{name}}」（{{date}} {{time}}）的封锁。该时段将可以预约。",
     "deleteDesc": "将删除 {{name}} 的预约（{{date}} {{time}}）。确定要删除吗？无法撤销。",
     "yesRelease": "是，解除",
     "yesDelete": "是，删除",
@@ -1191,6 +1192,9 @@
     "blockDialogDesc": "封锁所选时段，使其无法被预约。",
     "blockBtn": "封锁",
     "blockReason": "封锁（{{start}}〜{{end}}）",
+    "blockPurposeLabel": "事项名称（选填）",
+    "blockPurposePlaceholder": "例如：面谈、打扫、布置",
+    "blockPurposeNote": "仅健身房员工可见，会员看不到。",
     "errorSlotTakenCapacityHint": "该时段已有预约。如果可以同时接受多个预约，请在健身房设置→营业时间中修改“同一时间可接受的预约数”。",
     "errorSlotTakenWindowHint": "该时段的接待数量已满。此时段适用「分时段同时接待数」的设置。如需调整，请前往 健身房设置 → 分时段同时接待数。"
   },

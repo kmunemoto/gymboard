@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import BlockPurposeField from "@/components/trainer/BlockPurposeField";
+import { blockPurposeName } from "@/lib/blockPurpose";
 import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Plus, Trash2, Ban, Repeat, Sparkles, UserRound } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +80,7 @@ const TrainerSchedule = () => {
   // くり返しブロック: 毎週同じ曜日・時間で何週ぶんまとめてブロックするか（1=この回のみ）。
   // 「毎週月曜の午後はスタジオ貸し出し」のような固定の予定を1回の操作で入れる（実店舗の要望）。
   const [blockRepeatWeeks, setBlockRepeatWeeks] = useState(1);
+  const [blockPurpose, setBlockPurpose] = useState("");
   // ブロック解除: 同じくり返しグループの「この日以降」もまとめて解除するか
   const [releaseSeriesChecked, setReleaseSeriesChecked] = useState(false);
   // あとからオプションを足す／外す対象（店側専用。可否の判定は DB の GB008）
@@ -439,7 +442,7 @@ const TrainerSchedule = () => {
         blocked_date: `${dateStr}T${blockStartTime}:00+09:00`,
         end_blocked_date: `${dateStr}T${blockEndTime}:00+09:00`,
         created_by: user.id,
-        reason: t("schedule.blockReason", { start: blockStartTime, end: blockEndTime }),
+        reason: blockPurpose.trim() || null,   // 空欄なら null。古い自動生成文字列はもう作らない
         ...(recurrenceGroup ? { recurrence_group: recurrenceGroup } : {}),
       }, tenantId));
     }
@@ -470,7 +473,7 @@ const TrainerSchedule = () => {
     setBlockDate(undefined);
     setBlockStartTime("");
     setBlockEndTime("");
-    setBlockRepeatWeeks(1);
+    setBlockRepeatWeeks(1); setBlockPurpose("");
     setSubmitting(false);
     void refetch();
   };
@@ -669,7 +672,7 @@ const TrainerSchedule = () => {
                                   >
                                     <Trash2 className="w-3 h-3" />
                                   </Button>
-                                  <p className="font-bold truncate">{session.isBlocked ? t("schedule.blockedLabel") : session.clientName}</p>
+                                  <p className="font-bold truncate">{session.isBlocked ? (blockPurposeName(session.clientName) || t("schedule.blockedLabel")) : session.clientName}</p>
                                   <p className="opacity-75 truncate">{session.startTime}〜{session.endTime}</p>
                                   {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{session.booking_type}</p>}
                                   {!session.isBlocked && staffSelectable && session.staff_user_id && (
@@ -727,10 +730,10 @@ const TrainerSchedule = () => {
                                 ? "bg-muted text-muted-foreground"
                                 : "accent-gradient text-accent-foreground"
                             }`}>
-                              {booking.isBlocked ? "—" : booking.clientName[0]}
+                              {booking.isBlocked ? <Ban className="w-4 h-4" aria-hidden="true" /> : booking.clientName[0]}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate">{booking.isBlocked ? t("schedule.blockedLabel") : booking.clientName}</p>
+                              <p className="text-sm font-bold truncate">{booking.isBlocked ? (blockPurposeName(booking.clientName) || t("schedule.blockedLabel")) : booking.clientName}</p>
                               <p className="text-xs text-muted-foreground">{booking.startTime}〜{booking.endTime}</p>
                               {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{booking.booking_type}</p>}
                               {!booking.isBlocked && staffSelectable && (
@@ -1070,7 +1073,8 @@ const TrainerSchedule = () => {
             <DialogTitle>{deleteTarget?.isBlocked ? t("schedule.releaseTitle") : t("schedule.deleteTitle")}</DialogTitle>
             <p className="text-sm text-muted-foreground pt-1">
               {deleteTarget?.isBlocked
-                ? t("schedule.releaseDesc", { date: deleteTarget.date, time: deleteTarget.startTime })
+                ? t(blockPurposeName(deleteTarget.clientName) ? "schedule.releaseDescNamed" : "schedule.releaseDesc",
+                    { date: deleteTarget.date, time: deleteTarget.startTime, name: blockPurposeName(deleteTarget.clientName) })
                 : deleteTarget && t("schedule.deleteDesc", { name: deleteTarget.clientName, date: deleteTarget.date, time: deleteTarget.startTime })
               }
             </p>
@@ -1141,7 +1145,7 @@ const TrainerSchedule = () => {
       </Dialog>
 
       {/* Block slot dialog */}
-      <Dialog open={blockDialogOpen} onOpenChange={(o) => { setBlockDialogOpen(o); if (!o) setBlockRepeatWeeks(1); }}>
+      <Dialog open={blockDialogOpen} onOpenChange={(o) => { setBlockDialogOpen(o); if (!o) { setBlockRepeatWeeks(1); setBlockPurpose(""); } }}>
         <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("schedule.blockDialogTitle")}</DialogTitle>
@@ -1150,6 +1154,7 @@ const TrainerSchedule = () => {
             </p>
           </DialogHeader>
           <div className="space-y-4">
+            <BlockPurposeField value={blockPurpose} onChange={setBlockPurpose} />
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelDate")}</label>
               <Calendar
@@ -1270,7 +1275,7 @@ const TrainerSchedule = () => {
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="w-full sm:w-auto">{t("common.cancel")}</Button>
+            <Button variant="outline" onClick={() => { setBlockDialogOpen(false); setBlockPurpose(""); }} className="w-full sm:w-auto">{t("common.cancel")}</Button>
             <Button variant="destructive" onClick={handleBlockSlot} disabled={!blockDate || !blockStartTime || !blockEndTime || submitting} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
               {blockRepeatWeeks > 1 ? t("schedule.blockRepeatBtn", { count: blockRepeatWeeks }) : t("schedule.blockBtn")}

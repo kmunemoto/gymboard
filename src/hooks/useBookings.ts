@@ -260,7 +260,7 @@ export const useAllBookings = () => {
         date: format(dt, "yyyy-MM-dd"),
         startTime,
         endTime,
-        clientName: bs.reason || "ブロック",
+        clientName: bs.reason ?? "",   // 用事名。既定文言は表示側（blockPurposeName）が持つ
         status: "ブロック済み",
         booking_type: "ブロック",
         isBlocked: true,

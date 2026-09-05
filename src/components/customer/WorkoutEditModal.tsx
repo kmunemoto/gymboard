@@ -38,9 +38,12 @@ interface WorkoutEditModalProps {
 
 // お客様が自分のトレーニング記録（重量・回数・セット数）を編集する。
 // RLS 上、お客様は自分の workouts を UPDATE できる（"Users can update own workouts"）。
-// トレーナーの記録追加フロー（TrainerClientDetail）は delete+insert で gamification を
-// 再発火させるが、こちらは「既存記録の修正」なので純粋な UPDATE のみ行い、
-// ミッション・レイド等の報酬は再付与しない（編集での二重付与・不整合を避ける）。
+// 「既存記録の修正」なので純粋な UPDATE のみ行う（delete+insert にしない）。
+// ⚠️ 2026-09-05 まで、ここには「トレーナー側は delete+insert で gamification を
+//    再発火させるが、こちらは報酬を再付与しない」という注記があった。
+//    ゲーム要素ごと撤去したので、その理由はもう無い。UPDATE のままでよいのは、
+//    行を作り直すと id が変わり、参照している側（記録の並び順・共有カード）が
+//    ちらつくため。
 const WorkoutEditModal = ({ workout, open, onClose, onSaved }: WorkoutEditModalProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();

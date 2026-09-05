@@ -34,7 +34,6 @@ export interface Profile {
   calendar_token: string | null;
   best_streak: number;
   last_streak_notified: number;
-  game_mode_enabled: boolean;
   training_goal: string | null;
   milestone_goal?: string | null;
   milestone_goal_set_at?: string | null;
@@ -129,20 +128,6 @@ export const useProfile = () => {
     return { data: nextProfile, error: null };
   };
 
-  const updateGameMode = async (enabled: boolean) => {
-    if (!user) {
-      const { default: i18n } = await import("@/lib/i18n");
-      return { error: new Error(i18n.t("hooks.loginInfoNotFound")) };
-    }
-    const { error } = await supabase
-      .from("profiles")
-      .update({ game_mode_enabled: enabled } as any)
-      .eq("user_id", user.id);
-    if (error) return { error };
-    setProfile((p) => (p ? { ...p, game_mode_enabled: enabled } : p));
-    refetch();
-    return { error: null };
-  };
 
   useEffect(() => {
     if (!user) {
@@ -199,7 +184,7 @@ export const useProfile = () => {
     return () => window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
   }, [user?.id]);
 
-  return { profile, loading, refetch, updateDisplayName, updateGameMode };
+  return { profile, loading, refetch, updateDisplayName };
 };
 
 export const useAllCustomerProfiles = () => {
@@ -315,7 +300,6 @@ export const useAllCustomerProfiles = () => {
         calendar_token: (p as any)?.calendar_token || null,
         best_streak: p?.best_streak || 0,
         last_streak_notified: p?.last_streak_notified || 0,
-        game_mode_enabled: (p as any)?.game_mode_enabled ?? true,
         training_goal: (p as any)?.training_goal ?? null,
         milestone_goal: p?.milestone_goal ?? null,
         milestone_goal_set_at: p?.milestone_goal_set_at ?? null,

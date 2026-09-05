@@ -42,6 +42,12 @@
  * `src/test/bookingClosedDays.test.ts` が両者の一致を見張る。
  */
 
+/** その日付が JST の今日か。`getJSTToday()` と同じ規則。 */
+const isTodayKey = (dateKey: string): boolean =>
+  dateKey === new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+
 /** 受付を終了した日。`get_tenant_closed_days` が返す1行。 */
 export interface ClosedDay {
   /** JST の日付（yyyy-MM-dd） */
@@ -58,6 +64,64 @@ export const isDayClosed = (
 ): boolean => {
   if (!closedDays || closedDays.length === 0 || !dateKey) return false;
   return closedDays.some((d) => d.closed_date === dateKey);
+};
+
+/**
+ * その日を「日付ごと押せなくする」か。
+ *
+ * 実店舗の要望（2026-09-05 宗本さん）:
+ *
+ * > 一日四枠までに設定したら、四枠入っている日はグレーになって押せなくなる。
+ * > 当日であってもグレーで、何時が空いてるか分からなくなる。
+ * > **その日に予約している人だけ**には分かるようにしてほしい。
+ * > **当日の日付を押したときに**その日の状況が見えるようにしてほしい。
+ * > アプリから当日の予約の変更はできない。
+ *
+ * 🔴 **開けるのは「当日」×「上限で埋まった」×「その日に自分の予約がある」の3つが揃った時だけ。**
+ *
+ * | 種類 | `manual` | 当日の扱い |
+ * |---|---|---|
+ * | 店がワンタップで止めた | `true`  | 押せない（店が「今日はもう受けない」と決めた日） |
+ * | 上限に達した（4/4）    | `false` | **その日に予約がある人だけ押せる。中身は見るだけ** |
+ *
+ * 3つとも要るのはそれぞれ理由がある:
+ *
+ *  - **当日だけ**… 先の日付まで開けると、店が上限で止めた日に問い合わせが増える。
+ *    止めた意図に反する
+ *  - **上限の日だけ**… 手で止めた日は店の意思。開けない
+ *  - **その日に予約がある人だけ**… 見せる相手は「もう来る予定の人」。
+ *    予約の無い人に空き時間を見せると「まだ取れる」に見えてしまう。
+ *    当日はアプリから予約も変更もできないので、押せても**見るだけ**以上のことは起きない
+ *
+ * @param hasOwnBookingOnDay その日にこのお客様自身の予約があるか。
+ *   🔴 既定値を持たせていない。**呼ぶ側に必ず考えさせる**ため
+ *   （省略できると「その日に予約している人だけ」が黙って消える）。
+ */
+export const isDayHardClosed = (
+  closedDays: readonly ClosedDay[] | null | undefined,
+  dateKey: string,
+  hasOwnBookingOnDay: boolean,
+): boolean => {
+  const day = closedDays?.find((d) => d.closed_date === dateKey);
+  if (!day) return false;
+  return !isDayViewOnly(closedDays, dateKey, hasOwnBookingOnDay);
+};
+
+/**
+ * 「押せるが、予約はできない（見るだけ）」日か。
+ *
+ * 当日 かつ 上限で埋まった日 かつ その日に自分の予約がある人 だけ true。
+ * 呼び出し側は、**枠を描くが1つも押せない**状態にすること
+ * （空き枠は「空き」と分かるように出す）。
+ */
+export const isDayViewOnly = (
+  closedDays: readonly ClosedDay[] | null | undefined,
+  dateKey: string,
+  hasOwnBookingOnDay: boolean,
+): boolean => {
+  if (!hasOwnBookingOnDay || !isTodayKey(dateKey)) return false;
+  const day = closedDays?.find((d) => d.closed_date === dateKey);
+  return !!day && !day.manual;
 };
 
 /** その日を止めた理由。閉まっていなければ null。 */

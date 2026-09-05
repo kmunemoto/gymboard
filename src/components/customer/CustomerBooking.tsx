@@ -43,7 +43,7 @@ import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/li
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
-import { closedDayReason, isDayClosed, isDayClosedError } from "@/lib/bookingClosedDays";
+import { closedDayReason, isDayHardClosed, isDayViewOnly, isDayClosedError } from "@/lib/bookingClosedDays";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
 import BookingOptionConfirm from "@/components/booking/BookingOptionConfirm";
@@ -217,6 +217,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     return { futureDateSet: future, pastDateSet: past };
   }, [myBookings]);
 
+  // 🔴 「その日に予約している人だけ」に当日の空き状況を見せるための判定。
+  //    カレンダーの丸印（futureDateSet）と**同じ集合**を使う。つまり
+  //    「丸が付いている日だけ開く」で見た目と規則が一致する。
+  //    読み込み前は空集合＝閉じたまま。開くほうへ倒れない（安全側）。
+  const hasOwnBookingOn = (key: string): boolean => futureDateSet.has(key);
+
   // selectedDate comes from <Calendar>, where the user's tap maps to a JST
   // calendar day; format() reads its local fields, which match.
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
@@ -326,13 +332,22 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // その日ぜんぶが受付終了か。日付を選んだあとに店が閉めた場合の受け皿でもある
   // （カレンダー側でも選べなくしているが、選択済みの状態は残るため）。
-  const selectedDayClosed = isDayClosed(closedDays, dateKey);
+  const selectedDayClosed = isDayHardClosed(closedDays, dateKey, hasOwnBookingOn(dateKey));
+
+  // 🔴 当日が上限（4/4）で埋まっていて、**その日に自分の予約がある人**のときだけ、
+  //    枠を出すが1つも押せない状態にする。実店舗の要望:
+  //    「その日に予約している人だけには分かるようにしてほしい。当日の日付を押したときに
+  //     その日の状況が見えるように。アプリから当日の予約の変更はできない」。
+  //    当日はそもそも締切済みで予約も変更もできないので、押せても見るだけで済む。
+  const selectedDayViewOnly = isDayViewOnly(closedDays, dateKey, hasOwnBookingOn(dateKey));
 
   const generateSlots = () => {
-    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean }[] = [];
+    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean; dayFull: boolean }[] = [];
     // 🔴 受付終了の日は1枠も出さない。定休日（営業時間が0枠）と同じ見た目になる。
     //    半端に「押せない枠」を並べると、キャンセル待ちに登録できてしまう
     //    （空きを待っても店が受けないので、待つだけ無駄になる）。
+    //    ⚠️ 当日が上限で埋まっている場合（selectedDayViewOnly）はここで止めない。
+    //       枠は出すが、下で全部「押せない」に倒す。
     if (selectedDayClosed) return slots;
     // 曜日別の営業時間・定休日、さらに指名した担当のシフトまで反映する。
     // 指名なし／シフト未設定なら、結果は店の営業時間そのもの（従来どおり）。
@@ -347,8 +362,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       const notAccepting = isSlotNotAccepting(dateKey, time);
       slots.push({
         id: `${dateKey}-${time}`, time,
-        available: !blocked && !tooSoon && !overLimit && !notAccepting,
+        // 🔴 上限で埋まった当日は1枠も押せない。DB も GB007 で断るので、
+        //    押せる見た目にすると「押したのに断られる」になる。見せるだけにする。
+        available: !selectedDayViewOnly && !blocked && !tooSoon && !overLimit && !notAccepting,
         blocked, tooSoon, overLimit, notAccepting,
+        dayFull: selectedDayViewOnly,
       });
     }
     return slots;
@@ -1054,7 +1072,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     if (isClosedDate(businessHours, yyyyMMdd)) return true;
                     // 店が「その日はもう受けない」とした日、または1日の上限に達した日。
                     // 定休日と同じ見た目（選べない）にする。最終判定は DB（GB007）。
-                    if (isDayClosed(closedDays, yyyyMMdd)) return true;
+                    // ⚠️ 上限で埋まった**当日**を、**その日に自分の予約がある人**にだけ開ける
+                    //    （押しても予約はできない。空き時間を見せるだけ）。
+                    //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
+                    if (isDayHardClosed(closedDays, yyyyMMdd, hasOwnBookingOn(yyyyMMdd))) return true;
                     // 指名した担当が出勤していない曜日。指名なしなら常に false。
                     if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
                       return true;
@@ -1135,6 +1156,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         </Button>
                       )}
                     </div>
+                  </div>
+                )}
+                {selectedDayViewOnly && (
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-center space-y-1">
+                    <p className="text-sm font-bold">{t("closedDays.customerFullToday")}</p>
+                    <p className="text-xs text-muted-foreground">{t("closedDays.customerFullTodayHelp")}</p>
                   </div>
                 )}
                 {selectedDayClosed && (

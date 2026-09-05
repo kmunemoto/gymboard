@@ -2787,6 +2787,8 @@
     "reopenFailed": "Could not reopen the day",
     "customerClosed": "This day is no longer taking bookings",
     "customerClosedHelp": "Please choose another date.",
+    "customerFullToday": "Today's slots are fully booked",
+    "customerFullTodayHelp": "Today has reached its booking limit. You can still check the open times below (same-day booking and changes are not available in the app).",
     "errorClosed": "This day is no longer taking bookings. Please choose another date."
   },
   "bookingOptions": {

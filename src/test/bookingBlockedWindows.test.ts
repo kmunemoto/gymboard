@@ -241,8 +241,11 @@ describe("🔴 画面が受付しない時間帯を見ている", () => {
     expect(grid, "空き待ちの判定が帯を別扱いしている").toMatch(
       /waitlistEnabled && !slot\.available && displayBlocked && !slot\.tooSoon && !slot\.overLimit;/,
     );
+    // ⚠️ 2026-09-05 に、上限で埋まった当日も「見るだけ」に加えた（dayFull）。
+    //    見るべきは **`&& !displayBlocked` が残っていること**＝帯は「空き」に戻らないこと。
+    //    左側の条件が増えるのは想定内なので、そこは緩く見る。
     expect(grid, "締切後の帯が「空き」表示に戻っている").toMatch(
-      /const viewOnlyOpen = slot\.tooSoon && !displayBlocked;/,
+      /const viewOnlyOpen = \([^)]*slot\.tooSoon[^)]*\) && !displayBlocked;/,
     );
     expect(grid, "ラベルの分岐が帯を別扱いしている").toMatch(
       /\{slot\.overLimit && !displayBlocked/,

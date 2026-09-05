@@ -196,15 +196,16 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     fetchProfile();
   }, [clientId, memberRefreshKey]);
 
-  // Fetch user_avatars gender
+  // 性別は profiles が持つ（2026-09-05 に user_avatars から移した。
+  // アバターはゲーム要素として撤去するが、性別は実機能なので残す）
   useEffect(() => {
     const fetchGender = async () => {
       const { data } = await supabase
-        .from("user_avatars")
+        .from("profiles")
         .select("gender")
         .eq("user_id", clientId)
         .maybeSingle();
-      setClientGender(((data as any)?.gender as "male" | "female" | null) ?? null);
+      setClientGender(((data as { gender?: string | null } | null)?.gender as "male" | "female" | null) ?? null);
     };
     fetchGender();
   }, [clientId]);
@@ -682,24 +683,13 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   };
 
   const handleGenderChange = async (g: "male" | "female") => {
-    // Ensure avatar row exists, then update
-    const { data: existing } = await supabase
-      .from("user_avatars")
-      .select("user_id")
-      .eq("user_id", clientId)
-      .maybeSingle();
-    if (!existing) {
-      const { error: insErr } = await (supabase as any)
-        .from("user_avatars")
-        .insert({ user_id: clientId, gender: g });
-      if (insErr) { toast.error(t("clientDetail.genderUpdateFailed")); return; }
-    } else {
-      const { error } = await (supabase as any)
-        .from("user_avatars")
-        .update({ gender: g })
-        .eq("user_id", clientId);
-      if (error) { toast.error(t("clientDetail.genderUpdateFailed")); return; }
-    }
+    // profiles の行は必ずある（お客様が登録した時点で作られる）ので、素直に UPDATE でよい。
+    // アバター時代は行が無いことがあり、insert / update を出し分けていた。
+    const { error } = await supabase
+      .from("profiles")
+      .update({ gender: g })
+      .eq("user_id", clientId);
+    if (error) { toast.error(t("clientDetail.genderUpdateFailed")); return; }
     setClientGender(g);
     toast.success(g === "male" ? t("clientDetail.genderMaleToast") : t("clientDetail.genderFemaleToast"));
   };

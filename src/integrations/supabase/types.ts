@@ -2119,6 +2119,7 @@ export type Database = {
           cycle_start_pinned: boolean
           display_name: string | null
           game_mode_enabled: boolean
+          gender: string | null
           grace_enabled: boolean | null
           id: string
           imported_at: string | null
@@ -2149,6 +2150,7 @@ export type Database = {
           cycle_start_pinned?: boolean
           display_name?: string | null
           game_mode_enabled?: boolean
+          gender?: string | null
           grace_enabled?: boolean | null
           id?: string
           imported_at?: string | null
@@ -2179,6 +2181,7 @@ export type Database = {
           cycle_start_pinned?: boolean
           display_name?: string | null
           game_mode_enabled?: boolean
+          gender?: string | null
           grace_enabled?: boolean | null
           id?: string
           imported_at?: string | null

@@ -24,6 +24,8 @@ export interface CounselingResponse {
   trainer_memo: string | null;
   reviewed: boolean;
   created_at: string;
+  /** 紐付け先の会員アカウント（profiles.user_id）。未紐付けなら null。トレーナーが手動で設定する */
+  user_id: string | null;
 }
 
 export const useCounselingResponses = () => {
@@ -63,7 +65,48 @@ export const useCounselingResponses = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["counseling_responses"] }),
   });
 
+  const linkToClient = useMutation({
+    mutationFn: async ({ id, userId }: { id: string; userId: string | null }) => {
+      const { error } = await supabase
+        .from("counseling_responses")
+        .update({ user_id: userId } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["counseling_responses"] }),
+  });
+
   const unreadCount = responses.filter((r) => !r.reviewed).length;
 
-  return { responses, isLoading, markReviewed, updateMemo, unreadCount };
+  return { responses, isLoading, markReviewed, updateMemo, linkToClient, unreadCount };
+};
+
+/**
+ * カルテ画面（TrainerClientDetail）向け。指定した顧客に紐付いた最新のカウンセリング回答
+ * （既往歴・注意部位のみ）を1件取得する。紐付けが無ければ null。
+ * 同じ顧客が複数回申し込んでいる場合は created_at が最新の1件を「現在の禁忌事項」とみなす。
+ */
+export interface ClientPrecautions {
+  id: string;
+  pain_areas: string[] | null;
+  medical_history: string | null;
+  created_at: string;
+}
+
+export const useClientPrecautions = (clientId: string | undefined) => {
+  return useQuery({
+    queryKey: ["client_precautions", clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("counseling_responses")
+        .select("id, pain_areas, medical_history, created_at")
+        .eq("user_id", clientId as string)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClientPrecautions | null;
+    },
+    enabled: !!clientId,
+  });
 };

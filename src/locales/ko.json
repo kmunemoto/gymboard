@@ -2788,7 +2788,7 @@
     "customerClosed": "이 날은 접수를 종료했습니다",
     "customerClosedHelp": "다른 날짜를 선택해 주세요.",
     "customerFullToday": "오늘 예약 가능 인원이 찼습니다",
-    "customerFullTodayHelp": "아래에서 빈 시간을 확인하실 수 있습니다. 상담은 매장으로 직접 연락해 주세요.",
+    "customerFullTodayHelp": "오늘은 예약이 상한에 도달했습니다. 아래에서 빈 시간을 확인하실 수 있습니다(앱에서는 당일 예약·변경을 할 수 없습니다).",
     "errorClosed": "이 날은 접수를 종료했습니다. 다른 날짜를 선택해 주세요."
   },
   "bookingOptions": {

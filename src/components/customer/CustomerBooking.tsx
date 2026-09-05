@@ -217,6 +217,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     return { futureDateSet: future, pastDateSet: past };
   }, [myBookings]);
 
+  // 🔴 「その日に予約している人だけ」に当日の空き状況を見せるための判定。
+  //    カレンダーの丸印（futureDateSet）と**同じ集合**を使う。つまり
+  //    「丸が付いている日だけ開く」で見た目と規則が一致する。
+  //    読み込み前は空集合＝閉じたまま。開くほうへ倒れない（安全側）。
+  const hasOwnBookingOn = (key: string): boolean => futureDateSet.has(key);
+
   // selectedDate comes from <Calendar>, where the user's tap maps to a JST
   // calendar day; format() reads its local fields, which match.
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
@@ -326,13 +332,14 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // その日ぜんぶが受付終了か。日付を選んだあとに店が閉めた場合の受け皿でもある
   // （カレンダー側でも選べなくしているが、選択済みの状態は残るため）。
-  const selectedDayClosed = isDayHardClosed(closedDays, dateKey);
+  const selectedDayClosed = isDayHardClosed(closedDays, dateKey, hasOwnBookingOn(dateKey));
 
-  // 🔴 当日が上限（4/4）で埋まっている場合だけ、**枠を出すが1つも押せない**状態にする。
-  //    実店舗の要望: 「当日の日付を押したときに、その日の状況が見えるようにしてほしい。
-  //    アプリから当日の予約の変更はできない。状況を見てお客さんはお店に連絡する」。
+  // 🔴 当日が上限（4/4）で埋まっていて、**その日に自分の予約がある人**のときだけ、
+  //    枠を出すが1つも押せない状態にする。実店舗の要望:
+  //    「その日に予約している人だけには分かるようにしてほしい。当日の日付を押したときに
+  //     その日の状況が見えるように。アプリから当日の予約の変更はできない」。
   //    当日はそもそも締切済みで予約も変更もできないので、押せても見るだけで済む。
-  const selectedDayViewOnly = isDayViewOnly(closedDays, dateKey);
+  const selectedDayViewOnly = isDayViewOnly(closedDays, dateKey, hasOwnBookingOn(dateKey));
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean; dayFull: boolean }[] = [];
@@ -1065,11 +1072,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     if (isClosedDate(businessHours, yyyyMMdd)) return true;
                     // 店が「その日はもう受けない」とした日、または1日の上限に達した日。
                     // 定休日と同じ見た目（選べない）にする。最終判定は DB（GB007）。
-                    // ⚠️ 上限で閉まった日は、**予約変更でその日の自分の予約を動かすとき**だけ開ける。
-                    //    手で止めた日は開けない（DB が断るので、押せても意味がない）。
-                    // ⚠️ 上限で埋まった**当日**だけは塞がない（押して中身を見せる）。
+                    // ⚠️ 上限で埋まった**当日**を、**その日に自分の予約がある人**にだけ開ける
+                    //    （押しても予約はできない。空き時間を見せるだけ）。
                     //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
-                    if (isDayHardClosed(closedDays, yyyyMMdd)) return true;
+                    if (isDayHardClosed(closedDays, yyyyMMdd, hasOwnBookingOn(yyyyMMdd))) return true;
                     // 指名した担当が出勤していない曜日。指名なしなら常に false。
                     if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
                       return true;

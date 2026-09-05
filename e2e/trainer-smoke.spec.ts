@@ -187,6 +187,67 @@ test.describe("ジム側の主要導線", () => {
 
     expect(errors, `カルテで例外が出ている:\n${errors.join("\n")}`).toEqual([]);
   });
+
+  /**
+   * 顧客一覧の男女タブ。
+   *
+   * 性別の保存先は 2026-09-05 に `user_avatars.gender` → `profiles.gender` へ移した。
+   * アバター（ゲーム要素）のテーブルを落とすのが目的だが、**性別は実機能**で、
+   * ここと、カルテの性別設定と、お客様の記録画面の筋肉図の3つがぶら下がっている。
+   *
+   * 🔴 引っ越しに失敗しても**画面は落ちない。全員が「その他」に寄って
+   *    男女とも0人になるだけ**なので、開くだけのスモークでは気づけない。
+   *    だから「押したら実際に件数が減る」ところまで見る。
+   *
+   * fixtures は男2・女2（src/dev/fixtures.ts の CUSTOMERS）。
+   */
+  test("顧客一覧の男女タブが、押すと実際に絞り込む", async ({ page }) => {
+    const errors = watchErrors(page);
+    await gotoApp(page);
+
+    const clientsTab = page
+      .getByRole("complementary")
+      .getByRole("button")
+      .filter({ has: page.locator("svg.lucide-users") });
+    await clientsTab.click();
+
+    const rows = page.getByRole("main").locator(".card-hover.cursor-pointer");
+    await expect.poll(async () => await rows.count(), { timeout: 10_000 }).toBeGreaterThan(0);
+    const all = await rows.count();
+
+    // タブは3つとも出ている（文言では引かない。testid で引く）
+    for (const key of ["all", "male", "female"]) {
+      await expect(
+        page.getByTestId(`gender-tab-${key}`),
+        `男女タブ（${key}）が出ていません`,
+      ).toBeVisible();
+    }
+
+    // 男性で絞る → 件数が減る（減らなければ gender が誰にも入っていない）
+    await page.getByTestId("gender-tab-male").click();
+    await expect
+      .poll(async () => await rows.count(), {
+        timeout: 10_000,
+        message: "男性タブを押しても件数が変わりません（性別が読めていない可能性）",
+      })
+      .toBeLessThan(all);
+    const male = await rows.count();
+    expect(male, "男性が0人になっています（性別の引っ越しに失敗している）").toBeGreaterThan(0);
+
+    // 女性で絞る → こちらも1人以上
+    await page.getByTestId("gender-tab-female").click();
+    await expect.poll(async () => await rows.count(), { timeout: 10_000 }).toBeGreaterThan(0);
+    const female = await rows.count();
+
+    // 男＋女が全体を超えない＝同じ人が両方に出ていない
+    expect(male + female, "男女の合計が全体を超えています").toBeLessThanOrEqual(all);
+
+    // 「すべて」に戻ると元の件数
+    await page.getByTestId("gender-tab-all").click();
+    await expect.poll(async () => await rows.count(), { timeout: 10_000 }).toBe(all);
+
+    expect(errors, `男女タブで例外が出ている:\n${errors.join("\n")}`).toEqual([]);
+  });
 });
 
 test.describe("お客様側の主要導線", () => {

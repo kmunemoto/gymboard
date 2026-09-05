@@ -37,11 +37,14 @@ export const DEV_OWNER_ID = "00000000-0000-4000-8000-0000000000a1";
 /** お客様側の画面を確認するときにログイン扱いにするお客様（下の CUSTOMERS の1人目） */
 export const DEV_CUSTOMER_ID = "00000000-0000-4000-8000-0000000000c1";
 
+// gender は顧客一覧の男女タブが動くことを E2E で確かめるために持たせている
+// （2026-09-05 に user_avatars から profiles へ移した列）。男2・女2で、
+// タブを押したときに件数が実際に変わることを見られるようにしてある。
 const CUSTOMERS = [
-  { id: "00000000-0000-4000-8000-0000000000c1", name: "田中 花子", plan: 1, cycleOffset: -3 },
-  { id: "00000000-0000-4000-8000-0000000000c2", name: "佐藤 健", plan: 1, cycleOffset: -40 },
-  { id: "00000000-0000-4000-8000-0000000000c3", name: "鈴木 美咲", plan: 0, cycleOffset: -5 },
-  { id: "00000000-0000-4000-8000-0000000000c4", name: "高橋 大輔", plan: 2, cycleOffset: -70 },
+  { id: "00000000-0000-4000-8000-0000000000c1", name: "田中 花子", plan: 1, cycleOffset: -3, gender: "female" },
+  { id: "00000000-0000-4000-8000-0000000000c2", name: "佐藤 健", plan: 1, cycleOffset: -40, gender: "male" },
+  { id: "00000000-0000-4000-8000-0000000000c3", name: "鈴木 美咲", plan: 0, cycleOffset: -5, gender: "female" },
+  { id: "00000000-0000-4000-8000-0000000000c4", name: "高橋 大輔", plan: 2, cycleOffset: -70, gender: "male" },
 ];
 
 const PLAN_NAMES = ["月4回コース", "月8回コース", "16回チケット"];
@@ -236,6 +239,7 @@ export function buildDevFixtures(): Record<string, Record<string, unknown>[]> {
         tenant_id: DEV_TENANT_ID,
         display_name: "デモ オーナー",
         avatar_url: null,
+        gender: null,
         plan: null,
         cycle_start_date: null,
         training_goal: null,
@@ -258,6 +262,7 @@ export function buildDevFixtures(): Record<string, Record<string, unknown>[]> {
         tenant_id: DEV_TENANT_ID,
         display_name: c.name,
         avatar_url: null,
+        gender: c.gender,
         // 売上集計・契約状態の表示は tenant_members.plan_id ではなく
         // profiles.plan（プラン「名」の文字列）を見ている
         plan: PLAN_NAMES[c.plan],

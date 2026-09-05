@@ -352,9 +352,11 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
 
       <Tabs value={genderTab} onValueChange={(v) => setGenderTab(v as "all" | "male" | "female")} className="mb-3 sm:mb-4">
         <TabsList className="grid grid-cols-3 w-full h-9">
-          <TabsTrigger value="all" className="text-xs">{t("clientList.tabAll", { count: activePool.length })}</TabsTrigger>
-          <TabsTrigger value="male" className="text-xs">{t("clientList.tabMale", { count: maleCount })}</TabsTrigger>
-          <TabsTrigger value="female" className="text-xs">{t("clientList.tabFemale", { count: femaleCount })}</TabsTrigger>
+          {/* data-testid を付けてあるのは、E2E が**文言で判定しない**ため
+              （5言語 i18n ＋ 兄弟アプリが語彙を差し替える。e2e/trainer-smoke.spec.ts の冒頭） */}
+          <TabsTrigger value="all" data-testid="gender-tab-all" className="text-xs">{t("clientList.tabAll", { count: activePool.length })}</TabsTrigger>
+          <TabsTrigger value="male" data-testid="gender-tab-male" className="text-xs">{t("clientList.tabMale", { count: maleCount })}</TabsTrigger>
+          <TabsTrigger value="female" data-testid="gender-tab-female" className="text-xs">{t("clientList.tabFemale", { count: femaleCount })}</TabsTrigger>
         </TabsList>
       </Tabs>
 

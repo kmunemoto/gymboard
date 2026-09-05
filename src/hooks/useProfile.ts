@@ -129,20 +129,6 @@ export const useProfile = () => {
     return { data: nextProfile, error: null };
   };
 
-  const updateGameMode = async (enabled: boolean) => {
-    if (!user) {
-      const { default: i18n } = await import("@/lib/i18n");
-      return { error: new Error(i18n.t("hooks.loginInfoNotFound")) };
-    }
-    const { error } = await supabase
-      .from("profiles")
-      .update({ game_mode_enabled: enabled } as any)
-      .eq("user_id", user.id);
-    if (error) return { error };
-    setProfile((p) => (p ? { ...p, game_mode_enabled: enabled } : p));
-    refetch();
-    return { error: null };
-  };
 
   useEffect(() => {
     if (!user) {
@@ -199,7 +185,7 @@ export const useProfile = () => {
     return () => window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
   }, [user?.id]);
 
-  return { profile, loading, refetch, updateDisplayName, updateGameMode };
+  return { profile, loading, refetch, updateDisplayName };
 };
 
 export const useAllCustomerProfiles = () => {

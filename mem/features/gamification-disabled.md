@@ -181,7 +181,61 @@ workouts のトリガー 3本→1本（残るのはプラン上限のガード�
 `rpcCallerCheck.test.ts` のしきい値も 3 → 2 に下げた
 （user_id 付きで呼ぶ RPC が8本→2本に減ったため）。
 
-## 第2段b（未着手）: テーブルと関数の削除
+## 第2段b（2026-09-05・完了）: テーブル50個・関数55本を削除
+
+🔴 **ここから戻せない。** `supabase/migrations/20260905020000_drop_gamification.sql`
+
+### 監査の反証が1本実行されなかったので、実測で埋めた
+
+3つの観点で反証させたうち、**よりによって「予約と記録が減らないか」が
+安全フィルタで実行されなかった**。机上の確認が取れないので、
+**本番で丸ごと落として数を数えてから ROLLBACK する**予行演習を2回やった。
+
+```
+予行演習1（テーブルだけ）
+  bookings 788->788 / workouts 2434->2434 / trial_bookings 74->74
+  profiles 73->73 / messages 82->82 / user_measurements 284->284
+  weight_journey 0->0 / booking_questions 0->0
+
+予行演習2（テーブル＋関数）
+  bookings 788->788 / workouts 2434->2434
+  public の関数 141->86（55本減）
+  get_tenant_booked_slots は生存（83件返る）
+
+本適用のあと
+  すべて予行演習どおり。ゲーム系テーブルの残り 0
+  テーブル 101->51 ／ 関数 141->86
+```
+
+**エージェントに反証させるより、本番で実際に落として戻すほうが強い証拠になる。**
+次に戻せない作業をするときも、この形（DROP → 数える → ROLLBACK）を先にやること。
+
+### 🔴 CASCADE を使わない
+
+1文にまとめれば、ゲーム系どうしの外部キーはその中で解決される。
+CASCADE は「何を巻き込んだか分からない」ので、この種の作業では使わない。
+
+### 残した宿題
+
+`profiles.game_mode_enabled` と `tenants.gamification_enabled` の**列は残してある**。
+`schemaDrift.test.ts` のパーサが `DROP COLUMN` を解釈しないため、落とすならそちらが先
+（列が1つ余るだけで実害は無い）。`updateGameMode`（未使用の分割代入だった）は削除済み。
+
+### 番人
+
+`src/test/gamificationRemoved.test.ts`（25件）。
+
+- 消したテーブル・関数を `.from()` / `.rpc()` で呼んでいないか
+  （**types.ts には Lovable が再生成するまで型が残るので、TS は通ってしまう**）
+- 実機能（`booking_questions` / `weight_journey` / `user_measurements`）が
+  削除の一覧に入っていないか
+- `clientDetail.expiry`（契約の有効期限）が5言語とも残っているか
+- マイグレーションが CASCADE を使っていないか
+
+⚠️ 変異検証で**この番人自身の穴が見つかった**。`DROP TABLE` の一覧を
+カンマで割っただけだと、末尾に `CASCADE` が付いた項目が
+`"booking_questions CASCADE"` になり、「実機能が混ざっていないか」の検査を
+すり抜けた。空白で切って先頭だけ取るように直してある。
 
 - コード約2,100行（`avatarSystem` / `avatarRewards` / `titleSystem` / `missionSystem` /
   `missionRewards` / `raidUtils` / `rankPerks` / `useAvatar` / `useSeasonEvents` /

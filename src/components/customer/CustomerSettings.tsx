@@ -32,7 +32,7 @@ import { LINE_INTEGRATION_ENABLED, GOOGLE_CALENDAR_CUSTOMER_ENABLED, APPLE_CONNE
 
 const CustomerSettings = () => {
   const { t } = useTranslation();
-  const { profile, loading, updateDisplayName, updateGameMode, refetch } = useProfile();
+  const { profile, loading, updateDisplayName, refetch } = useProfile();
   const { user, signOut } = useAuth();
   const { bookings: myBookings, loading: bookingsLoading } = useMyBookings();
   // allPlans: 非公開プランでも既存会員の契約解決は続ける（useTenant の allPlans コメント参照）

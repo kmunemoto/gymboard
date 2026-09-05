@@ -1543,13 +1543,6 @@
     "savedToast": "기록을 저장했습니다",
     "savedDesc": "{{name}}님의 트레이닝 기록을 저장했습니다",
     "deletedToast": "기록을 삭제했습니다",
-    "missionAchieved": "미션 달성! {{name}}",
-    "missionExp": "+{{exp}} EXP",
-    "missionAllComplete": "전 미션 컴플리트!",
-    "missionBonus": "+50 EXP 보너스!",
-    "raidDefeated": "레이드 보스 격파!",
-    "raidDefeatedDesc": "모두에게 보상을 지급했습니다!",
-    "eventComplete": "이벤트 완주! {{name}}",
     "deleteWorkoutDesc": "{{name}} {{sets}}의 기록을 삭제합니다. 이 작업은 취소할 수 없습니다.",
     "mealsSection": "식사 기록",
     "noMeals": "식사 기록 없음",
@@ -1574,8 +1567,6 @@
     "chatPlaceholder": "메시지를 입력...",
     "categoryOther": "기타",
     "monthlyPrice": "월정액: ¥{{price}}",
-    "eventRewardDesc": "+{{exp}} EXP / +{{coins}} 코인{{badge}}",
-    "eventBadgeSuffix": " / 한정 배지 \"{{badge}}\"",
     "loadLastMenu": "지난번과 같은 메뉴 불러오기",
     "lastMenuLoaded": "지난번({{date}}) 메뉴를 불러왔습니다",
     "prevHint": "지난번 {{date}}: {{weight}}kg × {{reps}}회 · {{sets}}세트"
@@ -2110,166 +2101,12 @@
     "arms": "팔",
     "other": "기타"
   },
-  "titles": {
-    "chest_master": {
-      "name": "가슴의 귀신",
-      "condition": "가슴 운동이 전체의 40% 이상"
-    },
-    "back_master": {
-      "name": "등의 귀신",
-      "condition": "등 운동이 전체의 40% 이상"
-    },
-    "leg_master": {
-      "name": "다리의 왕",
-      "condition": "다리 운동이 전체의 40% 이상"
-    },
-    "shoulder_master": {
-      "name": "멜론 어깨",
-      "condition": "어깨 운동이 전체의 40% 이상"
-    },
-    "arm_master": {
-      "name": "팔 자랑",
-      "condition": "팔 운동이 전체의 40% 이상"
-    },
-    "early_bird": {
-      "name": "아침 운동의 달인",
-      "condition": "오전 세션이 70% 이상"
-    },
-    "night_owl": {
-      "name": "야간형 트레이니",
-      "condition": "19시 이후 세션이 70% 이상"
-    },
-    "consistency_king": {
-      "name": "지속의 왕",
-      "condition": "12주 연속 방문"
-    },
-    "volume_monster": {
-      "name": "볼륨 몬스터",
-      "condition": "월간 총 거상량 10만kg 이상"
-    },
-    "all_rounder_title": {
-      "name": "올라운더",
-      "condition": "매월 5부위 이상을 3개월 연속"
-    },
-    "boss_slayer": {
-      "name": "보스 헌터",
-      "condition": "레이드 보스 3회 격파에 기여"
-    },
-    "mission_addict": {
-      "name": "미션 중독",
-      "condition": "데일리 미션 누적 50회 달성"
-    },
-    "combo_master": {
-      "name": "콤보 마스터",
-      "condition": "5콤보 이상을 3회 달성"
-    },
-    "core_oni": {
-      "name": "코어의 귀신",
-      "condition": "체간 운동이 전체의 40% 이상"
-    },
-    "weekend_warrior": {
-      "name": "주말 전사",
-      "condition": "주말 세션이 60% 이상"
-    },
-    "iron_man": {
-      "name": "철인",
-      "condition": "누적 200세션 이상"
-    },
-    "gacha_master": {
-      "name": "가챠 마스터",
-      "condition": "가챠 누적 50회 이상"
-    },
-    "raid_slayer": {
-      "name": "레이드 슬레이어",
-      "condition": "레이드 보스 5회 격파에 기여"
-    },
-    "streaker": {
-      "name": "스트리커",
-      "condition": "최대 콤보 10회 이상"
-    },
-    "record_child": {
-      "name": "기록의 천재",
-      "condition": "자기 베스트 누적 30회 이상"
-    },
-    "legend_title": {
-      "name": "레전드",
-      "condition": "아바타 레벨 50 도달"
-    },
-    "collector": {
-      "name": "컬렉터",
-      "condition": "배지 10개 획득"
-    },
-    "badge_master": {
-      "name": "배지 마스터",
-      "condition": "배지 20개 획득"
-    },
-    "complete_road": {
-      "name": "컴플리트로 가는 길",
-      "condition": "배지 30개 획득"
-    },
-    "legend_collector": {
-      "name": "레전드 컬렉터",
-      "condition": "전 배지 제패"
-    },
-    "liberator": {
-      "name": "해방자",
-      "condition": "왕국 부흥 퀘스트 스테이지 1 클리어"
-    },
-    "harbor_guardian": {
-      "name": "항구의 수호자",
-      "condition": "왕국 부흥 퀘스트 스테이지 3 클리어"
-    },
-    "spirit_ally": {
-      "name": "정령의 맹우",
-      "condition": "왕국 부흥 퀘스트 스테이지 5 클리어"
-    },
-    "sky_pioneer": {
-      "name": "천공의 개척자",
-      "condition": "왕국 부흥 퀘스트 스테이지 7 클리어"
-    },
-    "kingdom_hero": {
-      "name": "왕국의 영웅",
-      "condition": "왕국 부흥 퀘스트 전 스테이지 클리어"
-    },
-    "goal_achiever": {
-      "name": "목표 달성자",
-      "condition": "목표 체중을 달성"
-    }
-  },
-  "ranks": {
-    "rookie": "루키",
-    "regular": "레귤러",
-    "athlete": "애슬리트",
-    "elite": "엘리트",
-    "legend": "레전드"
-  },
   "nav": {
     "home": "홈",
     "training": "기록",
     "booking": "예약",
     "meals": "식사",
     "settings": "설정"
-  },
-  "milestoneDialog": {
-    "achieved": "{{name}} 달성!",
-    "sessionReached": "{{count}}세션 도달",
-    "coins": "{{count}} 코인",
-    "exp": "{{count}} EXP",
-    "gachaTickets": "가챠 티켓 {{count}}장",
-    "titleReward": "칭호 \"{{title}}\"",
-    "badgeEarned": "기념 배지 획득",
-    "next": "다음 ({{current}}/{{total}})"
-  },
-  "sessionExp": {
-    "title": "오늘의 트레이닝 성과",
-    "baseExp": "기본 EXP",
-    "volumeBonus": "볼륨 보너스",
-    "totalVolume": "총 거상량 {{volume}}kg",
-    "personalBest": "자기 베스트",
-    "combo": "콤보 {{count}}회",
-    "companion": "동료도 경험치를 받았습니다!",
-    "companionWithName": "동료({{name}})도 경험치를 받았습니다!",
-    "remainExp": "{{count}} EXP 남음"
   },
   "announcementsDialog": {
     "title": "공지",

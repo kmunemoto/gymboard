@@ -33,8 +33,9 @@ const walk = (dir: string, out: string[] = []): string[] => {
 const files = walk(SRC);
 
 describe("🔴 `as any` を増やさない", () => {
-  // 2026-08-26 時点の実測値。減らしたらこの数も下げること
-  const LIMIT = 128;
+  // 2026-08-26 時点は128。2026-09-05 のゲーム要素撤去で102まで減ったので下げる
+  // （ラチェットなので、減ったら上限も一緒に下げる）
+  const LIMIT = 102;
 
   it(`src 配下の as any が ${LIMIT} 件を超えていない`, () => {
     const hits = files.flatMap((f) =>
@@ -77,9 +78,11 @@ describe("🔴 巨大ファイルを増やさない", () => {
     // 分割は別途やるとしても、これ以上太らせない。
     // 2026-08-26 時点の行数 + 余裕50行
     const CAP: Record<string, number> = {
-      "src/components/trainer/TrainerClientDetail.tsx": 2000,
+      // 2026-09-05 のゲーム要素撤去で 1939 → 1844 行
+      "src/components/trainer/TrainerClientDetail.tsx": 1900,
       "src/components/trainer/TrainerGymSettings.tsx": 1600,
-      "src/components/customer/CustomerBooking.tsx": 1490,
+      // 2026-09-05 にレイドボスの表示を外して 1463 → 1406 行
+      "src/components/customer/CustomerBooking.tsx": 1450,
       "src/components/trainer/TrainerSchedule.tsx": 1300,
       "src/hooks/useBookings.ts": 1150,
     };

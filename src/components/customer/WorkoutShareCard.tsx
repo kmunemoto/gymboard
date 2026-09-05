@@ -2,8 +2,6 @@ import { forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useTenant } from "@/hooks/useTenant";
 import { formatShareDate, type WorkoutSession } from "@/lib/workoutShare";
-import { ACHIEVEMENTS } from "@/lib/avatarSystem";
-import { getAchievementIconComponent } from "./BadgeIcon";
 import { POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 
 export type ShareTheme = "dark" | "light" | "transparent";
@@ -13,11 +11,10 @@ interface Props {
   theme: ShareTheme;
   streakWeeks: number;
   totalSessions: number;
-  featuredBadges?: string[];
 }
 
 const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
-  ({ session, theme, featuredBadges }, ref) => {
+  ({ session, theme }, ref) => {
     const { t } = useTranslation();
     const { tenant } = useTenant();
     const gymBrand = tenant?.gym_name || t("common.brand");
@@ -158,32 +155,6 @@ const WorkoutShareCard = forwardRef<HTMLDivElement, Props>(
           {dateStr}
         </div>
 
-        {featuredBadges && featuredBadges.length > 0 && (
-          <div style={{ display: "flex", gap: 16, marginTop: 32 }}>
-            {featuredBadges.slice(0, 3).map((k) => {
-              const def = ACHIEVEMENTS.find((a) => a.key === k);
-              const Icon = getAchievementIconComponent(k);
-              const color = def?.rarity === "epic" ? "#D4AF37" : def?.rarity === "rare" ? "#0ABAB5" : nameColor;
-              return (
-                <div
-                  key={k}
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 14,
-                    border: `2px solid ${color}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: isTransparent ? "rgba(255,255,255,0.08)" : isLight ? "#FFFFFF" : "rgba(255,255,255,0.06)",
-                  }}
-                >
-                  <Icon size={28} color={color} />
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* Spacer */}
         <div style={{ flex: 1 }} />

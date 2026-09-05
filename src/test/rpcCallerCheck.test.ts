@@ -31,7 +31,9 @@ import { MIGRATIONS_DIR, stripSqlComments } from "./helpers/rlsPolicies";
 // 実DBの確認は security/check.sql の検査5-c。
 //
 // ── 変異テスト（2026-08-06 実施・5件とも赤を確認）────────────────
-//   1. マイグレーションから check_weight_milestones の包みを消す   → 赤
+//   1. マイグレーションから包みを1つ消す                            → 赤
+//      （当時は check_weight_milestones で確認した。2026-09-05 の
+//       ゲーム要素撤去でこの関数の呼び出しは無くなっている）
 //   2. 包みの引数名を p_user_id → _user_id に変える                → 赤（呼び出し側が404になる）
 //   3. assert_can_act_for を「本人のみ」にする                      → 赤（トレーナーが操作できなくなる）
 //   4. delete_customer_cascade を壊れた IF に戻す                   → 赤
@@ -99,10 +101,14 @@ describe("user_id を引数で受け取る RPC は呼び出し元を照合する
 
   it("走査が空振りしていない", () => {
     expect(calls.size, "supabase.rpc の呼び出しを1つも読めていません").toBeGreaterThan(5);
+    // 🔴 2026-09-05 のゲーム要素撤去で、user_id 付きで呼ぶ RPC が8本 → 2本に減った
+    //    （check_weight_milestones など、消したゲーム系の呼び出しが抜けたため）。
+    //    「1本も読めていない＝走査が壊れた」を捕まえるのが目的なので、
+    //    実測に合わせて下げる。**上げ直すのは呼び出しが実際に増えたときだけ。**
     expect(
       withActorArg.length,
       "user_id を渡している RPC を1つも読めていません",
-    ).toBeGreaterThan(3);
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("クライアントが user_id 付きで呼ぶ RPC がすべて照合されている", () => {

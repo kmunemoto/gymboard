@@ -1,4 +1,16 @@
-import { AVATAR_CDN_BASE } from "./avatarSystem";
+/**
+ * 部位アイコンの置き場（CDN）。
+ *
+ * 🔴 **URL を変えないこと。** ホスト名の `clsvdhovzqrkojvkvekw` は
+ * **ジムボードとは別の Supabase プロジェクト**（ジムボードは `rrbfwitprzuevzytykrq`）。
+ * 画像はそちらのストレージに置いてある。
+ *
+ * 2026-09-05 に `avatarSystem.ts` から移した。元はドット絵アバターと同じ置き場を
+ * 使っていたが、アバター（ゲーム要素）を撤去しても**部位アイコンは生きた機能**なので、
+ * 定数だけをこちらへ持ってきた。
+ */
+const MUSCLE_ICON_CDN_BASE =
+  "https://clsvdhovzqrkojvkvekw.supabase.co/storage/v1/object/public/avatars";
 
 type MuscleKey = "chest" | "back" | "shoulder" | "legs" | "glutes" | "biceps" | "triceps" | "abs";
 
@@ -53,5 +65,5 @@ export function getMuscleIconUrl(
   const key = getMuscleKey(exerciseName, muscleGroup);
   if (!key) return null;
   const safeGender: "male" | "female" = gender === "female" ? "female" : "male";
-  return `${AVATAR_CDN_BASE}/muscle-icons/${key}_${safeGender}.png`;
+  return `${MUSCLE_ICON_CDN_BASE}/muscle-icons/${key}_${safeGender}.png`;
 }

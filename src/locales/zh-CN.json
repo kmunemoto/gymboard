@@ -1543,13 +1543,6 @@
     "savedToast": "已保存记录",
     "savedDesc": "已保存 {{name}} 的训练记录",
     "deletedToast": "已删除记录",
-    "missionAchieved": "任务达成！{{name}}",
-    "missionExp": "+{{exp}} EXP",
-    "missionAllComplete": "全部任务完成！",
-    "missionBonus": "+50 EXP 奖励！",
-    "raidDefeated": "击败副本 Boss！",
-    "raidDefeatedDesc": "已向所有人发放奖励！",
-    "eventComplete": "活动完成！{{name}}",
     "deleteWorkoutDesc": "将删除 {{name}} {{sets}} 的记录。此操作无法撤销。",
     "mealsSection": "饮食记录",
     "noMeals": "无饮食记录",
@@ -1574,8 +1567,6 @@
     "chatPlaceholder": "输入消息...",
     "categoryOther": "其他",
     "monthlyPrice": "月费：¥{{price}}",
-    "eventRewardDesc": "+{{exp}} EXP / +{{coins}} 金币{{badge}}",
-    "eventBadgeSuffix": " / 限定徽章“{{badge}}”",
     "loadLastMenu": "载入上次的训练菜单",
     "lastMenuLoaded": "已载入上次（{{date}}）的菜单",
     "prevHint": "上次 {{date}}：{{weight}}kg × {{reps}}次 · {{sets}}组"
@@ -2110,166 +2101,12 @@
     "arms": "手臂",
     "other": "其他"
   },
-  "titles": {
-    "chest_master": {
-      "name": "胸肌猛兽",
-      "condition": "胸部训练占总量 40% 以上"
-    },
-    "back_master": {
-      "name": "背部猛兽",
-      "condition": "背部训练占总量 40% 以上"
-    },
-    "leg_master": {
-      "name": "腿王",
-      "condition": "腿部训练占总量 40% 以上"
-    },
-    "shoulder_master": {
-      "name": "蜜瓜肩",
-      "condition": "肩部训练占总量 40% 以上"
-    },
-    "arm_master": {
-      "name": "秀臂达人",
-      "condition": "手臂训练占总量 40% 以上"
-    },
-    "early_bird": {
-      "name": "晨练达人",
-      "condition": "上午时段的训练占 70% 以上"
-    },
-    "night_owl": {
-      "name": "夜型训练者",
-      "condition": "19 点以后的训练占 70% 以上"
-    },
-    "consistency_king": {
-      "name": "坚持之王",
-      "condition": "连续 12 周到店"
-    },
-    "volume_monster": {
-      "name": "容量怪兽",
-      "condition": "月总举重量 10 万kg 以上"
-    },
-    "all_rounder_title": {
-      "name": "全能型",
-      "condition": "连续 3 个月每月练 5 个以上部位"
-    },
-    "boss_slayer": {
-      "name": "Boss 猎人",
-      "condition": "为击败 3 次副本 Boss 做出贡献"
-    },
-    "mission_addict": {
-      "name": "任务狂人",
-      "condition": "累计完成 50 次每日任务"
-    },
-    "combo_master": {
-      "name": "连击大师",
-      "condition": "达成 5 连击以上 3 次"
-    },
-    "core_oni": {
-      "name": "核心猛兽",
-      "condition": "核心训练占总量 40% 以上"
-    },
-    "weekend_warrior": {
-      "name": "周末战士",
-      "condition": "周末时段的训练占 60% 以上"
-    },
-    "iron_man": {
-      "name": "铁人",
-      "condition": "累计 200 次以上训练"
-    },
-    "gacha_master": {
-      "name": "扭蛋大师",
-      "condition": "累计抽扭蛋 50 次以上"
-    },
-    "raid_slayer": {
-      "name": "副本屠戮者",
-      "condition": "为击败 5 次副本 Boss 做出贡献"
-    },
-    "streaker": {
-      "name": "连胜者",
-      "condition": "最大连击 10 次以上"
-    },
-    "record_child": {
-      "name": "纪录天才",
-      "condition": "累计 30 次以上个人最佳"
-    },
-    "legend_title": {
-      "name": "传奇",
-      "condition": "头像等级达到 50"
-    },
-    "collector": {
-      "name": "收藏家",
-      "condition": "获得 10 个徽章"
-    },
-    "badge_master": {
-      "name": "徽章大师",
-      "condition": "获得 20 个徽章"
-    },
-    "complete_road": {
-      "name": "集齐之路",
-      "condition": "获得 30 个徽章"
-    },
-    "legend_collector": {
-      "name": "传奇收藏家",
-      "condition": "集齐全部徽章"
-    },
-    "liberator": {
-      "name": "解放者",
-      "condition": "通关王国复兴任务 第 1 关"
-    },
-    "harbor_guardian": {
-      "name": "港口守护者",
-      "condition": "通关王国复兴任务 第 3 关"
-    },
-    "spirit_ally": {
-      "name": "精灵盟友",
-      "condition": "通关王国复兴任务 第 5 关"
-    },
-    "sky_pioneer": {
-      "name": "天空开拓者",
-      "condition": "通关王国复兴任务 第 7 关"
-    },
-    "kingdom_hero": {
-      "name": "王国英雄",
-      "condition": "通关王国复兴任务 全部关卡"
-    },
-    "goal_achiever": {
-      "name": "目标达成者",
-      "condition": "达成目标体重"
-    }
-  },
-  "ranks": {
-    "rookie": "新手",
-    "regular": "常规",
-    "athlete": "运动员",
-    "elite": "精英",
-    "legend": "传奇"
-  },
   "nav": {
     "home": "首页",
     "training": "记录",
     "booking": "预约",
     "meals": "饮食",
     "settings": "设置"
-  },
-  "milestoneDialog": {
-    "achieved": "{{name}} 达成！",
-    "sessionReached": "达到 {{count}} 次训练",
-    "coins": "{{count}} 金币",
-    "exp": "{{count}} EXP",
-    "gachaTickets": "{{count}} 张扭蛋券",
-    "titleReward": "称号“{{title}}”",
-    "badgeEarned": "获得纪念徽章",
-    "next": "下一个 ({{current}}/{{total}})"
-  },
-  "sessionExp": {
-    "title": "今日的训练成果",
-    "baseExp": "基础 EXP",
-    "volumeBonus": "容量奖励",
-    "totalVolume": "总举重量 {{volume}}kg",
-    "personalBest": "个人最佳",
-    "combo": "{{count}} 连击",
-    "companion": "伙伴也获得了经验值！",
-    "companionWithName": "伙伴（{{name}}）也获得了经验值！",
-    "remainExp": "还差 {{count}} EXP"
   },
   "announcementsDialog": {
     "title": "公告",

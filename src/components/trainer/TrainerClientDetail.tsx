@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   MONTHLY_REPORT_ENABLED,
-  GAMIFICATION_ENABLED,
   WORKOUT_LOG_ENABLED,
   MEALS_ENABLED,
   BODY_METRICS_ENABLED,
@@ -53,17 +52,11 @@ import { resolveGraceDays } from "@/lib/courseProgress";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { readOptionMinutes, sessionMinutes as withOptions } from "@/lib/bookingOptions";
 import { formatDate } from "@/lib/dateFormat";
-import { evaluateAndAwardMissions } from "@/lib/missionRewards";
 import { isMilestoneOverdue } from "@/lib/milestoneGoal";
-import { applyRaidDamage, checkTrainingMilestones, computeSessionVolume, processSessionRewards, type MilestoneAchieved, type SessionRewardResult } from "@/lib/raidUtils";
-import { updateEventProgress } from "@/hooks/useSeasonEvents";
-import { getComboMultiplier } from "@/lib/comboSystem";
 import DiagnosisHistorySection from "@/components/customer/posture/DiagnosisHistorySection";
 import TrainerMonthlyComment from "./TrainerMonthlyComment";
 import MuscleBalanceRadar from "@/components/customer/MuscleBalanceRadar";
 
-import SessionExpSummaryDialog from "@/components/customer/SessionExpSummaryDialog";
-import MilestoneAchievedDialog from "@/components/customer/MilestoneAchievedDialog";
 import TrainerWeightJourneyPanel from "./TrainerWeightJourneyPanel";
 import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
@@ -112,9 +105,6 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [workoutRecords, setWorkoutRecords] = useState<WorkoutRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [sessionResult, setSessionResult] = useState<SessionRewardResult | null>(null);
-  const [showSessionSummary, setShowSessionSummary] = useState(false);
-  const [milestoneQueue, setMilestoneQueue] = useState<MilestoneAchieved[]>([]);
   const [clientMeals, setClientMeals] = useState<MealRecord[]>([]);
   const [loadingMeals, setLoadingMeals] = useState(true);
   const [clientBookings2, setClientBookings2] = useState<any[]>([]);
@@ -515,74 +505,6 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       const newRecords = (data || []).map((w: any) => ({ ...w, exercise_name: w.exercises?.name || t("common.unknown") }));
       setWorkoutRecords(prev => [...newRecords, ...prev]);
       toast.success(t("clientDetail.savedToast"), { description: t("clientDetail.savedDesc", { name: displayName }) });
-    }
-
-    // ゲーミフィケーションの獲得演出（GAMIFICATION_ENABLED=false のときは何も出さない）。
-    // トレーニング記録の保存自体は上で完了しており、ここは付随する演出のみ。
-    if (GAMIFICATION_ENABLED) {
-      // Evaluate today's missions for this customer (fire-and-forget UI feedback via toast)
-      try {
-        const result = await evaluateAndAwardMissions(clientId, trainingDate);
-        for (const m of result.newlyCompleted) {
-          toast.success(t("clientDetail.missionAchieved", { name: m.name }), { description: t("clientDetail.missionExp", { exp: m.exp }) });
-        }
-        if (result.bonusAwarded) {
-          toast.success(t("clientDetail.missionAllComplete"), { description: t("clientDetail.missionBonus") });
-        }
-      } catch (e) {
-        // non-fatal
-      }
-
-      // Process session rewards (session exp + combo bonus + level recompute)
-      try {
-        const sess = await processSessionRewards(clientId, trainingDate);
-        if (sess) {
-          setSessionResult(sess);
-          setShowSessionSummary(true);
-        }
-      } catch (e) {
-        // non-fatal
-      }
-
-      // Check milestones (cumulative session count rewards)
-      try {
-        const mr = await checkTrainingMilestones(clientId);
-        if (mr && mr.achieved && mr.achieved.length > 0) {
-          setMilestoneQueue(mr.achieved);
-        }
-      } catch (e) {
-        // non-fatal
-      }
-
-      // Apply raid damage (volume from this entire session = all today's records for this user)
-      try {
-        const { data: todayWs } = await supabase
-          .from("workouts")
-          .select("sets, weight, reps")
-          .eq("user_id", clientId)
-          .eq("workout_date", trainingDate);
-        const vol = computeSessionVolume((todayWs || []) as any);
-        if (vol > 0) {
-          const r = await applyRaidDamage(clientId, trainingDate, vol);
-          if (r?.defeated) {
-            toast.success(t("clientDetail.raidDefeated"), { description: t("clientDetail.raidDefeatedDesc") });
-          }
-        }
-      } catch (e) {
-        // non-fatal
-      }
-
-      // Update season event progress
-      try {
-        const ev = await updateEventProgress(clientId);
-        for (const c of (ev?.completed_events || [])) {
-          toast.success(t("clientDetail.eventComplete", { name: c.event_name }), {
-            description: t("clientDetail.eventRewardDesc", { exp: c.reward_exp, coins: c.reward_coins, badge: c.badge_name ? t("clientDetail.eventBadgeSuffix", { badge: c.badge_name }) : "" }),
-          });
-        }
-      } catch (e) {
-        // non-fatal
-      }
     }
 
     setTrainingDate(getJSTToday());
@@ -1915,23 +1837,6 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 獲得演出のダイアログ。GAMIFICATION_ENABLED=false のときは描画しない
-          （上の保存処理側でも発火を止めているが、表示側でも二重に閉じておく） */}
-      {GAMIFICATION_ENABLED && (
-        <>
-          <SessionExpSummaryDialog
-            open={showSessionSummary}
-            result={sessionResult}
-            onClose={() => setShowSessionSummary(false)}
-          />
-          {milestoneQueue.length > 0 && (
-            <MilestoneAchievedDialog
-              milestones={milestoneQueue}
-              onClose={() => setMilestoneQueue([])}
-            />
-          )}
-        </>
-      )}
     </div>
   );
 };

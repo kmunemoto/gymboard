@@ -101,7 +101,6 @@ const TrainerWeightJourneyPanel = ({ clientId }: Props) => {
     toast.success(t("weightJourney.savedToast"));
     setOpen(false);
     await fetch();
-    await supabase.rpc("check_weight_milestones" as any, { p_user_id: clientId });
   };
 
   const handleReset = async () => {

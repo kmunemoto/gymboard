@@ -267,6 +267,28 @@ describe("足りないシークレットはビルド前に落とす", () => {
   });
 });
 
+describe("依存のインストールは一過性の失敗で諦めない", () => {
+  // 🔴 2026-09-05 の Actions #150 が `npm error code ECONNRESET` で **32秒**で落ちた。
+  //    コードは無関係で、npm レジストリへの接続が途中で切れただけ。
+  //    ここが素の `npm install` に戻ると、レジストリが1秒詰まっただけで
+  //    ビルド1回ぶん（＝出荷1回ぶんの待ち時間）を失う。
+  it("npm install を再試行で包んでいる", () => {
+    expect(RAW, "retry 関数が消えています").toMatch(/retry\(\)\s*\{/);
+    const installs = RAW.match(/^\s*retry npm install/gm) ?? [];
+    expect(installs.length, "包まれていない npm install が残っています").toBeGreaterThanOrEqual(3);
+  });
+
+  it("素の `npm install` が残っていない", () => {
+    // run: の中で retry を通さずに叩いている行が無いこと
+    const bare = (RAW.match(/^\s+npm install /gm) ?? []);
+    expect(bare, "retry を通さない npm install があります").toEqual([]);
+  });
+
+  it("諦める前に複数回試す", () => {
+    expect(RAW).toMatch(/\$n -ge [2-9]/);
+  });
+});
+
 describe("アップロードの失敗を緑で通さない", () => {
   it("🔴 altool の終了コードだけを信用しない", () => {
     // 2026-08-10 に実測した事実: Actions #126 のログには

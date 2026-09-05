@@ -43,7 +43,7 @@ import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/li
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
-import { closedDayReason, isDayClosedForBooking, isDayClosedError } from "@/lib/bookingClosedDays";
+import { closedDayReason, isDayHardClosed, isDayViewOnly, isDayClosedError } from "@/lib/bookingClosedDays";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
 import BookingOptionConfirm from "@/components/booking/BookingOptionConfirm";
@@ -324,20 +324,23 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     return isBlockedStart(blockedWindows, weekday, startMinutes);
   };
 
-  // 予約変更で動かそうとしている予約の日。変更中でなければ null。
-  // 上限で閉まった日でも、**そこに自分の予約があるなら**時間をずらせる
-  // （DB も自分を除いて数える。isDayClosedForBooking の表を読むこと）。
-  const rescheduleFromDate = rescheduleTarget?.date ?? null;
-
   // その日ぜんぶが受付終了か。日付を選んだあとに店が閉めた場合の受け皿でもある
   // （カレンダー側でも選べなくしているが、選択済みの状態は残るため）。
-  const selectedDayClosed = isDayClosedForBooking(closedDays, dateKey, rescheduleFromDate);
+  const selectedDayClosed = isDayHardClosed(closedDays, dateKey);
+
+  // 🔴 当日が上限（4/4）で埋まっている場合だけ、**枠を出すが1つも押せない**状態にする。
+  //    実店舗の要望: 「当日の日付を押したときに、その日の状況が見えるようにしてほしい。
+  //    アプリから当日の予約の変更はできない。状況を見てお客さんはお店に連絡する」。
+  //    当日はそもそも締切済みで予約も変更もできないので、押せても見るだけで済む。
+  const selectedDayViewOnly = isDayViewOnly(closedDays, dateKey);
 
   const generateSlots = () => {
-    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean }[] = [];
+    const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean; dayFull: boolean }[] = [];
     // 🔴 受付終了の日は1枠も出さない。定休日（営業時間が0枠）と同じ見た目になる。
     //    半端に「押せない枠」を並べると、キャンセル待ちに登録できてしまう
     //    （空きを待っても店が受けないので、待つだけ無駄になる）。
+    //    ⚠️ 当日が上限で埋まっている場合（selectedDayViewOnly）はここで止めない。
+    //       枠は出すが、下で全部「押せない」に倒す。
     if (selectedDayClosed) return slots;
     // 曜日別の営業時間・定休日、さらに指名した担当のシフトまで反映する。
     // 指名なし／シフト未設定なら、結果は店の営業時間そのもの（従来どおり）。
@@ -352,8 +355,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       const notAccepting = isSlotNotAccepting(dateKey, time);
       slots.push({
         id: `${dateKey}-${time}`, time,
-        available: !blocked && !tooSoon && !overLimit && !notAccepting,
+        // 🔴 上限で埋まった当日は1枠も押せない。DB も GB007 で断るので、
+        //    押せる見た目にすると「押したのに断られる」になる。見せるだけにする。
+        available: !selectedDayViewOnly && !blocked && !tooSoon && !overLimit && !notAccepting,
         blocked, tooSoon, overLimit, notAccepting,
+        dayFull: selectedDayViewOnly,
       });
     }
     return slots;
@@ -1061,7 +1067,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     // 定休日と同じ見た目（選べない）にする。最終判定は DB（GB007）。
                     // ⚠️ 上限で閉まった日は、**予約変更でその日の自分の予約を動かすとき**だけ開ける。
                     //    手で止めた日は開けない（DB が断るので、押せても意味がない）。
-                    if (isDayClosedForBooking(closedDays, yyyyMMdd, rescheduleFromDate)) return true;
+                    // ⚠️ 上限で埋まった**当日**だけは塞がない（押して中身を見せる）。
+                    //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
+                    if (isDayHardClosed(closedDays, yyyyMMdd)) return true;
                     // 指名した担当が出勤していない曜日。指名なしなら常に false。
                     if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
                       return true;
@@ -1142,6 +1150,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         </Button>
                       )}
                     </div>
+                  </div>
+                )}
+                {selectedDayViewOnly && (
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-center space-y-1">
+                    <p className="text-sm font-bold">{t("closedDays.customerFullToday")}</p>
+                    <p className="text-xs text-muted-foreground">{t("closedDays.customerFullTodayHelp")}</p>
                   </div>
                 )}
                 {selectedDayClosed && (

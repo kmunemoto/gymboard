@@ -2787,6 +2787,8 @@
     "reopenFailed": "重新接受预约失败",
     "customerClosed": "该日已停止接受预约",
     "customerClosedHelp": "请选择其他日期。",
+    "customerFullToday": "今日名额已满",
+    "customerFullTodayHelp": "您仍可在下方查看时间。如需咨询请直接联系门店。",
     "errorClosed": "该日已停止接受预约，请选择其他日期。"
   },
   "bookingOptions": {

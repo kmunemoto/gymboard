@@ -2787,6 +2787,8 @@
     "reopenFailed": "受付の再開に失敗しました",
     "customerClosed": "この日は受付を終了しました",
     "customerClosedHelp": "別の日をお選びください。",
+    "customerFullToday": "本日の受付枠は埋まっています",
+    "customerFullTodayHelp": "空き時間は下でご確認いただけます。ご相談はお店へ直接ご連絡ください。",
     "errorClosed": "この日は受付を終了しました。別の日をお選びください。"
   },
   "bookingOptions": {

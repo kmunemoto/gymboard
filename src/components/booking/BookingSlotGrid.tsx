@@ -25,6 +25,12 @@ export interface BookingSlot {
   tooSoon: boolean;
   overLimit: boolean;
   notAccepting: boolean;
+  /**
+   * 当日が1日の上限で埋まっている（`isDayViewOnly`）。
+   * このとき枠は**1つも押せない**が、空きは「空き」と分かるように出す
+   * （お客様はそれを見て店に電話する）。
+   */
+  dayFull?: boolean;
 }
 
 interface Props {
@@ -51,8 +57,12 @@ const BookingSlotGrid = ({
         const waitlistable =
           waitlistEnabled && !slot.available && displayBlocked && !slot.tooSoon && !slot.overLimit;
         const listed = waitlistable && isOnWaitlist(slot.time);
-        // 当日など締切済みの日の「空いている枠」。予約は不可だが空き状況として区別表示する。
-        const viewOnlyOpen = slot.tooSoon && !displayBlocked;
+        // 予約は不可だが、空き状況としては見せる枠。
+        //  - 当日など締切済み（tooSoon）
+        //  - 🔴 当日が1日の上限で埋まっている（dayFull）。実店舗の要望で、
+        //    「その日の状況を見てお客様が店に電話する」ための表示。
+        //    押せないのは同じだが、埋まっているのか空いているのかは分かるようにする。
+        const viewOnlyOpen = (slot.tooSoon || !!slot.dayFull) && !displayBlocked;
         return (
           <button
             key={slot.id}

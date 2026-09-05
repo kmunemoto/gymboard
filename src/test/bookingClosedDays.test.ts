@@ -6,7 +6,8 @@ import {
   countsTowardDailyLimit,
   isDayAtLimit,
   isDayClosed,
-  isDayClosedForBooking,
+  isDayHardClosed,
+  isDayViewOnly,
   isDayClosedError,
   remainingForDay,
   type ClosedDay,
@@ -210,11 +211,10 @@ describe("会員の予約画面が受付終了を反映している", () => {
   });
 
   it("🔴 閉まっている日はカレンダーで選べない（会員アプリ）", () => {
-    // 2026-09-05 に isDayClosed → isDayClosedForBooking へ差し替えた
-    // （上限で閉まった日は、その日の自分の予約を動かすときだけ開ける）。
-    // 塞ぐこと自体は変わっていない。
+    // 2026-09-05 に isDayClosed → isDayHardClosed へ差し替えた。
+    // 塞ぐこと自体は変わっていない（当日 × 上限のときだけ、押して中身を見せる）。
     expect(readCode(CUSTOMER)).toMatch(
-      /if \(isDayClosedForBooking\(closedDays, yyyyMMdd, rescheduleFromDate\)\) return true;/,
+      /if \(isDayHardClosed\(closedDays, yyyyMMdd\)\) return true;/,
     );
   });
 
@@ -317,82 +317,96 @@ describe("🔴 設定画面の説明文が実装とずれていない", () => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// 予約変更のときだけ、上限で閉まった日を開ける（2026-09-05 宗本さんの要望）
+// 当日が上限で埋まっていても、押して空き状況だけは見られるようにする
+// （2026-09-05 宗本さんの要望）
 //
 // > 一日四枠までに設定したら、四枠入っている日はグレーになって押せなくなる。
-// > 当日でもグレーで、何時が空いているか分からない。
-// > その日に予約している人が、時間を後ろにずらせるか確認したいらしい。
+// > 当日であってもグレーで、何時が空いてるか分からない。
+// > **当日の日付を押したときに**その日の状況が見えるようにしてほしい。
+// > アプリから当日の予約の変更はできない。
+// > **その日の状況を見て、お客さんはお店に連絡するシステム**。
 //
-// 🔴 **DB がすでにそれを許している。** tenant_day_closed の第3引数
-//    p_exclude_booking_id で、動かす予約自身を数えずに上限と比べるため
-//    （4枠のうち1枠は自分なので実質 3/4）。塞いでいたのは画面だけだった。
+// 🔴 開けるのは「当日 × 上限で埋まった日」だけ。
+//    - 手で止めた日 … 店が「今日はもう受けない」と決めた日なので開けない
+//    - 先の日付の上限 … 開けると、止めた意図に反して問い合わせが増える
 //
-// 🔴 ただし「手で止めた日」は DB が断る（booking_closed_days に行があり、
-//    除外とは無関係）。一律に開けると「押せたのにサーバーに断られる」が起きる。
+// 🔴 開けても**1枠も押せない**こと。当日は締切済みで DB も GB007 で断るので、
+//    押せる見た目にすると「押したのに断られる」になる。見せるだけにする。
 // ────────────────────────────────────────────────────────────────
 
-describe("予約変更のときの受付終了の判定", () => {
-  it("ふつうの予約（変更中でない）では、今までどおり両方とも閉まっている", () => {
-    expect(isDayClosedForBooking(days, "2026-09-10", null)).toBe(true); // 手で止めた
-    expect(isDayClosedForBooking(days, "2026-09-12", null)).toBe(true); // 上限
+const todayKey = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+}).format(new Date());
+
+const capToday: ClosedDay[] = [{ closed_date: todayKey, manual: false, reason: null }];
+const manualToday: ClosedDay[] = [{ closed_date: todayKey, manual: true, reason: "臨時休業" }];
+
+describe("当日の受付終了の見せ方", () => {
+  it("🔴 上限で埋まった当日は、日付を押せる（見るため）", () => {
+    expect(isDayHardClosed(capToday, todayKey)).toBe(false);
+    expect(isDayViewOnly(capToday, todayKey)).toBe(true);
   });
 
-  it("🔴 上限で閉まった日は、そこに自分の予約があれば開く", () => {
-    // これが今回の要望そのもの。DB は自分を除いて数えるので通る
-    expect(isDayClosedForBooking(days, "2026-09-12", "2026-09-12")).toBe(false);
+  it("🔴 手で止めた当日は、今までどおり押せない", () => {
+    // 店が「今日はもう受けない」と決めた日。開けると意図に反する
+    expect(isDayHardClosed(manualToday, todayKey)).toBe(true);
+    expect(isDayViewOnly(manualToday, todayKey)).toBe(false);
   });
 
-  it("🔴 手で止めた日は、自分の予約があっても開かない", () => {
-    // 開けると「押せたのに GB007 で断られる」になる
-    expect(isDayClosedForBooking(days, "2026-09-10", "2026-09-10")).toBe(true);
+  it("🔴 先の日付は、上限でも今までどおり押せない", () => {
+    const future = "2099-12-31";
+    const cap: ClosedDay[] = [{ closed_date: future, manual: false, reason: null }];
+    expect(isDayHardClosed(cap, future)).toBe(true);
+    expect(isDayViewOnly(cap, future)).toBe(false);
   });
 
-  it("別の日から動かしてくる場合は、上限の日は閉まったまま", () => {
-    // 自分を除いても上限のまま。DB も断る
-    expect(isDayClosedForBooking(days, "2026-09-12", "2026-09-11")).toBe(true);
-  });
-
-  it("閉まっていない日は、どの場合でも開いている", () => {
-    for (const from of [null, "2026-09-11", "2026-09-12"]) {
-      expect(isDayClosedForBooking(days, "2026-09-11", from), String(from)).toBe(false);
-    }
-  });
-
-  it("空・null でも落ちない", () => {
-    expect(isDayClosedForBooking(null, "2026-09-12", "2026-09-12")).toBe(false);
-    expect(isDayClosedForBooking([], "2026-09-12", null)).toBe(false);
+  it("閉まっていない日は、どちらでもない", () => {
+    expect(isDayHardClosed([], todayKey)).toBe(false);
+    expect(isDayViewOnly([], todayKey)).toBe(false);
+    expect(isDayHardClosed(null, todayKey)).toBe(false);
+    expect(isDayViewOnly(undefined, todayKey)).toBe(false);
   });
 });
 
-describe("🔴 画面の例外が DB の判定と一致している", () => {
-  // 🔴 いちばん新しい定義を見る。20260901000000 の tenant_day_closed は4引数だが、
-  //    体験予約を上限から外したときに3引数へ作り直されている（TRIAL_EXEMPT）。
-  //    古いほうを見ると、いま動いていない定義に対して検査してしまう。
+describe("🔴 見せるだけで、押せないこと", () => {
+  const code = readCode(CUSTOMER);
+  const grid = readCode("src/components/booking/BookingSlotGrid.tsx");
+
+  it("上限で埋まった当日は、全部の枠を押せなくする", () => {
+    // ここが抜けると、押した先で DB に GB007 で断られる
+    expect(code).toMatch(/available:\s*!selectedDayViewOnly\s*&&/);
+  });
+
+  it("枠は出す（0件にしない）", () => {
+    // 0件にすると「何時が空いているか分からない」という元の不満に戻る
+    expect(code).toContain("if (selectedDayClosed) return slots;");
+    expect(code).not.toContain("if (selectedDayViewOnly) return slots;");
+  });
+
+  it("空き枠は「空き」と分かるように出す", () => {
+    // 全部「満枠」に見えると、店に何を相談すればいいか分からない
+    expect(grid).toMatch(/viewOnlyOpen\s*=\s*\(slot\.tooSoon \|\| !!slot\.dayFull\)/);
+  });
+
+  it("カレンダーは hard closed だけ塞ぐ", () => {
+    expect(code).toMatch(/if \(isDayHardClosed\(closedDays, yyyyMMdd\)\) return true;/);
+  });
+
+  it("店へ連絡してもらう案内を出す（5言語）", () => {
+    expect(code).toContain('t("closedDays.customerFullToday")');
+    for (const lng of ["ja", "en", "ko", "zh-CN", "zh-TW"]) {
+      const cd = JSON.parse(readFileSync(`src/locales/${lng}.json`, "utf8")).closedDays;
+      expect(typeof cd.customerFullToday, lng).toBe("string");
+      expect(typeof cd.customerFullTodayHelp, lng).toBe("string");
+    }
+  });
+});
+
+describe("🔴 DB は当日の新規予約を断ったままであること", () => {
   const sql = readSql(TRIAL_EXEMPT);
 
-  it("DB は「動かす予約自身」を除いて数える", () => {
-    // ここが無いと、画面だけ開けても DB が GB007 で断る
-    expect(sql).toMatch(/tenant_day_closed\s*\([^)]*p_exclude_booking_id/);
-    expect(sql).toMatch(/tenant_day_booking_count\s*\([^)]*p_exclude_booking_id/);
-  });
-
-  it("トリガーが自分の id を渡している", () => {
+  it("上限に達した日は GB007 で断る（画面で開けても、予約はできない）", () => {
+    expect(sql).toContain("GB007");
     expect(sql).toMatch(/tenant_day_closed\(NEW\.tenant_id, v_date, NEW\.id\)/);
-  });
-
-  it("手で止めた日は除外と無関係に閉まる（booking_closed_days を先に見ている）", () => {
-    const fn = sql.slice(sql.indexOf("FUNCTION public.tenant_day_closed"));
-    const closedIdx = fn.indexOf("booking_closed_days");
-    const limitIdx = fn.indexOf("daily_booking_limit");
-    expect(closedIdx, "booking_closed_days の判定が見つからない").toBeGreaterThan(0);
-    expect(closedIdx, "手で止めた日の判定が上限より先に来ていること").toBeLessThan(limitIdx);
-  });
-
-  it("画面が両方の場所で予約変更の日を渡している", () => {
-    const code = readCode(CUSTOMER);
-    // カレンダーの disabled と、選択済みの日の受け皿
-    const calls = code.match(/isDayClosedForBooking\([^)]*rescheduleFromDate\)/g) ?? [];
-    expect(calls.length, "片方だけだと、押せても枠が0件のままになる").toBe(2);
-    expect(code).toContain("const rescheduleFromDate = rescheduleTarget?.date ?? null;");
   });
 });

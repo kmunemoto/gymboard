@@ -42,6 +42,12 @@
  * `src/test/bookingClosedDays.test.ts` が両者の一致を見張る。
  */
 
+/** その日付が JST の今日か。`getJSTToday()` と同じ規則。 */
+const isTodayKey = (dateKey: string): boolean =>
+  dateKey === new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+
 /** 受付を終了した日。`get_tenant_closed_days` が返す1行。 */
 export interface ClosedDay {
   /** JST の日付（yyyy-MM-dd） */
@@ -61,43 +67,53 @@ export const isDayClosed = (
 };
 
 /**
- * 予約変更のときに、その日を塞ぐべきか。
+ * その日を「日付ごと押せなくする」か。
  *
  * 実店舗の要望（2026-09-05 宗本さん）:
  *
  * > 一日四枠までに設定したら、四枠入っている日はグレーになって押せなくなる。
- * > 当日でもグレーで、何時が空いているか分からない。
- * > その日に予約している人が、時間を後ろにずらせるか確認したいらしい。
+ * > 当日であってもグレーで、何時が空いてるか分からなくなる。
+ * > **当日の日付を押したときに**その日の状況が見えるようにしてほしい。
+ * > アプリから当日の予約の変更はできない。
+ * > **その日の状況を見て、お客さんはお店に連絡するシステム**。
  *
- * 🔴 **「受付終了」は2種類あって、DB の扱いが違う。** 一律に解除してはいけない。
+ * 🔴 **「受付終了」は2種類あって、意味が違う。**
  *
- * | 種類 | `manual` | 同じ日への予約変更 |
+ * | 種類 | `manual` | 当日の扱い |
  * |---|---|---|
- * | 上限に達した（4/4） | `false` | **DB は通す** |
- * | 店がワンタップで止めた | `true`  | **DB が断る**（GB007） |
+ * | 店がワンタップで止めた | `true`  | 押せない（店が「今日はもう受けない」と決めた日） |
+ * | 上限に達した（4/4）    | `false` | **当日だけ押せる。中身は見るだけ**（予約はできない） |
  *
- * 上限のほうを DB が通すのは、`tenant_day_closed(tenant, date, p_exclude_booking_id)` が
- * **動かす予約自身を数えずに**上限と比べるから（4枠のうち1枠は自分なので実質 3/4）。
- * 店が手で止めた日は `booking_closed_days` に行があり、除外とは無関係に閉まったまま。
+ * 上限のほうを当日だけ開けるのは、
  *
- * ここを一律に解除すると、**手で止めた日で「押せたのにサーバーに断られる」**が起きる。
- * DB の判定と1対1で対応させること。
- *
- * @param rescheduleFromDate 動かそうとしている予約の日（yyyy-MM-dd）。
- *                           予約変更中でなければ null を渡す。
+ *  - 当日はそもそもアプリから予約も変更もできない（締切済み）ので、
+ *    押せても**「見るだけ」以上のことは起きない**
+ *  - お客様は空き時間を見て**店に電話する**。その材料を出すのが目的
+ *  - 先の日付まで開けると、店が上限で止めた日に問い合わせが増える。
+ *    止めた意図に反するので開けない
  */
-export const isDayClosedForBooking = (
+export const isDayHardClosed = (
   closedDays: readonly ClosedDay[] | null | undefined,
   dateKey: string,
-  rescheduleFromDate: string | null,
 ): boolean => {
   const day = closedDays?.find((d) => d.closed_date === dateKey);
   if (!day) return false;
-  // 手で止めた日は、予約変更でも開けない（DB が GB007 で断るため）
-  if (day.manual) return true;
-  // 上限で閉まった日は、**そこに自分の予約がある**ときだけ開ける。
-  // 別の日から動かしてくる場合は、自分を除いても上限のままなので閉じたまま。
-  return rescheduleFromDate !== dateKey;
+  // 手で止めた日は常に閉じる。上限の日は当日だけ開ける（下の isDayViewOnly）
+  return day.manual || !isTodayKey(dateKey);
+};
+
+/**
+ * 「押せるが、予約はできない（見るだけ）」日か。
+ *
+ * 当日 かつ 上限で埋まった日 だけ true。呼び出し側は、
+ * **枠を描くが1つも押せない**状態にすること（空き枠は「空き」と分かるように出す）。
+ */
+export const isDayViewOnly = (
+  closedDays: readonly ClosedDay[] | null | undefined,
+  dateKey: string,
+): boolean => {
+  const day = closedDays?.find((d) => d.closed_date === dateKey);
+  return !!day && !day.manual && isTodayKey(dateKey);
 };
 
 /** その日を止めた理由。閉まっていなければ null。 */

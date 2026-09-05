@@ -2787,6 +2787,8 @@
     "reopenFailed": "Could not reopen the day",
     "customerClosed": "This day is no longer taking bookings",
     "customerClosedHelp": "Please choose another date.",
+    "customerFullToday": "Today's slots are fully booked",
+    "customerFullTodayHelp": "You can still see the times below. Please contact the gym directly.",
     "errorClosed": "This day is no longer taking bookings. Please choose another date."
   },
   "bookingOptions": {

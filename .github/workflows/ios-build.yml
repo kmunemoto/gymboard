@@ -58,13 +58,30 @@ jobs:
         with:
           node-version: '22'
 
+      # 🔴 npm install は落ちる。ネットワークが切れるだけで15分のビルドが無駄になる。
+      #    2026-09-05 の Actions #150 が ECONNRESET で 32 秒で失敗した
+      #    （コードは無関係。npm レジストリへの接続が途中で切れただけ）。
+      #    レジストリ側の一過性の失敗にビルド1回ぶんを払わないよう、3回まで試す。
+      #
+      #    ⚠️ `retry` を関数にして各 install を包む。`npm install` を素で3回並べると、
+      #       1回目が成功したときも2回目・3回目が走って時間を無駄にする。
       - name: Install dependencies
         run: |
-          npm install --legacy-peer-deps
-          npm install @mediapipe/pose @tensorflow/tfjs-backend-webgpu @tensorflow/tfjs-backend-webgl @tensorflow/tfjs-core @tensorflow/tfjs-converter --legacy-peer-deps
-
-      - name: Install Capacitor iOS
-        run: npm install @capacitor/ios@^8 --legacy-peer-deps
+          retry() {
+            local n=1
+            until "$@"; do
+              if [ $n -ge 3 ]; then
+                echo "::error::$* が3回とも失敗しました。npm レジストリ側の問題でなければ、依存の指定を疑ってください。"
+                return 1
+              fi
+              echo "::warning::$* が失敗しました（$n 回目）。$((n * 15)) 秒待って再試行します。"
+              sleep $((n * 15))
+              n=$((n + 1))
+            done
+          }
+          retry npm install --legacy-peer-deps
+          retry npm install @mediapipe/pose @tensorflow/tfjs-backend-webgpu @tensorflow/tfjs-backend-webgl @tensorflow/tfjs-core @tensorflow/tfjs-converter --legacy-peer-deps
+          retry npm install @capacitor/ios@^8 --legacy-peer-deps
 
       - name: Build web
         run: npm run build

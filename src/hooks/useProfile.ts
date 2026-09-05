@@ -13,6 +13,11 @@ export interface Profile {
   phone: string | null;
   /** ふりがな。50音で並べるために持つ。display_name とは別 */
   name_kana: string | null;
+  /**
+   * 性別。顧客一覧の絞り込みと、記録画面の筋肉図の出し分けに使う。
+   * 2026-09-05 に `user_avatars.gender` から移した（アバターはゲーム要素として撤去）。
+   */
+  gender: "male" | "female" | null;
   plan: string | null;
   /**
    * @deprecated 入金は `member_payments` に記録する。
@@ -54,7 +59,6 @@ export interface ProfileWithBooking extends Profile {
   next_booking_type: string | null;
   /** 最終来店日（過去の非キャンセル予約のうち最新のもの）。来店実績が無ければ null。 */
   last_visit_date: string | null;
-  gender: "male" | "female" | null;
   /**
    * 在籍状態（`tenant_members.status`）。"active" | "suspended" が入る。
    * 退会（withdrawn / cancelled）はそもそも取得しないのでここには来ない。
@@ -262,13 +266,13 @@ export const useAllCustomerProfiles = () => {
       .neq("status", SAME_DAY_FORFEIT_STATUS)
       .order("booking_date", { ascending: true });
 
-    // 4b. Fetch genders from user_avatars
-    const { data: avatarRows } = await supabase
-      .from("user_avatars")
-      .select("user_id, gender")
-      .in("user_id", customerIds);
+    // 性別は profiles が持っている（2026-09-05 に user_avatars から移した）。
+    // 上の select("*") で一緒に取れているので、ここで問い合わせを1本減らせる。
     const genderMap: Record<string, "male" | "female" | null> = {};
-    (avatarRows || []).forEach((r: any) => { genderMap[r.user_id] = r.gender ?? null; });
+    (profileData || []).forEach((r) => {
+      const g = (r as { gender?: string | null }).gender;
+      genderMap[r.user_id] = g === "male" || g === "female" ? g : null;
+    });
 
     // 予約マップを構築（allBookings は booking_date 昇順）:
     //  - nextBookingMap: 各ユーザーの「今後の最も近い予約」
@@ -347,9 +351,6 @@ export const useAllCustomerProfiles = () => {
         fetchProfiles();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
-        fetchProfiles();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "user_avatars" }, () => {
         fetchProfiles();
       })
       .subscribe();

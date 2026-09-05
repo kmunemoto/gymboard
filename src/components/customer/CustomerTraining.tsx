@@ -21,7 +21,7 @@ import { summarizeMuscleGroups, subscribeMuscleGroup, loadMuscleGroupMap } from 
 import ProgressPhotosTab from "./progress/ProgressPhotosTab";
 import MuscleBalanceRadar from "./MuscleBalanceRadar";
 import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
-import { useAvatar } from "@/hooks/useAvatar";
+import { useProfile } from "@/hooks/useProfile";
 import {
   LineChart,
   Line,
@@ -54,8 +54,9 @@ interface WorkoutWithExercise {
 const CustomerTraining = ({ initialSubTab = "workout" }: { initialSubTab?: "workout" | "photos" }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { avatar } = useAvatar();
-  const gender: "male" | "female" = avatar?.gender === "female" ? "female" : "male";
+  // 性別は profiles が持つ（2026-09-05 に user_avatars から移した）。筋肉図の出し分けだけに使う
+  const { profile } = useProfile();
+  const gender: "male" | "female" = profile?.gender === "female" ? "female" : "male";
   const [subTab, setSubTab] = useState<"workout" | "photos">(initialSubTab);
   const [workouts, setWorkouts] = useState<WorkoutWithExercise[]>([]);
   const [loading, setLoading] = useState(true);

@@ -34,7 +34,6 @@ export interface Profile {
   calendar_token: string | null;
   best_streak: number;
   last_streak_notified: number;
-  game_mode_enabled: boolean;
   training_goal: string | null;
   milestone_goal?: string | null;
   milestone_goal_set_at?: string | null;
@@ -301,7 +300,6 @@ export const useAllCustomerProfiles = () => {
         calendar_token: (p as any)?.calendar_token || null,
         best_streak: p?.best_streak || 0,
         last_streak_notified: p?.last_streak_notified || 0,
-        game_mode_enabled: (p as any)?.game_mode_enabled ?? true,
         training_goal: (p as any)?.training_goal ?? null,
         milestone_goal: p?.milestone_goal ?? null,
         milestone_goal_set_at: p?.milestone_goal_set_at ?? null,

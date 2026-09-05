@@ -61,10 +61,14 @@ function readGeneratedSchema(): Map<string, Set<string>> {
 
 /**
  * マイグレーションをファイル名順に畳み込んで「あるべきスキーマ」を作る。
- * 保守的なパーサで、扱うのは CREATE TABLE / ALTER TABLE ADD COLUMN / DROP TABLE のみ。
- * （2026-07 時点で migrations に現れる DDL はこの3種類だけ。DROP COLUMN / RENAME が
- *  出てきたらここに足す。足し忘れても「あるはずの列が無い」側に倒れるだけで、
- *  乖離を見逃す方向には倒れない）
+ * 保守的なパーサで、扱うのは CREATE TABLE / ALTER TABLE ADD COLUMN / DROP COLUMN /
+ * DROP TABLE のみ。（RENAME が出てきたらここに足す。足し忘れても「あるはずの列が無い」
+ * 側に倒れるだけで、乖離を見逃す方向には倒れない）
+ *
+ * ⚠️ DROP COLUMN は 2026-09-05 に足した。それまで解釈できず、列を落とす
+ *    マイグレーションを書くと「declared にある列が types.ts に無い」で
+ *    **必ず赤になり、KNOWN_STALE でも逃げられなかった**
+ *    （逃がすと「解消済みが残っている」の検査が今度は落ちる）。
  */
 function readDeclaredSchema(): Map<string, Set<string>> {
   const files = readdirSync(MIGRATIONS_DIR)
@@ -94,6 +98,11 @@ function readDeclaredSchema(): Map<string, Set<string>> {
         // （Lovable の UI で直接作られたもの等）。types.ts 側で存在確認する。
         if (cols) cols.add(c[1]);
         else schema.set(m[1], new Set([c[1]]));
+      }
+      // 落とした列は declared から外す。外さないと「types.ts に無い」で赤くなる
+      const drop = /DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?"?(\w+)"?/gi;
+      for (let c = drop.exec(m[2]); c; c = drop.exec(m[2])) {
+        schema.get(m[1])?.delete(c[1]);
       }
     }
   }

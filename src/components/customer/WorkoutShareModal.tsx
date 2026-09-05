@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
-import { STREAK_ENABLED, GAMIFICATION_ENABLED } from "@/lib/featureFlags";
+import { STREAK_ENABLED } from "@/lib/featureFlags";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
 interface Props {
@@ -26,21 +26,6 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
   const { tenant } = useTenant();
   const { t } = useTranslation();
   const gymBrand = tenant?.gym_name || t("workoutShare.brandFallback");
-  // シェアカードに載せる獲得バッジ。GAMIFICATION_ENABLED=false のときは
-  // 取得もせず空のままにする（カード側は空配列ならバッジ行を描画しない）。
-  const [featuredBadges, setFeaturedBadges] = useState<string[]>([]);
-  useEffect(() => {
-    if (!GAMIFICATION_ENABLED) return;
-    if (!open || !user) return;
-    supabase
-      .from("user_avatars")
-      .select("featured_badges")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setFeaturedBadges(((data as any)?.featured_badges as string[]) || []);
-      });
-  }, [open, user]);
   const [theme, setTheme] = useState<ShareTheme>("dark");
   const [busy, setBusy] = useState(false);
   const previewBoxRef = useRef<HTMLDivElement>(null);
@@ -569,7 +554,6 @@ const WorkoutShareModal = ({ open, onClose, session, streakWeeks, totalSessions 
               theme={theme}
               streakWeeks={STREAK_ENABLED ? streakWeeks : 0}
               totalSessions={totalSessions}
-              featuredBadges={featuredBadges}
             />
           </div>
         </div>

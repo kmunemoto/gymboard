@@ -125,7 +125,6 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
       BODY_METRICS_ENABLED: true,
       MUSCLE_RADAR_ENABLED: true,
       MONTHLY_REPORT_ENABLED: false,
-      GAMIFICATION_ENABLED: false,
     }));
     await setup();
     const labels = tabLabels();
@@ -145,7 +144,6 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
       BODY_METRICS_ENABLED: true,
       MUSCLE_RADAR_ENABLED: false,
       MONTHLY_REPORT_ENABLED: false,
-      GAMIFICATION_ENABLED: false,
     }));
     await setup();
     const labels = tabLabels();
@@ -164,7 +162,6 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
       BODY_METRICS_ENABLED: true,
       MUSCLE_RADAR_ENABLED: true,
       MONTHLY_REPORT_ENABLED: false,
-      GAMIFICATION_ENABLED: false,
     }));
     await setup();
     const labels = tabLabels();
@@ -180,7 +177,6 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
       BODY_METRICS_ENABLED: false,
       MUSCLE_RADAR_ENABLED: false,
       MONTHLY_REPORT_ENABLED: false,
-      GAMIFICATION_ENABLED: false,
     }));
     await setup();
     const labels = tabLabels();
@@ -200,7 +196,6 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
       BODY_METRICS_ENABLED: false,
       MUSCLE_RADAR_ENABLED: false,
       MONTHLY_REPORT_ENABLED: false,
-      GAMIFICATION_ENABLED: false,
     }));
     await setup();
     expect(screen.queryByTestId("weight-journey")).toBeNull();
@@ -214,7 +209,6 @@ describe("トレーナー顧客カルテの機能ゲート（タブ）", () => {
       BODY_METRICS_ENABLED: true,
       MUSCLE_RADAR_ENABLED: false,
       MONTHLY_REPORT_ENABLED: false,
-      GAMIFICATION_ENABLED: false,
     }));
     await setup();
     expect(screen.getByTestId("weight-journey")).toBeTruthy();

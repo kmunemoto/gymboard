@@ -1543,13 +1543,6 @@
     "savedToast": "Record saved",
     "savedDesc": "Saved {{name}}'s training record",
     "deletedToast": "Record deleted",
-    "missionAchieved": "Mission complete! {{name}}",
-    "missionExp": "+{{exp}} EXP",
-    "missionAllComplete": "All missions complete!",
-    "missionBonus": "+50 EXP bonus!",
-    "raidDefeated": "Raid boss defeated!",
-    "raidDefeatedDesc": "Rewards distributed to everyone!",
-    "eventComplete": "Event completed! {{name}}",
     "deleteWorkoutDesc": "This will delete the record for {{name}} {{sets}}. This action cannot be undone.",
     "mealsSection": "Meal records",
     "noMeals": "No meal records",
@@ -1574,8 +1567,6 @@
     "chatPlaceholder": "Type a message...",
     "categoryOther": "Other",
     "monthlyPrice": "Monthly: ¥{{price}}",
-    "eventRewardDesc": "+{{exp}} EXP / +{{coins}} coins{{badge}}",
-    "eventBadgeSuffix": " / limited badge \"{{badge}}\"",
     "loadLastMenu": "Load last session's menu",
     "lastMenuLoaded": "Loaded the menu from {{date}}",
     "prevHint": "Last {{date}}: {{weight}}kg × {{reps}} reps · {{sets}} sets"
@@ -2110,166 +2101,12 @@
     "arms": "Arms",
     "other": "Other"
   },
-  "titles": {
-    "chest_master": {
-      "name": "Chest Beast",
-      "condition": "Chest training is 40%+ of total"
-    },
-    "back_master": {
-      "name": "Back Beast",
-      "condition": "Back training is 40%+ of total"
-    },
-    "leg_master": {
-      "name": "Leg King",
-      "condition": "Leg training is 40%+ of total"
-    },
-    "shoulder_master": {
-      "name": "Boulder Shoulders",
-      "condition": "Shoulder training is 40%+ of total"
-    },
-    "arm_master": {
-      "name": "Arm Show-off",
-      "condition": "Arm training is 40%+ of total"
-    },
-    "early_bird": {
-      "name": "Morning Master",
-      "condition": "70%+ of sessions in the morning"
-    },
-    "night_owl": {
-      "name": "Night Owl Trainee",
-      "condition": "70%+ of sessions after 7 PM"
-    },
-    "consistency_king": {
-      "name": "King of Consistency",
-      "condition": "Visited 12 weeks in a row"
-    },
-    "volume_monster": {
-      "name": "Volume Monster",
-      "condition": "100,000kg+ total monthly volume"
-    },
-    "all_rounder_title": {
-      "name": "All-Rounder",
-      "condition": "5+ muscle groups every month for 3 months straight"
-    },
-    "boss_slayer": {
-      "name": "Boss Hunter",
-      "condition": "Contributed to defeating 3 raid bosses"
-    },
-    "mission_addict": {
-      "name": "Mission Addict",
-      "condition": "Completed 50 daily missions in total"
-    },
-    "combo_master": {
-      "name": "Combo Master",
-      "condition": "Achieved 5+ combos 3 times"
-    },
-    "core_oni": {
-      "name": "Core Beast",
-      "condition": "Core training is 40%+ of total"
-    },
-    "weekend_warrior": {
-      "name": "Weekend Warrior",
-      "condition": "60%+ of sessions on weekends"
-    },
-    "iron_man": {
-      "name": "Iron Man",
-      "condition": "200+ total sessions"
-    },
-    "gacha_master": {
-      "name": "Gacha Master",
-      "condition": "50+ total gacha pulls"
-    },
-    "raid_slayer": {
-      "name": "Raid Slayer",
-      "condition": "Contributed to defeating 5 raid bosses"
-    },
-    "streaker": {
-      "name": "Streaker",
-      "condition": "Max combo of 10+"
-    },
-    "record_child": {
-      "name": "Record Prodigy",
-      "condition": "30+ personal bests in total"
-    },
-    "legend_title": {
-      "name": "Legend",
-      "condition": "Reached avatar level 50"
-    },
-    "collector": {
-      "name": "Collector",
-      "condition": "Earned 10 badges"
-    },
-    "badge_master": {
-      "name": "Badge Master",
-      "condition": "Earned 20 badges"
-    },
-    "complete_road": {
-      "name": "Road to Completion",
-      "condition": "Earned 30 badges"
-    },
-    "legend_collector": {
-      "name": "Legend Collector",
-      "condition": "Collected all badges"
-    },
-    "liberator": {
-      "name": "Liberator",
-      "condition": "Cleared Stage 1 of the Kingdom Restoration quest"
-    },
-    "harbor_guardian": {
-      "name": "Harbor Guardian",
-      "condition": "Cleared Stage 3 of the Kingdom Restoration quest"
-    },
-    "spirit_ally": {
-      "name": "Spirit Ally",
-      "condition": "Cleared Stage 5 of the Kingdom Restoration quest"
-    },
-    "sky_pioneer": {
-      "name": "Sky Pioneer",
-      "condition": "Cleared Stage 7 of the Kingdom Restoration quest"
-    },
-    "kingdom_hero": {
-      "name": "Kingdom Hero",
-      "condition": "Cleared all stages of the Kingdom Restoration quest"
-    },
-    "goal_achiever": {
-      "name": "Goal Achiever",
-      "condition": "Reached target weight"
-    }
-  },
-  "ranks": {
-    "rookie": "Rookie",
-    "regular": "Regular",
-    "athlete": "Athlete",
-    "elite": "Elite",
-    "legend": "Legend"
-  },
   "nav": {
     "home": "Home",
     "training": "Records",
     "booking": "Booking",
     "meals": "Meals",
     "settings": "Settings"
-  },
-  "milestoneDialog": {
-    "achieved": "{{name}} achieved!",
-    "sessionReached": "Reached {{count}} sessions",
-    "coins": "{{count}} coins",
-    "exp": "{{count}} EXP",
-    "gachaTickets": "{{count}} gacha tickets",
-    "titleReward": "Title \"{{title}}\"",
-    "badgeEarned": "Commemorative badge earned",
-    "next": "Next ({{current}}/{{total}})"
-  },
-  "sessionExp": {
-    "title": "Today's Training Results",
-    "baseExp": "Base EXP",
-    "volumeBonus": "Volume Bonus",
-    "totalVolume": "Total volume {{volume}}kg",
-    "personalBest": "Personal Best",
-    "combo": "{{count}} combo",
-    "companion": "Your companion gained EXP too!",
-    "companionWithName": "Your companion ({{name}}) gained EXP too!",
-    "remainExp": "{{count}} EXP to go"
   },
   "announcementsDialog": {
     "title": "Announcements",

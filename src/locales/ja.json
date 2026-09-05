@@ -1543,13 +1543,6 @@
     "savedToast": "記録を保存しました",
     "savedDesc": "{{name}}さんのトレーニング記録を保存しました",
     "deletedToast": "記録を削除しました",
-    "missionAchieved": "ミッション達成！{{name}}",
-    "missionExp": "+{{exp}} EXP",
-    "missionAllComplete": "全ミッションコンプリート！",
-    "missionBonus": "+50 EXP ボーナス！",
-    "raidDefeated": "レイドボス撃破！",
-    "raidDefeatedDesc": "全員に報酬を配布しました！",
-    "eventComplete": "イベント完走！{{name}}",
     "deleteWorkoutDesc": "{{name}} {{sets}} の記録を削除します。この操作は取り消せません。",
     "mealsSection": "食事記録",
     "noMeals": "食事記録なし",
@@ -1574,8 +1567,6 @@
     "chatPlaceholder": "メッセージを入力...",
     "categoryOther": "その他",
     "monthlyPrice": "月額: ¥{{price}}",
-    "eventRewardDesc": "+{{exp}} EXP / +{{coins}}コイン{{badge}}",
-    "eventBadgeSuffix": " / 限定バッジ「{{badge}}」",
     "loadLastMenu": "前回と同じメニューを読み込む",
     "lastMenuLoaded": "前回（{{date}}）のメニューを読み込みました",
     "prevHint": "前回 {{date}}: {{weight}}kg × {{reps}}回・{{sets}}セット"
@@ -2110,166 +2101,12 @@
     "arms": "腕",
     "other": "その他"
   },
-  "titles": {
-    "chest_master": {
-      "name": "胸板の鬼",
-      "condition": "胸トレが全体の40%以上"
-    },
-    "back_master": {
-      "name": "背中の鬼",
-      "condition": "背中トレが全体の40%以上"
-    },
-    "leg_master": {
-      "name": "脚の王",
-      "condition": "脚トレが全体の40%以上"
-    },
-    "shoulder_master": {
-      "name": "肩メロン",
-      "condition": "肩トレが全体の40%以上"
-    },
-    "arm_master": {
-      "name": "腕自慢",
-      "condition": "腕トレが全体の40%以上"
-    },
-    "early_bird": {
-      "name": "朝活の達人",
-      "condition": "午前セッションが70%以上"
-    },
-    "night_owl": {
-      "name": "夜型トレーニー",
-      "condition": "19時以降セッションが70%以上"
-    },
-    "consistency_king": {
-      "name": "継続の王",
-      "condition": "12週連続来店"
-    },
-    "volume_monster": {
-      "name": "ボリュームモンスター",
-      "condition": "月間総挙上量10万kg以上"
-    },
-    "all_rounder_title": {
-      "name": "オールラウンダー",
-      "condition": "毎月5部位以上を3ヶ月連続"
-    },
-    "boss_slayer": {
-      "name": "ボスハンター",
-      "condition": "レイドボス3回撃破に貢献"
-    },
-    "mission_addict": {
-      "name": "ミッション中毒",
-      "condition": "デイリーミッション累計50回達成"
-    },
-    "combo_master": {
-      "name": "コンボマスター",
-      "condition": "5コンボ以上を3回達成"
-    },
-    "core_oni": {
-      "name": "コアの鬼",
-      "condition": "体幹トレが全体の40%以上"
-    },
-    "weekend_warrior": {
-      "name": "週末戦士",
-      "condition": "土日のセッションが60%以上"
-    },
-    "iron_man": {
-      "name": "鉄人",
-      "condition": "累計200セッション以上"
-    },
-    "gacha_master": {
-      "name": "ガチャマスター",
-      "condition": "ガチャ累計50回以上"
-    },
-    "raid_slayer": {
-      "name": "レイドスレイヤー",
-      "condition": "レイドボス5回撃破に貢献"
-    },
-    "streaker": {
-      "name": "ストリーカー",
-      "condition": "最大コンボ10回以上"
-    },
-    "record_child": {
-      "name": "記録の申し子",
-      "condition": "自己ベスト累計30回以上"
-    },
-    "legend_title": {
-      "name": "レジェンド",
-      "condition": "アバターレベル50到達"
-    },
-    "collector": {
-      "name": "コレクター",
-      "condition": "バッジ10個取得"
-    },
-    "badge_master": {
-      "name": "バッジマスター",
-      "condition": "バッジ20個取得"
-    },
-    "complete_road": {
-      "name": "コンプリートへの道",
-      "condition": "バッジ30個取得"
-    },
-    "legend_collector": {
-      "name": "レジェンドコレクター",
-      "condition": "全バッジ制覇"
-    },
-    "liberator": {
-      "name": "解放者",
-      "condition": "王国復興クエスト ステージ1クリア"
-    },
-    "harbor_guardian": {
-      "name": "港の守り手",
-      "condition": "王国復興クエスト ステージ3クリア"
-    },
-    "spirit_ally": {
-      "name": "精霊の盟友",
-      "condition": "王国復興クエスト ステージ5クリア"
-    },
-    "sky_pioneer": {
-      "name": "天空の開拓者",
-      "condition": "王国復興クエスト ステージ7クリア"
-    },
-    "kingdom_hero": {
-      "name": "王国の英雄",
-      "condition": "王国復興クエスト 全ステージクリア"
-    },
-    "goal_achiever": {
-      "name": "ゴール達成者",
-      "condition": "目標体重を達成"
-    }
-  },
-  "ranks": {
-    "rookie": "ルーキー",
-    "regular": "レギュラー",
-    "athlete": "アスリート",
-    "elite": "エリート",
-    "legend": "レジェンド"
-  },
   "nav": {
     "home": "ホーム",
     "training": "記録",
     "booking": "予約",
     "meals": "食事",
     "settings": "設定"
-  },
-  "milestoneDialog": {
-    "achieved": "{{name}}達成！",
-    "sessionReached": "{{count}}セッション到達",
-    "coins": "{{count}} コイン",
-    "exp": "{{count}} EXP",
-    "gachaTickets": "ガチャチケット {{count}}枚",
-    "titleReward": "称号「{{title}}」",
-    "badgeEarned": "記念バッジ獲得",
-    "next": "次へ ({{current}}/{{total}})"
-  },
-  "sessionExp": {
-    "title": "今日のトレーニング成果",
-    "baseExp": "基本EXP",
-    "volumeBonus": "ボリュームボーナス",
-    "totalVolume": "総挙上量 {{volume}}kg",
-    "personalBest": "自己ベスト",
-    "combo": "コンボ {{count}}回",
-    "companion": "おともも経験値をもらった！",
-    "companionWithName": "おとも（{{name}}）も経験値をもらった！",
-    "remainExp": "あと {{count}} EXP"
   },
   "announcementsDialog": {
     "title": "お知らせ",

@@ -175,9 +175,6 @@
     "planLimitCustomer": "現在スクールがプラン上限を超えているため、新しい記録を作成できません。コーチにご確認ください。",
     "planLimitTrainer": "スクールが現在プラン上限を超えています。オーナーにご確認ください。"
   },
-  "sessionExp": {
-    "title": "今日のレッスン成果"
-  },
   "trainerNav": {
     "gymSettings": "スクール設定"
   },

@@ -124,7 +124,64 @@ workouts のトリガー 3本→1本（残るのはプラン上限のガード�
 番人は `src/test/genderOnProfiles.test.ts`（17件）。
 **マイグレーションに DELETE / TRUNCATE / DROP TABLE が現れたら落ちる。**
 
-## 第2段（未着手）: コードとテーブルの削除
+## 第2段a（2026-09-05・完了）: コードの削除
+
+**3,536行を削除した。DBは触っていない**（テーブル削除は第2段b）。
+
+### 🔴 監査で見つかった、危なかったもの
+
+**① 予約画面がフラグの外で `raid_bosses` を叩いていた**
+
+`CustomerBooking.tsx` が**マウントのたびに**レイドボスを読み、カレンダーに赤い帯と
+剣アイコンを出す作りだった。`GAMIFICATION_ENABLED` の**外**にあり、フラグOFFの間も
+本番で走り続けていた。テーブルを先に落としていたら、予約画面を開くたびに
+失敗リクエストが飛ぶところだった（画面は落ちないので気づけない）。
+
+**② `avatarSystem.ts` は丸ごと消せなかった**
+
+`muscleMapIcon.ts` が `AVATAR_CDN_BASE` を import している。部位アイコン（記録一覧の
+「使っている部位」の画像）は**生きた機能**。定数を `MUSCLE_ICON_CDN_BASE` として
+`muscleMapIcon.ts` へ移してから削除した。
+
+⚠️ この URL のホストは `clsvdhovzqrkojvkvekw` で、**ジムボード（`rrbfwitprzuevzytykrq`）
+とは別の Supabase プロジェクト**。画像はそちらのストレージにある。URL を変えないこと。
+
+⚠️ ジムボード側の `avatars` バケットは**消さないこと**。`Onboarding.tsx` が
+プロフィール写真（`profiles.avatar_url`）の置き場に使っている。ドット絵とは別物。
+
+**③ `check_weight_milestones` をゲームでない画面が2か所で呼んでいた**
+
+`useMeasurements.ts`（体組成の保存時）と `TrainerWeightJourneyPanel.tsx`（体重目標の
+保存時）。関数の中身は消す側のテーブルにしか書いていないので、呼び出しごと外した。
+
+### 🔴 前置き一致でロケールのキーを消して、実機能を消しかけた
+
+`mission|raid|event|exp|badge` で始まるキーを消そうとしたら、
+**`clientDetail.expiry` / `expiryPending` / `expiryConsumed`（契約の有効期限）**まで
+巻き込んだ。テストは通ってしまう（誰も参照を検査していない）ので、
+気づいたのは目視。**キーは1つずつ手で挙げること。**
+
+同じ罠を、テーブル選定でも一度踏みかけている（`booking_questions` が `quest` に当たる）。
+
+### 消したもの
+
+| | |
+|---|---|
+| `src/lib/` | avatarSystem / avatarRewards / titleSystem / missionSystem / missionRewards / raidUtils / rankPerks / comboSystem |
+| `src/hooks/` | useAvatar / useSeasonEvents |
+| `src/components/customer/` | BadgeIcon / SessionExpSummaryDialog / MilestoneAchievedDialog |
+| Edge Function | `payments-webhook` / `create-checkout`（どちらもコイン購入専用。`coin_purchases` は0件で購入UIも無い） |
+| `src/index.css` | 117行（`.pixel-avatar` / `.raid-band` / `.rainbow-frame` / `.golden-frame` / クエストの演出一式） |
+| ロケール | 5言語 × 13キー（`titles` / `sessionExp` / `ranks` / `milestoneDialog` / `clientDetail.mission*|raid*|event*`）＋ golf プリセットの `sessionExp` |
+| フラグ | `GAMIFICATION_ENABLED` ごと削除 |
+
+ラチェットも下げた（減ったら上限も下げる）:
+`as any` 128→102 ／ TrainerClientDetail 2000→1900 ／ CustomerBooking 1490→1450
+
+`rpcCallerCheck.test.ts` のしきい値も 3 → 2 に下げた
+（user_id 付きで呼ぶ RPC が8本→2本に減ったため）。
+
+## 第2段b（未着手）: テーブルと関数の削除
 
 - コード約2,100行（`avatarSystem` / `avatarRewards` / `titleSystem` / `missionSystem` /
   `missionRewards` / `raidUtils` / `rankPerks` / `useAvatar` / `useSeasonEvents` /

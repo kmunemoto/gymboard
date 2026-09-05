@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Trash2, CalendarPlus, Swords, Info, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound, ClipboardList, Sparkles } from "lucide-react";
+import { CalendarDays, Clock, Trash2, CalendarPlus, Info, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound, ClipboardList, Sparkles } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
@@ -202,32 +202,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // Booked slots fetched via SECURITY DEFINER RPC — sees ALL bookings regardless of RLS
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([]);
-
-  // Active raid boss periods (not defeated). Map of yyyy-MM-dd → { isStart, isEnd }
-  const [raidDates, setRaidDates] = useState<Map<string, { isStart: boolean; isEnd: boolean }>>(new Map());
-
-  useEffect(() => {
-    supabase
-      .from("raid_bosses")
-      .select("start_date, end_date, defeated")
-      .eq("defeated", false)
-      .then(({ data }) => {
-        if (!data) return;
-        const m = new Map<string, { isStart: boolean; isEnd: boolean }>();
-        data.forEach((r: { start_date: string; end_date: string }) => {
-          const start = new Date(`${r.start_date}T00:00:00+09:00`);
-          const end = new Date(`${r.end_date}T00:00:00+09:00`);
-          for (let d = new Date(start); d.getTime() <= end.getTime(); d.setDate(d.getDate() + 1)) {
-            const key = format(d, "yyyy-MM-dd");
-            m.set(key, {
-              isStart: key === r.start_date,
-              isEnd: key === r.end_date,
-            });
-          }
-        });
-        setRaidDates(m);
-      });
-  }, []);
 
   // Set of dates (yyyy-MM-dd) where this customer has future bookings — for calendar dots
   const { futureDateSet, pastDateSet } = useMemo(() => {
@@ -1093,40 +1067,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                       const key = format(dayDate, "yyyy-MM-dd");
                       const isFuture = futureDateSet.has(key);
                       const isPast = pastDateSet.has(key);
-                      const raid = raidDates.get(key);
-                      const dow = dayDate.getDay(); // 0=Sun..6=Sat
-                      const roundLeft = raid && (raid.isStart || dow === 0);
-                      const roundRight = raid && (raid.isEnd || dow === 6);
                       return (
                         <div className="relative flex flex-col items-center">
-                          {raid && (
-                            <span
-                              aria-hidden
-                              className="raid-band"
-                              style={{
-                                position: "absolute",
-                                top: -2,
-                                bottom: -2,
-                                 left: roundLeft ? 0 : -4,
-                                 right: roundRight ? 0 : -4,
-                                 borderTopLeftRadius: roundLeft ? 8 : 0,
-                                borderBottomLeftRadius: roundLeft ? 8 : 0,
-                                borderTopRightRadius: roundRight ? 8 : 0,
-                                borderBottomRightRadius: roundRight ? 8 : 0,
-                                zIndex: 0,
-                                pointerEvents: "none",
-                              }}
-                            />
-                          )}
                           <span className="relative z-[1]">{dayDate.getDate()}</span>
-                           {raid && (
-                             <Swords
-                               className="relative z-[1] raid-swords"
-                               size={10}
-                               color="#EF4444"
-                               style={{ marginTop: -2 }}
-                             />
-                           )}
                           {(isFuture || isPast) && (
                             <span
                               className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full z-[1]"

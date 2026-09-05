@@ -6,6 +6,7 @@ import {
   countsTowardDailyLimit,
   isDayAtLimit,
   isDayClosed,
+  isDayClosedForBooking,
   isDayClosedError,
   remainingForDay,
   type ClosedDay,
@@ -209,7 +210,12 @@ describe("会員の予約画面が受付終了を反映している", () => {
   });
 
   it("🔴 閉まっている日はカレンダーで選べない（会員アプリ）", () => {
-    expect(readCode(CUSTOMER)).toMatch(/if \(isDayClosed\(closedDays, yyyyMMdd\)\) return true;/);
+    // 2026-09-05 に isDayClosed → isDayClosedForBooking へ差し替えた
+    // （上限で閉まった日は、その日の自分の予約を動かすときだけ開ける）。
+    // 塞ぐこと自体は変わっていない。
+    expect(readCode(CUSTOMER)).toMatch(
+      /if \(isDayClosedForBooking\(closedDays, yyyyMMdd, rescheduleFromDate\)\) return true;/,
+    );
   });
 
   it("🔴 閉まっている日は1枠も出さない（キャンセル待ちにも出せない）", () => {
@@ -307,5 +313,86 @@ describe("🔴 設定画面の説明文が実装とずれていない", () => {
     // DB 側にも体験用のトリガーは残っていない
     const exempt = readSql(TRIAL_EXEMPT);
     expect(exempt).toContain("DROP TRIGGER IF EXISTS trg_guard_trial_booking_day_closed");
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// 予約変更のときだけ、上限で閉まった日を開ける（2026-09-05 宗本さんの要望）
+//
+// > 一日四枠までに設定したら、四枠入っている日はグレーになって押せなくなる。
+// > 当日でもグレーで、何時が空いているか分からない。
+// > その日に予約している人が、時間を後ろにずらせるか確認したいらしい。
+//
+// 🔴 **DB がすでにそれを許している。** tenant_day_closed の第3引数
+//    p_exclude_booking_id で、動かす予約自身を数えずに上限と比べるため
+//    （4枠のうち1枠は自分なので実質 3/4）。塞いでいたのは画面だけだった。
+//
+// 🔴 ただし「手で止めた日」は DB が断る（booking_closed_days に行があり、
+//    除外とは無関係）。一律に開けると「押せたのにサーバーに断られる」が起きる。
+// ────────────────────────────────────────────────────────────────
+
+describe("予約変更のときの受付終了の判定", () => {
+  it("ふつうの予約（変更中でない）では、今までどおり両方とも閉まっている", () => {
+    expect(isDayClosedForBooking(days, "2026-09-10", null)).toBe(true); // 手で止めた
+    expect(isDayClosedForBooking(days, "2026-09-12", null)).toBe(true); // 上限
+  });
+
+  it("🔴 上限で閉まった日は、そこに自分の予約があれば開く", () => {
+    // これが今回の要望そのもの。DB は自分を除いて数えるので通る
+    expect(isDayClosedForBooking(days, "2026-09-12", "2026-09-12")).toBe(false);
+  });
+
+  it("🔴 手で止めた日は、自分の予約があっても開かない", () => {
+    // 開けると「押せたのに GB007 で断られる」になる
+    expect(isDayClosedForBooking(days, "2026-09-10", "2026-09-10")).toBe(true);
+  });
+
+  it("別の日から動かしてくる場合は、上限の日は閉まったまま", () => {
+    // 自分を除いても上限のまま。DB も断る
+    expect(isDayClosedForBooking(days, "2026-09-12", "2026-09-11")).toBe(true);
+  });
+
+  it("閉まっていない日は、どの場合でも開いている", () => {
+    for (const from of [null, "2026-09-11", "2026-09-12"]) {
+      expect(isDayClosedForBooking(days, "2026-09-11", from), String(from)).toBe(false);
+    }
+  });
+
+  it("空・null でも落ちない", () => {
+    expect(isDayClosedForBooking(null, "2026-09-12", "2026-09-12")).toBe(false);
+    expect(isDayClosedForBooking([], "2026-09-12", null)).toBe(false);
+  });
+});
+
+describe("🔴 画面の例外が DB の判定と一致している", () => {
+  // 🔴 いちばん新しい定義を見る。20260901000000 の tenant_day_closed は4引数だが、
+  //    体験予約を上限から外したときに3引数へ作り直されている（TRIAL_EXEMPT）。
+  //    古いほうを見ると、いま動いていない定義に対して検査してしまう。
+  const sql = readSql(TRIAL_EXEMPT);
+
+  it("DB は「動かす予約自身」を除いて数える", () => {
+    // ここが無いと、画面だけ開けても DB が GB007 で断る
+    expect(sql).toMatch(/tenant_day_closed\s*\([^)]*p_exclude_booking_id/);
+    expect(sql).toMatch(/tenant_day_booking_count\s*\([^)]*p_exclude_booking_id/);
+  });
+
+  it("トリガーが自分の id を渡している", () => {
+    expect(sql).toMatch(/tenant_day_closed\(NEW\.tenant_id, v_date, NEW\.id\)/);
+  });
+
+  it("手で止めた日は除外と無関係に閉まる（booking_closed_days を先に見ている）", () => {
+    const fn = sql.slice(sql.indexOf("FUNCTION public.tenant_day_closed"));
+    const closedIdx = fn.indexOf("booking_closed_days");
+    const limitIdx = fn.indexOf("daily_booking_limit");
+    expect(closedIdx, "booking_closed_days の判定が見つからない").toBeGreaterThan(0);
+    expect(closedIdx, "手で止めた日の判定が上限より先に来ていること").toBeLessThan(limitIdx);
+  });
+
+  it("画面が両方の場所で予約変更の日を渡している", () => {
+    const code = readCode(CUSTOMER);
+    // カレンダーの disabled と、選択済みの日の受け皿
+    const calls = code.match(/isDayClosedForBooking\([^)]*rescheduleFromDate\)/g) ?? [];
+    expect(calls.length, "片方だけだと、押せても枠が0件のままになる").toBe(2);
+    expect(code).toContain("const rescheduleFromDate = rescheduleTarget?.date ?? null;");
   });
 });

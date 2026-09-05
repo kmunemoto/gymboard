@@ -43,7 +43,7 @@ import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/li
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
-import { closedDayReason, isDayClosed, isDayClosedError } from "@/lib/bookingClosedDays";
+import { closedDayReason, isDayClosedForBooking, isDayClosedError } from "@/lib/bookingClosedDays";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
 import BookingOptionConfirm from "@/components/booking/BookingOptionConfirm";
@@ -324,9 +324,14 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     return isBlockedStart(blockedWindows, weekday, startMinutes);
   };
 
+  // 予約変更で動かそうとしている予約の日。変更中でなければ null。
+  // 上限で閉まった日でも、**そこに自分の予約があるなら**時間をずらせる
+  // （DB も自分を除いて数える。isDayClosedForBooking の表を読むこと）。
+  const rescheduleFromDate = rescheduleTarget?.date ?? null;
+
   // その日ぜんぶが受付終了か。日付を選んだあとに店が閉めた場合の受け皿でもある
   // （カレンダー側でも選べなくしているが、選択済みの状態は残るため）。
-  const selectedDayClosed = isDayClosed(closedDays, dateKey);
+  const selectedDayClosed = isDayClosedForBooking(closedDays, dateKey, rescheduleFromDate);
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean }[] = [];
@@ -1054,7 +1059,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     if (isClosedDate(businessHours, yyyyMMdd)) return true;
                     // 店が「その日はもう受けない」とした日、または1日の上限に達した日。
                     // 定休日と同じ見た目（選べない）にする。最終判定は DB（GB007）。
-                    if (isDayClosed(closedDays, yyyyMMdd)) return true;
+                    // ⚠️ 上限で閉まった日は、**予約変更でその日の自分の予約を動かすとき**だけ開ける。
+                    //    手で止めた日は開けない（DB が断るので、押せても意味がない）。
+                    if (isDayClosedForBooking(closedDays, yyyyMMdd, rescheduleFromDate)) return true;
                     // 指名した担当が出勤していない曜日。指名なしなら常に false。
                     if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
                       return true;

@@ -60,6 +60,46 @@ export const isDayClosed = (
   return closedDays.some((d) => d.closed_date === dateKey);
 };
 
+/**
+ * 予約変更のときに、その日を塞ぐべきか。
+ *
+ * 実店舗の要望（2026-09-05 宗本さん）:
+ *
+ * > 一日四枠までに設定したら、四枠入っている日はグレーになって押せなくなる。
+ * > 当日でもグレーで、何時が空いているか分からない。
+ * > その日に予約している人が、時間を後ろにずらせるか確認したいらしい。
+ *
+ * 🔴 **「受付終了」は2種類あって、DB の扱いが違う。** 一律に解除してはいけない。
+ *
+ * | 種類 | `manual` | 同じ日への予約変更 |
+ * |---|---|---|
+ * | 上限に達した（4/4） | `false` | **DB は通す** |
+ * | 店がワンタップで止めた | `true`  | **DB が断る**（GB007） |
+ *
+ * 上限のほうを DB が通すのは、`tenant_day_closed(tenant, date, p_exclude_booking_id)` が
+ * **動かす予約自身を数えずに**上限と比べるから（4枠のうち1枠は自分なので実質 3/4）。
+ * 店が手で止めた日は `booking_closed_days` に行があり、除外とは無関係に閉まったまま。
+ *
+ * ここを一律に解除すると、**手で止めた日で「押せたのにサーバーに断られる」**が起きる。
+ * DB の判定と1対1で対応させること。
+ *
+ * @param rescheduleFromDate 動かそうとしている予約の日（yyyy-MM-dd）。
+ *                           予約変更中でなければ null を渡す。
+ */
+export const isDayClosedForBooking = (
+  closedDays: readonly ClosedDay[] | null | undefined,
+  dateKey: string,
+  rescheduleFromDate: string | null,
+): boolean => {
+  const day = closedDays?.find((d) => d.closed_date === dateKey);
+  if (!day) return false;
+  // 手で止めた日は、予約変更でも開けない（DB が GB007 で断るため）
+  if (day.manual) return true;
+  // 上限で閉まった日は、**そこに自分の予約がある**ときだけ開ける。
+  // 別の日から動かしてくる場合は、自分を除いても上限のままなので閉じたまま。
+  return rescheduleFromDate !== dateKey;
+};
+
 /** その日を止めた理由。閉まっていなければ null。 */
 export const closedDayReason = (
   closedDays: readonly ClosedDay[] | null | undefined,

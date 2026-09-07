@@ -81,8 +81,13 @@ Android Studio の手作業）。そのため、**「リリースノート書い
 
 ```
 1. リリース実績の記録（mem/features/android-ci.md）に、いま出ていた版を書く
-2. iOS 側のバージョン表記（ios-build.yml の MARKETING_VERSION）を更新する
-3. そのうえで新しい版のリリースノートを書く
+2. 🔴 本番の app_releases.latest_version を「いま出た版」に上げる
+   （ここを上げないと、古い版のお客様に更新のお願いが一生出ない。
+     ⚠️ MARKETING_VERSION は「次に出す版」なので、そこから採らないこと。
+     Android は版数が読めないので、教えてもらうまで NULL のまま。
+     詳細は mem/features/app-update-prompt.md）
+3. iOS 側のバージョン表記（ios-build.yml の MARKETING_VERSION）を更新する
+4. そのうえで新しい版のリリースノートを書く
 ```
 
 **Android の版数はここでは上げない**（2026-08-13 以降）。リポジトリに版数を持っていないので、

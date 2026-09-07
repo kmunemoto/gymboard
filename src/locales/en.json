@@ -2843,5 +2843,12 @@
     "inheritedHelp": "Please contact the gym to add or remove options.",
     "repeatNote": "Weeks where the option doesn't fit are skipped entirely, training included.",
     "repeatSkippedWithOption": "{{count}} were skipped because they were full or the option time wasn't available ({{dates}})"
+  },
+  "appUpdate": {
+    "title": "Update available",
+    "body": "A newer version has been released. Please update from the store.",
+    "version": "Latest {{version}}",
+    "update": "Update",
+    "later": "Later"
   }
 }

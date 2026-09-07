@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import PushBootstrap from "@/components/PushBootstrap";
+import AppUpdateDialog from "@/components/AppUpdateDialog";
 import LazyBoundary from "@/components/LazyBoundary";
 
 // ルート単位でコード分割し、初期バンドルを小さく保つ。
@@ -43,6 +44,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <PushBootstrap />
+          {/* 新しい版が出ているときの案内。ネイティブのみ・必ず閉じられる。
+              LazyBoundary の外に置くのは、ルートの読み込みに失敗しても案内が残るため */}
+          <AppUpdateDialog />
           <LazyBoundary fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />

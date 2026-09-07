@@ -2843,5 +2843,12 @@
     "inheritedHelp": "如需新增或取消附加項目，請聯繫門市。",
     "repeatNote": "無法安排附加項目時間的那一週，將連同訓練一起略過。",
     "repeatSkippedWithOption": "有 {{count}} 次因已額滿或無法安排附加項目時間而略過（{{dates}}）"
+  },
+  "appUpdate": {
+    "title": "請更新應用程式",
+    "body": "新版本已發布。請從商店更新至最新版本。",
+    "version": "最新版本 {{version}}",
+    "update": "更新",
+    "later": "稍後"
   }
 }

@@ -96,6 +96,33 @@ export type Database = {
           },
         ]
       }
+      app_releases: {
+        Row: {
+          enabled: boolean
+          latest_version: string | null
+          note: string | null
+          platform: string
+          released_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          latest_version?: string | null
+          note?: string | null
+          platform: string
+          released_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          latest_version?: string | null
+          note?: string | null
+          platform?: string
+          released_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       avatar_achievements: {
         Row: {
           achievement_key: string
@@ -4450,6 +4477,13 @@ export type Database = {
           end_time: string
           start_time: string
           weekdays: number[]
+        }[]
+      }
+      get_app_release: {
+        Args: { p_platform: string }
+        Returns: {
+          latest_version: string
+          released_at: string
         }[]
       }
       get_tenant_closed_days: {

@@ -2843,5 +2843,12 @@
     "inheritedHelp": "옵션 추가·해제는 매장으로 연락해 주세요.",
     "repeatNote": "옵션 시간을 확보할 수 없는 주는 트레이닝까지 함께 건너뜁니다.",
     "repeatSkippedWithOption": "{{count}}건은 예약이 찼거나 옵션 시간을 확보할 수 없어 건너뛰었습니다 ({{dates}})"
+  },
+  "appUpdate": {
+    "title": "업데이트 안내",
+    "body": "새 버전이 출시되었습니다. 스토어에서 최신 버전으로 업데이트해 주세요.",
+    "version": "최신 버전 {{version}}",
+    "update": "업데이트",
+    "later": "나중에"
   }
 }

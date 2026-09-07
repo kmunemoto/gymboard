@@ -135,10 +135,15 @@ describe("🔴 必ず閉じられること（必須更新を作らない）", ()
   });
 
   it("必須更新の仕組みがどこにも無い", () => {
-    // min_version / required / forced を1つでも足したら、この番人を消す前に
-    // 「更新したくてもできない層」をどう救うかを決めること
+    // min_version / forceUpdate を1つでも足したら、この番人を消す前に
+    // 「更新したくてもできない層」をどう救うかを決めること。
+    //
+    // ⚠️ 除くのは**コメント行だけ**（-- / * / // で始まる行）。
+    //    以前は「min_version を含む行」を丸ごと消してから検査していて、
+    //    実コードに min_version text を足しても緑のままだった（レビューで発覚。
+    //    変異検証で確認済み）。「緑に見えるが何も検査していない」型の罠。
     for (const path of [LIB, HOOK, DIALOG, MIGRATION]) {
-      const code = readCode(path).replace(/^.*(必須|min_version).*$/gm, "");
+      const code = readCode(path).replace(/^\s*(--|\*|\/\/|\/\*).*$/gm, "");
       expect(code, path).not.toMatch(/\bmin_version\b/);
       expect(code, path).not.toMatch(/\bforceUpdate\b/);
     }

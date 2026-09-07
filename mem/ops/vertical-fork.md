@@ -317,6 +317,25 @@ Stripe が sandbox 判定になる。**画面上は決済成功に見えて、�
 新しいスキームは、その兄弟の **Supabase の Auth → URL Configuration →
 Additional Redirect URLs** にも追加が要る（登録しないとメール確認・OAuth の戻りが弾かれる）。
 
+### 3-b. 「更新してください」のボタンが上流のストアを開く（2026-09-07〜）
+
+`src/lib/brand.ts` の `STORE_URLS`。古い版の端末に出す「アップデートのお願い」
+（`mem/features/app-update-prompt.md`）のボタンの飛び先で、
+差し替え忘れると**お客様が押した先が上流ジムボードの商品ページ**になる。
+エラーにも警告にもならず、押してもらうまで誰も気づけない。
+
+- Android … `?id=` はパッケージ名。`src/test/appUpdatePrompt.test.ts` が
+  `capacitor.config.ts` の `appId` と一致することを見張るので、appId を変えれば赤くなる
+- iOS … 末尾の数字は **App Store が発行する ID**（上流は `6771447574`）。
+  リポジトリのどこからも導出できず、remix も merge も直してくれない。
+  **テストは形しか見ない**（数字なら通る）ので、ここは人が差し替えるしかない。
+  自分の App Store Connect で ID を確認するまでは**空文字**にしておくこと。
+  空ならその OS には案内が出ない（押しても何も起きない案内を出さない設計）
+
+DB 側の `app_releases` の初期値（`supabase/migrations/20260907010000_app_releases.sql`
+末尾の `INSERT`）も上流の版数（`1.6.9`）なので**写さない**。自分のストアに出ている版を
+実物で確認してから入れる。分からないうちは NULL（＝何も出ない）。
+
 ### 4. お客様に届くメールが「ジムボード」と名乗る
 
 `supabase/functions/send-transactional-email/index.ts` の `BRAND_NAME`、および
@@ -378,6 +397,7 @@ IDが一致しないと**何も置換せずに成功扱いで進む**。結果 `
 **アプリ識別**（brand.ts の外に残るもの）
 - [ ] `capacitor.config.ts` … `appId` / `appName` — **`brand.ts` の `NATIVE_APP_SCHEME` と必ず一致させる**
 - [ ] `.github/workflows/ios-build.yml` … bundle id・プロビジョニングプロファイル・`MARKETING_VERSION`
+- [ ] `brand.ts` の `STORE_URLS` … App Store の数字ID は自分で取得する（上記「地雷 3-b」。**テストは形しか見ない**）
 - [ ] Firebase プロジェクト … `GoogleService-Info.plist` / `google-services.json`
 - [ ] Web Push の VAPID鍵 … `brand.ts` の `VAPID_PUBLIC_KEY` / `VAPID_CONTACT_EMAIL`、
       `send-push-notification/index.ts` の写し、Supabase Secrets の `VAPID_PRIVATE_KEY` の**3点セット**。
@@ -540,6 +560,7 @@ git checkout -- src/lib/brand.ts src/lib/featureFlags.ts \
       **tsc もテストもビルドも全部緑のまま素通りする**ので、ここだけは実DBを見るしかない。
       最低限、予約画面を実際に開いて `get_tenant_booked_slots` が 404 にならないこと
 - [ ] 実機で: プッシュ通知・メールの差出人名・体験予約リンク・課金導線（sandbox/live判定）
+- [ ] 実機で: 「アップデートのお願い」の飛び先が**自分の**ストアの商品ページであること（`STORE_URLS`。地雷 3-b）
 
 ## 現状の限界（正直なところ）
 

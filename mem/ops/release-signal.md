@@ -34,9 +34,18 @@
 
 ```
 1. リリース実績の記録に、いま出ていた版を実績として書く
-2. iOS 側のバージョン表記（ios-build.yml の MARKETING_VERSION）を更新する
-3. そのうえで新しい版のリリースノートを書く
+2. 🔴 本番の app_releases.latest_version を「いま出た版」に上げる
+   （古い版のお客様に「更新してください」を出すための唯一の入力。
+     mem/features/app-update-prompt.md）
+3. iOS 側のバージョン表記（ios-build.yml の MARKETING_VERSION）を更新する
+4. そのうえで新しい版のリリースノートを書く
 ```
+
+🔴 **2 の値は「ストアに出ている版」。`MARKETING_VERSION` から採らないこと。**
+あれは「次に出す版」で、リリース済みを記録した時点で先へ進めてある。
+そのまま入れると**存在しない版への更新**を全利用者に促すことになる。
+Android は版数がセッションから読めないので、教えてもらうまで NULL のままにする
+（NULL の間は何も出ない）。
 
 🔴 **ジムボードでは Android の版数は上げない**（2026-08-13 から）。
 リポジトリに版数を持っていないので、`android/app/build.gradle` を Android Studio で

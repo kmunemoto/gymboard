@@ -67,6 +67,28 @@ export const STRIPE_LIVE_HOSTS: readonly string[] = [
 export const MARKETING_SITE_URL = "https://gymboard-app.lovable.app";
 
 /**
+ * **ストアの商品ページURL（アプリ内から「更新してください」で飛ばす先）。**
+ *
+ * 🔴 **DB ではなくここに置いている。** 兄弟アプリ（別 Supabase プロジェクト）が
+ * `supabase/migrations/20260907010000_app_releases.sql` をそのまま流すと、
+ * DB に置いた場合は**上流ジムボードのストアへ誘導してしまう**。しかも
+ * 気づく手立てが無い（エラーにならない）。リポジトリに置けば
+ * `src/test/appUpdatePrompt.test.ts` と vertical-fork のチェックリストに載る。
+ *
+ * - iOS … 末尾の数字が App Store の ID。`app.gymboard.mobile` の ID は 6771447574
+ *   （https://apps.apple.com/jp/app/.../id6771447574 の `id` のあと）
+ * - Android … ID は要らない。`?id=` にパッケージ名（`capacitor.config.ts` の `appId`）
+ *
+ * ⚠️ **空文字にすると、そのプラットフォームには更新のお願いを出さない**
+ * （押しても何も起きないダイアログを出さないため）。フォークは自分の値に差し替えるか、
+ * ストアに出すまで空のままにすること。
+ */
+export const STORE_URLS = {
+  ios: "https://apps.apple.com/jp/app/id6771447574",
+  android: "https://play.google.com/store/apps/details?id=app.gymboard.mobile",
+} as const;
+
+/**
  * **ストア（App Store / Google Play）の掲載情報。**
  *
  * ## なぜリポジトリに置くのか

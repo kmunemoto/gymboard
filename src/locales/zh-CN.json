@@ -2843,5 +2843,12 @@
     "inheritedHelp": "如需增加或取消附加项目，请联系门店。",
     "repeatNote": "无法安排附加项目时间的那一周，将连同训练一起跳过。",
     "repeatSkippedWithOption": "有 {{count}} 次因已约满或无法安排附加项目时间而跳过（{{dates}}）"
+  },
+  "appUpdate": {
+    "title": "请更新应用",
+    "body": "新版本已发布。请从应用商店更新到最新版本。",
+    "version": "最新版本 {{version}}",
+    "update": "更新",
+    "later": "稍后"
   }
 }

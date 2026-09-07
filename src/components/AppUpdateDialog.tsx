@@ -50,14 +50,17 @@ const AppUpdateDialog = () => {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-6"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="app-update-title"
       data-testid="app-update-dialog"
     >
-      <div className="w-full max-w-sm rounded-2xl bg-card p-6 text-center shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl bg-card p-6 text-center shadow-xl animate-in zoom-in-95 duration-200">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <ArrowUpCircle className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-base font-bold text-foreground">{t("appUpdate.title")}</h2>
+        <h2 id="app-update-title" className="text-base font-bold text-foreground">{t("appUpdate.title")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t("appUpdate.body")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("appUpdate.version", { version: latestVersion })}

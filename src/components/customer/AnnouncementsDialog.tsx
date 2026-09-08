@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import MessageText from "@/components/messages/MessageText";
 import { ArrowLeft, X, Bell, CheckCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -78,8 +79,12 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
                 </p>
               </div>
             </div>
-            <div className="text-sm text-foreground leading-relaxed pt-2" style={{ whiteSpace: "pre-wrap" }}>
-              {selected.body}
+            {/* 🔴 本文の URL は押せるようにする。押せないと、ストアや動画のリンクを
+                載せても「手で選択してコピー」になり、結局 LINE に貼り直しになる。
+                チャットと同じ MessageText を使う（HTML としては描画しないので、
+                お客様が自由に入力した本文でもスクリプトの入り口にならない）。 */}
+            <div className="text-foreground pt-2">
+              <MessageText text={selected.body} />
             </div>
             {(selected.image_url || selected.image_url2) && (
               <div className="mt-2 flex justify-center gap-3 flex-wrap">

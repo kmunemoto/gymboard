@@ -22,15 +22,45 @@ import { computeKeyboardInset } from "@/lib/keyboardInset";
  * | `kb` は出ているのに隠れる | 計算は合っていて、当てている CSS（position/bottom）の問題 |
  *
  * 既定では**何も描かない**ので、お客様の画面に出ることはない。
+ *
+ * ## 🔴 ネイティブでは `?kb=1` を付けられない（2026-09-11 に判明）
+ *
+ * アプリにはアドレスバーが無く、`window.location` は `capacitor://localhost/` のまま。
+ * `src/main.tsx` の `appUrlOpen` も `//billing` と `auth/callback` しか通さないので、
+ * **この「ものさし」はネイティブでは1度も出せない状態だった。**
+ * 実機でしか再現しない不具合のために作った道具が、実機で出せていなかった。
+ * 3回目の往復が空振りしかけた原因がこれ。
+ *
+ * そこで `localStorage` でも出せるようにした。スイッチはディープリンクで入れる:
+ *
+ * ```
+ * app.gymboard.mobile://kb?on=1   出す
+ * app.gymboard.mobile://kb?on=0   消す
+ * ```
+ *
+ * Safari のアドレスバーにこれを打ってもらえばアプリが開いて切り替わる
+ * （`src/main.tsx` の `appUrlOpen` が受ける）。**お客様には一切見えない。**
  */
-const KeyboardMetrics = () => {
-  const [on] = useState(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("kb") === "1";
-    } catch {
-      return false;
-    }
-  });
+
+/** localStorage のスイッチ。ディープリンクで入れる。 */
+export const KB_METRICS_KEY = "kb-metrics";
+
+/** ものさしを出すか。URL でも localStorage でも入る。 */
+export const isKeyboardMetricsOn = (): boolean => {
+  try {
+    if (new URLSearchParams(window.location.search).get("kb") === "1") return true;
+  } catch {
+    // 壊れた URL でも localStorage 側は見る
+  }
+  try {
+    return localStorage.getItem(KB_METRICS_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const KeyboardMetrics = ({ screen }: { screen?: string }) => {
+  const [on] = useState(isKeyboardMetricsOn);
   const [m, setM] = useState({ inner: 0, vh: 0, off: 0 });
 
   useEffect(() => {
@@ -62,7 +92,7 @@ const KeyboardMetrics = () => {
       className="fixed top-0 left-0 z-[100] px-2 py-1 text-[10px] font-mono
         bg-foreground/80 text-background rounded-br pointer-events-none"
     >
-      inner={m.inner} vh={m.vh} off={m.off} covered={covered} kb={kb}
+      {screen ? `${screen} ` : ""}inner={m.inner} vh={m.vh} off={m.off} covered={covered} kb={kb}
     </div>
   );
 };

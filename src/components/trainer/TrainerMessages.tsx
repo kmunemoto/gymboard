@@ -365,7 +365,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
               bottom-[max(var(--kb,0px),var(--nav-h,6rem))]
               md:static md:z-auto md:rounded-lg md:border md:top-auto md:bottom-auto md:h-auto"
           >
-            <KeyboardMetrics />
+            <KeyboardMetrics screen="trainer" />
             {/* Chat header */}
             <div className="p-3 sm:p-4 border-b border-border flex items-center gap-3">
               <button onClick={() => setSelectedCustomerId(null)} className="md:hidden text-muted-foreground p-1">

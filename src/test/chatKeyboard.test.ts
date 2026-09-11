@@ -202,8 +202,36 @@ describe("🔴 実機の数字を見るための「ものさし」", () => {
 
   it("両方のチャット画面に置いてある", () => {
     for (const code of [readCode(TRAINER), readCode(CUSTOMER)]) {
-      expect(code).toContain("<KeyboardMetrics />");
+      expect(code).toMatch(/<KeyboardMetrics screen="[a-z]+" \/>/);
     }
+  });
+
+  it("🔴 どちらの画面かが数字と一緒に出る", () => {
+    // スクリーンショットだけでは店側とお客様側の見分けがつかず、
+    // 「どちらの画面が壊れているか」の往復が1回増える
+    expect(readCode(TRAINER)).toContain('<KeyboardMetrics screen="trainer" />');
+    expect(readCode(CUSTOMER)).toContain('<KeyboardMetrics screen="cust" />');
+    expect(badge).toContain("{screen ?");
+  });
+
+  it("🔴 ネイティブでも出せる（URL 以外のスイッチがある）", () => {
+    // 2026-09-11 に判明: アプリにはアドレスバーが無く、appUrlOpen も
+    // //billing と auth/callback しか通さないので、?kb=1 は**ネイティブでは
+    // 1度も付けられなかった**。実機でしか再現しない不具合のための道具が、
+    // 実機で出せていなかった。
+    expect(badge).toContain("localStorage.getItem(KB_METRICS_KEY)");
+    // ⚠️ ここだけ生のファイルを読む。readCode の stripJs は行コメントを落とすので、
+    //    url.includes("//kb") の "//kb" を**コメントとみなして消してしまう**
+    //    （文字列リテラルの中の // を見分けない素朴な実装）。
+    const main = readFileSync("src/main.tsx", "utf8");
+    expect(main).toMatch(/url\.includes\("\/\/kb"\)/);
+    expect(main).toContain('localStorage.setItem("kb-metrics", "1")');
+    expect(main).toContain('localStorage.removeItem("kb-metrics")');
+  });
+
+  it("スイッチは消せる（on=0 で戻せる）", () => {
+    // 入れっぱなしにすると、店側の画面に黒いバッジが residual で残り続ける
+    expect(readFileSync("src/main.tsx", "utf8")).toMatch(/searchParams\.get\("on"\) !== "0"/);
   });
 
   it("生の実測値を出す（計算後の値だけだと切り分けられない）", () => {

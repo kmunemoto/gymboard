@@ -215,7 +215,7 @@ const CustomerChat = () => {
         top-[var(--app-header-h,3.5rem)]
         bottom-[max(var(--kb,0px),var(--nav-h,6rem))]"
     >
-      <KeyboardMetrics />
+      <KeyboardMetrics screen="cust" />
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">

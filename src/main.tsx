@@ -33,6 +33,22 @@ if (Capacitor.isNativePlatform()) {
   CapApp.addListener("appUrlOpen", async ({ url }) => {
     if (!url) return;
     try {
+      // 🔴 キーボードの「ものさし」のスイッチ（app.gymboard.mobile://kb?on=1）。
+      //    実機でしか再現しない不具合の計測に使う。アプリにはアドレスバーが無く、
+      //    ?kb=1 を付ける手段が他に無いため、ここで受ける（2026-09-11）。
+      //    お客様には一切見えない。詳細は src/components/KeyboardMetrics.tsx。
+      if (url.includes("//kb")) {
+        const parsed = new URL(url);
+        const on = parsed.searchParams.get("on") !== "0";
+        try {
+          if (on) localStorage.setItem("kb-metrics", "1");
+          else localStorage.removeItem("kb-metrics");
+        } catch {
+          // プライベートブラウズ等で書けなくても、アプリは落とさない
+        }
+        window.location.href = "/";
+        return;
+      }
       // 決済からの復帰（app.gymboard.mobile://billing?status=success）。
       // 反映は Stripe の webhook が行うので、ここでは画面を戻して合図を渡すだけ。
       // `?billing=success` は TrainerBilling が拾って toast と再取得を出す。

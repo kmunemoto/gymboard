@@ -433,9 +433,46 @@ Android は `adjustResize` で **WebView ごと縮む**ので `covered` も `off
 | `covered` は出るが `off` も同じくらい大きい | 今回直した経路。合っているはず |
 | `kb` は出ているのに隠れる | 計算は合っていて、当てている CSS（position/bottom）の問題 |
 
-### まだ確かめていない可能性
+### 🔴 3回目（2026-09-11）でようやく分かった: 式ではなく **設定** の問題だった
 
-Capacitor の `Keyboard.setResizeMode` を iOS でも `Native` にすれば、Android と同じく
-WebView ごと縮んで、この計算を一切通らなくなる（＝すでに動いている経路に乗る）。
-今回はアプリ全体に影響するので採らなかった。`?kb=1` で `covered` が 0 のままだったら、
-次はこれを試す。
+宗本さんから実機で再報告（iPhone だけ入力欄がキーボードの裏。Android は正常）。
+Capacitor のプラグイン実装を読んで決着した。
+
+**`ResizeBody` は `document.body.style.height` を書き換えるだけ。**
+WebView の frame を縮める `setFrame` は、iOS 側の実装で **`Native` の分岐にしか無い**
+（`_updateFrame` の switch を参照）。README も Body についてこう書いている:
+
+> Only the `body` HTML element will be resized.
+> **Relative units are not affected, because the viewport does not change.**
+
+ところがチャットの外枠は `position: fixed`。**包含ブロックは `body` ではなく
+レイアウトビューポート**なので、`body` をいくら縮めても外枠は1pxも動かない。
+つまり **Body 設定では構造的に直りようがなかった。**
+2回とも `computeKeyboardInset` の式を疑っていたが、式は関係なかった。
+
+Android が正しかったのは式のおかげではない。`possiblyResizeChildOfContent` が
+**ネイティブの content view ごと縮める**ので、`innerHeight` も `visualViewport` も
+同時に縮み、`--kb` が 0 でも外枠の下端がもうキーボードの上にあっただけ。
+**同じ CSS 式が2つのプラットフォームで別の意味になっていた。**
+
+直し方: `src/main.tsx` で **iOS だけ `KeyboardResize.Native`**。Android は Body のまま
+（動いているものは触らない）。`src/test/chatKeyboard.test.ts` が出し分けを見張る。
+
+`--kb` の計算は残す。Web / PWA では WebView が縮まないので、そちらには要る。
+
+### 🔴 「ものさし」がネイティブで出せていなかった（2026-09-11 に判明）
+
+`?kb=1` を付ける手段がアプリに無かった。アドレスバーが無く、`window.location` は
+`capacitor://localhost/` のまま。`src/main.tsx` の `appUrlOpen` も `//billing` と
+`auth/callback` しか通していなかった。
+**実機でしか再現しない不具合のために作った道具が、実機で1度も出せていなかった。**
+
+いまはディープリンクで入る:
+
+```
+app.gymboard.mobile://kb?on=1   出す
+app.gymboard.mobile://kb?on=0   消す
+```
+
+数値には画面名（`trainer` / `cust`）も出る。スクリーンショットだけでは
+店側とお客様側の見分けがつかず、往復が1回増えていたため。

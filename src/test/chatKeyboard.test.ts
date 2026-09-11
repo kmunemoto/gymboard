@@ -189,6 +189,41 @@ describe("キーボードの高さの取り込み方", () => {
   });
 });
 
+describe("🔴 キーボードの縮め方（iOS だけ Native）", () => {
+  // 2026-09-11 に3回目の再報告。ようやく仕組みまで辿れた。
+  //
+  // ResizeBody は document.body.style.height を書き換える**だけ**で、
+  // WebView の frame を縮める setFrame は Capacitor のプラグイン実装の
+  // Native の分岐にしかない。README も Body について
+  // "Relative units are not affected, because the viewport does not change" と明言。
+  //
+  // ところがチャットの外枠は position: fixed で、**包含ブロックは body ではなく
+  // レイアウトビューポート**。body をいくら縮めても外枠は1pxも動かない。
+  // **Body 設定では構造的に直りようがなかった**（2回とも式を疑っていたが、
+  // 式ではなく設定の問題だった）。
+  const main = readFileSync("src/main.tsx", "utf8");
+
+  it("🔴 iOS は Native にする", () => {
+    expect(main).toMatch(/getPlatform\(\) === "ios" \? KeyboardResize\.Native/);
+  });
+
+  it("🔴 Android は Body のまま（動いているものを触らない）", () => {
+    // Android は content view ごと縮むので Body で既に正しく動いている。
+    // 両方 Native にすると、動いている側まで作り直しになる
+    expect(main).toMatch(/KeyboardResize\.Native : KeyboardResize\.Body/);
+  });
+
+  it("プラットフォームで出し分けている（決め打ちに戻っていない）", () => {
+    const stripped = readCode("src/main.tsx");
+    expect(stripped).not.toMatch(/setResizeMode\(\{ mode: KeyboardResize\.Body \}\)/);
+  });
+
+  it("--kb の計算は残す（Web / PWA では WebView が縮まない）", () => {
+    // ネイティブが Native になっても、ブラウザで開いたときは visualViewport 方式が要る
+    expect(readCode("src/hooks/useKeyboardInset.ts")).toContain("computeKeyboardInset");
+  });
+});
+
 describe("🔴 実機の数字を見るための「ものさし」", () => {
   // この不具合はクラウドのセッションからは1度も再現できない（jsdom に visualViewport が
   // 無く、ネイティブも動かせない）。2回直して2回とも iOS で直っていなかったのは、

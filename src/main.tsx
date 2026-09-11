@@ -19,7 +19,41 @@ initBackgroundImage();
 if (Capacitor.isNativePlatform()) {
   StatusBar.setStyle({ style: Style.Light }).catch(() => {});
   StatusBar.setBackgroundColor({ color: "#FFFFFF" }).catch(() => {});
-  Keyboard.setResizeMode({ mode: KeyboardResize.Body }).catch(() => {});
+  // 🔴 キーボードが出たときの縮め方は **iOS だけ Native**（2026-09-11）。
+  //
+  // ## なぜ iOS で Body だと直らないのか（3回目でようやく分かった）
+  //
+  // `ResizeBody` は `document.body.style.height` を書き換える**だけ**。
+  // Capacitor のプラグイン実装（node_modules/@capacitor/keyboard の iOS 側）で、
+  // WebView の frame を縮める `setFrame` は **Native の分岐にしかない**。
+  // README も Body について "Relative units are not affected, because the
+  // viewport does not change" と明言している。
+  //
+  // ところがチャットの外枠は `position: fixed` で、**包含ブロックは body ではなく
+  // レイアウトビューポート**。つまり body をいくら縮めても外枠は1pxも動かない。
+  // Body 設定では**構造的に直りようがなかった**（式の問題ではなかった）。
+  //
+  // ## Android を触らない理由
+  //
+  // Android は `possiblyResizeChildOfContent` がネイティブの content view ごと
+  // 縮めるので、Body のままでも `innerHeight` も `visualViewport` も同時に縮み、
+  // 既に正しく動いている。**動いているものは触らない。**
+  //
+  // ## これで何が変わるか
+  //
+  // iOS も WebView ごと縮む＝Android と同じ経路に乗る。`100vh` も縮むので、
+  // `--kb`（visualViewport 方式）は両プラットフォームで常に 0 になり、
+  // 外枠の `bottom: max(--kb, --nav-h)` は `--nav-h` を採る。縮んだビューポートの
+  // 下端はキーボードの上端なので、入力欄はボトムナビのすぐ上に出る。
+  // `--kb` の計算は Web／PWA のために残す（そちらは WebView が縮まない）。
+  //
+  // ⚠️ **実機での確認が要る。** この不具合は2回、実機の数値を1度も見ないまま
+  //    数式を推測で直して2回とも直っていない。今回は仕組み（fixed は body に
+  //    追随しない）まで辿ったが、最終確認は実機でしかできない。
+  //    数値は `app.gymboard.mobile://kb?on=1` で出せる（KeyboardMetrics.tsx）。
+  Keyboard.setResizeMode({
+    mode: Capacitor.getPlatform() === "ios" ? KeyboardResize.Native : KeyboardResize.Body,
+  }).catch(() => {});
   CapApp.addListener("backButton", ({ canGoBack }) => {
     if (!canGoBack) {
       CapApp.exitApp();

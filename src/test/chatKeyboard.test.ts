@@ -189,6 +189,41 @@ describe("キーボードの高さの取り込み方", () => {
   });
 });
 
+describe("🔴 キーボードの縮め方（iOS だけ Native）", () => {
+  // 2026-09-11 に3回目の再報告。ようやく仕組みまで辿れた。
+  //
+  // ResizeBody は document.body.style.height を書き換える**だけ**で、
+  // WebView の frame を縮める setFrame は Capacitor のプラグイン実装の
+  // Native の分岐にしかない。README も Body について
+  // "Relative units are not affected, because the viewport does not change" と明言。
+  //
+  // ところがチャットの外枠は position: fixed で、**包含ブロックは body ではなく
+  // レイアウトビューポート**。body をいくら縮めても外枠は1pxも動かない。
+  // **Body 設定では構造的に直りようがなかった**（2回とも式を疑っていたが、
+  // 式ではなく設定の問題だった）。
+  const main = readFileSync("src/main.tsx", "utf8");
+
+  it("🔴 iOS は Native にする", () => {
+    expect(main).toMatch(/getPlatform\(\) === "ios" \? KeyboardResize\.Native/);
+  });
+
+  it("🔴 Android は Body のまま（動いているものを触らない）", () => {
+    // Android は content view ごと縮むので Body で既に正しく動いている。
+    // 両方 Native にすると、動いている側まで作り直しになる
+    expect(main).toMatch(/KeyboardResize\.Native : KeyboardResize\.Body/);
+  });
+
+  it("プラットフォームで出し分けている（決め打ちに戻っていない）", () => {
+    const stripped = readCode("src/main.tsx");
+    expect(stripped).not.toMatch(/setResizeMode\(\{ mode: KeyboardResize\.Body \}\)/);
+  });
+
+  it("--kb の計算は残す（Web / PWA では WebView が縮まない）", () => {
+    // ネイティブが Native になっても、ブラウザで開いたときは visualViewport 方式が要る
+    expect(readCode("src/hooks/useKeyboardInset.ts")).toContain("computeKeyboardInset");
+  });
+});
+
 describe("🔴 実機の数字を見るための「ものさし」", () => {
   // この不具合はクラウドのセッションからは1度も再現できない（jsdom に visualViewport が
   // 無く、ネイティブも動かせない）。2回直して2回とも iOS で直っていなかったのは、
@@ -202,8 +237,36 @@ describe("🔴 実機の数字を見るための「ものさし」", () => {
 
   it("両方のチャット画面に置いてある", () => {
     for (const code of [readCode(TRAINER), readCode(CUSTOMER)]) {
-      expect(code).toContain("<KeyboardMetrics />");
+      expect(code).toMatch(/<KeyboardMetrics screen="[a-z]+" \/>/);
     }
+  });
+
+  it("🔴 どちらの画面かが数字と一緒に出る", () => {
+    // スクリーンショットだけでは店側とお客様側の見分けがつかず、
+    // 「どちらの画面が壊れているか」の往復が1回増える
+    expect(readCode(TRAINER)).toContain('<KeyboardMetrics screen="trainer" />');
+    expect(readCode(CUSTOMER)).toContain('<KeyboardMetrics screen="cust" />');
+    expect(badge).toContain("{screen ?");
+  });
+
+  it("🔴 ネイティブでも出せる（URL 以外のスイッチがある）", () => {
+    // 2026-09-11 に判明: アプリにはアドレスバーが無く、appUrlOpen も
+    // //billing と auth/callback しか通さないので、?kb=1 は**ネイティブでは
+    // 1度も付けられなかった**。実機でしか再現しない不具合のための道具が、
+    // 実機で出せていなかった。
+    expect(badge).toContain("localStorage.getItem(KB_METRICS_KEY)");
+    // ⚠️ ここだけ生のファイルを読む。readCode の stripJs は行コメントを落とすので、
+    //    url.includes("//kb") の "//kb" を**コメントとみなして消してしまう**
+    //    （文字列リテラルの中の // を見分けない素朴な実装）。
+    const main = readFileSync("src/main.tsx", "utf8");
+    expect(main).toMatch(/url\.includes\("\/\/kb"\)/);
+    expect(main).toContain('localStorage.setItem("kb-metrics", "1")');
+    expect(main).toContain('localStorage.removeItem("kb-metrics")');
+  });
+
+  it("スイッチは消せる（on=0 で戻せる）", () => {
+    // 入れっぱなしにすると、店側の画面に黒いバッジが residual で残り続ける
+    expect(readFileSync("src/main.tsx", "utf8")).toMatch(/searchParams\.get\("on"\) !== "0"/);
   });
 
   it("生の実測値を出す（計算後の値だけだと切り分けられない）", () => {

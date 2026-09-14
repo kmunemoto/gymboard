@@ -22,6 +22,7 @@ import InviteCodeCard from "./InviteCodeCard";
 import TrainerStaffManager from "./TrainerStaffManager";
 import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
+import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
@@ -1341,6 +1342,13 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           <section className="space-y-3">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialCancelNoteSection")}</h3>
             <TrialCancelNoteCard />
+          </section>
+
+          {/* === 体験予約と「時間ブロック」 ===
+              実装は TrialIgnoreBlocksCard（このファイルは行数の上限に達しているため別ファイル）。 */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialIgnoreBlocksSection")}</h3>
+            <TrialIgnoreBlocksCard />
           </section>
         </>
       )}

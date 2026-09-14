@@ -316,7 +316,13 @@
         "feedbackDesc": "向開發方傳送意見與需求",
         "dataExport": "資料匯入・匯出",
         "dataExportDesc": "客戶 CSV 批次匯入與資料 CSV 匯出"
-      }
+      },
+      "trialIgnoreBlocksSection": "體驗預約與時間鎖定",
+      "trialIgnoreBlocksLabel": "體驗預約忽略時間鎖定",
+      "trialIgnoreBlocksDesc": "開啟後，即使是日程表上「時間鎖定」的時段也可接受體驗預約。會員預約、代理預約與臨時到店仍照舊被鎖定。同時接待人數、營業時間與預約截止仍然有效。",
+      "trialIgnoreBlocksWarning": "體驗可能會進入鎖定的時段。日程表會為與鎖定重疊的體驗加上標記。",
+      "trialIgnoreBlocksSaved": "已儲存設定",
+      "trialIgnoreBlocksSaveFailed": "儲存設定失敗"
     },
     "notification": {
       "title": "通知設定",
@@ -1196,7 +1202,8 @@
     "blockPurposePlaceholder": "例如：面談、打掃、佈置",
     "blockPurposeNote": "僅健身房員工可見，會員看不到。",
     "errorSlotTakenCapacityHint": "該時段已有預約。如果可以同時接受多筆預約，請在健身房設定→營業時間中修改「同一時間可接受的預約數」。",
-    "errorSlotTakenWindowHint": "該時段的接待數量已滿。此時段適用「分時段同時接待數」的設定。如需調整，請前往 健身房設定 → 分時段同時接待數。"
+    "errorSlotTakenWindowHint": "該時段的接待數量已滿。此時段適用「分時段同時接待數」的設定。如需調整，請前往 健身房設定 → 分時段同時接待數。",
+    "overlapsBlock": "與時間鎖定重疊"
   },
   "exercise": {
     "title": "動作管理",

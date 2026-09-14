@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { blockPurposeName } from "@/lib/blockPurpose";
+import { indexesOverlappingBlocks } from "@/lib/scheduleOverlap";
 import { format, addDays, isSameDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow } from "@/lib/timezone";
@@ -153,6 +154,14 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
             const dayBookings = bookings.filter(
               (b) => b.date === dateStr && b.status !== "キャンセル済み" && b.status !== SAME_DAY_FORFEIT_STATUS
             );
+            // 🔴 時間ブロックと重なっている予約（2026-09-14）。
+            //    体験だけブロックを無視して受ける設定（tenants.trial_ignores_blocked_slots）を
+            //    ONにすると、ブロックした時間に体験が入る。カードは全部
+            //    `absolute left-0.5 right-0.5` で重なりを想定していないので、
+            //    後から描いた1枚が前の1枚を丸ごと覆う。
+            //    (1) ブロックを必ず背面へ (2) 重なった予約に印 の2つで
+            //    「入っているのに店から見えない」を防ぐ。
+            const overlappingBlocks = indexesOverlappingBlocks(dayBookings);
 
             return (
               <div
@@ -173,7 +182,8 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                 })}
 
                 {/* 予約カード */}
-                {dayBookings.map((b) => {
+                {dayBookings.map((b, bi) => {
+                  const onBlock = overlappingBlocks.has(bi);
                   const startMin = timeToMin(b.startTime);
                   const endMin = timeToMin(b.endTime);
                   const top = (startMin - START_HOUR * 60) * PX_PER_MIN;
@@ -225,6 +235,13 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                       type="button"
                       onClick={() => onSelectBooking?.(b)}
                       className={`absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 text-left overflow-hidden text-[10px] leading-tight shadow-sm transition-transform hover:scale-[1.02] hover:z-10 ${
+                        // 🔴 ブロックは必ず背面。重なったとき予約を覆い隠さないため
+                        b.isBlocked ? "z-0" : "z-[1]"
+                      } ${
+                        // ブロックと重なっている予約は輪郭で示す（幅が数文字ぶんしかなく、
+                        // 文字を足す場所が無い。詳細は title に入れる）
+                        onBlock ? "ring-2 ring-warning" : ""
+                      } ${
                         b.isBlocked
                           ? "bg-muted border border-dashed border-destructive/40 text-muted-foreground"
                           : hasOptions
@@ -235,7 +252,7 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                             : "bg-accent text-accent-foreground"
                       }`}
                       style={{ top, height }}
-                      title={`${b.isBlocked ? blockName : b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}`}
+                      title={`${b.isBlocked ? blockName : b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}${onBlock ? ` / ${t("schedule.overlapsBlock")}` : ""}`}
                     >
                       <div className="font-bold truncate">
                         {shortName}

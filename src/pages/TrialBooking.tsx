@@ -63,6 +63,12 @@ interface PublicTenant {
   booking_cutoff_hours: number | null;
   /** 何日先まで受け付けるか。null/未設定は従来どおり10日先まで。 */
   booking_window_days: number | null;
+  /**
+   * 🔴 体験予約だけ、予定表の「時間ブロック」を無視して受けるか（2026-09-14）。
+   * null/未設定（＝ get_tenant_public にこの列が無い環境）は **false 扱い**で、
+   * 従来どおりブロックが体験も塞ぐ（安全側）。判定は `=== true` で行うこと。
+   */
+  trial_ignores_blocked_slots: boolean | null;
 }
 
 // テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
@@ -204,6 +210,12 @@ const TrialBooking = () => {
   // 同時に受けられる予約数。未ロード時は安全側の1。
   const bookingCapacity = Math.max(tenant?.booking_capacity ?? 1, 1);
 
+  // 🔴 体験だけ「時間ブロック」を無視する設定（ジムごと。既定 OFF）。
+  //    `=== true` で見る。列が未適用のときは undefined になるので、
+  //    従来どおりブロックが効く側へ倒れる（TrialBooking の他の設定と同じ作法）。
+  //    ⚠️ ジム設定の「受付しない時間帯」とは別物。あちらは体験に元々効いていない。
+  const ignoreBlocks = tenant?.trial_ignores_blocked_slots === true;
+
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (s: string) => {
       const [h, m] = s.split(":").map(Number);
@@ -212,6 +224,11 @@ const TrialBooking = () => {
     const newMin = timeToMin(time);
     const newEnd = newMin + sessionMinutes + bookingBufferMinutes;
     const overlapping = existingBookings.filter((b) => {
+      // 🔴 ここで**先に落とす**。下の some() だけを条件付きにすると、ブロックの行が
+      //    overlapping に残り「overlapping.length >= 同時受入数」で数えられてしまう。
+      //    本番は全20テナントが同時受入数 1（帯の設定は0件）なので、
+      //    落とさないと **ONにしても枠の見た目が1ミリも変わらない**。
+      if (ignoreBlocks && b.isBlock) return false;
       if (b.date !== date) return false;
       const bMin = timeToMin(b.startTime);
       // get_tenant_booked_slots の end_booking_date は既にテナントのバッファ込みで計算済み

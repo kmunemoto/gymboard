@@ -316,7 +316,13 @@
         "feedbackDesc": "Send requests and ideas to the developer",
         "dataExport": "Import / export data",
         "dataExportDesc": "Bulk-register customers from CSV and export your data"
-      }
+      },
+      "trialIgnoreBlocksSection": "Trials and time blocks",
+      "trialIgnoreBlocksLabel": "Let trial bookings ignore time blocks",
+      "trialIgnoreBlocksDesc": "When on, trial bookings can be made even during times you blocked on the schedule. Member bookings, staff-made bookings and drop-ins stay blocked as before. Capacity, business hours and the booking cutoff still apply.",
+      "trialIgnoreBlocksWarning": "Trials may land on blocked time. The schedule marks any trial that overlaps a block.",
+      "trialIgnoreBlocksSaved": "Setting saved",
+      "trialIgnoreBlocksSaveFailed": "Could not save the setting"
     },
     "notification": {
       "title": "Notification Settings",
@@ -1196,7 +1202,8 @@
     "blockPurposePlaceholder": "e.g. Meeting, Cleaning, Setup",
     "blockPurposeNote": "Only gym staff can see this. Members cannot.",
     "errorSlotTakenCapacityHint": "This slot is already booked. If you can take more than one booking at a time, change \"Bookings at the same time\" under Gym settings → Business hours.",
-    "errorSlotTakenWindowHint": "This time slot has reached its capacity. A time-window capacity setting applies to this slot. To change it, go to Gym Settings → Capacity by time window."
+    "errorSlotTakenWindowHint": "This time slot has reached its capacity. A time-window capacity setting applies to this slot. To change it, go to Gym Settings → Capacity by time window.",
+    "overlapsBlock": "Overlaps a time block"
   },
   "exercise": {
     "title": "Exercise Management",

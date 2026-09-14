@@ -316,7 +316,13 @@
         "feedbackDesc": "向开发方发送意见与需求",
         "dataExport": "数据导入・导出",
         "dataExportDesc": "客户 CSV 批量导入与数据 CSV 导出"
-      }
+      },
+      "trialIgnoreBlocksSection": "体验预约与时间锁定",
+      "trialIgnoreBlocksLabel": "体验预约忽略时间锁定",
+      "trialIgnoreBlocksDesc": "开启后，即使是日程表上「时间锁定」的时段也可接受体验预约。会员预约、代理预约和临时到店仍按原样被锁定。同时接待人数、营业时间和预约截止仍然有效。",
+      "trialIgnoreBlocksWarning": "体验可能会进入锁定的时段。日程表会为与锁定重叠的体验加上标记。",
+      "trialIgnoreBlocksSaved": "已保存设置",
+      "trialIgnoreBlocksSaveFailed": "保存设置失败"
     },
     "notification": {
       "title": "通知设置",
@@ -1196,7 +1202,8 @@
     "blockPurposePlaceholder": "例如：面谈、打扫、布置",
     "blockPurposeNote": "仅健身房员工可见，会员看不到。",
     "errorSlotTakenCapacityHint": "该时段已有预约。如果可以同时接受多个预约，请在健身房设置→营业时间中修改“同一时间可接受的预约数”。",
-    "errorSlotTakenWindowHint": "该时段的接待数量已满。此时段适用「分时段同时接待数」的设置。如需调整，请前往 健身房设置 → 分时段同时接待数。"
+    "errorSlotTakenWindowHint": "该时段的接待数量已满。此时段适用「分时段同时接待数」的设置。如需调整，请前往 健身房设置 → 分时段同时接待数。",
+    "overlapsBlock": "与时间锁定重叠"
   },
   "exercise": {
     "title": "动作管理",

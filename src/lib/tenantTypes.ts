@@ -38,6 +38,12 @@ export interface Tenant {
   booking_capacity_confirmed_at?: string | null;
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;
+  /**
+   * 体験予約だけ、予定表の「時間ブロック」（blocked_slots）を無視して受けるか。既定 false。
+   * 会員予約・店の代理予約・ドロップインには効かない。
+   * 同時受入数・営業時間・予約の締切は true でもそのまま効く。
+   */
+  trial_ignores_blocked_slots: boolean;
   /** トレーナーのホーム画面に「フォローが必要な顧客」を表示するか。既定true */
   show_retention_alerts: boolean;
   /** 毎朝、その日の予約一覧をオーナー/トレーナーへプッシュ通知するか。既定true */

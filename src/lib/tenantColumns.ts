@@ -66,6 +66,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "show_nav_videos",
   // 1日に受ける予約の上限件数。NULL = 上限なし（従来どおり）。
   "daily_booking_limit",
+  // 体験予約だけ予定表の「時間ブロック」を無視するか。既定 false（現状維持）。
+  "trial_ignores_blocked_slots",
 ];
 
 /**
@@ -115,6 +117,9 @@ export const TENANT_DEFAULT_TRUE_COLS: readonly string[] = [
  */
 export const TENANT_DEFAULT_FALSE_COLS: readonly string[] = [
   "same_day_cancel_penalty_enabled",
+  // 体験予約が「時間ブロック」を無視するか。列が無い環境ではブロックを効かせる
+  // （＝店が明示的にONにしたときだけ緩む）。
+  "trial_ignores_blocked_slots",
 ];
 
 /** boolean 以外の列の既定値（null は「未設定」＝関連UIを出さない、の意味で使われる） */

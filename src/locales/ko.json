@@ -316,7 +316,13 @@
         "feedbackDesc": "개발사에 의견·요청 보내기",
         "dataExport": "데이터 내보내기・가져오기",
         "dataExportDesc": "고객 CSV 일괄 등록과 데이터 CSV 내보내기"
-      }
+      },
+      "trialIgnoreBlocksSection": "체험 예약과 시간 블록",
+      "trialIgnoreBlocksLabel": "체험 예약은 시간 블록을 무시하고 받기",
+      "trialIgnoreBlocksDesc": "켜면 일정표에서 「시간 블록」을 넣은 시간에도 체험 예약을 받습니다. 회원 예약·대리 예약·드롭인은 지금처럼 블록으로 막힙니다. 동시 수용 인원·영업시간·예약 마감은 켜도 적용됩니다.",
+      "trialIgnoreBlocksWarning": "블록한 시간에 체험이 들어올 수 있습니다. 일정표에서는 블록과 겹친 체험에 표시가 붙습니다.",
+      "trialIgnoreBlocksSaved": "설정을 저장했습니다",
+      "trialIgnoreBlocksSaveFailed": "설정 저장에 실패했습니다"
     },
     "notification": {
       "title": "알림 설정",
@@ -1196,7 +1202,8 @@
     "blockPurposePlaceholder": "예: 면담, 청소, 준비",
     "blockPurposeNote": "짐 스태프만 볼 수 있습니다. 회원에게는 표시되지 않습니다.",
     "errorSlotTakenCapacityHint": "이미 예약이 있습니다. 동시에 여러 예약을 받을 수 있다면 짐 설정 → 영업시간의 '동시에 받을 수 있는 예약 수'를 변경해 주세요.",
-    "errorSlotTakenWindowHint": "이 시간대의 수용 인원이 이미 가득 찼습니다. 이 시간대에는 「시간대별 동시 예약 수」 설정이 적용됩니다. 변경하려면 짐 설정 → 시간대별 동시 예약 수에서 수정해 주세요."
+    "errorSlotTakenWindowHint": "이 시간대의 수용 인원이 이미 가득 찼습니다. 이 시간대에는 「시간대별 동시 예약 수」 설정이 적용됩니다. 변경하려면 짐 설정 → 시간대별 동시 예약 수에서 수정해 주세요.",
+    "overlapsBlock": "시간 블록과 겹칩니다"
   },
   "exercise": {
     "title": "종목 관리",

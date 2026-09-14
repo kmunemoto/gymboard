@@ -316,7 +316,13 @@
         "feedbackDesc": "開発元に意見・要望を送る",
         "dataExport": "データの書き出し・取り込み",
         "dataExportDesc": "顧客のCSV一括登録と、データのCSV書き出し"
-      }
+      },
+      "trialIgnoreBlocksSection": "体験予約と時間ブロック",
+      "trialIgnoreBlocksLabel": "体験予約は時間ブロックを無視して受ける",
+      "trialIgnoreBlocksDesc": "ONにすると、予定表の「時間ブロック」を入れた時間でも体験予約を受け付けます。会員のご予約・代理予約・ドロップインは今までどおりブロックで塞がれます。同時受入数・営業時間・予約の締切はONでも効きます。",
+      "trialIgnoreBlocksWarning": "ブロックした時間に体験が入ることがあります。予定表では、ブロックと重なった体験に印が付きます。",
+      "trialIgnoreBlocksSaved": "設定を保存しました",
+      "trialIgnoreBlocksSaveFailed": "設定の保存に失敗しました"
     },
     "notification": {
       "title": "通知設定",
@@ -1196,7 +1202,8 @@
     "blockPurposePlaceholder": "面談、掃除、設営 など",
     "blockPurposeNote": "ジムのスタッフだけに見えます（会員には表示されません）。",
     "errorSlotTakenCapacityHint": "すでに予約が入っています。同時に複数の予約を受けられる場合は、ジム設定 → 営業時間 の「同時に受けられる予約数」を変更してください。",
-    "errorSlotTakenWindowHint": "すでにこの時間帯の受け入れ数に達しています。この枠には「時間帯別の同時受け入れ数」の設定が使われています。件数を変えるには ジム設定 → 時間帯別の同時受け入れ数 を変更してください。"
+    "errorSlotTakenWindowHint": "すでにこの時間帯の受け入れ数に達しています。この枠には「時間帯別の同時受け入れ数」の設定が使われています。件数を変えるには ジム設定 → 時間帯別の同時受け入れ数 を変更してください。",
+    "overlapsBlock": "時間ブロックと重なっています"
   },
   "exercise": {
     "title": "種目管理",

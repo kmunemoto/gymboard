@@ -62,6 +62,15 @@ export const WORKOUT_SHARE_ENABLED = true;
  */
 export const TRIAL_BOOKING_ENABLED = true;
 
+/**
+ * カルテ画面の禁忌事項カード（トレーナーが紐付けた初回カウンセリング回答の
+ * 既往歴・注意部位を「前回のセッションメモ」の直前に警告表示。CounselingResponseList
+ * の紐付けUIは常に表示 — これは counseling_responses.user_id を埋めるだけの操作で、
+ * カルテ側の表示に依存しないため）。
+ * false でも紐付けデータ自体は保持される。カルテ側の警告カードだけ非表示になる。
+ */
+export const CLIENT_PRECAUTIONS_ENABLED = true;
+
 // 外部連携の有効/無効フラグ。
 // App Store / Google OAuth 審査の都合で一時的に非表示にしているセクションを
 // ここで一元管理する。外部設定が整い次第、対象フラグを true に戻すだけで再有効化できる。

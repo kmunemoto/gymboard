@@ -3,22 +3,25 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardList, ChevronRight, User, Target, Heart, FileText, StickyNote, Save } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClipboardList, ChevronRight, User, Target, Heart, FileText, StickyNote, Save, Link2 } from "lucide-react";
 import { useCounselingResponses, type CounselingResponse } from "@/hooks/useCounselingResponses";
+import { useAllCustomerProfiles } from "@/hooks/useProfile";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatJST } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 
-const PURPOSE_KEYS = ["diet","muscle","health","posture","beauty","stress","rehab","performance"];
-
 const CounselingResponseList = () => {
   const { t } = useTranslation();
-  const { responses, isLoading, markReviewed, updateMemo } = useCounselingResponses();
+  const { responses, isLoading, markReviewed, updateMemo, linkToClient } = useCounselingResponses();
   const [selected, setSelected] = useState<CounselingResponse | null>(null);
 
-  const labelPurpose = (p: string) => PURPOSE_KEYS.includes(p) ? t(`counseling.purpose.${p}`) : p;
+  // counseling.purpose のキー一覧を i18n から動的に引く（配列を直書きすると、
+  // 業種特化フォークが vertical.ja.json にキーを足しても選択肢が増えないため）。
+  const purposeLabels = t("counseling.purpose", { returnObjects: true }) as Record<string, string>;
+  const labelPurpose = (p: string) => purposeLabels?.[p] ?? p;
 
   const handleOpen = (r: CounselingResponse) => {
     setSelected(r);
@@ -94,7 +97,14 @@ const CounselingResponseList = () => {
               {t("counseling.detailTitle")}
             </DialogTitle>
           </DialogHeader>
-          {selected && <CounselingDetail data={selected} updateMemo={updateMemo} labelPurpose={labelPurpose} />}
+          {selected && (
+            <CounselingDetail
+              data={selected}
+              updateMemo={updateMemo}
+              linkToClient={linkToClient}
+              labelPurpose={labelPurpose}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -122,8 +132,22 @@ const SectionCard = ({ icon: Icon, title, children }: { icon: typeof User; title
   </Card>
 );
 
-const CounselingDetail = ({ data, updateMemo, labelPurpose }: { data: CounselingResponse; updateMemo: ReturnType<typeof useCounselingResponses>["updateMemo"]; labelPurpose: (p: string) => string }) => {
+// Radix Select は SelectItem の value に空文字を許さないため、未紐付けの選択肢はこの値で表す
+const UNLINKED_VALUE = "__unlinked__";
+
+const CounselingDetail = ({
+  data,
+  updateMemo,
+  linkToClient,
+  labelPurpose,
+}: {
+  data: CounselingResponse;
+  updateMemo: ReturnType<typeof useCounselingResponses>["updateMemo"];
+  linkToClient: ReturnType<typeof useCounselingResponses>["linkToClient"];
+  labelPurpose: (p: string) => string;
+}) => {
   const { t } = useTranslation();
+  const { profiles: customers, loading: customersLoading } = useAllCustomerProfiles();
   const [memo, setMemo] = useState(data.trainer_memo || "");
   const [saving, setSaving] = useState(false);
 
@@ -139,8 +163,36 @@ const CounselingDetail = ({ data, updateMemo, labelPurpose }: { data: Counseling
     }
   };
 
+  const handleLinkChange = async (value: string) => {
+    try {
+      await linkToClient.mutateAsync({ id: data.id, userId: value === UNLINKED_VALUE ? null : value });
+      toast.success(t("counseling.linkSaved"));
+    } catch {
+      toast.error(t("counseling.linkSaveFailed"));
+    }
+  };
+
   return (
     <div className="space-y-3">
+      <SectionCard icon={Link2} title={t("counseling.sectionLink")}>
+        <div className="pt-1 pb-1">
+          <p className="text-xs text-muted-foreground mb-2">{t("counseling.linkDescription")}</p>
+          <Select value={data.user_id ?? UNLINKED_VALUE} onValueChange={handleLinkChange} disabled={customersLoading}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder={t("counseling.linkPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNLINKED_VALUE}>{t("counseling.linkUnlinked")}</SelectItem>
+              {customers.map((c) => (
+                <SelectItem key={c.user_id} value={c.user_id}>
+                  {c.display_name || t("counseling.linkUnnamed")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </SectionCard>
+
       <SectionCard icon={StickyNote} title={t("counseling.sectionMemo")}>
         <div className="space-y-2 pt-1">
           <Textarea

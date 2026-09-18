@@ -34,6 +34,7 @@
 //     旧 get_trainer_ids はテナント横断のため使用しない (他ジムへの誤通知防止)。
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getTrialMemberPatterns, requiresMemberBooking } from "../_shared/trial-member-redirect.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,6 +88,8 @@ type Payload = {
   guest_contact?: unknown;
   booking_date?: unknown;
   custom_answers?: unknown;
+  /** Read-only guidance check: never creates bookings or sends notifications. */
+  check_only?: unknown;
 };
 
 /**
@@ -141,6 +144,16 @@ Deno.serve(async (req) => {
 
     if (!UUID_RE.test(tenantId)) return reject("validation", "ジムの指定が正しくありません。");
     if (!guestName || guestName.length > 100) return reject("validation", "お名前を入力してください。");
+
+    // Optional, tenant-specific routing uses private Edge secrets, with no new
+    // database dependency. The final POST always rechecks; browser checks are
+    // only for early guidance. Existing booking validation below stays intact.
+    const memberPatterns = getTrialMemberPatterns(Deno.env.get("TRIAL_MEMBER_REDIRECT_RULES"), tenantId);
+    if (requiresMemberBooking(guestName, memberPatterns)) {
+      return reject("member_booking_required", "会員様のご予約は、ジムボードアプリで承っております。お使いのアカウントでログインし、「予約」から日時をお選びください。");
+    }
+    if (body.check_only === true) return json({ ok: true }, 200);
+
     if (!EMAIL_RE.test(guestContact) || guestContact.length > 255) {
       return reject("validation", "正しいメールアドレスを入力してください。");
     }

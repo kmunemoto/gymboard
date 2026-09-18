@@ -1759,6 +1759,12 @@
     "fieldCapacityHint": "同一時段最多可接受多少筆預約。如果有2位教練、2張床等可同時接待多人的情況，請設定為相應數量。之後也可在健身房設定中修改。"
   },
   "trialBooking": {
+    "memberTitle": "現有會員預約說明",
+    "memberBody": "現有會員請透過 {{brandEn}} 應用程式預約。請使用既有帳號登入，然後在「預約」中選擇日期和時間。",
+    "memberOpenApp": "開啟 {{brandEn}} 應用程式",
+    "memberHelp": "如果應用程式無法開啟，請使用下方的應用程式商店連結，或透過瀏覽器登入。",
+    "memberWebLogin": "透過瀏覽器登入",
+    "memberChecking": "正在確認預約方式…",
     "defaultGymName": "{{brandEn}}",
     "errEmptyName": "請輸入您的姓名",
     "errInvalidEmail": "請輸入正確的電子郵件地址",

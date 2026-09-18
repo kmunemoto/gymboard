@@ -29,6 +29,8 @@ import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLE
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
+import { useTrialMemberEligibility } from "@/hooks/useTrialMemberEligibility";
+import { MemberBookingGuidance } from "@/components/booking/MemberBookingGuidance";
 
 interface TrialSlotBooking {
   date: string;
@@ -135,6 +137,13 @@ const TrialBooking = () => {
   }, [tenantId]);
 
   const effectiveTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
+  // Early guidance is only enabled for the requested legacy trial site.
+  // The server remains authoritative and checks its own private tenant rules.
+  const memberEligibility = useTrialMemberEligibility(
+    effectiveTenantId, guestName,
+    TRIAL_BOOKING_ENABLED && !!DEFAULT_TENANT_ID && effectiveTenantId === DEFAULT_TENANT_ID,
+  );
+  const memberBookingRequired = memberEligibility.status === "member";
 
   // ページ見出し。
   //
@@ -270,6 +279,7 @@ const TrialBooking = () => {
   const slots = dateKey ? generateSlots() : [];
 
   const handleSubmit = async () => {
+    if (submitting || memberBookingRequired) return;
     if (!guestName.trim()) {
       toast.error(t("trialBooking.errEmptyName"));
       return;
@@ -319,6 +329,11 @@ const TrialBooking = () => {
         },
       });
       const result = data as { ok?: boolean; error?: string; code?: string } | null;
+      if (result?.code === "member_booking_required") {
+        memberEligibility.requireMemberBooking();
+        setSubmitting(false);
+        return;
+      }
       if (error || !result?.ok) {
         console.error("Trial booking failed:", error ?? result);
         toast.error(result?.error || t("trialBooking.errBookingFailed"));
@@ -585,9 +600,16 @@ const TrialBooking = () => {
                 placeholder={t("trialBooking.namePlaceholder")}
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
+                disabled={submitting}
+                maxLength={100}
                 className="mt-1"
               />
+              {memberEligibility.status === "checking" && (
+                <p className="text-xs text-muted-foreground mt-2" role="status">{t("trialBooking.memberChecking")}</p>
+              )}
             </div>
+            {memberBookingRequired && <MemberBookingGuidance />}
+            {!memberBookingRequired && (
             <div>
               <Label htmlFor="guest-contact" className="text-sm font-medium">
                 {t("trialBooking.labelEmail")} <span className="text-destructive">*</span>
@@ -607,9 +629,11 @@ const TrialBooking = () => {
                 <p className="text-[11px] text-destructive mt-1">{emailError}</p>
               )}
             </div>
+            )}
           </div>
         </section>
 
+        {!memberBookingRequired && (
         <section className="slide-up">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
@@ -722,7 +746,7 @@ const TrialBooking = () => {
                     size="lg"
                     className="w-full"
                     onClick={handleSubmit}
-                    disabled={submitting || !guestName.trim() || !guestEmail.trim()}
+                    disabled={submitting || memberBookingRequired || !guestName.trim() || !guestEmail.trim()}
                   >
                     {submitting ? <DumbbellLoader className="w-4 h-4 mr-2" /> : null}
                     {t("trialBooking.submitBooking")}
@@ -732,6 +756,7 @@ const TrialBooking = () => {
             </div>
           )}
         </section>
+        )}
 
         {POWERED_BY_GYMBOARD_ENABLED && (
           <a

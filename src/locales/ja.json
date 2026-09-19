@@ -322,18 +322,7 @@
       "trialIgnoreBlocksDesc": "ONにすると、予定表の「時間ブロック」を入れた時間でも体験予約を受け付けます。会員のご予約・代理予約・ドロップインは今までどおりブロックで塞がれます。同時受入数・営業時間・予約の締切はONでも効きます。",
       "trialIgnoreBlocksWarning": "ブロックした時間に体験が入ることがあります。予定表では、ブロックと重なった体験に印が付きます。",
       "trialIgnoreBlocksSaved": "設定を保存しました",
-      "trialIgnoreBlocksSaveFailed": "設定の保存に失敗しました",
-      "trialAppOnlySection": "体験予約サイトからアプリへご案内する方",
-      "trialAppOnlyLabel": "アプリからのご予約をお願いするお名前",
-      "trialAppOnlyDesc": "ここに登録したお名前で体験予約サイトから申し込まれたときは、予約を受け付けずに「アプリからご予約ください」とご案内します。すでに会員の方が体験予約サイトから申し込むのを防げます。",
-      "trialAppOnlyPlaceholder": "姓または名（例: 山田）",
-      "trialAppOnlyAdd": "追加",
-      "trialAppOnlyRemove": "「{{word}}」を削除",
-      "trialAppOnlyWarning": "全角・半角、ひらがな・カタカナ、空白の違いは区別せず、部分一致で判定します。短いお名前ほど広く当たるため、関係のない新規のお客様までご案内してしまうことがあります。効くのは体験予約サイトだけで、アプリからのご予約・ドロップイン・店舗での代理予約には影響しません。",
-      "trialAppOnlySaved": "保存しました",
-      "trialAppOnlySaveFailed": "保存できませんでした",
-      "trialAppOnlyTooLong": "{{max}}文字以内で入力してください",
-      "trialAppOnlyTooMany": "登録できるのは{{max}}件までです"
+      "trialIgnoreBlocksSaveFailed": "設定の保存に失敗しました"
     },
     "notification": {
       "title": "通知設定",
@@ -1810,12 +1799,7 @@
     "pushTitle": "体験予約の申し込み",
     "pushBody": "{{name}}さんから体験予約のお申し込みがありました",
     "priceLabel": "料金",
-    "taxIncluded": "（税込）",
-    "appOnlyTitle": "アプリからご予約ください",
-    "appOnlyBody": "{{gym}} の会員の方は、アプリからご予約をお願いしております。ご登録のメールアドレスでログインのうえ、アプリの「予約」からお進みください。",
-    "appOnlyNote": "お心当たりがない場合は、お手数ですがジムまでご連絡ください。",
-    "appOnlyIos": "App Store で開く",
-    "appOnlyAndroid": "Google Play で開く"
+    "taxIncluded": "（税込）"
   },
   "trialCancel": {
     "loading": "予約内容を確認しています...",

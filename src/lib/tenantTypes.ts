@@ -44,12 +44,6 @@ export interface Tenant {
    * 同時受入数・営業時間・予約の締切は true でもそのまま効く。
    */
   trial_ignores_blocked_slots: boolean;
-  /**
-   * 体験予約ページ（/trial）で「アプリからご予約ください」と案内するお名前の単語。
-   * 空/未設定なら誰も案内しない。undefined=列がまだ読めない環境。
-   * 🔴 個人情報。公開ページ（get_tenant_public）には**渡さない**。
-   */
-  trial_app_only_names?: string[] | null;
   /** トレーナーのホーム画面に「フォローが必要な顧客」を表示するか。既定true */
   show_retention_alerts: boolean;
   /** 毎朝、その日の予約一覧をオーナー/トレーナーへプッシュ通知するか。既定true */

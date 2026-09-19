@@ -322,18 +322,7 @@
       "trialIgnoreBlocksDesc": "開啟後，即使是日程表上「時間鎖定」的時段也可接受體驗預約。會員預約、代理預約與臨時到店仍照舊被鎖定。同時接待人數、營業時間與預約截止仍然有效。",
       "trialIgnoreBlocksWarning": "體驗可能會進入鎖定的時段。日程表會為與鎖定重疊的體驗加上標記。",
       "trialIgnoreBlocksSaved": "已儲存設定",
-      "trialIgnoreBlocksSaveFailed": "儲存設定失敗",
-      "trialAppOnlySection": "從體驗預約頁引導至App的姓名",
-      "trialAppOnlyLabel": "需要透過App預約的姓名",
-      "trialAppOnlyDesc": "當有人以此處登記的姓名在體驗預約頁申請時，將不受理預約，並提示「請於App中預約」。適用於已是會員卻仍從體驗預約頁申請的情況。",
-      "trialAppOnlyPlaceholder": "姓或名",
-      "trialAppOnlyAdd": "新增",
-      "trialAppOnlyRemove": "刪除「{{word}}」",
-      "trialAppOnlyWarning": "判定時不區分全形半形、平假名片假名與空白，採部分比對。姓名越短比對範圍越廣，可能誤擋無關的新客戶。僅對體驗預約頁生效，App預約、臨時到店與門市代客預約皆不受影響。",
-      "trialAppOnlySaved": "已儲存",
-      "trialAppOnlySaveFailed": "儲存失敗",
-      "trialAppOnlyTooLong": "請輸入{{max}}個字元以內",
-      "trialAppOnlyTooMany": "最多可登記{{max}}筆"
+      "trialIgnoreBlocksSaveFailed": "儲存設定失敗"
     },
     "notification": {
       "title": "通知設定",
@@ -1810,12 +1799,7 @@
     "pushTitle": "體驗預約申請",
     "pushBody": "{{name}} 申請了體驗預約",
     "priceLabel": "費用",
-    "taxIncluded": "（含稅）",
-    "appOnlyTitle": "請於App中預約",
-    "appOnlyBody": "{{gym}} 的會員請透過App預約。請以註冊的電子郵件登入後，在App的「預約」中操作。",
-    "appOnlyNote": "若有疑問，請直接聯絡健身房。",
-    "appOnlyIos": "在 App Store 開啟",
-    "appOnlyAndroid": "在 Google Play 開啟"
+    "taxIncluded": "（含稅）"
   },
   "trialCancel": {
     "loading": "正在確認您的預約...",

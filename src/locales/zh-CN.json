@@ -322,18 +322,7 @@
       "trialIgnoreBlocksDesc": "开启后，即使是日程表上「时间锁定」的时段也可接受体验预约。会员预约、代理预约和临时到店仍按原样被锁定。同时接待人数、营业时间和预约截止仍然有效。",
       "trialIgnoreBlocksWarning": "体验可能会进入锁定的时段。日程表会为与锁定重叠的体验加上标记。",
       "trialIgnoreBlocksSaved": "已保存设置",
-      "trialIgnoreBlocksSaveFailed": "保存设置失败",
-      "trialAppOnlySection": "从体验预约页引导至App的姓名",
-      "trialAppOnlyLabel": "需要通过App预约的姓名",
-      "trialAppOnlyDesc": "当有人以此处登记的姓名在体验预约页申请时，将不受理预约，并提示“请在App中预约”。适用于已是会员却仍从体验预约页申请的情况。",
-      "trialAppOnlyPlaceholder": "姓或名",
-      "trialAppOnlyAdd": "添加",
-      "trialAppOnlyRemove": "删除“{{word}}”",
-      "trialAppOnlyWarning": "判定时不区分全角半角、平假名片假名和空格，采用部分匹配。姓名越短匹配范围越广，可能误拦无关的新客户。仅对体验预约页生效，App预约、临时到店和门店代客预约均不受影响。",
-      "trialAppOnlySaved": "已保存",
-      "trialAppOnlySaveFailed": "保存失败",
-      "trialAppOnlyTooLong": "请输入{{max}}个字符以内",
-      "trialAppOnlyTooMany": "最多可登记{{max}}条"
+      "trialIgnoreBlocksSaveFailed": "保存设置失败"
     },
     "notification": {
       "title": "通知设置",
@@ -1810,12 +1799,7 @@
     "pushTitle": "体验预约申请",
     "pushBody": "{{name}} 申请了体验预约",
     "priceLabel": "费用",
-    "taxIncluded": "（含税）",
-    "appOnlyTitle": "请在App中预约",
-    "appOnlyBody": "{{gym}} 的会员请通过App预约。请使用注册邮箱登录后，在App的“预约”中操作。",
-    "appOnlyNote": "如有疑问，请直接联系健身房。",
-    "appOnlyIos": "在 App Store 中打开",
-    "appOnlyAndroid": "在 Google Play 中打开"
+    "taxIncluded": "（含税）"
   },
   "trialCancel": {
     "loading": "正在确认您的预约...",

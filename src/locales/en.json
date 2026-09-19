@@ -322,18 +322,7 @@
       "trialIgnoreBlocksDesc": "When on, trial bookings can be made even during times you blocked on the schedule. Member bookings, staff-made bookings and drop-ins stay blocked as before. Capacity, business hours and the booking cutoff still apply.",
       "trialIgnoreBlocksWarning": "Trials may land on blocked time. The schedule marks any trial that overlaps a block.",
       "trialIgnoreBlocksSaved": "Setting saved",
-      "trialIgnoreBlocksSaveFailed": "Could not save the setting",
-      "trialAppOnlySection": "Names guided from the trial page to the app",
-      "trialAppOnlyLabel": "Names that should book from the app",
-      "trialAppOnlyDesc": "When someone applies on the trial booking page under a name you register here, the booking is not accepted and they are shown a message asking them to book in the app instead. Useful when existing members keep using the trial page.",
-      "trialAppOnlyPlaceholder": "First or last name",
-      "trialAppOnlyAdd": "Add",
-      "trialAppOnlyRemove": "Remove “{{word}}”",
-      "trialAppOnlyWarning": "Matching ignores differences in character width, kana and spacing, and uses partial matches. Short names match more broadly and may turn away unrelated new customers. This affects the trial booking page only — bookings from the app, drop-ins and bookings you make on a customer's behalf are unaffected.",
-      "trialAppOnlySaved": "Saved",
-      "trialAppOnlySaveFailed": "Could not save",
-      "trialAppOnlyTooLong": "Please use {{max}} characters or fewer",
-      "trialAppOnlyTooMany": "You can register up to {{max}} entries"
+      "trialIgnoreBlocksSaveFailed": "Could not save the setting"
     },
     "notification": {
       "title": "Notification Settings",
@@ -1810,12 +1799,7 @@
     "pushTitle": "Trial booking request",
     "pushBody": "{{name}} has requested a trial session",
     "priceLabel": "Price",
-    "taxIncluded": " (incl. tax)",
-    "appOnlyTitle": "Please book in the app",
-    "appOnlyBody": "Members of {{gym}} are asked to book from the app. Sign in with your registered email address and open Booking in the app.",
-    "appOnlyNote": "If you think this message is a mistake, please contact the gym.",
-    "appOnlyIos": "Open in App Store",
-    "appOnlyAndroid": "Open in Google Play"
+    "taxIncluded": " (incl. tax)"
   },
   "trialCancel": {
     "loading": "Checking your booking...",

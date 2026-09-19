@@ -29,7 +29,6 @@ import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLE
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
-import { isDayClosedForGuest, type ClosedDay } from "@/lib/bookingClosedDays";
 
 interface TrialSlotBooking {
   date: string;
@@ -99,7 +98,6 @@ const TrialBooking = () => {
   const [questions, setQuestions] = useState<BookingQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [missingAnswerIds, setMissingAnswerIds] = useState<string[]>([]);
-  const [closedDays, setClosedDays] = useState<ClosedDay[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -177,33 +175,6 @@ const TrialBooking = () => {
   useEffect(() => {
     fetchExistingSlots();
   }, [fetchExistingSlots]);
-
-  // 店が予定表から手で止めた日。公開ページはここを見て、その日を選べなくする。
-  // 🔴 **手で止めた日だけ**が対象（`isDayClosedForGuest`）。1日の上限に達しただけの日は
-  //    体験・ドロップインの例外のままなので弾かない（2026-09-01 の決定）。
-  // 🔴 読めなければ空配列＝「閉まっている日は無い」。判定できないせいで新規のお客様を
-  //    断るほうが実害が大きい。最終判定は DB のトリガー（GB007）が持っている。
-  const fetchClosedDays = useCallback(async (): Promise<ClosedDay[]> => {
-    // 🔴 フラグOFF（体験予約を出していないフォーク）では RPC を1本も呼ばない。
-    //    fetchExistingSlots と同じ作法。src/test/trialBookingGate.test.tsx が見張る。
-    if (!TRIAL_BOOKING_ENABLED || !effectiveTenantId) { setClosedDays([]); return []; }
-    const today = getJSTNow();
-    const end = new Date(today);
-    end.setDate(today.getDate() + 59);
-    const { data, error } = await supabase.rpc("get_tenant_closed_days", {
-      p_tenant_id: effectiveTenantId,
-      from_date: format(today, "yyyy-MM-dd"),
-      to_date: format(end, "yyyy-MM-dd"),
-    });
-    const rows = error || !data ? [] : (data as ClosedDay[]);
-    setClosedDays(rows);
-    return rows;
-  }, [effectiveTenantId]);
-
-  useEffect(() => {
-    void fetchClosedDays();
-  }, [fetchClosedDays]);
-
 
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
@@ -330,17 +301,6 @@ const TrialBooking = () => {
     const insertTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
     if (!insertTenantId) {
       toast.error(t("trialBooking.errInvalidLink"));
-      setSubmitting(false);
-      return;
-    }
-
-    // 🔴 画面を開いている間に、店がその日を止めることがある。送信の直前にもう一度見る。
-    //    ここで止めないと trial-book が 500 を返し、お客様には
-    //    「サーバーで問題が発生しました」としか出ない（受付終了だと伝わらない）。
-    if (isDayClosedForGuest(await fetchClosedDays(), dateKey)) {
-      toast.error(t("closedDays.errorClosed"));
-      setSelectedDate(undefined);
-      setSelectedSlot(null);
       setSubmitting(false);
       return;
     }
@@ -676,9 +636,6 @@ const TrialBooking = () => {
                   if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), lastBookableStartOn(yyyyMMdd))) return true;
                   // 定休日（曜日別の営業時間で閉めている日）。
                   if (isClosedDate(tenant?.operating_hours, yyyyMMdd)) return true;
-                  // 店が予定表から手で止めた日。上限に達しただけの日は
-                  // 体験・ドロップインの例外なので**ここでは弾かない**。
-                  if (isDayClosedForGuest(closedDays, yyyyMMdd)) return true;
                   // 何日先まで受けるか。店が未設定なら従来どおり10日先まで。
                   return isBeyondBookingWindow(
                     yyyyMMdd, tenant?.booking_window_days ?? null, { days: LEGACY_GUEST_WINDOW_DAYS },

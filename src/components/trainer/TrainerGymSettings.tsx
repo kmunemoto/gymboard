@@ -23,6 +23,7 @@ import TrainerStaffManager from "./TrainerStaffManager";
 import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
+import TrialAppOnlyNamesCard from "./TrialAppOnlyNamesCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
@@ -1349,6 +1350,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           <section className="space-y-3">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialIgnoreBlocksSection")}</h3>
             <TrialIgnoreBlocksCard />
+          </section>
+
+          {/* === 体験予約サイトで「アプリからご予約ください」と案内するお名前 ===
+              実装は TrialAppOnlyNamesCard（このファイルは行数の上限に達しているため別ファイル）。
+              🔴 お名前は個人情報なので、値はDBだけに持つ（リポジトリに書かない）。 */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialAppOnlySection")}</h3>
+            <TrialAppOnlyNamesCard />
           </section>
         </>
       )}

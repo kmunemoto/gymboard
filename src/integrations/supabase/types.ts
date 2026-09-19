@@ -3249,6 +3249,7 @@ export type Database = {
           subscription_status: string | null
           trial_email_cancel_note: string | null
           trial_ignores_blocked_slots: boolean
+          trial_app_only_names: string[]
           trial_ends_at: string | null
           trial_info_body: string | null
           trial_info_title: string | null
@@ -3316,6 +3317,7 @@ export type Database = {
           subscription_status?: string | null
           trial_email_cancel_note?: string | null
           trial_ignores_blocked_slots?: boolean
+          trial_app_only_names?: string[]
           trial_ends_at?: string | null
           trial_info_body?: string | null
           trial_info_title?: string | null
@@ -3383,6 +3385,7 @@ export type Database = {
           subscription_status?: string | null
           trial_email_cancel_note?: string | null
           trial_ignores_blocked_slots?: boolean
+          trial_app_only_names?: string[]
           trial_ends_at?: string | null
           trial_info_body?: string | null
           trial_info_title?: string | null
@@ -4693,6 +4696,10 @@ export type Database = {
           p_exclude_booking_id?: string
           p_tenant_id: string
         }
+        Returns: boolean
+      }
+      trial_name_needs_app: {
+        Args: { p_name: string; p_tenant_id: string }
         Returns: boolean
       }
       transfer_gym_ownership: {

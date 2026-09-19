@@ -29,6 +29,7 @@ import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLE
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
+import TrialAppOnlyDialog from "@/components/booking/TrialAppOnlyDialog";
 
 interface TrialSlotBooking {
   date: string;
@@ -98,6 +99,9 @@ const TrialBooking = () => {
   const [questions, setQuestions] = useState<BookingQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [missingAnswerIds, setMissingAnswerIds] = useState<string[]>([]);
+  // 店が登録したお名前のとき、予約のかわりに「アプリからご予約ください」を出す。
+  // 🔴 誰が該当するかはサーバー（RPC）だけが知っている。単語リストは画面に配らない。
+  const [showAppOnly, setShowAppOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -303,6 +307,25 @@ const TrialBooking = () => {
       toast.error(t("trialBooking.errInvalidLink"));
       setSubmitting(false);
       return;
+    }
+
+    // 🔴 すでに会員の方をアプリへご案内する（2026-09-19 宗本さんの要望）。
+    //    判定はサーバー側の RPC。返るのは boolean だけで、**単語リストは
+    //    ブラウザに渡さない**（public リポジトリ／開発者ツールから読めるため）。
+    //    ⚠️ 読めなかったときは**通す**。通信の失敗で新規のお客様を断るほうが重い
+    //    （最後の砦は trial_bookings の enforce_trial_app_only_names トリガー）。
+    try {
+      const { data: needsApp, error: nameErr } = await supabase.rpc("trial_name_needs_app", {
+        p_tenant_id: insertTenantId,
+        p_name: guestName.trim(),
+      });
+      if (!nameErr && needsApp === true) {
+        setShowAppOnly(true);
+        setSubmitting(false);
+        return;
+      }
+    } catch (e) {
+      console.error("trial_name_needs_app failed:", e);
     }
 
     // 予約作成と通知 (確認メール・トレーナー通知・カレンダー登録) はサーバー側の
@@ -732,6 +755,10 @@ const TrialBooking = () => {
             </div>
           )}
         </section>
+
+        {showAppOnly && (
+          <TrialAppOnlyDialog gymName={gymName} onClose={() => setShowAppOnly(false)} />
+        )}
 
         {POWERED_BY_GYMBOARD_ENABLED && (
           <a

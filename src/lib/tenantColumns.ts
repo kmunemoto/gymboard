@@ -68,6 +68,9 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "daily_booking_limit",
   // 体験予約だけ予定表の「時間ブロック」を無視するか。既定 false（現状維持）。
   "trial_ignores_blocked_slots",
+  // 体験予約ページで「アプリからご予約ください」と案内するお名前の単語。
+  // 🔴 個人情報。既定は空配列＝誰も案内しない。get_tenant_public では返さない。
+  "trial_app_only_names",
 ];
 
 /**
@@ -149,6 +152,9 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   daily_booking_limit: null,
   // 列が読めない環境では「従来の固定文」に倒す（＝何も変わらない）。
   trial_email_cancel_note: null,
+  // 🔴 列が読めない環境では「登録なし」に倒す（＝誰もアプリへ案内しない）。
+  //    ここに単語を置かないこと。コードに実名が入るうえ、全店に効いてしまう。
+  trial_app_only_names: null,
 };
 
 /**

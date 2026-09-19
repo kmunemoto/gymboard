@@ -322,7 +322,18 @@
       "trialIgnoreBlocksDesc": "켜면 일정표에서 「시간 블록」을 넣은 시간에도 체험 예약을 받습니다. 회원 예약·대리 예약·드롭인은 지금처럼 블록으로 막힙니다. 동시 수용 인원·영업시간·예약 마감은 켜도 적용됩니다.",
       "trialIgnoreBlocksWarning": "블록한 시간에 체험이 들어올 수 있습니다. 일정표에서는 블록과 겹친 체험에 표시가 붙습니다.",
       "trialIgnoreBlocksSaved": "설정을 저장했습니다",
-      "trialIgnoreBlocksSaveFailed": "설정 저장에 실패했습니다"
+      "trialIgnoreBlocksSaveFailed": "설정 저장에 실패했습니다",
+      "trialAppOnlySection": "체험 예약 사이트에서 앱으로 안내할 이름",
+      "trialAppOnlyLabel": "앱에서 예약하도록 안내할 이름",
+      "trialAppOnlyDesc": "여기에 등록한 이름으로 체험 예약 사이트에서 신청하면 예약을 받지 않고 ‘앱에서 예약해 주세요’라고 안내합니다. 이미 회원인 분이 체험 예약 사이트를 이용하는 것을 막을 수 있습니다.",
+      "trialAppOnlyPlaceholder": "성 또는 이름",
+      "trialAppOnlyAdd": "추가",
+      "trialAppOnlyRemove": "‘{{word}}’ 삭제",
+      "trialAppOnlyWarning": "전각·반각, 히라가나·가타카나, 공백의 차이를 구분하지 않고 부분 일치로 판정합니다. 이름이 짧을수록 넓게 걸리므로 관계없는 신규 고객까지 안내할 수 있습니다. 체험 예약 사이트에만 적용되며 앱 예약·드롭인·매장에서의 대리 예약에는 영향이 없습니다.",
+      "trialAppOnlySaved": "저장했습니다",
+      "trialAppOnlySaveFailed": "저장하지 못했습니다",
+      "trialAppOnlyTooLong": "{{max}}자 이내로 입력해 주세요",
+      "trialAppOnlyTooMany": "최대 {{max}}개까지 등록할 수 있습니다"
     },
     "notification": {
       "title": "알림 설정",
@@ -1799,7 +1810,12 @@
     "pushTitle": "체험 예약 신청",
     "pushBody": "{{name}}님이 체험 예약을 신청했습니다",
     "priceLabel": "요금",
-    "taxIncluded": "(부가세 포함)"
+    "taxIncluded": "(부가세 포함)",
+    "appOnlyTitle": "앱에서 예약해 주세요",
+    "appOnlyBody": "{{gym}} 회원님은 앱에서 예약해 주세요. 등록하신 이메일로 로그인한 뒤 앱의 ‘예약’에서 진행해 주세요.",
+    "appOnlyNote": "잘못된 안내라고 생각되시면 짐으로 연락해 주세요.",
+    "appOnlyIos": "App Store에서 열기",
+    "appOnlyAndroid": "Google Play에서 열기"
   },
   "trialCancel": {
     "loading": "예약 내용을 확인하고 있습니다...",

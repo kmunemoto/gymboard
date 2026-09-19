@@ -32,7 +32,23 @@
  *
  * GB003 / GB004 / GB006 と同じ非対称。「今日はもう受けない」と決めたあとで
  * 常連さんを1人だけ足すのは店の裁量として残す。止まるのは
- * **お客様の自己予約**と**公開の体験・ドロップイン予約**だけ。
+ * **お客様の自己予約**と、**手で止めた日の公開予約（体験・ドロップイン）**だけ。
+ *
+ * ## 🔴 体験・ドロップインは「手で止めた日」だけ止まる（2026-09-19 に変更）
+ *
+ * 2026-09-01 の時点では体験・ドロップインは**この仕組みから完全に外れていた**。
+ * 2026-09-19、宗本さんに実測結果（手で赤くした日でも体験予約サイトからは申し込めた）を
+ * お見せしたうえで決めていただいた:
+ *
+ *   手で止めた日（`booking_closed_days` に行がある）… **体験・ドロップインも止める**
+ *   上限に達した日（`daily_booking_limit`）        … **今までどおり体験は受ける**
+ *
+ * 🔴 **この2つを混ぜないこと。** `isDayClosed` / `tenant_day_closed` は両方を true にする。
+ *    公開ページと `trial_bookings` のトリガーは **`manual` の行だけ**を見る
+ *    （`isDayClosedForGuest`）。混ぜると「上限に達した日は体験も断る」になり、
+ *    2026-09-01 の決定（体験は上限なく受け付ける）を黙って覆すことになる。
+ *
+ * 数え方は変えていない。**体験は今も1日の人数に数えない。**
  *
  * ## ここにある規則は DB と同じもの
  *
@@ -122,6 +138,25 @@ export const isDayViewOnly = (
   if (!hasOwnBookingOnDay || !isTodayKey(dateKey)) return false;
   const day = closedDays?.find((d) => d.closed_date === dateKey);
   return !!day && !day.manual;
+};
+
+/**
+ * 公開ページ（体験予約・ドロップイン）から見て、その日が受付終了か。
+ *
+ * 🔴 **手で止めた日（`manual === true`）だけ。** 上限に達しただけの日は false を返す。
+ *    体験・ドロップインは1日の上限の例外であり続ける（2026-09-01 の決定）。
+ *    ここで `isDayClosed` を使うと、上限に達した日の体験まで断ってしまう。
+ *
+ * 🔴 `=== true` で見る。RPC がまだ `manual` を返さない環境では undefined になり、
+ *    **受け付ける側（false）に倒れる**。判定が読めないせいで新規のお客様を
+ *    断るほうが実害が大きい（最終判定は DB のトリガー GB007 が持っている）。
+ */
+export const isDayClosedForGuest = (
+  closedDays: readonly ClosedDay[] | null | undefined,
+  dateKey: string,
+): boolean => {
+  if (!closedDays || closedDays.length === 0 || !dateKey) return false;
+  return closedDays.some((d) => d.closed_date === dateKey && d.manual === true);
 };
 
 /** その日を止めた理由。閉まっていなければ null。 */

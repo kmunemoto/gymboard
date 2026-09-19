@@ -26,6 +26,7 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { isDropInAvailable } from "@/lib/dropInTenant";
+import { isDayClosedForGuest, type ClosedDay } from "@/lib/bookingClosedDays";
 
 // TrialBooking.tsx の複製（英語圏の観光客向け「単発ドロップインセッション ¥8,000・
 // 会員登録不要・現地決済」専用ページ）。無料体験(/trial)とは見出し・文言・言語が別物のため
@@ -91,6 +92,7 @@ const DropInBooking = () => {
   const [questions, setQuestions] = useState<BookingQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [missingAnswerIds, setMissingAnswerIds] = useState<string[]>([]);
+  const [closedDays, setClosedDays] = useState<ClosedDay[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -157,6 +159,31 @@ const DropInBooking = () => {
   useEffect(() => {
     fetchExistingSlots();
   }, [fetchExistingSlots]);
+
+  // 店が予定表から手で止めた日。公開ページはここを見て、その日を選べなくする。
+  // 🔴 **手で止めた日だけ**が対象（`isDayClosedForGuest`）。1日の上限に達しただけの日は
+  //    体験・ドロップインの例外のままなので弾かない（2026-09-01 の決定）。
+  // 🔴 読めなければ空配列＝「閉まっている日は無い」。判定できないせいで新規のお客様を
+  //    断るほうが実害が大きい。最終判定は DB のトリガー（GB007）が持っている。
+  const fetchClosedDays = useCallback(async (): Promise<ClosedDay[]> => {
+    if (!effectiveTenantId) { setClosedDays([]); return []; }
+    const today = getJSTNow();
+    const end = new Date(today);
+    end.setDate(today.getDate() + 59);
+    const { data, error } = await supabase.rpc("get_tenant_closed_days", {
+      p_tenant_id: effectiveTenantId,
+      from_date: format(today, "yyyy-MM-dd"),
+      to_date: format(end, "yyyy-MM-dd"),
+    });
+    const rows = error || !data ? [] : (data as ClosedDay[]);
+    setClosedDays(rows);
+    return rows;
+  }, [effectiveTenantId]);
+
+  useEffect(() => {
+    void fetchClosedDays();
+  }, [fetchClosedDays]);
+
 
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
@@ -270,6 +297,16 @@ const DropInBooking = () => {
     const insertTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
     if (!insertTenantId) {
       toast.error("This booking link is invalid.");
+      setSubmitting(false);
+      return;
+    }
+
+    // 🔴 画面を開いている間に、店がその日を止めることがある。送信の直前にもう一度見る。
+    //    ここで止めないと drop-in-book が 500 を返し、お客様には汎用のエラーしか出ない。
+    if (isDayClosedForGuest(await fetchClosedDays(), dateKey)) {
+      toast.error("This day is no longer taking bookings. Please choose another date.");
+      setSelectedDate(undefined);
+      setSelectedSlot(null);
       setSubmitting(false);
       return;
     }
@@ -568,6 +605,9 @@ const DropInBooking = () => {
                   if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), lastBookableStartOn(yyyyMMdd))) return true;
                   // 定休日（曜日別の営業時間で閉めている日）。
                   if (isClosedDate(tenant?.operating_hours, yyyyMMdd)) return true;
+                  // 店が予定表から手で止めた日。上限に達しただけの日は
+                  // 体験・ドロップインの例外なので**ここでは弾かない**。
+                  if (isDayClosedForGuest(closedDays, yyyyMMdd)) return true;
                   // 何日先まで受けるか。店が未設定なら従来どおり10日先まで。
                   return isBeyondBookingWindow(
                     yyyyMMdd, tenant?.booking_window_days ?? null, { days: LEGACY_GUEST_WINDOW_DAYS },

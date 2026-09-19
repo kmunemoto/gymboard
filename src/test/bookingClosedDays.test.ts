@@ -9,6 +9,7 @@ import {
   isDayHardClosed,
   isDayViewOnly,
   isDayClosedError,
+  isDayClosedForGuest,
   remainingForDay,
   type ClosedDay,
 } from "@/lib/bookingClosedDays";
@@ -172,11 +173,19 @@ describe("🔴 体験・ドロップインは仕組みから完全に外れて�
     expect(hook).toMatch(/b\.user_id !== TRIAL_GUEST/);
   });
 
-  it("🔴 公開の体験ページ・ドロップインページは受付終了を見ていない", () => {
-    // DB が止めないのに画面だけ止めると、予約できるはずの枠が消える。
+  it("🔴 公開ページが見るのは「手で止めた日」だけ（2026-09-19 に変更）", () => {
+    // 2026-09-01 時点は「公開ページは受付終了を一切見ない」だった。
+    // 2026-09-19、実測（手で赤くした日でも体験予約サイトからは申し込めた）を見て
+    // 宗本さんが決定:「手で止めた日は体験も止める。1日の上限は今までどおり例外」。
+    //
+    // 🔴 ここで isDayClosed（手動＋上限）を使うと、**上限に達した日の体験まで断る**。
+    //    それは 2026-09-01 の決定（体験は上限なく受け付ける）を黙って覆すことになる。
     for (const f of [TRIAL, DROPIN]) {
-      expect(readCode(f), f).not.toContain("isDayClosed");
-      expect(readCode(f), f).not.toContain("useBookingClosedDays");
+      const code = readCode(f);
+      expect(code, f).toContain("isDayClosedForGuest");
+      // isDayClosed は isDayClosedForGuest の部分文字列なので、先に消してから見る
+      expect(code.replace(/isDayClosedForGuest/g, ""), f).not.toContain("isDayClosed");
+      expect(code, f).not.toContain("useBookingClosedDays");
     }
   });
 
@@ -439,5 +448,115 @@ describe("🔴 DB は当日の新規予約を断ったままであること", ()
   it("上限に達した日は GB007 で断る（画面で開けても、予約はできない）", () => {
     expect(sql).toContain("GB007");
     expect(sql).toMatch(/tenant_day_closed\(NEW\.tenant_id, v_date, NEW\.id\)/);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// 手で止めた日は、体験予約・ドロップインも受け付けない（2026-09-19）
+//
+// きっかけは予定表で実際に日を赤くしたあとの質問:「これ押して赤くなってる日は
+// 予約が入れられなくなる？」。本番で実測したところ:
+//
+//   お客様の自己予約 x 手で止めた日 = 断られた [GB007]
+//   店の代理予約     x 手で止めた日 = 入った（仕様）
+//   体験予約         x 手で止めた日 = **入った（止まらない）**  ← これを直した
+//
+// 🔴 「手で止めた日」と「上限に達した日」を混ぜないこと。
+//    体験が上限の例外であり続けるのは 2026-09-01 の決定で、いまも生きている。
+// ────────────────────────────────────────────────────────────────
+
+const TRIAL_CLOSED_MIGRATION =
+  "supabase/migrations/20260919020000_trial_respects_manual_closed_days.sql";
+
+describe("🔴 手で止めた日だけ、体験・ドロップインも止まる", () => {
+  const day = "2026-09-17";
+  const manual: ClosedDay[] = [{ closed_date: day, manual: true, reason: null }];
+  const atLimit: ClosedDay[] = [{ closed_date: day, manual: false, reason: null }];
+
+  it("手で止めた日は公開ページでも受付終了", () => {
+    expect(isDayClosedForGuest(manual, day)).toBe(true);
+  });
+
+  it("🔴 上限に達しただけの日は受け付ける（体験は上限の例外のまま）", () => {
+    // ここが true になると、2026-09-01 の「体験は上限なく受け付けます」が壊れる
+    expect(isDayClosedForGuest(atLimit, day)).toBe(false);
+    // 会員側（手動＋上限の両方を見る）とは答えが違うのが正しい
+    expect(isDayClosed(atLimit, day)).toBe(true);
+  });
+
+  it("閉まっていない日・空・null は受け付ける", () => {
+    expect(isDayClosedForGuest(manual, "2026-09-16")).toBe(false);
+    expect(isDayClosedForGuest([], day)).toBe(false);
+    expect(isDayClosedForGuest(null, day)).toBe(false);
+    expect(isDayClosedForGuest(undefined, day)).toBe(false);
+    expect(isDayClosedForGuest(manual, "")).toBe(false);
+  });
+
+  it("🔴 manual が読めない行は受け付ける側に倒れる", () => {
+    // RPC がまだ manual を返さない環境で、新規のお客様を断らないため
+    const noFlag = [{ closed_date: day }] as unknown as ClosedDay[];
+    expect(isDayClosedForGuest(noFlag, day)).toBe(false);
+  });
+});
+
+describe("🔴 DB 側（画面だけ直すと迂回できる）", () => {
+  const sql = readSql(TRIAL_CLOSED_MIGRATION);
+
+  it("trial_bookings にトリガーが掛かっている", () => {
+    expect(sql).toMatch(
+      /CREATE TRIGGER trg_guard_trial_booking_day_closed\s*\n\s*BEFORE INSERT ON public\.trial_bookings/,
+    );
+  });
+
+  it("🔴 上限は見ていない（booking_closed_days を直接見る）", () => {
+    // tenant_day_closed() は手動＋上限の両方を true にする。呼んだ瞬間、
+    // 上限に達した日の体験まで断るようになる
+    expect(sql).not.toContain("tenant_day_closed");
+    expect(sql).toMatch(/FROM public\.booking_closed_days d/);
+  });
+
+  it("会員側と同じ SQLSTATE を返す", () => {
+    expect(sql).toMatch(/USING ERRCODE = 'GB007'/);
+    expect(DAY_CLOSED_SQLSTATE).toBe("GB007");
+  });
+
+  it("🔴 断りの文面が満枠と取り違えられない", () => {
+    // trial-book / drop-in-book は insert のエラー文に「この時間帯」が入っていると
+    // slot_taken と判定し「別の時間をお選びください」と案内してしまう
+    const messages = [...sql.matchAll(/RAISE EXCEPTION '([^']+)'/g)].map((m) => m[1]);
+    expect(messages.length).toBeGreaterThan(0);
+    for (const m of messages) expect(m).not.toContain("この時間帯");
+  });
+
+  it("人数の数え方は変えていない（体験は今も数えない）", () => {
+    expect(sql).not.toContain("tenant_day_booking_count");
+    expect(sql).not.toContain("get_tenant_closed_days");
+  });
+
+  it("キャンセル済みと取り込みは素通しする", () => {
+    expect(sql).toMatch(/'salute_sync'/);
+    expect(sql).toMatch(/NEW\.status = 'キャンセル済み'/);
+  });
+});
+
+describe("公開ページは送信の直前にもう一度見る", () => {
+  it("🔴 開いている間に止められたときに、汎用の500で終わらせない", () => {
+    // trial-book / drop-in-book は GB007 を業務上の拒否として扱わないので、
+    // ここで止めないとお客様には「サーバーで問題が発生しました」としか出ない
+    for (const f of [TRIAL, DROPIN]) {
+      const code = readCode(f);
+      expect(code, f).toMatch(/isDayClosedForGuest\(await fetchClosedDays\(\), dateKey\)/);
+      const recheck = code.indexOf("isDayClosedForGuest(await fetchClosedDays(), dateKey)");
+      const invoke = code.indexOf("supabase.functions.invoke(");
+      expect(recheck, f).toBeGreaterThan(-1);
+      expect(invoke, f).toBeGreaterThan(-1);
+      expect(recheck, f).toBeLessThan(invoke);
+    }
+  });
+
+  it("読めなかったら受け付ける（判定の失敗で断らない）", () => {
+    for (const f of [TRIAL, DROPIN]) {
+      expect(readCode(f), f).toMatch(/error \|\| !data \? \[\] : \(data as ClosedDay\[\]\)/);
+    }
   });
 });

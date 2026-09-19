@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { useAllCustomerProfiles, useProfile } from "@/hooks/useProfile";
 import { useAllBookings, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { formatJST, getJSTNow } from "@/lib/timezone";
@@ -16,7 +15,12 @@ import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+
+// 🔴 売上グラフ（recharts・366KB）は開いたときに読む。静的 import に戻さないこと。
+//    店舗ホームの初回読み込みに 366KB（全体の約2割）が戻る。
+//    経緯と実測値は RevenueBarChart.tsx / src/test/trainerBundle.test.ts。
+const RevenueBarChart = lazy(() => import("./RevenueBarChart"));
 import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { supabase } from "@/integrations/supabase/client";
@@ -723,24 +727,9 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
           <Card>
             <CardContent className="p-3 sm:p-4">
               <div className="h-44 sm:h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 10%, 92%)" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(220, 6%, 55%)" axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 10000}${t("dashboard.monthMan")}`} width={40} />
-                    <Tooltip
-                      formatter={(value: number) => [`¥${value.toLocaleString()}`, t("dashboard.revenueLabel")]}
-                      contentStyle={{
-                        background: 'hsl(0, 0%, 100%)',
-                        border: 'none',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <Bar dataKey="revenue" fill="hsl(174, 65%, 50%)" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <Suspense fallback={<div className="h-full flex items-center justify-center"><DumbbellLoader className="w-5 h-5 text-muted-foreground" /></div>}>
+                  <RevenueBarChart data={revenueData} />
+                </Suspense>
               </div>
             </CardContent>
           </Card>

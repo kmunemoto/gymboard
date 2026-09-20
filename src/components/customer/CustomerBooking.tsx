@@ -44,6 +44,7 @@ import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimit
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, isDayHardClosed, isDayViewOnly, isDayClosedError } from "@/lib/bookingClosedDays";
+import { isDayFullyBooked } from "@/lib/bookingDayFull";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
 import BookingOptionConfirm from "@/components/booking/BookingOptionConfirm";
@@ -340,6 +341,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   //     その日の状況が見えるように。アプリから当日の予約の変更はできない」。
   //    当日はそもそも締切済みで予約も変更もできないので、押せても見るだけで済む。
   const selectedDayViewOnly = isDayViewOnly(closedDays, dateKey, hasOwnBookingOn(dateKey));
+
+  // 🔴 1枠も取れない日はカレンダーで選べなくする（2026-09-20 宗本さんの要望）。
+  //    状態は持たず毎回数え直すので、キャンセルで枠が空けば自動で押せる日に戻る。
+  //    当日は除く（締切済みでも空き状況を見せる。2026-09-05 の決定）。
+  const isDayFull = (d: string): boolean =>
+    d !== getJSTToday() && isDayFullyBooked(
+      staffBookingSlotMinutes(businessHours, totalMinutes, weekdayOfDateKey(d), staffSchedules, selectedStaffId),
+      (m) => isSlotBlocked(d, minutesToTime(m)) || isSlotNotAccepting(d, minutesToTime(m)),
+    );
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean; dayFull: boolean }[] = [];
@@ -1076,6 +1086,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     //    （押しても予約はできない。空き時間を見せるだけ）。
                     //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
                     if (isDayHardClosed(closedDays, yyyyMMdd, hasOwnBookingOn(yyyyMMdd))) return true;
+                    // 全枠が満枠／受付しない時間帯の日。定休日と同じ見た目にする。
+                    if (isDayFull(yyyyMMdd)) return true;
                     // 指名した担当が出勤していない曜日。指名なしなら常に false。
                     if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
                       return true;

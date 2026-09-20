@@ -6,6 +6,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +15,7 @@ import {
   OPTION_DURATION_OPTIONS,
   OPTION_NAME_MAX,
   validateBookingOption,
+  OPTION_DESCRIPTION_MAX,
 } from "@/lib/bookingOptions";
 
 /**
@@ -46,6 +48,11 @@ interface EditableOption {
   duration: number;
   /** 入力途中を保つため文字列で持つ（"" は「料金を表示しない」= 0） */
   price: string;
+  /**
+   * お客様が**予約の確認カードで読む**説明文。空なら今までどおり名前だけを出す。
+   * 🔴 店内メモではない。書いた内容はそのままお客様に見える。
+   */
+  description: string;
   enabled: boolean;
 }
 
@@ -58,6 +65,7 @@ const defaultOption = (): EditableOption => ({
   name: "",
   duration: 30,
   price: "",
+  description: "",
   enabled: true,
 });
 
@@ -82,7 +90,7 @@ const TrainerBookingOptions = () => {
     setLoadFailed(false);
     const { data, error } = await supabase
       .from("booking_options")
-      .select("id, name, duration_minutes, price_yen, enabled, sort_order")
+      .select("id, name, duration_minutes, price_yen, description, enabled, sort_order")
       .eq("tenant_id", tenant.id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
@@ -97,6 +105,7 @@ const TrainerBookingOptions = () => {
           name: o.name,
           duration: o.duration_minutes,
           price: o.price_yen > 0 ? String(o.price_yen) : "",
+          description: o.description ?? "",
           enabled: o.enabled,
         })),
       );
@@ -117,6 +126,7 @@ const TrainerBookingOptions = () => {
         name: o.name,
         duration_minutes: o.duration,
         price_yen: toPriceYen(o.price),
+        description: o.description,
       });
       if (reason) {
         toast.error(t(`bookingOptions.invalid.${reason}`));
@@ -131,6 +141,8 @@ const TrainerBookingOptions = () => {
       name: o.name.trim(),
       duration_minutes: o.duration,
       price_yen: toPriceYen(o.price),
+      // 空欄は NULL にする（"" のまま入れると「説明がある」扱いで空行が出る）
+      description: o.description.trim() || null,
       enabled: o.enabled,
       sort_order: i,
     }));
@@ -304,6 +316,20 @@ const TrainerBookingOptions = () => {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">{t("bookingOptions.priceHint")}</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">{t("bookingOptions.descriptionLabel")}</Label>
+                <Textarea
+                  rows={4}
+                  maxLength={OPTION_DESCRIPTION_MAX}
+                  value={o.description}
+                  placeholder={t("bookingOptions.descriptionPlaceholder")}
+                  onChange={(e) => patch(o.key, { description: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("bookingOptions.descriptionHelp")}
+                  <span className="ml-1 tabular-nums">{o.description.length}/{OPTION_DESCRIPTION_MAX}</span>
+                </p>
+              </div>
             </div>
           ))}
 

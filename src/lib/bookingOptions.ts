@@ -74,6 +74,15 @@ export const OPTION_DURATION_MAX = 180;
 export const OPTION_PRICE_MAX = 1_000_000;
 
 /**
+ * 説明文の上限。お客様が**予約の確認カードで読む**文章なので、長すぎると
+ * 「この内容で予約する」が画面外に押し出される。400字はスマホで約12行。
+ *
+ * 🔴 DB 側にも同じ上限の CHECK がある
+ * （`20260920020000_booking_option_description.sql`）。片方だけ変えないこと。
+ */
+export const OPTION_DESCRIPTION_MAX = 400;
+
+/**
  * 追加時間として選べる値。
  *
  * 5分刻みにしてあるのは `SLOT_DURATION_OPTIONS` と同じ理由（実店舗が50分で回している）。
@@ -89,10 +98,10 @@ export const OPTION_DURATION_OPTIONS: readonly number[] = [
 ];
 
 /** 入力が DB の CHECK を通るか。通らない理由を返す（通るなら null）。 */
-export type OptionInvalidReason = "name" | "duration" | "price";
+export type OptionInvalidReason = "name" | "duration" | "price" | "description";
 
 export const validateBookingOption = (
-  o: { name: string; duration_minutes: number; price_yen: number },
+  o: { name: string; duration_minutes: number; price_yen: number; description?: string | null },
 ): OptionInvalidReason | null => {
   const name = o.name.trim();
   if (name.length === 0 || name.length > OPTION_NAME_MAX) return "name";
@@ -100,6 +109,8 @@ export const validateBookingOption = (
   if (o.duration_minutes < 0 || o.duration_minutes > OPTION_DURATION_MAX) return "duration";
   if (!Number.isInteger(o.price_yen)) return "price";
   if (o.price_yen < 0 || o.price_yen > OPTION_PRICE_MAX) return "price";
+  // 説明文は任意。空欄・未設定はそのまま通す（今までどおり名前だけで出す）。
+  if ((o.description ?? "").length > OPTION_DESCRIPTION_MAX) return "description";
   return null;
 };
 

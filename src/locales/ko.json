@@ -2829,7 +2829,8 @@
     "invalid": {
       "name": "옵션 이름을 입력해 주세요(40자까지)",
       "duration": "추가 시간이 올바르지 않습니다",
-      "price": "금액이 올바르지 않습니다(0~1,000,000엔)"
+      "price": "금액이 올바르지 않습니다(0~1,000,000엔)",
+      "description": "설명이 너무 깁니다 (400자까지)"
     },
     "footprintNote": "트레이닝과 옵션 사이에는 준비 시간을 넣지 않습니다. 60분 예약 + 옵션 30분 + 다음 분까지 15분이라면 105분을 차지합니다.",
     "pickerTitle": "옵션",
@@ -2857,7 +2858,10 @@
     "inheritedTitle": "{{names}} 을(를) 이어서 적용합니다",
     "inheritedHelp": "옵션 추가·해제는 매장으로 연락해 주세요.",
     "repeatNote": "옵션 시간을 확보할 수 없는 주는 트레이닝까지 함께 건너뜁니다.",
-    "repeatSkippedWithOption": "{{count}}건은 예약이 찼거나 옵션 시간을 확보할 수 없어 건너뛰었습니다 ({{dates}})"
+    "repeatSkippedWithOption": "{{count}}건은 예약이 찼거나 옵션 시간을 확보할 수 없어 건너뛰었습니다 ({{dates}})",
+    "descriptionLabel": "설명 (고객에게 표시됩니다)",
+    "descriptionPlaceholder": "예) 트레이닝 후에 추가할 수 있는 옵션입니다. 트레이너가 1:1로 30분간 스트레칭을 진행합니다.",
+    "descriptionHelp": "예약 확인 화면에 그대로 표시됩니다. 비워 두면 이름과 시간·요금만 표시됩니다."
   },
   "appUpdate": {
     "title": "업데이트 안내",

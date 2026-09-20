@@ -2796,7 +2796,15 @@
     "customerClosedHelp": "Please choose another date.",
     "customerFullToday": "Today's slots are fully booked",
     "customerFullTodayHelp": "Today has reached its booking limit. You can still check the open times below (same-day booking and changes are not available in the app).",
-    "errorClosed": "This day is no longer taking bookings. Please choose another date."
+    "errorClosed": "This day is no longer taking bookings. Please choose another date.",
+    "uncapped": "No limit",
+    "uncappedHelp": "The daily limit is not applied on this day. Opening hours, concurrent capacity, time blocks and other rules still apply. Tap again to restore the limit.",
+    "uncapAria": "Remove the daily limit for {{date}}",
+    "recapAria": "Restore the daily limit for {{date}}",
+    "uncappedToast": "Removed the daily limit for {{date}}",
+    "recappedToast": "Restored the daily limit for {{date}}",
+    "uncapFailed": "Could not remove the daily limit",
+    "recapFailed": "Could not restore the daily limit"
   },
   "bookingOptions": {
     "section": "Booking add-ons",

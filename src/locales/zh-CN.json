@@ -2796,7 +2796,15 @@
     "customerClosedHelp": "请选择其他日期。",
     "customerFullToday": "今日名额已满",
     "customerFullTodayHelp": "今日预约已达上限。您仍可在下方查看空闲时间（App 内无法进行当日预约或变更）。",
-    "errorClosed": "该日已停止接受预约，请选择其他日期。"
+    "errorClosed": "该日已停止接受预约，请选择其他日期。",
+    "uncapped": "无上限",
+    "uncappedHelp": "该日不适用每日人数上限。营业时间、同时接待人数、时间锁定等其他条件仍然生效。再次点击可恢复上限。",
+    "uncapAria": "解除 {{date}} 的每日上限",
+    "recapAria": "恢复 {{date}} 的每日上限",
+    "uncappedToast": "已解除 {{date}} 的每日上限",
+    "recappedToast": "已恢复 {{date}} 的每日上限",
+    "uncapFailed": "解除上限失败",
+    "recapFailed": "恢复上限失败"
   },
   "bookingOptions": {
     "section": "预约附加项",

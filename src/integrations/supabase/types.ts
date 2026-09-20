@@ -488,6 +488,41 @@ export type Database = {
           },
         ]
       }
+      booking_uncapped_days: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          reason: string | null
+          tenant_id: string
+          uncapped_date: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          reason?: string | null
+          tenant_id: string
+          uncapped_date: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          reason?: string | null
+          tenant_id?: string
+          uncapped_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_uncapped_days_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_frequency_limits: {
         Row: {
           created_at: string

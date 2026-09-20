@@ -2829,7 +2829,8 @@
     "invalid": {
       "name": "请输入附加项名称（最多 40 字）",
       "duration": "额外时长不正确",
-      "price": "价格不正确（0～1,000,000）"
+      "price": "价格不正确（0～1,000,000）",
+      "description": "说明过长（最多400个字符）"
     },
     "footprintNote": "训练与附加项之间不插入准备时间。60 分钟预约 + 30 分钟附加项 + 15 分钟间隔，共占用 105 分钟。",
     "pickerTitle": "附加项",
@@ -2857,7 +2858,10 @@
     "inheritedTitle": "将保留{{names}}",
     "inheritedHelp": "如需增加或取消附加项目，请联系门店。",
     "repeatNote": "无法安排附加项目时间的那一周，将连同训练一起跳过。",
-    "repeatSkippedWithOption": "有 {{count}} 次因已约满或无法安排附加项目时间而跳过（{{dates}}）"
+    "repeatSkippedWithOption": "有 {{count}} 次因已约满或无法安排附加项目时间而跳过（{{dates}}）",
+    "descriptionLabel": "说明（顾客可见）",
+    "descriptionPlaceholder": "例）训练后可追加的项目。教练将进行30分钟一对一拉伸。",
+    "descriptionHelp": "将原样显示在预约确认页面。留空则只显示名称、时长和价格。"
   },
   "appUpdate": {
     "title": "请更新应用",

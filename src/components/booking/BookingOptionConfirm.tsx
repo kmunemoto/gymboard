@@ -116,6 +116,16 @@ const BookingOptionConfirm = ({
             <span className="block text-sm font-bold break-words">{only.name}</span>
             {meta(only)}
           </button>
+          {/* 🔴 説明はボタンの**外**に出す。タイルの中は狭くて入らないうえ、
+              「付けない」を選んでいる人にも読ませたい（読んでから決めてもらう）。 */}
+          {only.description && (
+            <p
+              data-testid="booking-option-description"
+              className="col-span-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground"
+            >
+              {only.description}
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -125,7 +135,7 @@ const BookingOptionConfirm = ({
               <label
                 key={o.id}
                 data-testid="booking-option-row"
-                className={`flex items-center gap-2.5 rounded-lg border p-2.5 min-h-[56px] transition-colors ${
+                className={`flex items-start gap-2.5 rounded-lg border p-2.5 min-h-[56px] transition-colors ${
                   checked ? "border-accent bg-accent/10" : "border-border bg-card"
                 } ${disabled ? "opacity-60" : "cursor-pointer"}`}
               >
@@ -143,6 +153,14 @@ const BookingOptionConfirm = ({
                       <span>{t("bookingOptions.pickerPrice", { price: o.price_yen.toLocaleString() })}</span>
                     )}
                   </span>
+                  {o.description && (
+                    <span
+                      data-testid="booking-option-description"
+                      className="mt-1 block whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground"
+                    >
+                      {o.description}
+                    </span>
+                  )}
                 </span>
               </label>
             );

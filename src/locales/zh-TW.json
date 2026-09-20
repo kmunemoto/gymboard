@@ -2829,7 +2829,8 @@
     "invalid": {
       "name": "請輸入加購項目名稱（最多 40 字）",
       "duration": "額外時間不正確",
-      "price": "價格不正確（0～1,000,000）"
+      "price": "價格不正確（0～1,000,000）",
+      "description": "說明過長（最多400個字元）"
     },
     "footprintNote": "訓練與加購項目之間不插入準備時間。60 分鐘預約 + 30 分鐘加購 + 15 分鐘間隔，共佔用 105 分鐘。",
     "pickerTitle": "加購項目",
@@ -2857,7 +2858,10 @@
     "inheritedTitle": "將保留{{names}}",
     "inheritedHelp": "如需新增或取消附加項目，請聯繫門市。",
     "repeatNote": "無法安排附加項目時間的那一週，將連同訓練一起略過。",
-    "repeatSkippedWithOption": "有 {{count}} 次因已額滿或無法安排附加項目時間而略過（{{dates}}）"
+    "repeatSkippedWithOption": "有 {{count}} 次因已額滿或無法安排附加項目時間而略過（{{dates}}）",
+    "descriptionLabel": "說明（顧客可見）",
+    "descriptionPlaceholder": "例）訓練後可追加的項目。教練將進行30分鐘一對一伸展。",
+    "descriptionHelp": "將原樣顯示在預約確認頁面。留空則只顯示名稱、時長與價格。"
   },
   "appUpdate": {
     "title": "請更新應用程式",

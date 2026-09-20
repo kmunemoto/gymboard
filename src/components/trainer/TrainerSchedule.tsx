@@ -491,6 +491,26 @@ const TrainerSchedule = () => {
     tenant?.daily_booking_limit ?? null,
   );
 
+  // その日の受付の札（止める／解除／上限を外す／戻す）。週タイムライン・週テーブル・
+  // 日別の3か所で同じものを出す。props が増えるたび3か所を直すのは間違いのもとなので、
+  // ここ1つにまとめてある（`qualityRatchet.test.ts` の行数の上限にも効く）。
+  const renderDayChip = (d: string, compact = true) => (
+    <DayReceptionToggle
+      compact={compact}
+      dateKey={d}
+      closed={dayReception.closedOn(d)}
+      bookedCount={dayReception.bookedCountOn(d)}
+      dailyLimit={dayReception.dailyLimit}
+      uncapped={dayReception.uncappedOn(d)}
+      saving={dayReception.saving}
+      onClose={dayReception.closeDay}
+      onReopen={dayReception.reopenDay}
+      onLiftCap={dayReception.liftCap}
+      onRestoreCap={dayReception.restoreCap}
+    />
+  );
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -570,18 +590,7 @@ const TrainerSchedule = () => {
           bookings={bookings}
           tenantPlans={plans}
           operatingHours={tenant?.operating_hours}
-          renderDayReception={(dateKey) => (
-            <DayReceptionToggle
-              compact
-              dateKey={dateKey}
-              closed={dayReception.closedOn(dateKey)}
-              bookedCount={dayReception.bookedCountOn(dateKey)}
-              dailyLimit={dayReception.dailyLimit}
-              saving={dayReception.saving}
-              onClose={dayReception.closeDay}
-              onReopen={dayReception.reopenDay}
-            />
-          )}
+          renderDayReception={(dateKey) => renderDayChip(dateKey)}
           profiles={profiles.map((p) => ({
             user_id: p.user_id,
             plan: p.plan ?? null,
@@ -626,18 +635,7 @@ const TrainerSchedule = () => {
                             {format(day, "d")}
                           </p>
                           {/* その日の受付を止める／解除する1タップ（GB007） */}
-                          <div className="mt-1">
-                            <DayReceptionToggle
-                              compact
-                              dateKey={format(day, "yyyy-MM-dd")}
-                              closed={dayReception.closedOn(format(day, "yyyy-MM-dd"))}
-                              bookedCount={dayReception.bookedCountOn(format(day, "yyyy-MM-dd"))}
-                              dailyLimit={dayReception.dailyLimit}
-                              saving={dayReception.saving}
-                              onClose={dayReception.closeDay}
-                              onReopen={dayReception.reopenDay}
-                            />
-                          </div>
+                          <div className="mt-1">{renderDayChip(format(day, "yyyy-MM-dd"))}</div>
                         </th>
                       );
                     })}
@@ -707,15 +705,7 @@ const TrainerSchedule = () => {
                 </span>
                 {isToday && <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">{t("common.today")}</span>}
                 {/* その日の受付を止める／解除する1タップ（GB007） */}
-                <DayReceptionToggle
-                  dateKey={format(day, "yyyy-MM-dd")}
-                  closed={dayReception.closedOn(format(day, "yyyy-MM-dd"))}
-                  bookedCount={dayReception.bookedCountOn(format(day, "yyyy-MM-dd"))}
-                  dailyLimit={dayReception.dailyLimit}
-                  saving={dayReception.saving}
-                  onClose={dayReception.closeDay}
-                  onReopen={dayReception.reopenDay}
-                />
+                {renderDayChip(format(day, "yyyy-MM-dd"), false)}
               </div>
               {dayBookings.length > 0 ? (
                 <div className="space-y-1.5">

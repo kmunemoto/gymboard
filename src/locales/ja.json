@@ -2796,7 +2796,15 @@
     "customerClosedHelp": "別の日をお選びください。",
     "customerFullToday": "本日の受付枠は埋まっています",
     "customerFullTodayHelp": "本日は上限までご予約が入っています。空き時間は下でご確認いただけます（アプリからの当日のご予約・ご変更はできません）。",
-    "errorClosed": "この日は受付を終了しました。別の日をお選びください。"
+    "errorClosed": "この日は受付を終了しました。別の日をお選びください。",
+    "uncapped": "上限なし",
+    "uncappedHelp": "この日は1日の上限人数を適用していません。営業時間・同時受入数・時間ブロックなど他の条件は今までどおり効きます。もう一度押すと上限が戻ります。",
+    "uncapAria": "{{date}} の1日の上限を外す",
+    "recapAria": "{{date}} の1日の上限を元に戻す",
+    "uncappedToast": "{{date}} は1日の上限を外しました",
+    "recappedToast": "{{date}} の1日の上限を元に戻しました",
+    "uncapFailed": "上限の解除に失敗しました",
+    "recapFailed": "上限を元に戻せませんでした"
   },
   "bookingOptions": {
     "section": "予約のオプション",

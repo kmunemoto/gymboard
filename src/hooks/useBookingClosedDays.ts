@@ -103,3 +103,93 @@ export function useCloseDay() {
 
   return { close, reopen, saving };
 }
+
+/**
+ * その日だけ「1日の上限人数」を適用しない日（`booking_uncapped_days`）。
+ *
+ * 実店舗の要望（2026-09-20 宗本さん）:
+ *
+ * > ベースは1日4人まで。特定の日はそのルールを適応しない様にしたい。
+ *
+ * 🔴 **読むのはジム側だけ。** お客様の画面に必要なのは「その日が受付終了か」だけで、
+ *    それは `get_tenant_closed_days` が上限なしを織り込んだうえで答える。
+ *    RLS も trainer だけに開けてある。
+ *
+ * 🔴 **読めなかったら空配列**（＝上限なしの日は無い＝従来どおり上限が効く）。
+ *    逆に倒すと、マイグレーション未適用の環境で**全日の上限が黙って外れる**。
+ */
+export function useUncappedDays(fromDate: string | null, toDate: string | null) {
+  const { tenant } = useTenant();
+  const tenantId = tenant?.id ?? null;
+  const [uncappedDays, setUncappedDays] = useState<string[]>([]);
+
+  const refetch = useCallback(async () => {
+    if (!tenantId || !fromDate || !toDate) {
+      setUncappedDays([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("booking_uncapped_days")
+      .select("uncapped_date")
+      .eq("tenant_id", tenantId)
+      .gte("uncapped_date", fromDate)
+      .lte("uncapped_date", toDate);
+    setUncappedDays(error || !data ? [] : data.map((r) => r.uncapped_date as string));
+  }, [tenantId, fromDate, toDate]);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { uncappedDays, refetch };
+}
+
+/**
+ * その日の上限を外す／戻す（ジム側）。
+ *
+ * 外すのは INSERT 1件、戻すのは DELETE 1件。`(tenant_id, uncapped_date)` に
+ * 一意制約があるので、連打しても行は増えない（`useCloseDay` と同じ作り）。
+ */
+export function useUncapDay() {
+  const { tenant } = useTenant();
+  const tenantId = tenant?.id ?? null;
+  const [saving, setSaving] = useState(false);
+
+  const uncap = useCallback(
+    async (dateKey: string): Promise<{ error: unknown }> => {
+      if (!tenantId) return { error: new Error("no tenant") };
+      setSaving(true);
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) {
+        setSaving(false);
+        return { error: new Error("not signed in") };
+      }
+      const { error } = await supabase.from("booking_uncapped_days").insert({
+        tenant_id: tenantId,
+        uncapped_date: dateKey,
+        created_by: uid,
+      });
+      setSaving(false);
+      return { error };
+    },
+    [tenantId],
+  );
+
+  const recap = useCallback(
+    async (dateKey: string): Promise<{ error: unknown }> => {
+      if (!tenantId) return { error: new Error("no tenant") };
+      setSaving(true);
+      const { error } = await supabase
+        .from("booking_uncapped_days")
+        .delete()
+        .eq("tenant_id", tenantId)
+        .eq("uncapped_date", dateKey);
+      setSaving(false);
+      return { error };
+    },
+    [tenantId],
+  );
+
+  return { uncap, recap, saving };
+}

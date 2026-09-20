@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useBookingClosedDays, useCloseDay } from "@/hooks/useBookingClosedDays";
+import { useBookingClosedDays, useCloseDay, useUncapDay, useUncappedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, countsTowardDailyLimit, type ClosedDay } from "@/lib/bookingClosedDays";
 
 interface BookingLike {
@@ -32,6 +32,9 @@ export function useDayReception(
   const { t } = useTranslation();
   const { closedDays, refetch } = useBookingClosedDays(fromKey, toKey);
   const { close, reopen, saving } = useCloseDay();
+  // その日だけ1日の上限を適用しない日（2026-09-20）。ジム側だけが読む。
+  const { uncappedDays, refetch: refetchUncapped } = useUncappedDays(fromKey, toKey);
+  const { uncap, recap, saving: uncapSaving } = useUncapDay();
 
   /**
    * 🔴 数え方は DB（`tenant_day_booking_count`）とそろえること。ずれると、
@@ -90,5 +93,48 @@ export function useDayReception(
     [reopen, refetch, t],
   );
 
-  return { closedOn, bookedCountOn, closeDay, reopenDay, saving, dailyLimit };
+  /** その日は「上限なし」に指定されているか */
+  const uncappedOn = useCallback(
+    (dateKey: string): boolean => uncappedDays.includes(dateKey),
+    [uncappedDays],
+  );
+
+  /**
+   * その日だけ上限を外す。
+   *
+   * 🔴 閉店日の一覧（closedDays）も取り直すこと。外した瞬間に「上限で閉まっている」が
+   *    消えるので、取り直さないとオレンジのままに見える。
+   */
+  const liftCap = useCallback(
+    async (dateKey: string) => {
+      const { error } = await uncap(dateKey);
+      if (error) {
+        toast.error(t("closedDays.uncapFailed"));
+        return;
+      }
+      await Promise.all([refetchUncapped(), refetch()]);
+      toast.success(t("closedDays.uncappedToast", { date: dateKey }));
+    },
+    [uncap, refetchUncapped, refetch, t],
+  );
+
+  /** 上限を元に戻す。件数が上限に達していれば、その場でまた閉まる。 */
+  const restoreCap = useCallback(
+    async (dateKey: string) => {
+      const { error } = await recap(dateKey);
+      if (error) {
+        toast.error(t("closedDays.recapFailed"));
+        return;
+      }
+      await Promise.all([refetchUncapped(), refetch()]);
+      toast.success(t("closedDays.recappedToast", { date: dateKey }));
+    },
+    [recap, refetchUncapped, refetch, t],
+  );
+
+  return {
+    closedOn, bookedCountOn, closeDay, reopenDay, dailyLimit,
+    saving: saving || uncapSaving,
+    uncappedOn, liftCap, restoreCap,
+  };
 }

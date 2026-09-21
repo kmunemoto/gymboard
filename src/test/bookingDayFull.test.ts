@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { isDayFullyBooked } from "@/lib/bookingDayFull";
+import { bookedSlotsOnDate, groupBookedSlotsByDate, toBookedSlots } from "@/lib/bookedSlots";
+import { isFootprintBlocked } from "@/lib/bookingOptionFit";
+import { staffBookingSlotMinutes } from "@/lib/staffSchedule";
+import { sessionFootprintMinutes } from "@/lib/bookingOptions";
+import { weekdayOfDateKey } from "@/lib/businessHours";
 
 // ────────────────────────────────────────────────────────────────
 // 満枠の日をカレンダーで押せなくする（2026-09-20 宗本さんの要望）
@@ -84,5 +89,93 @@ describe("🔴 カレンダー側の組み込み", () => {
     // useState / useMemo に入れると、空いたのに押せないままになる
     expect(code).not.toMatch(/useState[^;]{0,60}[dD]ayFull/);
     expect(code).not.toMatch(/useMemo\([^;]{0,80}isDayFull/);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// 🔴 2026-09-21: 入れたのに**一度も効いていなかった**
+//
+// > 全ての営業時間にブロック入れていて予約が取れない 10/2 の日にちが
+// > 押せるようになったままですよ
+//
+// 判定（isDayFullyBooked）は正しかった。**渡すデータが足りていなかった。**
+// 埋まり枠を「選んだ日ぶん」しか読んでいなかったので、カレンダーが見る他の日は
+// どれも埋まり枠ゼロ＝「まだ空きがある」になり、全枠ブロックの日まで黒いまま残った。
+//
+// 教訓: 日をまたいで引く判定には、**日をまたいだデータ**が要る。
+// ここは実際のライブラリを繋いで、その組み立てごと見張る。
+// ────────────────────────────────────────────────────────────────
+describe("🔴 満枠判定に渡すデータ（範囲で読めているか）", () => {
+  // 10:00〜22:30 営業・75分1枠の店で、その日だけ全営業時間をブロックした状態。
+  const HOURS = { start: "10:00", end: "22:30" };
+  const SLOT = 75;
+  const DAY = "2026-10-02";
+  const OTHER = "2026-10-03";
+  // get_tenant_booked_slots が返す形そのまま（ブロック枠は status="ブロック済み"）
+  const rows = [
+    { booking_date: `${DAY}T10:00:00+09:00`, end_booking_date: `${DAY}T22:30:00+09:00`, status: "ブロック済み" },
+  ];
+
+  const dayIsFull = (byDate: ReturnType<typeof groupBookedSlotsByDate>, date: string): boolean =>
+    isDayFullyBooked(
+      staffBookingSlotMinutes(HOURS, SLOT, weekdayOfDateKey(date), null, null),
+      (m) => isFootprintBlocked({
+        bookedSlots: bookedSlotsOnDate(byDate, date),
+        date, weekday: weekdayOfDateKey(date), startMinutes: m,
+        footprintMinutes: sessionFootprintMinutes(SLOT, 0, 0),
+        capacityWindows: null, defaultCapacity: 1,
+        staffUserId: null, exclude: null,
+      }),
+    );
+
+  it("範囲で読めていれば、全営業時間ブロックの日は満枠", () => {
+    const byDate = groupBookedSlotsByDate(toBookedSlots(rows));
+    expect(dayIsFull(byDate, DAY)).toBe(true);
+  });
+
+  it("🔴 別の日ぶんしか読んでいないと、その日は「空きがある」に化ける（これが不具合の正体）", () => {
+    // 「選んだ日は 10/3、判定したいのは 10/2」＝1日ぶん読みのときに必ず起きる形
+    const onlyOtherDay = groupBookedSlotsByDate(toBookedSlots(
+      rows.filter((r) => r.booking_date.startsWith(OTHER)),
+    ));
+    expect(dayIsFull(onlyOtherDay, DAY)).toBe(false);
+  });
+
+  it("ブロックが1枠ぶん解ければ押せる日に戻る", () => {
+    const byDate = groupBookedSlotsByDate(toBookedSlots([
+      { ...rows[0], end_booking_date: `${DAY}T21:00:00+09:00` },
+    ]));
+    expect(dayIsFull(byDate, DAY)).toBe(false);
+  });
+
+  it("日付ごとに束ねても、束ねる前と同じ行が読める", () => {
+    const slots = toBookedSlots(rows);
+    const byDate = groupBookedSlotsByDate(slots);
+    expect(bookedSlotsOnDate(byDate, DAY)).toEqual(slots);
+    expect(bookedSlotsOnDate(byDate, OTHER)).toEqual([]);
+  });
+});
+
+describe("🔴 埋まり枠の読み口（CustomerBooking）", () => {
+  // RPC の呼び出し1本ぶんを切り出す
+  const call = /get_tenant_booked_slots[\s\S]*?\}\);/.exec(code);
+
+  it("呼び出しが読める", () => {
+    expect(call, "get_tenant_booked_slots の呼び出しが見つからない").not.toBeNull();
+  });
+
+  it("🔴 1日ぶんだけ読んでいない（from と to が同じ値でない）", () => {
+    // from_date: x, to_date: x ＝ 選んだ日ぶんしか持たない＝カレンダーが判定できない
+    expect(call![0]).not.toMatch(/from_date: (\S+),\s*to_date: \1,/);
+  });
+
+  it("予約できる範囲の最後まで読んでいる", () => {
+    expect(call![0]).toContain("from_date: getJSTToday()");
+    expect(call![0]).toContain("to_date: maxBookableKey");
+  });
+
+  it("日付ごとに束ねてから判定に渡している（描画のたびに全部走査しない）", () => {
+    expect(code).toContain("groupBookedSlotsByDate(bookedSlots)");
+    expect(code).toMatch(/bookedSlots: bookedSlotsOnDate\(bookedSlotsByDate, date\)/);
   });
 });

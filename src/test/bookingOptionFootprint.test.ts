@@ -273,7 +273,9 @@ describe("お客様の予約画面", () => {
   });
 
   it("🔴 DB に断られたら埋まり枠を取り直す（他端末で埋まった直後に堂々巡りしない）", () => {
-    expect(src).toContain("void fetchBookedSlots(dateKey);");
+    // 2026-09-21 から範囲ぜんぶを読み直すので引数は取らない
+    // （mem/features/booking-calendar-day-full.md）
+    expect(src).toContain("void fetchBookedSlots();");
   });
 
   it("予約が終わったらオプションの選択を消す（次の予約に引き継がない）", () => {

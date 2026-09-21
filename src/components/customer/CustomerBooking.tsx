@@ -51,7 +51,7 @@ import BookingOptionConfirm from "@/components/booking/BookingOptionConfirm";
 import BookingRepeatPicker from "@/components/booking/BookingRepeatPicker";
 import BookingSlotGrid from "@/components/booking/BookingSlotGrid";
 import { sessionFootprintMinutes, sessionMinutes, summarizeOptions } from "@/lib/bookingOptions";
-import { toBookedSlots, type BookedSlot, type BookedSlotRow } from "@/lib/bookedSlots";
+import { bookedSlotsOnDate, groupBookedSlotsByDate, toBookedSlots, type BookedSlot, type BookedSlotRow } from "@/lib/bookedSlots";
 import { isFootprintBlocked, optionFitReason, suggestSlotForOption, type OptionFitReason } from "@/lib/bookingOptionFit";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
@@ -149,13 +149,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 何日先まで受け付けるか。null=未設定なら従来どおり「1ヶ月先まで」。
   const bookingWindowDays = tenant?.booking_window_days ?? null;
   const maxBookableDate = bookingWindowEnd(bookingWindowDays, { months: LEGACY_MEMBER_WINDOW_MONTHS });
+  // 予約できる最後の日（yyyy-MM-dd）。Date は描画のたびに別物になるので、
+  // useCallback / useEffect の依存に入れるのは**この文字列のほう**。
+  const maxBookableKey = format(maxBookableDate, "yyyy-MM-dd");
 
   // 受付を終了した日（手で閉めた日＋1日の上限に達した日）。最終判定は DB（GB007）。
   // 読めなければ空配列＝「閉まっている日は無い」に倒れるので、予約が取れなくなることはない。
-  const { closedDays } = useBookingClosedDays(
-    getJSTToday(),
-    format(maxBookableDate, "yyyy-MM-dd"),
-  );
+  const { closedDays } = useBookingClosedDays(getJSTToday(), maxBookableKey);
   // 会員の予約で聞く質問だけ（体験専用の質問は出さない）。
   const memberQuestions = useMemo(() => questionsForSurface(allQuestions, "member"), [allQuestions]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -228,24 +228,28 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // calendar day; format() reads its local fields, which match.
   const dateKey = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
-  const fetchBookedSlots = useCallback(async (dateStr: string) => {
-    // 自テナントの埋まり枠だけを取得する。旧 get_booked_slots(check_date) は
-    // 全テナント横断で他ジムの予約まで返すため、混雑日は全枠が「満枠」に見えてしまう
-    // （実際は自ジムに空きがある）。公開の体験予約ページと同じ、テナント絞り込みの
-    // get_tenant_booked_slots を使う。
+  // 🔴 埋まり枠は「選んだ日」ではなく**予約できる範囲まるごと**を読む（2026-09-21）。
+  //    カレンダーの isDayFull は選んでいない日も見るので、1日ぶんだと他の日は
+  //    埋まり枠ゼロ＝「空きがある」になり、全枠ブロックの日まで押せたままだった。
+  //    経緯は mem/features/booking-calendar-day-full.md。公開の体験予約ページも同じ読み方。
+  //    テナント絞り込みの get_tenant_booked_slots を使う（旧 get_booked_slots は全ジム
+  //    横断で、混雑日は他ジムの予約まで数えて自ジムの空き枠が「満枠」に見えた）。
+  const fetchBookedSlots = useCallback(async () => {
     if (!tenant?.id) { setBookedSlots([]); return; }
     const { data } = await supabase.rpc("get_tenant_booked_slots" as any, {
       p_tenant_id: tenant.id,
-      from_date: dateStr,
-      to_date: dateStr,
+      from_date: getJSTToday(),
+      to_date: maxBookableKey,
     });
     // 整形は src/lib/bookedSlots.ts（同日キャンセル消化を残す規則もあちらに書いてある）
     setBookedSlots(toBookedSlots(data as BookedSlotRow[]));
-  }, [tenant?.id]);
+  }, [tenant?.id, maxBookableKey]);
 
-  useEffect(() => {
-    if (dateKey) fetchBookedSlots(dateKey);
-  }, [dateKey, fetchBookedSlots]);
+  // dateKey は範囲を変えないが、日付を押し直したら読み直すために依存へ入れる（鮮度）。
+  useEffect(() => { void fetchBookedSlots(); }, [dateKey, fetchBookedSlots]);
+
+  // 日付ごとに束ねる。カレンダーは1回の描画で数十日ぶん引くので、毎回の全走査を避ける。
+  const bookedSlotsByDate = useMemo(() => groupBookedSlotsByDate(bookedSlots), [bookedSlots]);
 
   // Logged-in customers always use their contract plan from profiles.
   const customerPlan = profile?.plan || null;
@@ -268,7 +272,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   //    なので、既存側に足し直さない（公開の体験予約ページと同一ロジック）。
   const isSlotBlocked = (date: string, time: string): boolean =>
     isFootprintBlocked({
-      bookedSlots, date, weekday: weekdayOfDateKey(date),
+      bookedSlots: bookedSlotsOnDate(bookedSlotsByDate, date), date, weekday: weekdayOfDateKey(date),
       startMinutes: parseTimeToMinutes(time) ?? 0,
       footprintMinutes: sessionFootprintMinutes(slotMinutes, gridOptionMinutes, bookingBufferMinutes),
       capacityWindows, defaultCapacity: bookingCapacity,
@@ -390,7 +394,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const selectedTime = slots.find((s) => s.id === selectedSlot)?.time ?? "";
   const optionFitAt = (time: string): OptionFitReason | null =>
     optionFitReason({
-      bookedSlots, date: dateKey, weekday: weekdayOfDateKey(dateKey), time,
+      bookedSlots: bookedSlotsOnDate(bookedSlotsByDate, dateKey), date: dateKey, weekday: weekdayOfDateKey(dateKey), time,
       slotMinutes, optionMinutes: bookingOpts.minutes, bufferMinutes: bookingBufferMinutes,
       capacityWindows, defaultCapacity: bookingCapacity,
       staffUserId: selectedStaffId, exclude: excludeSlot,
@@ -560,7 +564,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         // 🔴 他の端末が直前に後ろの枠を取っていた場合、画面の埋まり枠は古いままなので
         //    「押しても取れない」が繰り返される。取り直しておけば、次の描画で確認カードが
         //    「◯◯:◯◯ に変更して付ける」に切り替わる（枠は外さない）。
-        void fetchBookedSlots(dateKey);
+        void fetchBookedSlots();
         // 断られた理由ごとに案内を変える（担当だけ埋まっている・シフト外・受付終了…）。
         // 🔴 このアプリが知らない GB0xx なら「アプリが古い」と言い当てる。
         //    2026-09-03 に、古いアプリのお客様が「1日の上限」（GB007）で断られ、
@@ -601,7 +605,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     setSubmitting(false);
     refetch();
     refetchProfile(); // 1回目の予約で起算日が自動設定された場合に利用期間カードを更新
-    fetchBookedSlots(dateKey);
+    void fetchBookedSlots();
 
     // この枠のキャンセル待ちに入っていたら解除する（予約できたため不要）
     if (WAITLIST_ENABLED) {
@@ -717,15 +721,14 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         return;
       }
       toast.success(t("booking.rescheduleDone"));
-      const oldKey = rescheduleTarget.date;
       setRescheduleTarget(null);
       setRescheduleForfeitPending(false);
       setSelectedDate(undefined);
       setSelectedSlot(null);
       refetch();
       refetchProfile();
-      fetchBookedSlots(dateKey);
-      if (oldKey && oldKey !== dateKey) fetchBookedSlots(oldKey);
+      // 範囲ぜんぶを読み直すので、動かす前の日も一緒に最新になる。
+      void fetchBookedSlots();
     } finally {
       setSubmitting(false);
     }
@@ -756,7 +759,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       setForfeitPending(false);
       setLastCancelled(cancelled);
       refetch();
-      if (dateKey) fetchBookedSlots(dateKey);
+      void fetchBookedSlots();
     } finally {
       setCancelling(false);
     }

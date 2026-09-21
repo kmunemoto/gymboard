@@ -53,3 +53,32 @@ export const toBookedSlots = (rows: ReadonlyArray<BookedSlotRow> | null | undefi
         staffUserId: r.staff_user_id ?? null,
       };
     });
+
+/** 何も埋まっていない日に返す共有の空配列（描画のたびに新しい配列を作らない）。 */
+const NO_SLOTS: BookedSlot[] = [];
+
+/**
+ * 日付ごとに束ねる。
+ *
+ * 🔴 カレンダーは1回の描画で**数十日ぶん**「その日は1枠も取れないか」を引く。
+ * 束ねずに範囲ぜんぶの配列を毎回走査すると、日数 × 枠数 × 行数の総当たりになる。
+ * 判定そのものは変わらない（`isFootprintBlocked` は渡された配列を日付で絞るので、
+ * その日ぶんだけ渡しても答えは同じ）。
+ */
+export const groupBookedSlotsByDate = (
+  slots: ReadonlyArray<BookedSlot>,
+): Map<string, BookedSlot[]> => {
+  const byDate = new Map<string, BookedSlot[]>();
+  for (const s of slots) {
+    const list = byDate.get(s.date);
+    if (list) list.push(s);
+    else byDate.set(s.date, [s]);
+  }
+  return byDate;
+};
+
+/** その日の埋まり枠だけを取り出す。無い日は共有の空配列。 */
+export const bookedSlotsOnDate = (
+  byDate: ReadonlyMap<string, BookedSlot[]>,
+  date: string,
+): readonly BookedSlot[] => byDate.get(date) ?? NO_SLOTS;

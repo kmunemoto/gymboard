@@ -322,7 +322,13 @@
       "trialIgnoreBlocksDesc": "开启后，即使是日程表上「时间锁定」的时段也可接受体验预约。会员预约、代理预约和临时到店仍按原样被锁定。同时接待人数、营业时间和预约截止仍然有效。",
       "trialIgnoreBlocksWarning": "体验可能会进入锁定的时段。日程表会为与锁定重叠的体验加上标记。",
       "trialIgnoreBlocksSaved": "已保存设置",
-      "trialIgnoreBlocksSaveFailed": "保存设置失败"
+      "trialIgnoreBlocksSaveFailed": "保存设置失败",
+      "nextCyclePaymentSection": "下一期费用与预约",
+      "nextCyclePaymentLabel": "确认下一期入账前，不接受下一期的预约",
+      "nextCyclePaymentDesc": "开启后，会员在您确认入账之前无法预约下一个使用期间。确认只需在会员档案上点一下开关。门店代为预约、体验和单次入场不受影响。",
+      "nextCyclePaymentWarning": "开启时已经开始的使用期间会视为“已付”，以免在籍会员同时都无法预约。需要入账的是下一个期间之后。",
+      "nextCyclePaymentSaved": "已保存设置",
+      "nextCyclePaymentSaveFailed": "保存设置失败"
     },
     "notification": {
       "title": "通知设置",
@@ -2869,5 +2875,19 @@
     "version": "最新版本 {{version}}",
     "update": "更新",
     "later": "稍后"
+  },
+  "nextCyclePayment": {
+    "errorUnpaid": "确认下一期费用的入账后即可预约。请联系健身房。",
+    "memberToggleLabel": "下一期（{{range}}）的入账",
+    "memberPaidHelp": "已确认。该会员可以预约下一期。",
+    "memberUnpaidHelp": "未确认。该会员无法自行预约下一期（门店代为预约仍然可以）。",
+    "payTitle": "将下一期（{{range}}）标记为已入账",
+    "payDesc": "将新增一条入账记录。进入下一期后会自动变回“未确认”，无需每月手动还原。",
+    "payConfirm": "标记为已入账",
+    "marked": "已将下一期（{{range}}）标记为已入账",
+    "undoTitle": "撤销下一期（{{range}}）的入账",
+    "undoDesc": "将删除这条入账记录。该会员将再次无法预约下一期。",
+    "undoConfirm": "撤销",
+    "undone": "已撤销下一期（{{range}}）的入账"
   }
 }

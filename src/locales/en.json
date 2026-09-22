@@ -322,7 +322,13 @@
       "trialIgnoreBlocksDesc": "When on, trial bookings can be made even during times you blocked on the schedule. Member bookings, staff-made bookings and drop-ins stay blocked as before. Capacity, business hours and the booking cutoff still apply.",
       "trialIgnoreBlocksWarning": "Trials may land on blocked time. The schedule marks any trial that overlaps a block.",
       "trialIgnoreBlocksSaved": "Setting saved",
-      "trialIgnoreBlocksSaveFailed": "Could not save the setting"
+      "trialIgnoreBlocksSaveFailed": "Could not save the setting",
+      "nextCyclePaymentSection": "Payment before booking the next period",
+      "nextCyclePaymentLabel": "Do not accept bookings for the next period until payment is confirmed",
+      "nextCyclePaymentDesc": "When on, members cannot book their next period until you confirm the payment. Confirming is one tap on the member’s page. Staff bookings, trials and drop-ins are unaffected.",
+      "nextCyclePaymentWarning": "Periods that had already started when you turned this on are treated as paid, so your current members are not all blocked at once. Payment is required from the next period onwards.",
+      "nextCyclePaymentSaved": "Settings saved",
+      "nextCyclePaymentSaveFailed": "Could not save the setting"
     },
     "notification": {
       "title": "Notification Settings",
@@ -2869,5 +2875,19 @@
     "version": "Latest {{version}}",
     "update": "Update",
     "later": "Later"
+  },
+  "nextCyclePayment": {
+    "errorUnpaid": "You can book once your payment for the next period has been confirmed. Please contact the gym.",
+    "memberToggleLabel": "Payment for the next period ({{range}})",
+    "memberPaidHelp": "Confirmed. This member can book the next period.",
+    "memberUnpaidHelp": "Not confirmed. This member cannot book the next period themselves (staff can still book on their behalf).",
+    "payTitle": "Mark the next period ({{range}}) as paid",
+    "payDesc": "This adds one payment record. It resets to “not confirmed” by itself once the next period begins, so there is nothing to undo each month.",
+    "payConfirm": "Mark as paid",
+    "marked": "Marked the next period ({{range}}) as paid",
+    "undoTitle": "Undo the payment for the next period ({{range}})",
+    "undoDesc": "This deletes the payment record. The member will no longer be able to book the next period.",
+    "undoConfirm": "Undo",
+    "undone": "Undid the payment for the next period ({{range}})"
   }
 }

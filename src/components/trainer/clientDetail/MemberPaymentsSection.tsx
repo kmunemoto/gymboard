@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { getJSTToday } from "@/lib/timezone";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useMemberPayments } from "@/hooks/useMemberPayments";
+import NextCyclePaymentToggle from "./NextCyclePaymentToggle";
 import {
   PAYMENT_KINDS, PAYMENT_METHODS, formatYen, totalPaid, validateAmount,
   type PaymentKind, type PaymentMethod,
@@ -93,6 +94,15 @@ const MemberPaymentsSection = ({ clientId, currentPlanName, suggestedAmountYen }
         <Banknote className="w-3.5 h-3.5" />
         {t("member.paymentsTitle")}
       </h2>
+
+      {/* 次回分の入金（店が「入金まで次回分を受け付けない」設定にしているときだけ出る）。
+          入金の欄の頭に置く: 押す動機が生まれるのは対面で受け取った瞬間で、
+          そのとき開いているのがこのカルテだから。 */}
+      <NextCyclePaymentToggle
+        clientId={clientId}
+        currentPlanName={currentPlanName}
+        suggestedAmountYen={suggestedAmountYen}
+      />
       <Card>
         <CardContent className="p-3 sm:p-4 space-y-3">
           <Button onClick={openDialog} className="w-full h-11 gap-1.5">

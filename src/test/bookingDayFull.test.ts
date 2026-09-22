@@ -60,7 +60,12 @@ describe("その日が1枠も取れないか", () => {
 
 describe("🔴 カレンダー側の組み込み", () => {
   it("満枠の日を選べなくしている", () => {
-    expect(code).toMatch(/if \(isDayFull\(yyyyMMdd\)\) return true;/);
+    // 2026-09-22 に「その日を選べるか」の規則ごと src/lib/bookingCalendarDay.ts へ移した。
+    // CustomerBooking は判定関数を材料として渡すだけになっている。
+    expect(code).toContain("isDayFull,");
+    expect(code).toContain("isDayUnselectable(format(date, \"yyyy-MM-dd\"), calendarDayRules)");
+    expect(stripJs(readFileSync("src/lib/bookingCalendarDay.ts", "utf8")))
+      .toMatch(/if \(r\.isDayFull\(dateKey\)\) return true;/);
   });
 
   it("🔴 当日は対象外（空き状況を見せる仕様を壊さない）", () => {

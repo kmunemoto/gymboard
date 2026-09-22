@@ -29,9 +29,9 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTranslation } from "react-i18next";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
-import { isClosedDate, minutesToTime, parseTimeToMinutes, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
+import { minutesToTime, parseTimeToMinutes, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
-import { bookingWindowEnd, isBeyondBookingWindow, LEGACY_MEMBER_WINDOW_MONTHS } from "@/lib/bookingWindow";
+import { bookingWindowEnd, LEGACY_MEMBER_WINDOW_MONTHS } from "@/lib/bookingWindow";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingFrequencyLimits } from "@/hooks/useBookingFrequencyLimits";
@@ -44,6 +44,9 @@ import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimit
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, isDayHardClosed, isDayViewOnly, isDayClosedError } from "@/lib/bookingClosedDays";
+import { isDayUnselectable } from "@/lib/bookingCalendarDay";
+import { useNextCyclePaymentGate } from "@/hooks/useNextCyclePaymentGate";
+import NextCyclePaymentNotice from "@/components/booking/NextCyclePaymentNotice";
 import { isDayFullyBooked } from "@/lib/bookingDayFull";
 import { useBookingQuestions } from "@/hooks/useBookingQuestions";
 import { useBookingOptionSelection } from "@/hooks/useBookingOptionSelection";
@@ -156,6 +159,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 受付を終了した日（手で閉めた日＋1日の上限に達した日）。最終判定は DB（GB007）。
   // 読めなければ空配列＝「閉まっている日は無い」に倒れるので、予約が取れなくなることはない。
   const { closedDays } = useBookingClosedDays(getJSTToday(), maxBookableKey);
+  // 「この日以降は次回分の入金が要る」日付。null＝止めるものが無い（既定）。判定は DB（GB009）
+  const { gate: nextCyclePaymentGate } = useNextCyclePaymentGate(tenant?.id ?? null);
   // 会員の予約で聞く質問だけ（体験専用の質問は出さない）。
   const memberQuestions = useMemo(() => questionsForSurface(allQuestions, "member"), [allQuestions]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -282,8 +287,6 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 締切はジム設定（tenants.booking_cutoff_*）に従う。読めなければ prev_day（従来の挙動）。
   const cutoff = { type: tenant?.booking_cutoff_type, hours: tenant?.booking_cutoff_hours };
 
-  // 過去日（今日より前）か。カレンダーで選択不可にする対象。
-  const isPastDay = (date: string): boolean => !!date && date < getJSTToday();
   // その日にまだ取れる枠があるかの判定に使う「最後に予約できる開始時刻」。
   // 曜日別の営業時間があるので**日付ごとに変わる**（定休日は取れる枠が無い＝0扱い）。
   const lastBookableStartOn = (date: string): number => {
@@ -354,6 +357,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       staffBookingSlotMinutes(businessHours, totalMinutes, weekdayOfDateKey(d), staffSchedules, selectedStaffId),
       (m) => isSlotBlocked(d, minutesToTime(m)) || isSlotNotAccepting(d, minutesToTime(m)),
     );
+
+  // カレンダーの「その日を選べるか」に渡す材料。判定そのものは bookingCalendarDay.ts。
+  const calendarDayRules = {
+    today: getJSTToday(), businessHours, closedDays, hasOwnBookingOn, isDayFull,
+    staffSchedules, staffUserId: selectedStaffId, bookingWindowDays,
+    nextCyclePaymentGate,
+  };
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean; dayFull: boolean }[] = [];
@@ -1074,29 +1084,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   locale={ja}
                   fromDate={startOfDay(getJSTNow())}
                   toDate={maxBookableDate}
-                  disabled={(date) => {
-                    const yyyyMMdd = format(date, "yyyy-MM-dd");
-                    // 当日は選択可能にする。締切の判定は枠ごとに isSlotPastCutoff が行う
-                    // （prev_day の店なら全枠が不可＝従来どおり「閲覧のみ」、
-                    //  hours_before の店なら締切前の枠だけ予約できる）ので、
-                    // ここで塞ぐのは過去日と、店が閉まっている日だけでよい。
-                    if (isPastDay(yyyyMMdd)) return true;
-                    // 定休日。toDate があっても、その間の定休日は個別に塞ぐ必要がある。
-                    if (isClosedDate(businessHours, yyyyMMdd)) return true;
-                    // 店が「その日はもう受けない」とした日、または1日の上限に達した日。
-                    // 定休日と同じ見た目（選べない）にする。最終判定は DB（GB007）。
-                    // ⚠️ 上限で埋まった**当日**を、**その日に自分の予約がある人**にだけ開ける
-                    //    （押しても予約はできない。空き時間を見せるだけ）。
-                    //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
-                    if (isDayHardClosed(closedDays, yyyyMMdd, hasOwnBookingOn(yyyyMMdd))) return true;
-                    // 全枠が満枠／受付しない時間帯の日。定休日と同じ見た目にする。
-                    if (isDayFull(yyyyMMdd)) return true;
-                    // 指名した担当が出勤していない曜日。指名なしなら常に false。
-                    if (!staffWorksOnWeekday(businessHours, weekdayOfDateKey(yyyyMMdd), staffSchedules, selectedStaffId)) {
-                      return true;
-                    }
-                    return isBeyondBookingWindow(yyyyMMdd, bookingWindowDays, { months: LEGACY_MEMBER_WINDOW_MONTHS });
-                  }}
+                  // 🔴 「その日を選べるか」の規則は src/lib/bookingCalendarDay.ts に集めてある。
+                  //    ここに書き足さないこと（理由が散り、規則としてのテストが書けなくなる）。
+                  disabled={(date) => isDayUnselectable(format(date, "yyyy-MM-dd"), calendarDayRules)}
                   className="pointer-events-auto"
                   components={{
                     DayContent: ({ date: dayDate }) => {
@@ -1121,6 +1111,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                     },
                   }}
                 />
+                {/* 🔴 押す前に理由が分かるようにする（薄いだけだと店へ問い合わせになる） */}
+                <NextCyclePaymentNotice gate={nextCyclePaymentGate} />
               </CardContent>
             </Card>
 

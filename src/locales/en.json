@@ -2888,6 +2888,7 @@
     "undoTitle": "Undo the payment for the next period ({{range}})",
     "undoDesc": "This deletes the payment record. The member will no longer be able to book the next period.",
     "undoConfirm": "Undo",
-    "undone": "Undid the payment for the next period ({{range}})"
+    "undone": "Undid the payment for the next period ({{range}})",
+    "customerNotice": "Bookings from {{date}} onwards open up once your payment for the next period has been confirmed."
   }
 }

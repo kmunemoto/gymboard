@@ -41,6 +41,7 @@ const MIGRATION = "supabase/migrations/20260901000000_booking_daily_cap.sql";
 const TRIAL_EXEMPT = "supabase/migrations/20260901010000_trial_exempt_from_daily_cap.sql";
 const LIB = "src/lib/bookingClosedDays.ts";
 const CUSTOMER = "src/components/customer/CustomerBooking.tsx";
+const CALENDAR_DAY = "src/lib/bookingCalendarDay.ts";
 const TRIAL = "src/pages/TrialBooking.tsx";
 const DROPIN = "src/pages/DropInBooking.tsx";
 const SCHEDULE = "src/components/trainer/TrainerSchedule.tsx";
@@ -213,9 +214,12 @@ describe("会員の予約画面が受付終了を反映している", () => {
   it("🔴 閉まっている日はカレンダーで選べない（会員アプリ）", () => {
     // 2026-09-05 に isDayClosed → isDayHardClosed へ差し替えた。
     // 塞ぐこと自体は変わっていない（当日 × 上限のときだけ、押して中身を見せる）。
-    expect(readCode(CUSTOMER)).toMatch(
-      /if \(isDayHardClosed\(closedDays, yyyyMMdd, hasOwnBookingOn\(yyyyMMdd\)\)\) return true;/,
+    // 2026-09-22 に「その日を選べるか」の規則ごと src/lib/bookingCalendarDay.ts へ移した。
+    expect(readCode(CALENDAR_DAY)).toMatch(
+      /if \(isDayHardClosed\(r\.closedDays, dateKey, r\.hasOwnBookingOn\(dateKey\)\)\) return true;/,
     );
+    // 画面は材料を渡しているか（渡し忘れると規則が空振りする）
+    expect(readCode(CUSTOMER)).toContain("closedDays, hasOwnBookingOn,");
   });
 
   it("🔴 閉まっている日は1枠も出さない（キャンセル待ちにも出せない）", () => {
@@ -404,9 +408,12 @@ describe("🔴 見せるだけで、押せないこと", () => {
   });
 
   it("カレンダーは hard closed だけ塞ぐ", () => {
-    expect(code).toMatch(
-      /if \(isDayHardClosed\(closedDays, yyyyMMdd, hasOwnBookingOn\(yyyyMMdd\)\)\) return true;/,
+    // 規則の本体は src/lib/bookingCalendarDay.ts（2026-09-22 に切り出した）
+    expect(readCode(CALENDAR_DAY)).toMatch(
+      /if \(isDayHardClosed\(r\.closedDays, dateKey, r\.hasOwnBookingOn\(dateKey\)\)\) return true;/,
     );
+    expect(readCode(CALENDAR_DAY), "isDayViewOnly で塞ぐと当日の空き状況が見せられない")
+      .not.toContain("isDayViewOnly");
   });
 
   it("🔴 「その日に予約がある人だけ」を画面側でも渡している", () => {

@@ -2888,6 +2888,7 @@
     "undoTitle": "撤销下一期（{{range}}）的入账",
     "undoDesc": "将删除这条入账记录。该会员将再次无法预约下一期。",
     "undoConfirm": "撤销",
-    "undone": "已撤销下一期（{{range}}）的入账"
+    "undone": "已撤销下一期（{{range}}）的入账",
+    "customerNotice": "确认下一期费用的入账后，即可预约 {{date}} 之后的时段。"
   }
 }

@@ -195,6 +195,33 @@ describe("🔴 カルテのトグル（NextCyclePaymentToggle）", () => {
   });
 });
 
+describe("🔴 お客様の画面（押す前に分かる）", () => {
+  const notice = read("src/components/booking/NextCyclePaymentNotice.tsx");
+  const hook = read("src/hooks/useNextCyclePaymentGate.ts");
+
+  it("gate が無ければ何も出さない", () => {
+    expect(notice).toMatch(/if \(!gate\) return null;/);
+  });
+
+  it("いつから取れるようになるかを日付で出す", () => {
+    expect(notice).toContain('t("nextCyclePayment.customerNotice"');
+    expect(notice).toContain("date:");
+  });
+
+  it("🔴 判定は DB の1本。画面で暦を組み立てていない", () => {
+    expect(hook).toContain('supabase.rpc("get_my_next_cycle_payment_gate"');
+    for (const forbidden of ["plan_cycle_window", "cycle_start_date", "max_sessions"]) {
+      expect(hook, `画面側で ${forbidden} を扱うと DB とズレる`).not.toContain(forbidden);
+    }
+  });
+
+  it("🔴 読めなければ何も止めない（effect の中で投げない）", () => {
+    expect(hook).toMatch(/try \{[\s\S]{0,300}supabase\.rpc/);
+    expect(hook).toMatch(/\} catch \{[\s\S]{0,40}setGate\(null\);/);
+    expect(hook).toContain("setGate(error ? null : (data ?? null));");
+  });
+});
+
 describe("文言（5言語）", () => {
   for (const lang of LOCALES) {
     it(`${lang} に設定とトグルの文言がある`, () => {
@@ -202,7 +229,7 @@ describe("文言（5言語）", () => {
       for (const k of ["nextCyclePaymentLabel", "nextCyclePaymentDesc", "nextCyclePaymentWarning", "nextCyclePaymentSection"]) {
         expect(json.settings?.trainer?.[k], `${lang}.json settings.trainer.${k}`).toBeTruthy();
       }
-      for (const k of ["memberToggleLabel", "payTitle", "undoTitle", "errorUnpaid"]) {
+      for (const k of ["memberToggleLabel", "payTitle", "undoTitle", "errorUnpaid", "customerNotice"]) {
         expect(json.nextCyclePayment?.[k], `${lang}.json nextCyclePayment.${k}`).toBeTruthy();
       }
     });

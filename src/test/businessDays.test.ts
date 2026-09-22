@@ -280,7 +280,10 @@ describe("🔴 画面が曜日を渡している（渡し忘れると定休日�
   it("お客様の予約が曜日つきで枠を作っている", () => {
     const src = readFileSync("src/components/customer/CustomerBooking.tsx", "utf8");
     expect(src).toMatch(/staffBookingSlotMinutes\(\s*[\s\S]{0,200}?weekday/);
-    expect(src, "定休日をカレンダーで塞いでいません").toMatch(/isClosedDate\(businessHours,/);
+    // 定休日でカレンダーを塞ぐ規則は src/lib/bookingCalendarDay.ts へ移した（2026-09-22）
+    expect(readFileSync("src/lib/bookingCalendarDay.ts", "utf8"),
+      "定休日をカレンダーで塞いでいません").toMatch(/isClosedDate\(r\.businessHours, dateKey\)/);
+    expect(src, "画面が営業時間を渡していません").toContain("today: getJSTToday(), businessHours,");
   });
 
   it("体験予約・ドロップインが曜日つきで枠を作っている", () => {

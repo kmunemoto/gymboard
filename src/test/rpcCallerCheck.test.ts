@@ -87,15 +87,39 @@ function clientRpcCalls(): Map<string, { args: Set<string>; file: string }> {
 const isActorArg = (name: string) => /^(p_|_)?(target_)?(user|customer)_id$/.test(name);
 
 /** マイグレーションの中で、その関数を定義している節を切り出す */
+/**
+ * 🔴 **全マイグレーションを流した順に見て、その関数の「最後の定義」を取る**（2026-09-22）。
+ *
+ * もとは `20260806160000_rpc_caller_check.sql` **1ファイルだけ**を見ていた。
+ * `CREATE OR REPLACE` は最後に流れたものが残るので、後のマイグレーションで
+ * 包みを外して再定義しても、この検査は**古いファイルの定義を読んで緑のまま**になる。
+ * 段階1の検査が3種類の形を見逃していたのと同じ種類の穴だったので、ここで塞いだ。
+ *
+ * 別ファイルで定義された新しい RPC も、これで素直に対象に入る。
+ */
+function allMigrationsSql(): string {
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort()
+    .map((f) => stripSqlComments(readFileSync(`${MIGRATIONS_DIR}/${f}`, "utf8")))
+    .join("\n");
+}
+
 function definitionOf(sql: string, fn: string): { params: string; body: string } | null {
-  const re = new RegExp(`CREATE (?:OR REPLACE )?FUNCTION public\\.${fn}\\(([^)]*)\\)`);
-  const m = re.exec(sql);
-  if (!m) return null;
-  return { params: m[1], body: sql.slice(m.index, m.index + 900) };
+  const re = new RegExp(`CREATE (?:OR REPLACE )?FUNCTION public\\.${fn}\\(([^)]*)\\)`, "g");
+  let last: RegExpExecArray | null = null;
+  for (let m = re.exec(sql); m; m = re.exec(sql)) last = m;
+  if (!last) return null;
+  // 本体は「次の関数定義の手前まで」。固定長で切ると、長い関数で包みを見落としたり、
+  // 隣の関数の包みを自分のものと数えたりする。
+  const rest = sql.slice(last.index);
+  const next = /CREATE (?:OR REPLACE )?FUNCTION/.exec(rest.slice(10));
+  return { params: last[1], body: next ? rest.slice(0, next.index + 10) : rest };
 }
 
 describe("user_id を引数で受け取る RPC は呼び出し元を照合する", () => {
-  const sql = migrationSql();
+  // 🔴 1ファイルではなく全マイグレーション（最後の定義が正）。allMigrationsSql 参照
+  const sql = allMigrationsSql();
   const calls = clientRpcCalls();
   const withActorArg = [...calls.entries()].filter(([, v]) => [...v.args].some(isActorArg));
 
@@ -123,7 +147,8 @@ describe("user_id を引数で受け取る RPC は呼び出し元を照合する
     expect(
       unguarded,
       "ログインさえすれば他人の user_id を渡せます。" +
-        `${MIGRATION} で assert_can_act_for を通すか、SELF_GUARDED に理由付きで足してください:\n  ` +
+        "どのマイグレーションでもよいので assert_can_act_for を通すか、" +
+        `SELF_GUARDED に理由付きで足してください（包みの雛形は ${MIGRATION}）:\n  ` +
         unguarded.join("\n  "),
     ).toEqual([]);
   });

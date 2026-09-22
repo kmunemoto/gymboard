@@ -322,7 +322,13 @@
       "trialIgnoreBlocksDesc": "켜면 일정표에서 「시간 블록」을 넣은 시간에도 체험 예약을 받습니다. 회원 예약·대리 예약·드롭인은 지금처럼 블록으로 막힙니다. 동시 수용 인원·영업시간·예약 마감은 켜도 적용됩니다.",
       "trialIgnoreBlocksWarning": "블록한 시간에 체험이 들어올 수 있습니다. 일정표에서는 블록과 겹친 체험에 표시가 붙습니다.",
       "trialIgnoreBlocksSaved": "설정을 저장했습니다",
-      "trialIgnoreBlocksSaveFailed": "설정 저장에 실패했습니다"
+      "trialIgnoreBlocksSaveFailed": "설정 저장에 실패했습니다",
+      "nextCyclePaymentSection": "다음 기간 요금과 예약",
+      "nextCyclePaymentLabel": "다음 기간 입금이 확인될 때까지 다음 기간 예약을 받지 않음",
+      "nextCyclePaymentDesc": "켜면 회원은 입금이 확인될 때까지 다음 이용 기간을 예약할 수 없습니다. 확인은 회원 카드의 스위치로 한 번만 누르면 됩니다. 대리 예약·체험·드롭인에는 적용되지 않습니다.",
+      "nextCyclePaymentWarning": "켠 시점에 이미 시작된 이용 기간은 ‘입금 완료’로 취급합니다(재적 회원이 한꺼번에 예약할 수 없게 되는 것을 방지). 입금이 필요한 것은 다음 기간부터입니다.",
+      "nextCyclePaymentSaved": "설정을 저장했습니다",
+      "nextCyclePaymentSaveFailed": "설정을 저장하지 못했습니다"
     },
     "notification": {
       "title": "알림 설정",
@@ -2869,5 +2875,19 @@
     "version": "최신 버전 {{version}}",
     "update": "업데이트",
     "later": "나중에"
+  },
+  "nextCyclePayment": {
+    "errorUnpaid": "다음 기간 요금 입금이 확인된 후에 예약할 수 있습니다. 짐에 문의해 주세요.",
+    "memberToggleLabel": "다음 기간({{range}}) 입금",
+    "memberPaidHelp": "확인되었습니다. 이 회원은 다음 기간을 예약할 수 있습니다.",
+    "memberUnpaidHelp": "미확인입니다. 이 회원은 직접 다음 기간을 예약할 수 없습니다(짐의 대리 예약은 가능합니다).",
+    "payTitle": "다음 기간({{range}})을 입금 완료로 표시",
+    "payDesc": "입금 기록을 1건 남깁니다. 다음 기간이 시작되면 자동으로 ‘미확인’으로 돌아가므로 매달 되돌릴 필요가 없습니다.",
+    "payConfirm": "입금 완료로 표시",
+    "marked": "다음 기간({{range}})을 입금 완료로 표시했습니다",
+    "undoTitle": "다음 기간({{range}}) 입금 취소",
+    "undoDesc": "이 입금 기록을 삭제합니다. 다음 기간은 다시 예약할 수 없게 됩니다.",
+    "undoConfirm": "취소하기",
+    "undone": "다음 기간({{range}}) 입금을 취소했습니다"
   }
 }

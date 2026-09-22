@@ -1746,6 +1746,7 @@ export type Database = {
       member_payments: {
         Row: {
           amount_yen: number
+          covers_cycle_start: string | null
           created_at: string
           id: string
           kind: string
@@ -1759,6 +1760,7 @@ export type Database = {
         }
         Insert: {
           amount_yen: number
+          covers_cycle_start?: string | null
           created_at?: string
           id?: string
           kind: string
@@ -1772,6 +1774,7 @@ export type Database = {
         }
         Update: {
           amount_yen?: number
+          covers_cycle_start?: string | null
           created_at?: string
           id?: string
           kind?: string
@@ -3252,6 +3255,8 @@ export type Database = {
           logo_url: string | null
           max_customers: number | null
           max_trainers: number | null
+          next_cycle_payment_required: boolean
+          next_cycle_payment_required_since: string | null
           operating_hours: Json | null
           owner_user_id: string | null
           phone: string | null
@@ -3319,6 +3324,8 @@ export type Database = {
           logo_url?: string | null
           max_customers?: number | null
           max_trainers?: number | null
+          next_cycle_payment_required?: boolean
+          next_cycle_payment_required_since?: string | null
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
@@ -3386,6 +3393,8 @@ export type Database = {
           logo_url?: string | null
           max_customers?: number | null
           max_trainers?: number | null
+          next_cycle_payment_required?: boolean
+          next_cycle_payment_required_since?: string | null
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
@@ -4523,6 +4532,19 @@ export type Database = {
           latest_version: string
           released_at: string
         }[]
+      }
+      get_member_next_cycle_gate: {
+        Args: { p_user_id: string }
+        Returns: {
+          cycle_start: string
+          cycle_end: string
+          paid: boolean
+          payment_id: string | null
+        }[]
+      }
+      get_my_next_cycle_payment_gate: {
+        Args: { p_tenant_id: string }
+        Returns: string | null
       }
       get_tenant_closed_days: {
         Args: { from_date: string; p_tenant_id: string; to_date: string }

@@ -23,6 +23,7 @@ import TrainerStaffManager from "./TrainerStaffManager";
 import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
+import NextCyclePaymentCard from "./NextCyclePaymentCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
@@ -1191,6 +1192,14 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       {/* === 受付しない時間帯 === 開始時刻を揃えて夜の枠数を確保する（両端の時刻は受け付ける） */}
       <section className="space-y-3">
         <TrainerBlockedWindows />
+      </section>
+
+      {/* === 次回分の入金まで次回分を受け付けない（GB009） ===
+          「受けない条件」の並びに入れる。実装は NextCyclePaymentCard
+          （このファイルは行数の上限に達しているため別ファイル）。 */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.nextCyclePaymentSection")}</h3>
+        <NextCyclePaymentCard />
       </section>
 
       {/* === 1日の上限人数 === 達した日はお客様側の受付を自動で終了する（GB007）。

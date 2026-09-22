@@ -322,7 +322,13 @@
       "trialIgnoreBlocksDesc": "開啟後，即使是日程表上「時間鎖定」的時段也可接受體驗預約。會員預約、代理預約與臨時到店仍照舊被鎖定。同時接待人數、營業時間與預約截止仍然有效。",
       "trialIgnoreBlocksWarning": "體驗可能會進入鎖定的時段。日程表會為與鎖定重疊的體驗加上標記。",
       "trialIgnoreBlocksSaved": "已儲存設定",
-      "trialIgnoreBlocksSaveFailed": "儲存設定失敗"
+      "trialIgnoreBlocksSaveFailed": "儲存設定失敗",
+      "nextCyclePaymentSection": "下一期費用與預約",
+      "nextCyclePaymentLabel": "確認下一期入帳前，不接受下一期的預約",
+      "nextCyclePaymentDesc": "開啟後，會員在您確認入帳之前無法預約下一個使用期間。確認只需在會員檔案上點一下開關。門市代為預約、體驗和單次入場不受影響。",
+      "nextCyclePaymentWarning": "開啟時已經開始的使用期間會視為「已付」，以免在籍會員同時都無法預約。需要入帳的是下一個期間之後。",
+      "nextCyclePaymentSaved": "已儲存設定",
+      "nextCyclePaymentSaveFailed": "儲存設定失敗"
     },
     "notification": {
       "title": "通知設定",
@@ -2869,5 +2875,19 @@
     "version": "最新版本 {{version}}",
     "update": "更新",
     "later": "稍後"
+  },
+  "nextCyclePayment": {
+    "errorUnpaid": "確認下一期費用的入帳後即可預約。請聯絡健身房。",
+    "memberToggleLabel": "下一期（{{range}}）的入帳",
+    "memberPaidHelp": "已確認。該會員可以預約下一期。",
+    "memberUnpaidHelp": "未確認。該會員無法自行預約下一期（門市代為預約仍然可以）。",
+    "payTitle": "將下一期（{{range}}）標記為已入帳",
+    "payDesc": "將新增一筆入帳紀錄。進入下一期後會自動變回「未確認」，不需每月手動還原。",
+    "payConfirm": "標記為已入帳",
+    "marked": "已將下一期（{{range}}）標記為已入帳",
+    "undoTitle": "撤銷下一期（{{range}}）的入帳",
+    "undoDesc": "將刪除這筆入帳紀錄。該會員將再次無法預約下一期。",
+    "undoConfirm": "撤銷",
+    "undone": "已撤銷下一期（{{range}}）的入帳"
   }
 }

@@ -37,6 +37,7 @@ import { isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { isBookingLimitError } from "@/lib/bookingLimits";
 import { isStaffOffShiftError } from "@/lib/staffSchedule";
 import { isStaffConflictError } from "@/lib/tenantStaff";
+import { isNextCyclePaymentError } from "@/lib/nextCyclePayment";
 
 /**
  * このアプリが意味を知っている SQLSTATE。**DB の migrations にあるものと同じ集合**に保つ。
@@ -52,6 +53,7 @@ export const KNOWN_GUARD_CODES = [
   "GB006", // 受付しない時間帯
   "GB007", // その日は受付終了（1日の上限に到達／店が手で停止）
   "GB008", // あとからオプションを足せない（すぐ後ろが空いていない）
+  "GB009", // 次回分が未入金（店が「入金まで次回分を受け付けない」設定にしている）
 ] as const;
 
 /** 予約のガードが使う SQLSTATE の形。ここに当てはまるものだけを「規則による拒否」とみなす。 */
@@ -81,14 +83,15 @@ export const GENERIC_BOOKING_ERROR_KEY = "booking.errorBookingFailed";
  * メッセージ本文も見るので、より限定的な判定より後ろに置かないこと。
  */
 export const bookingErrorKey = (error: unknown): string =>
-  isPlanLimitError(error) ? "planSessions.errorReached"
-    : isDayClosedError(error) ? "closedDays.errorClosed"
-      : isBlockedWindowError(error) ? "blockedWindows.errorNotAccepting"
-        : isBookingLimitError(error) ? "bookingLimits.errorOverLimit"
-          : isStaffOffShiftError(error) ? "staff.errorStaffOffShift"
-            : isStaffConflictError(error) ? "staff.errorStaffBusy"
-              : isAppOutdatedError(error) ? "booking.errorAppOutdated"
-                : GENERIC_BOOKING_ERROR_KEY;
+  isNextCyclePaymentError(error) ? "nextCyclePayment.errorUnpaid"
+    : isPlanLimitError(error) ? "planSessions.errorReached"
+      : isDayClosedError(error) ? "closedDays.errorClosed"
+        : isBlockedWindowError(error) ? "blockedWindows.errorNotAccepting"
+          : isBookingLimitError(error) ? "bookingLimits.errorOverLimit"
+            : isStaffOffShiftError(error) ? "staff.errorStaffOffShift"
+              : isStaffConflictError(error) ? "staff.errorStaffBusy"
+                : isAppOutdatedError(error) ? "booking.errorAppOutdated"
+                  : GENERIC_BOOKING_ERROR_KEY;
 
 /**
  * まとめて失敗したとき（くり返し予約が全滅したとき）の文言。
@@ -107,9 +110,9 @@ export const bookingErrorKeyForAll = (errors: ReadonlyArray<unknown>): string =>
  * 店側の代理予約が断られたときの文言。お客様向けとは別に持つ。
  *
  * - 文言が違う（お客様には「別の時間を」、店には「設定で変えられます」と言う）
- * - 🔴 **受付終了（GB007）をここで拾わない。** 1日の上限も手動の受付停止も
- *   代理予約には効かない（「今日はもう受けない」と決めたあとで常連を1人足すのは
- *   店の裁量）。拾うと、起きないことの案内を用意することになる
+ * - 🔴 **受付終了（GB007）と次回分の未入金（GB009）をここで拾わない。** 1日の上限も手動の受付停止も
+ *   代理予約には効かない（「今日はもう受けない」「まだ払ってもらっていない」と
+ *   決めたあとで常連を1人足すのは店の裁量）。拾うと、起きないことの案内を用意することになる
  * - GB003（予約回数の制限）が代理予約で出るのは、トレーナーが**自分を**お客様として
  *   選んだときだけ（`auth.uid() = user_id` になり自己予約扱いになる）
  */

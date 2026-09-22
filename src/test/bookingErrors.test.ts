@@ -25,6 +25,22 @@ import {
 
 const LOCALES = ["ja", "en", "ko", "zh-CN", "zh-TW"] as const;
 
+/**
+ * 🔴 「まだ実装されていない GB0xx」を**ハードコードしない**。
+ *
+ * ここは長らく `GB009` を「未来のコード」の例として直接書いていた。
+ * 2026-09-22 に GB009（次回分が未入金）を実装した日、このテストが4件まとめて落ちた。
+ * 落ちたこと自体は正しい（実装したのだから未知ではない）が、**毎回テストを直す羽目になる**。
+ * KNOWN_GUARD_CODES から未使用のものを選べば、次にガードを足しても壊れない。
+ */
+const UNKNOWN_CODE = (() => {
+  for (let n = 900; n < 1000; n += 1) {
+    const code = `GB${n}`;
+    if (!(KNOWN_GUARD_CODES as readonly string[]).includes(code)) return code;
+  }
+  throw new Error("未使用の GB0xx が見つかりません");
+})();
+
 /** migrations が実際に投げる SQLSTATE（`USING ERRCODE = 'GBxxx'`）。 */
 const migrationCodes = (): string[] => {
   const dir = "supabase/migrations";
@@ -41,7 +57,7 @@ const migrationCodes = (): string[] => {
 
 describe("🔴 「アプリが古い」を言い当てる", () => {
   it("知らない GB0xx は「アプリが古い」", () => {
-    expect(isAppOutdatedError({ code: "GB009" })).toBe(true);
+    expect(isAppOutdatedError({ code: UNKNOWN_CODE })).toBe(true);
     expect(isAppOutdatedError({ code: "GB042" })).toBe(true);
   });
 
@@ -97,7 +113,8 @@ describe("理由ごとの案内", () => {
     ["GB004", "planSessions.errorReached"],
     ["GB006", "blockedWindows.errorNotAccepting"],
     ["GB007", "closedDays.errorClosed"],
-    ["GB009", "booking.errorAppOutdated"],
+    ["GB009", "nextCyclePayment.errorUnpaid"],
+    [UNKNOWN_CODE, "booking.errorAppOutdated"],
   ];
 
   for (const [code, key] of cases) {
@@ -121,6 +138,8 @@ describe("🔴 くり返し予約が全滅したとき", () => {
     expect(bookingErrorKeyForAll([{ code: "GB007" }, { code: "GB007" }]))
       .toBe("closedDays.errorClosed");
     expect(bookingErrorKeyForAll([{ code: "GB009" }, { code: "GB009" }]))
+      .toBe("nextCyclePayment.errorUnpaid");
+    expect(bookingErrorKeyForAll([{ code: UNKNOWN_CODE }, { code: UNKNOWN_CODE }]))
       .toBe("booking.errorAppOutdated");
   });
 
@@ -153,9 +172,11 @@ describe("画面が共通の判定を通っている", () => {
     // 店側の端末も更新されていないことがある（お客様側と同じ理屈）。
     expect(readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8"))
       .toContain("proxyBookingErrorKey(error)");
-    expect(proxyBookingErrorKey({ code: "GB009" })).toBe("booking.errorAppOutdated");
-    // 🔴 受付終了（GB007）は代理予約に効かないので、ここでは拾わない
+    expect(proxyBookingErrorKey({ code: UNKNOWN_CODE })).toBe("booking.errorAppOutdated");
+    // 🔴 受付終了（GB007）と次回分の未入金（GB009）は代理予約に効かないので、ここでは拾わない
+    //    （起きないことの案内を用意すると、出ない文言を保守し続けることになる）
     expect(proxyBookingErrorKey({ code: "GB007" })).toBe("schedule.errorAddFailed");
+    expect(proxyBookingErrorKey({ code: "GB009" })).toBe("schedule.errorAddFailed");
   });
 });
 
@@ -164,6 +185,11 @@ describe("文言（5言語）", () => {
     it(`${lang} に booking.errorAppOutdated がある`, () => {
       const json = JSON.parse(readFileSync(`src/locales/${lang}.json`, "utf8"));
       expect(json.booking?.errorAppOutdated, `${lang}.json booking.errorAppOutdated`).toBeTruthy();
+    });
+
+    it(`${lang} に nextCyclePayment.errorUnpaid がある`, () => {
+      const json = JSON.parse(readFileSync(`src/locales/${lang}.json`, "utf8"));
+      expect(json.nextCyclePayment?.errorUnpaid, `${lang}.json nextCyclePayment.errorUnpaid`).toBeTruthy();
     });
   }
 });

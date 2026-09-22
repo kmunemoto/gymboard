@@ -44,6 +44,18 @@ export interface Tenant {
    * 同時受入数・営業時間・予約の締切は true でもそのまま効く。
    */
   trial_ignores_blocked_slots: boolean;
+  /**
+   * 次回分の入金を確認するまで、次回分（次のサイクル窓）の予約を受け付けないか。既定 false。
+   * 🔴 店側の代理予約には効かない。体験・ドロップインは無関係。
+   * 規則は `src/lib/nextCyclePayment.ts`、最終判定は DB（GB009）。
+   */
+  next_cycle_payment_required?: boolean;
+  /**
+   * 上の設定を ON にした日（yyyy-MM-dd）。
+   * 🔴 **この日までに始まっていたサイクル窓は「払い済み」扱い**にする。
+   * 無いと ON にした瞬間に在籍会員が全員まとめて止まる。
+   */
+  next_cycle_payment_required_since?: string | null;
   /** トレーナーのホーム画面に「フォローが必要な顧客」を表示するか。既定true */
   show_retention_alerts: boolean;
   /** 毎朝、その日の予約一覧をオーナー/トレーナーへプッシュ通知するか。既定true */

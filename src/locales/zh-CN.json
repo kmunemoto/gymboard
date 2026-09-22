@@ -1765,6 +1765,12 @@
     "fieldCapacityHint": "同一时间段最多可接受多少个预约。如果有2名教练、2张床等可同时接待多人的情况，请设置为相应数量。之后也可在健身房设置中修改。"
   },
   "trialBooking": {
+    "memberTitle": "现有会员预约说明",
+    "memberBody": "现有会员请通过 {{brandEn}} 应用预约。请使用已有账号登录，然后在“预约”中选择日期和时间。",
+    "memberOpenApp": "打开 {{brandEn}} 应用",
+    "memberHelp": "如果应用无法打开，请使用下方的应用商店链接，或通过浏览器登录。",
+    "memberWebLogin": "通过浏览器登录",
+    "memberChecking": "正在确认预约方式…",
     "defaultGymName": "{{brandEn}}",
     "errEmptyName": "请输入您的姓名",
     "errInvalidEmail": "请输入正确的邮箱地址",

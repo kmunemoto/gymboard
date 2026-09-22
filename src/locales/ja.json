@@ -1765,6 +1765,12 @@
     "fieldCapacityHint": "同じ時間帯に何件まで予約を受けられるかです。トレーナーが2人いる、ベッドが2台あるなど、同時に複数の対応ができる場合はその数にしてください。あとからジム設定でも変えられます。"
   },
   "trialBooking": {
+    "memberTitle": "会員様のご予約について",
+    "memberBody": "会員様のご予約は、{{brandJa}}アプリで承っております。お使いのアカウントでログインし、「予約」から日時をお選びください。",
+    "memberOpenApp": "{{brandJa}}アプリを開く",
+    "memberHelp": "アプリが開かない場合は、ストアからアプリを開くか、ブラウザでログインしてください。",
+    "memberWebLogin": "ブラウザでログイン",
+    "memberChecking": "予約方法を確認しています…",
     "defaultGymName": "{{brandJa}}",
     "errEmptyName": "お名前を入力してください",
     "errInvalidEmail": "正しいメールアドレスを入力してください",

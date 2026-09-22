@@ -1765,6 +1765,12 @@
     "fieldCapacityHint": "How many bookings you can take in the same time slot. If you can handle more than one at once — two trainers, two beds — set that number. You can change this later in gym settings."
   },
   "trialBooking": {
+    "memberTitle": "Booking for existing members",
+    "memberBody": "If you are already a member, please book through the {{brandEn}} app. Log in with your existing account and select a time under Booking.",
+    "memberOpenApp": "Open the {{brandEn}} app",
+    "memberHelp": "If the app does not open, use the store links below or log in using your browser.",
+    "memberWebLogin": "Log in using your browser",
+    "memberChecking": "Checking how to book…",
     "defaultGymName": "{{brandEn}}",
     "errEmptyName": "Please enter your name",
     "errInvalidEmail": "Please enter a valid email address",

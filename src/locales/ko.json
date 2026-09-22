@@ -1765,6 +1765,12 @@
     "fieldCapacityHint": "같은 시간대에 몇 건까지 예약을 받을 수 있는지입니다. 트레이너가 2명, 베드가 2대 등 동시에 여러 건 대응할 수 있다면 그 수로 설정해 주세요. 나중에 짐 설정에서도 변경할 수 있습니다."
   },
   "trialBooking": {
+    "memberTitle": "기존 회원 예약 안내",
+    "memberBody": "기존 회원님은 {{brandEn}} 앱에서 예약해 주세요. 기존 계정으로 로그인한 뒤 ‘예약’에서 날짜와 시간을 선택해 주세요.",
+    "memberOpenApp": "{{brandEn}} 앱 열기",
+    "memberHelp": "앱이 열리지 않으면 아래 스토어 링크를 이용하거나 브라우저에서 로그인해 주세요.",
+    "memberWebLogin": "브라우저에서 로그인",
+    "memberChecking": "예약 방법을 확인하고 있습니다…",
     "defaultGymName": "{{brandEn}}",
     "errEmptyName": "이름을 입력해 주세요",
     "errInvalidEmail": "올바른 이메일 주소를 입력해 주세요",

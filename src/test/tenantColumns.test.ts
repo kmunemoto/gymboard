@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   TENANT_BASE_COLS,
   TENANT_COL_VARIANTS,
@@ -16,6 +17,77 @@ import {
 } from "@/lib/gymDisplaySettings";
 
 const cols = (variant: string) => variant.split(",").map((c) => c.trim());
+
+/**
+ * `Tenant` 型（`src/lib/tenantTypes.ts`）が宣言しているフィールド名。
+ *
+ * 🔴 型に足しただけで select に足し忘れると、**その値は永遠に undefined になる**。
+ * 画面は既定値（OFF）を出し続けるので「設定したのに反映されない」ように見える。
+ */
+const tenantInterfaceFields = (): string[] => {
+  const src = readFileSync("src/lib/tenantTypes.ts", "utf8");
+  const m = /export interface Tenant \{([\s\S]*?)\n\}/.exec(src);
+  expect(m, "Tenant インターフェースが読めない").not.toBeNull();
+  return [...m![1].matchAll(/^ {2}([a-z_][a-z0-9_]*)\??:/gm)].map((x) => x[1]);
+};
+
+// ────────────────────────────────────────────────────────────────
+// 🔴 2026-09-22: 型に足して select に足し忘れ、本番で実害が出た
+//
+// 「次回分の入金まで次回分の予約を受け付けない」の設定を入れたとき、
+// `Tenant` 型と設定画面とマイグレーションは揃っていたのに、
+// **`TENANT_OPTIONAL_COL_GROUPS` に足すのを忘れていた。**
+//
+// 症状がたちが悪い:
+//   - スイッチを押すと DB は**本当に更新される**（トーストも「保存しました」と出る）
+//   - しかし読み直した tenant にその列が無いので、スイッチは **OFF のまま戻る**
+//   - 店主には「ONにできない」としか見えない。実際には**ONになっている**
+//   - 同じ列を見ているカルテのスイッチも出ないので、**解除する手段も無い**
+//
+// 本番では在籍39人中38人に予約制限がかかり、翌日から12人が予約できない状態だった
+// （気づいて即 OFF に戻した。`mem/features/next-cycle-payment.md`）。
+//
+// tenantColumns.ts の冒頭コメントは「書き漏らすと『設定画面には出るのに読めない』
+// というズレが静かに入る」と**まさにこれを警告していた**が、
+// 見張るテストが無かったので静かに入った。ここで塞ぐ。
+// ────────────────────────────────────────────────────────────────
+
+describe("🔴 Tenant 型と取得カラムが揃っている", () => {
+  /**
+   * 型にはあるが、**わざと**一括の select に入れないもの。理由を書くこと。
+   * ⚠️ 「面倒だから」で足さない。足した時点で、その値は画面から読めなくなる。
+   */
+  const INTENTIONALLY_NOT_SELECTED: Record<string, string> = {
+    invite_code:
+      "招待コードは専用の RPC（get_my_tenant_invite_code など）で読む。" +
+      "全画面が引く tenant に混ぜると、必要のない画面にも配ってしまう",
+  };
+
+  it("型が宣言したカラムは、すべて select に入っている", () => {
+    const selected = new Set(cols(TENANT_COL_VARIANTS[0]));
+    const missing = tenantInterfaceFields()
+      .filter((f) => !selected.has(f))
+      .filter((f) => !(f in INTENTIONALLY_NOT_SELECTED));
+    expect(
+      missing,
+      "Tenant 型にあるのに select に無いカラムです。**この値は永遠に undefined になります**"
+        + "（設定しても画面は既定値のまま＝「ONにできない」に見える）。"
+        + `TENANT_OPTIONAL_COL_GROUPS の末尾に足してください: ${missing.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("走査が空振りしていない", () => {
+    // 型の書き方を変えて 0 件になったら、この検査は黙って無意味になる
+    expect(tenantInterfaceFields().length).toBeGreaterThan(40);
+    expect(tenantInterfaceFields()).toContain("gym_name");
+  });
+
+  it("例外にした理由が書かれている", () => {
+    for (const [col, why] of Object.entries(INTENTIONALLY_NOT_SELECTED)) {
+      expect(why.length, `${col} の理由が短すぎます`).toBeGreaterThan(20);
+    }
+  });
+});
 
 describe("tenants の取得カラム定義", () => {
   it("フォールバック段はグループ数+1（全部入り〜基本のみ）", () => {

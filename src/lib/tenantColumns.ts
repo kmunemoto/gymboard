@@ -68,6 +68,9 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "daily_booking_limit",
   // 体験予約だけ予定表の「時間ブロック」を無視するか。既定 false（現状維持）。
   "trial_ignores_blocked_slots",
+  // 次回分の入金を確認するまで次回分の予約を受け付けないか。既定 false（現状維持）。
+  // `_since` は ON にした日（この日までに始まっていたサイクルは払い済み扱い）。
+  "next_cycle_payment_required, next_cycle_payment_required_since",
 ];
 
 /**
@@ -120,6 +123,9 @@ export const TENANT_DEFAULT_FALSE_COLS: readonly string[] = [
   // 体験予約が「時間ブロック」を無視するか。列が無い環境ではブロックを効かせる
   // （＝店が明示的にONにしたときだけ緩む）。
   "trial_ignores_blocked_slots",
+  // 🔴 列が読めない環境では「止めない」に倒す。ここを true に倒すと、
+  //    未適用の環境で全店のお客様が次回分を予約できなくなる。
+  "next_cycle_payment_required",
 ];
 
 /** boolean 以外の列の既定値（null は「未設定」＝関連UIを出さない、の意味で使われる） */
@@ -149,6 +155,8 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   daily_booking_limit: null,
   // 列が読めない環境では「従来の固定文」に倒す（＝何も変わらない）。
   trial_email_cancel_note: null,
+  // 次回分の入金ゲートを ON にした日。null＝一度も ON にしていない。
+  next_cycle_payment_required_since: null,
 };
 
 /**

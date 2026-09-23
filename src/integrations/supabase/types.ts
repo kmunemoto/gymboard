@@ -3228,6 +3228,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          active_client_basis: string
           address: string | null
           booking_buffer_minutes: number
           booking_capacity: number
@@ -3243,6 +3244,7 @@ export type Database = {
           daily_booking_limit: number | null
           daily_summary_enabled: boolean
           email: string | null
+          follow_up_after_days: number
           gamification_enabled: boolean | null
           google_review_url: string | null
           gym_name: string
@@ -3297,6 +3299,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          active_client_basis?: string
           address?: string | null
           booking_buffer_minutes?: number
           booking_capacity?: number
@@ -3312,6 +3315,7 @@ export type Database = {
           daily_booking_limit?: number | null
           daily_summary_enabled?: boolean
           email?: string | null
+          follow_up_after_days?: number
           gamification_enabled?: boolean | null
           google_review_url?: string | null
           gym_name: string
@@ -3366,6 +3370,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          active_client_basis?: string
           address?: string | null
           booking_buffer_minutes?: number
           booking_capacity?: number
@@ -3381,6 +3386,7 @@ export type Database = {
           daily_booking_limit?: number | null
           daily_summary_enabled?: boolean
           email?: string | null
+          follow_up_after_days?: number
           gamification_enabled?: boolean | null
           google_review_url?: string | null
           gym_name?: string

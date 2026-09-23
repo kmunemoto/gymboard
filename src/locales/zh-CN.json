@@ -328,7 +328,22 @@
       "nextCyclePaymentDesc": "开启后，会员在您确认入账之前无法预约下一个使用期间。确认只需在会员档案上点一下开关。门店代为预约、体验和单次入场不受影响。",
       "nextCyclePaymentWarning": "开启时已经开始的使用期间会视为“已付”，以免在籍会员同时都无法预约。需要入账的是下一个期间之后。",
       "nextCyclePaymentSaved": "已保存设置",
-      "nextCyclePaymentSaveFailed": "保存设置失败"
+      "nextCyclePaymentSaveFailed": "保存设置失败",
+      "activeClientsGroup": "活跃客户的统计方式",
+      "activeClientsDesc": "选择首页“活跃客户”统计哪些人。",
+      "activeClientsBasis": {
+        "enrolled": "所有在籍客户",
+        "next_booking": "已有下次预约的客户"
+      },
+      "activeClientsBasisDesc": {
+        "enrolled": "统计所有未暂停、未退会的客户（与之前相同）。",
+        "next_booking": "只统计今天及以后有预约的客户。今天到店的客户当天全天都计入。其余客户分为“待预约”和“已流失”显示。"
+      },
+      "followUpAfterLabel": "跟进标准",
+      "followUpAfterOption": "距最近到店 {{days}} 天",
+      "followUpAfterDesc": "没有下次预约且超过此天数未到店的客户视为“已流失”。首页的“需要跟进的客户”也使用同一天数。",
+      "activeClientsSaved": "已保存设置",
+      "activeClientsSaveFailed": "保存设置失败"
     },
     "notification": {
       "title": "通知设置",
@@ -1106,7 +1121,9 @@
     "utilizationEmpty": "过去28天内暂无预约数据",
     "utilizationHint": "过去28天中，该时段有预约的天数占比（%）。颜色越深表示越经常被预约。",
     "monthLabel": "{{month}}月",
-    "monthMan": "万"
+    "monthMan": "万",
+    "statActiveClientsNextBooking": "活跃客户（已有下次预约）",
+    "activeClientsBreakdown": "待预约 {{awaiting}}人 · 已流失 {{away}}人"
   },
   "clientList": {
     "title": "客户列表",
@@ -2890,5 +2907,10 @@
     "undoConfirm": "撤销",
     "undone": "已撤销下一期（{{range}}）的入账",
     "customerNotice": "确认下一期费用的入账后，即可预约 {{date}} 之后的时段。"
+  },
+  "awaitingNext": {
+    "title": "等待下次预约",
+    "recent": "最近到店 {{date}} · 无下次预约",
+    "new": "新客户 · 尚无预约"
   }
 }

@@ -59,6 +59,11 @@ export interface ProfileWithBooking extends Profile {
   /** 最終来店日（過去の非キャンセル予約のうち最新のもの）。来店実績が無ければ null。 */
   last_visit_date: string | null;
   /**
+   * profiles の行があるか。無い会員は created_at が「いま」で埋められているので、
+   * 登録日として信じてはいけない（`src/lib/activeClients.ts` が見る）。
+   */
+  has_profile: boolean;
+  /**
    * 在籍状態（`tenant_members.status`）。"active" | "suspended" が入る。
    * 退会（withdrawn / cancelled）はそもそも取得しないのでここには来ない。
    * 判定は文字列比較せず `@/lib/memberLifecycle` を通すこと。
@@ -309,6 +314,7 @@ export const useAllCustomerProfiles = () => {
         next_booking_date: nextBookingMap[uid]?.booking_date || null,
         next_booking_type: nextBookingMap[uid]?.booking_type || null,
         last_visit_date: lastVisitMap[uid] ?? null,
+        has_profile: !!p,
         gender: genderMap[uid] ?? null,
         status: membershipMap.get(uid)?.status ?? null,
         suspended_from: membershipMap.get(uid)?.suspended_from ?? null,

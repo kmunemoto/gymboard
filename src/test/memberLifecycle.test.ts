@@ -341,8 +341,13 @@ describe("休会者が画面から消えない・不当に催促されない", (
 
   it("休会者を離脱アラート・更新催促から外している", () => {
     const src = read(DASHBOARD);
-    // どちらのループにも isActiveMember のガードが要る
-    expect((src.match(/if \(!isActiveMember\(p\.status\)\) return;/g) ?? []).length).toBe(2);
+    // 更新催促は画面のループで外す
+    expect((src.match(/if \(!isActiveMember\(p\.status\)\) return;/g) ?? []).length).toBe(1);
+    // 離脱アラートは 2026-09-23 に判定ごと src/lib/activeClients.ts へ移した。
+    // ガードは移った先にあり、画面はそこから一覧を作っている
+    expect(read("src/lib/activeClients.ts"))
+      .toMatch(/if \(!isActiveMember\(p\.status\)\) return \{ kind: "suspended" \};/);
+    expect(src).toContain("presence.away.map(");
   });
 
   it("在籍状態が useProfile の型に載っている", () => {

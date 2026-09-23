@@ -1,4 +1,4 @@
-import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, MessageCircle, UserCheck, Banknote } from "lucide-react";
+import { Users, CalendarDays, TrendingUp, Clock, BarChart3, ClipboardList, UserRoundX, ChevronRight, UserCheck, Banknote } from "lucide-react";
 import { minutesBetween } from "@/lib/bookingOptions";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,14 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { useAllCustomerProfiles, useProfile } from "@/hooks/useProfile";
 import { useAllBookings, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { formatJST, getJSTNow } from "@/lib/timezone";
-import { addDays, startOfDay } from "date-fns";
+import { addDays, parseISO, startOfDay } from "date-fns";
 import CounselingResponseList from "./CounselingResponseList";
 import TrainerUtilizationHeatmap from "./TrainerUtilizationHeatmap";
 import { useCounselingResponses } from "@/hooks/useCounselingResponses";
 import CourseProgressBadge from "./CourseProgressBadge";
 import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, CalendarClock } from "lucide-react";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
 // 🔴 売上グラフ（recharts・366KB）は開いたときに読む。静的 import に戻さないこと。
@@ -29,6 +29,11 @@ import { TRIAL_BOOKING_ENABLED, WAITLIST_ENABLED } from "@/lib/featureFlags";
 import { useTenantPayments } from "@/hooks/useMemberPayments";
 import { formatYen, outstandingMembers, revenueByMonth as revenueByMonthOf } from "@/lib/memberPayments";
 import { isActiveMember } from "@/lib/memberLifecycle";
+import {
+  activeClientCount, resolveActiveClientBasis, resolveFollowUpAfterDays, summarizeClientPresence,
+} from "@/lib/activeClients";
+import ClientFollowUpList, { type ClientFollowUpItem } from "./ClientFollowUpList";
+import { formatDate } from "@/lib/dateFormat";
 
 // 同時受入数の選択肢。設定画面（BUSINESS_CAPACITY_OPTIONS）・
 // オンボーディング（CAPACITY_OPTIONS）と必ず同じ並びにする。
@@ -236,7 +241,24 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   // グラフが全部ゼロなだけだと「壊れた」と読まれるので、案内を出す。
   const hasAnyPaymentRecord = tenantPayments.length > 0;
 
-  const activeClientCount = profiles.filter((p) => isActiveMember(p.status)).length;
+  // ── 通い具合（通っている／予約待ち／離れている）────────────────────
+  // 判定は src/lib/activeClients.ts。数え方と目安日数はジムごとの設定（既定は今まで通り）。
+  // 🔴 「フォローが必要な顧客」もここから出す。「離れている ◯名」と一覧を同じ判定にするため。
+  const activeClientBasis = resolveActiveClientBasis(tenant?.active_client_basis);
+  const followUpAfterDays = resolveFollowUpAfterDays(tenant?.follow_up_after_days);
+  const presence = useMemo(
+    () => summarizeClientPresence(profiles, Date.now(), followUpAfterDays),
+    [profiles, followUpAfterDays],
+  );
+  const activeClients = activeClientCount(activeClientBasis, presence);
+  const nameOf = (p: { display_name: string | null }) => p.display_name || t("common.nameUnset");
+  const awaitingNext: ClientFollowUpItem[] = presence.awaiting.map(({ client, presence: pr }) => ({
+    user_id: client.user_id,
+    name: nameOf(client),
+    detail: pr.kind === "awaiting" && pr.reason === "recent"
+      ? t("awaitingNext.recent", { date: formatDate(parseISO(pr.lastVisit), "monthDayDow") })
+      : t("awaitingNext.new"),
+  }));
 
   // 今月の入金が未記録の在籍会員。
   // ⚠️ **「未収」ではない。** 記録し忘れているだけかもしれないので、督促も予約ブロックもしない。
@@ -259,50 +281,17 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   );
 
   // フォローが必要な顧客（離脱検知）:
-  //  最終来店から INACTIVE_DAYS 日以上経過し、今後の予約が無い顧客を抽出。
-  //  既存テーブル（bookings / profiles）の派生計算のみ。スキーマ変更なし。
-  const INACTIVE_DAYS = 14;
-  const atRiskCustomers = useMemo(() => {
-    const now = new Date();
-    // ユーザーごとの最終来店日（過去の非キャンセル予約の最大日）と、今後予約の有無
-    // 同日キャンセル消化(SAME_DAY_FORFEIT_STATUS)は「来店していない」ため除外する
-    // （含めると消化した顧客の最終来店日が更新され、離脱リストから漏れてしまう）
-    const visit = new Map<string, { last: string | null; upcoming: boolean }>();
-    bookings.forEach((b) => {
-      if (b.status === "キャンセル済み" || b.status === SAME_DAY_FORFEIT_STATUS || b.user_id === "blocked" || b.user_id === "trial-guest") return;
-      const dt = new Date(`${b.date}T${b.startTime || "00:00"}:00+09:00`);
-      const info = visit.get(b.user_id) || { last: null, upcoming: false };
-      if (dt <= now) {
-        if (!info.last || b.date > info.last) info.last = b.date;
-      } else {
-        info.upcoming = true;
-      }
-      visit.set(b.user_id, info);
-    });
-
-    const daysBetween = (fromIso: string) =>
-      Math.floor((now.getTime() - new Date(fromIso).getTime()) / 86400000);
-
-    type Risk = { user_id: string; name: string; reason: "lapsed" | "neverBooked"; days: number };
-    const list: Risk[] = [];
-    profiles.forEach((p) => {
-      // 休会中の人は来なくて当然。離脱リスクとして毎日出すと本当の離脱が埋もれる。
-      if (!isActiveMember(p.status)) return;
-      const info = visit.get(p.user_id);
-      const hasUpcoming = (info?.upcoming ?? false) || !!p.next_booking_date;
-      if (hasUpcoming) return;
-      const name = p.display_name || t("common.nameUnset");
-      if (info?.last) {
-        const days = daysBetween(`${info.last}T23:59:59+09:00`);
-        if (days >= INACTIVE_DAYS) list.push({ user_id: p.user_id, name, reason: "lapsed", days });
-      } else {
-        // 一度も予約がない顧客（登録から日が経っているもののみ）
-        const joined = p.created_at ? daysBetween(p.created_at) : 0;
-        if (joined >= INACTIVE_DAYS) list.push({ user_id: p.user_id, name, reason: "neverBooked", days: joined });
-      }
-    });
-    return list.sort((a, b) => b.days - a.days);
-  }, [bookings, profiles, t]);
+  //  最終来店から目安日数（既定14日・ジム設定）以上経過し、今後の予約が無い顧客。
+  //  🔴 判定は上の presence（src/lib/activeClients.ts）の「離れている」そのもの。
+  //     2026-09-23 まではここに別の判定が書かれていた。日数の数え方は1日も変えていない
+  //     （src/test/activeClients.test.ts が旧実装と突き合わせている）。
+  const atRiskCustomers: ClientFollowUpItem[] = presence.away.map(({ client, presence: pr }) => ({
+    user_id: client.user_id,
+    name: nameOf(client),
+    detail: pr.kind === "away" && pr.reason === "lapsed"
+      ? t("retention.lapsed", { days: pr.days })
+      : t("retention.neverBooked"),
+  }));
 
   // 更新が近い顧客（プラン更新リマインド）:
   //  現在のサイクル満了（=月次更新/支払いの起点）まで RENEWAL_SOON_DAYS 日以内の顧客。
@@ -356,14 +345,23 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
 
       {/* Stats Grid（各カードはジム設定でON/OFF可能。全てOFFならセクションごと非表示） */}
       {(() => {
-        const statCards = [
+        type StatCard = { label: string; value: string; sub?: string; icon: typeof CalendarDays; color: string };
+        const statCards = ([
           showStatTodaySessions && { label: t("dashboard.statTodaySessions"), value: t("dashboard.countUnit", { count: todayBookings.length }), icon: CalendarDays, color: 'text-accent' },
           // 「アクティブ顧客」なので休会中は数えない。顧客一覧の総数（休会も含む）とは
           // 意図的に食い違う。合わせたくなったら、まずラベルの意味を決め直すこと。
-          showStatActiveClients && { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: activeClientCount }), icon: Users, color: 'text-info' },
+          showStatActiveClients && {
+            label: activeClientBasis === "next_booking" ? t("dashboard.statActiveClientsNextBooking") : t("dashboard.statActiveClients"),
+            value: t("dashboard.peopleUnit", { count: activeClients }),
+            // 「次回予約あり」で数える店だけ、残りの内訳を出す（在籍の全員の店は今まで通り）
+            sub: activeClientBasis === "next_booking"
+              ? t("dashboard.activeClientsBreakdown", { awaiting: presence.awaiting.length, away: presence.away.length })
+              : undefined,
+            icon: Users, color: 'text-info',
+          },
           showStatMonthSessions && { label: t("dashboard.statMonthSessions"), value: t("dashboard.countUnit", { count: monthBookings.length }), icon: Clock, color: 'text-success' },
           showStatMonthRevenue && { label: t("dashboard.statMonthRevenue"), value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
-        ].filter((s): s is { label: string; value: string; icon: typeof CalendarDays; color: string } => !!s);
+        ] as (StatCard | false)[]).filter((s): s is StatCard => !!s);
         if (statCards.length === 0) return null;
         return (
           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
@@ -373,6 +371,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
                   <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color} mb-1.5 sm:mb-2`} />
                   <p className="text-lg sm:text-2xl font-extrabold truncate">{stat.value}</p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{stat.label}</p>
+                  {stat.sub && <p className="text-[10px] text-muted-foreground/80 mt-1 leading-tight" data-testid="active-clients-breakdown">{stat.sub}</p>}
                 </CardContent>
               </Card>
             ))}
@@ -547,56 +546,21 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
           </section>
         )}
 
+        {/* 次の予約待ち（「次回予約あり」で数える店だけ）。最近来たのに次が無い人＝いちばん声をかけやすい */}
+        {showRetentionAlerts && activeClientBasis === "next_booking" && (
+          <ClientFollowUpList
+            title={t("awaitingNext.title")} icon={CalendarClock} tone="info" badgeVariant="secondary"
+            items={awaitingNext} onSelectClient={onSelectClient} onMessageClient={onMessageClient}
+            testId="awaiting-next-list"
+          />
+        )}
+
         {/* フォローが必要な顧客（離脱検知）。ジム設定でオフにできる（既定は表示）。 */}
-        {showRetentionAlerts && atRiskCustomers.length > 0 && (
-          <section>
-            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-              <UserRoundX className="w-3.5 h-3.5 text-warning" />
-              {t("retention.title")}
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 ml-1">
-                {t("dashboard.countUnit", { count: atRiskCustomers.length })}
-              </Badge>
-            </h2>
-            <div className="space-y-2">
-              {atRiskCustomers.slice(0, 10).map((c) => (
-                <Card key={c.user_id} className="card-hover cursor-pointer border-warning/30" onClick={() => onSelectClient(c.user_id)}>
-                  <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-warning/15 flex items-center justify-center text-warning font-bold text-xs sm:text-sm shrink-0">
-                      {(c.name || "?")[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm truncate">{c.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {c.reason === "lapsed"
-                          ? t("retention.lapsed", { days: c.days })
-                          : t("retention.neverBooked")}
-                      </p>
-                    </div>
-                    {onMessageClient && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0 h-8"
-                        onClick={(e) => {
-                          e.stopPropagation(); // 行タップ（顧客詳細）と分離
-                          onMessageClient(c.user_id);
-                        }}
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 mr-1" />
-                        {t("retention.message")}
-                      </Button>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                  </CardContent>
-                </Card>
-              ))}
-              {atRiskCustomers.length > 10 && (
-                <p className="text-[11px] text-muted-foreground text-center pt-1">
-                  {t("retention.more", { count: atRiskCustomers.length - 10 })}
-                </p>
-              )}
-            </div>
-          </section>
+        {showRetentionAlerts && (
+          <ClientFollowUpList
+            title={t("retention.title")} icon={UserRoundX} tone="warning" badgeVariant="destructive"
+            items={atRiskCustomers} onSelectClient={onSelectClient} onMessageClient={onMessageClient}
+          />
         )}
 
         {/* 更新が近い顧客（プラン更新リマインド）。ジム設定でオフにできる。 */}

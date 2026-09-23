@@ -328,7 +328,22 @@
       "nextCyclePaymentDesc": "ONにすると、お客様は次のご利用期間のご予約を、入金を確認するまで取れなくなります。確認はカルテのスイッチで1タップです。店からの代理予約・体験・ドロップインには効きません。",
       "nextCyclePaymentWarning": "ONにした時点ですでに始まっているご利用期間は「払い済み」として扱います（在籍のお客様が全員まとめて予約できなくなるのを防ぐため）。入金が必要になるのは次の期間からです。",
       "nextCyclePaymentSaved": "設定を保存しました",
-      "nextCyclePaymentSaveFailed": "設定の保存に失敗しました"
+      "nextCyclePaymentSaveFailed": "設定の保存に失敗しました",
+      "activeClientsGroup": "アクティブ顧客の数え方",
+      "activeClientsDesc": "ホーム画面の「アクティブ顧客」に、誰を数えるかを選びます。",
+      "activeClientsBasis": {
+        "enrolled": "在籍している全員",
+        "next_booking": "次回の予約がある人"
+      },
+      "activeClientsBasisDesc": {
+        "enrolled": "休会・退会にしていない方を全員数えます（今まで通り）。",
+        "next_booking": "今日以降に予約が入っている方だけを数えます。今日来る方は今日いっぱい数えます。残りは「予約待ち」「離れている」に分けて表示します。"
+      },
+      "followUpAfterLabel": "フォローの目安",
+      "followUpAfterOption": "最後の来店から{{days}}日",
+      "followUpAfterDesc": "次の予約が無く、この日数以上来ていない方を「離れている」とみなします。ホーム画面の「フォローが必要な顧客」も同じ日数を使います。",
+      "activeClientsSaved": "設定を保存しました",
+      "activeClientsSaveFailed": "設定の保存に失敗しました"
     },
     "notification": {
       "title": "通知設定",
@@ -1106,7 +1121,9 @@
     "utilizationEmpty": "過去28日間の予約データがまだありません",
     "utilizationHint": "過去28日間で、その時間帯に予約が入っていた日の割合（%）。色が濃いほどよく埋まっています。",
     "monthLabel": "{{month}}月",
-    "monthMan": "万"
+    "monthMan": "万",
+    "statActiveClientsNextBooking": "アクティブ顧客（次回予約あり）",
+    "activeClientsBreakdown": "予約待ち {{awaiting}}名 ・ 離れている {{away}}名"
   },
   "clientList": {
     "title": "顧客一覧",
@@ -2890,5 +2907,10 @@
     "undoConfirm": "取り消す",
     "undone": "次回分（{{range}}）の入金を取り消しました",
     "customerNotice": "次回分のお支払いの確認後に、{{date}} 以降のご予約ができるようになります。"
+  },
+  "awaitingNext": {
+    "title": "次の予約待ち",
+    "recent": "最終来店 {{date}}・次の予約なし",
+    "new": "新規・まだ予約がありません"
   }
 }

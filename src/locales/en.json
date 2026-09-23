@@ -328,7 +328,22 @@
       "nextCyclePaymentDesc": "When on, members cannot book their next period until you confirm the payment. Confirming is one tap on the member’s page. Staff bookings, trials and drop-ins are unaffected.",
       "nextCyclePaymentWarning": "Periods that had already started when you turned this on are treated as paid, so your current members are not all blocked at once. Payment is required from the next period onwards.",
       "nextCyclePaymentSaved": "Settings saved",
-      "nextCyclePaymentSaveFailed": "Could not save the setting"
+      "nextCyclePaymentSaveFailed": "Could not save the setting",
+      "activeClientsGroup": "How to count active clients",
+      "activeClientsDesc": "Choose who is counted as an active client on the home screen.",
+      "activeClientsBasis": {
+        "enrolled": "Everyone enrolled",
+        "next_booking": "Clients with a next booking"
+      },
+      "activeClientsBasisDesc": {
+        "enrolled": "Counts everyone who is not paused or withdrawn (the previous behaviour).",
+        "next_booking": "Counts only clients with a booking today or later. Someone coming today is counted for the whole day. The rest are shown as “awaiting” or “away”."
+      },
+      "followUpAfterLabel": "Follow-up threshold",
+      "followUpAfterOption": "{{days}} days after last visit",
+      "followUpAfterDesc": "Clients with no next booking who have not visited for this many days are treated as away. “Clients to follow up” on the home screen uses the same number.",
+      "activeClientsSaved": "Settings saved",
+      "activeClientsSaveFailed": "Could not save the setting"
     },
     "notification": {
       "title": "Notification Settings",
@@ -1106,7 +1121,9 @@
     "utilizationEmpty": "No booking data in the past 28 days yet",
     "utilizationHint": "Share (%) of days in the past 28 days that slot had a booking. Darker = more consistently booked.",
     "monthLabel": "{{month}}",
-    "monthMan": "k"
+    "monthMan": "k",
+    "statActiveClientsNextBooking": "Active clients (next booking)",
+    "activeClientsBreakdown": "Awaiting {{awaiting}} · Away {{away}}"
   },
   "clientList": {
     "title": "Clients",
@@ -2890,5 +2907,10 @@
     "undoConfirm": "Undo",
     "undone": "Undid the payment for the next period ({{range}})",
     "customerNotice": "Bookings from {{date}} onwards open up once your payment for the next period has been confirmed."
+  },
+  "awaitingNext": {
+    "title": "Awaiting next booking",
+    "recent": "Last visit {{date}} · no next booking",
+    "new": "New · no booking yet"
   }
 }

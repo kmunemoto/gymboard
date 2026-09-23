@@ -24,6 +24,7 @@ import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
 import NextCyclePaymentCard from "./NextCyclePaymentCard";
+import ActiveClientsSettingsCard from "./ActiveClientsSettingsCard";
 import TrainerPlanManager from "./TrainerPlanManager";
 import TrainerBilling from "./TrainerBilling";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
@@ -1495,6 +1496,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             ))}
           </CardContent>
         </Card>
+        <ActiveClientsSettingsCard />
 
         {/* ホーム画面：各セクション */}
         <Card>

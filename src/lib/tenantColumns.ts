@@ -71,6 +71,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   // 次回分の入金を確認するまで次回分の予約を受け付けないか。既定 false（現状維持）。
   // `_since` は ON にした日（この日までに始まっていたサイクルは払い済み扱い）。
   "next_cycle_payment_required, next_cycle_payment_required_since",
+  // ホーム画面の「アクティブ顧客」の数え方と、フォローの目安日数（src/lib/activeClients.ts）。
+  "active_client_basis, follow_up_after_days",
 ];
 
 /**
@@ -157,6 +159,10 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   trial_email_cancel_note: null,
   // 次回分の入金ゲートを ON にした日。null＝一度も ON にしていない。
   next_cycle_payment_required_since: null,
+  // 🔴 列が読めない環境では**今まで通り**（在籍の全員・14日）に倒す。
+  //    "next_booking" に倒すと、未適用の環境で全店のアクティブ顧客の数字が勝手に変わる。
+  active_client_basis: "enrolled",
+  follow_up_after_days: 14,
 };
 
 /**

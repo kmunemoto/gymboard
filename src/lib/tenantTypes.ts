@@ -56,6 +56,16 @@ export interface Tenant {
    * 無いと ON にした瞬間に在籍会員が全員まとめて止まる。
    */
   next_cycle_payment_required_since?: string | null;
+  /**
+   * ホーム画面の「アクティブ顧客」の数え方。既定 "enrolled"（在籍の全員＝今まで通り）。
+   * "next_booking" は今日以降に予約がある人だけ。判定は `src/lib/activeClients.ts`。
+   */
+  active_client_basis?: string;
+  /**
+   * 最後の来店からこの日数が経ち次の予約も無い人を「離れている」とみなす。既定 14。
+   * 「フォローが必要な顧客」も同じ値を使う（数字を2か所に持たない）。
+   */
+  follow_up_after_days?: number;
   /** トレーナーのホーム画面に「フォローが必要な顧客」を表示するか。既定true */
   show_retention_alerts: boolean;
   /** 毎朝、その日の予約一覧をオーナー/トレーナーへプッシュ通知するか。既定true */

@@ -328,7 +328,22 @@
       "nextCyclePaymentDesc": "켜면 회원은 입금이 확인될 때까지 다음 이용 기간을 예약할 수 없습니다. 확인은 회원 카드의 스위치로 한 번만 누르면 됩니다. 대리 예약·체험·드롭인에는 적용되지 않습니다.",
       "nextCyclePaymentWarning": "켠 시점에 이미 시작된 이용 기간은 ‘입금 완료’로 취급합니다(재적 회원이 한꺼번에 예약할 수 없게 되는 것을 방지). 입금이 필요한 것은 다음 기간부터입니다.",
       "nextCyclePaymentSaved": "설정을 저장했습니다",
-      "nextCyclePaymentSaveFailed": "설정을 저장하지 못했습니다"
+      "nextCyclePaymentSaveFailed": "설정을 저장하지 못했습니다",
+      "activeClientsGroup": "활동 고객 집계 방식",
+      "activeClientsDesc": "홈 화면의 ‘활동 고객’에 누구를 셀지 선택합니다.",
+      "activeClientsBasis": {
+        "enrolled": "재적 중인 전원",
+        "next_booking": "다음 예약이 있는 사람"
+      },
+      "activeClientsBasisDesc": {
+        "enrolled": "휴회·탈퇴하지 않은 분을 모두 셉니다(기존과 동일).",
+        "next_booking": "오늘 이후에 예약이 있는 분만 셉니다. 오늘 오는 분은 오늘 하루 동안 셉니다. 나머지는 ‘예약 대기’와 ‘이탈’로 나누어 표시합니다."
+      },
+      "followUpAfterLabel": "후속 연락 기준",
+      "followUpAfterOption": "마지막 방문 후 {{days}}일",
+      "followUpAfterDesc": "다음 예약이 없고 이 일수 이상 오지 않은 분을 ‘이탈’로 봅니다. 홈 화면의 ‘연락이 필요한 고객’도 같은 일수를 사용합니다.",
+      "activeClientsSaved": "설정을 저장했습니다",
+      "activeClientsSaveFailed": "설정을 저장하지 못했습니다"
     },
     "notification": {
       "title": "알림 설정",
@@ -1106,7 +1121,9 @@
     "utilizationEmpty": "지난 28일간의 예약 데이터가 아직 없습니다",
     "utilizationHint": "지난 28일 중 그 시간대에 예약이 있었던 날의 비율（%）입니다. 색이 진할수록 자주 채워집니다.",
     "monthLabel": "{{month}}월",
-    "monthMan": "만"
+    "monthMan": "만",
+    "statActiveClientsNextBooking": "활동 고객 (다음 예약 있음)",
+    "activeClientsBreakdown": "예약 대기 {{awaiting}}명 · 이탈 {{away}}명"
   },
   "clientList": {
     "title": "고객 목록",
@@ -2890,5 +2907,10 @@
     "undoConfirm": "취소하기",
     "undone": "다음 기간({{range}}) 입금을 취소했습니다",
     "customerNotice": "다음 기간 요금의 입금이 확인되면 {{date}} 이후의 예약을 하실 수 있습니다."
+  },
+  "awaitingNext": {
+    "title": "다음 예약 대기",
+    "recent": "마지막 방문 {{date}} · 다음 예약 없음",
+    "new": "신규 · 아직 예약 없음"
   }
 }

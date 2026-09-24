@@ -49,7 +49,7 @@ const TrainerView = () => {
   const { signOut } = useAuth();
   const { user } = useAuth();
   // 🔴 開いていたタブとカルテを覚えておき、アプリが起動し直しても戻す（src/lib/screenRestore.ts）。
-  //    カルテを開いたまま LINE で返信して戻る、で毎回ホームに戻っていたのを防ぐ。
+  //    iOS が裏のアプリを終了させたとき・再読み込みしたときの備え（主因は Index.tsx で直した）。
   const screenKey = user ? screenStorageKey("trainer", user.id) : null;
   const restored = useRestoredScreen(screenKey, isTrainerScreen);
   const [tab, setTab] = useState<TrainerTab>(restored?.tab ?? "dashboard");

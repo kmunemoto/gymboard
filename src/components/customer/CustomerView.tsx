@@ -47,7 +47,8 @@ const CustomerView = () => {
   useMeasuredHeightVar(headerRef, APP_HEADER_VAR);
   const { t } = useTranslation();
   // 🔴 開いていたタブを覚えておき、アプリが起動し直しても戻す（src/lib/screenRestore.ts）。
-  //    iOS は裏に回ったアプリを数秒でも終了させることがあり、以前は戻るたびにホームになっていた。
+  //    iOS が裏のアプリを終了させたとき・再読み込みしたときの備え。戻るたびにホームへ
+  //    戻っていた件の主因は Index.tsx（画面の作り直し）で、そちらで直してある。
   const { user } = useAuth();
   const screenKey = user ? screenStorageKey("customer", user.id) : null;
   const restored = useRestoredScreen(screenKey, isCustomerScreen);

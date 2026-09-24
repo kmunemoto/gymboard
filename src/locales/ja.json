@@ -57,7 +57,7 @@
     "languageDescription": "アプリの表示言語を切り替えます",
     "languageLoadFailed": "言語データの読み込みに失敗しました。通信環境をご確認のうえ、もう一度お試しください。",
     "themeColor": "テーマカラー",
-    "themeColorDescription": "アプリの配色（アクセント色）を選べます",
+    "themeColorDescription": "アプリの配色を64色から選べます",
     "glassMode": "ガラス仕様",
     "glassModeDescription": "すりガラス風の半透明デザインにします（選択中のカラーで色づきます）",
     "background": {
@@ -80,8 +80,27 @@
       "violet": "バイオレット",
       "rose": "ローズ",
       "amber": "アンバー",
-      "green": "グリーン"
+      "green": "グリーン",
+      "red": "レッド",
+      "orange": "オレンジ",
+      "mustard": "マスタード",
+      "lime": "ライム",
+      "cyan": "シアン",
+      "sky": "スカイ",
+      "indigo": "インディゴ",
+      "magenta": "マゼンタ",
+      "pink": "ピンク",
+      "slate": "グレー"
     },
+    "themeTones": {
+      "vivid": "ビビッド",
+      "soft": "ソフト",
+      "dusty": "くすみ",
+      "deep": "ディープ"
+    },
+    "themeFamilyLabel": "色",
+    "themeToneLabel": "トーン",
+    "themeColorName": "{{family}}・{{tone}}",
     "languageJa": "日本語",
     "languageEn": "英語",
     "languageKo": "韓国語",

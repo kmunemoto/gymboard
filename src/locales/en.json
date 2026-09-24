@@ -57,7 +57,7 @@
     "languageDescription": "Change the app's display language",
     "languageLoadFailed": "Failed to load language data. Please check your connection and try again.",
     "themeColor": "Theme color",
-    "themeColorDescription": "Choose the app's accent color",
+    "themeColorDescription": "Choose the app’s accent color from 64 colors",
     "glassMode": "Glass style",
     "glassModeDescription": "Use a frosted, translucent design (tinted by the selected color)",
     "background": {
@@ -80,8 +80,27 @@
       "violet": "Violet",
       "rose": "Rose",
       "amber": "Amber",
-      "green": "Green"
+      "green": "Green",
+      "red": "Red",
+      "orange": "Orange",
+      "mustard": "Mustard",
+      "lime": "Lime",
+      "cyan": "Cyan",
+      "sky": "Sky",
+      "indigo": "Indigo",
+      "magenta": "Magenta",
+      "pink": "Pink",
+      "slate": "Gray"
     },
+    "themeTones": {
+      "vivid": "Vivid",
+      "soft": "Soft",
+      "dusty": "Dusty",
+      "deep": "Deep"
+    },
+    "themeFamilyLabel": "Color",
+    "themeToneLabel": "Tone",
+    "themeColorName": "{{family}} · {{tone}}",
     "languageJa": "Japanese",
     "languageEn": "English",
     "languageKo": "Korean",

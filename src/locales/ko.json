@@ -57,7 +57,7 @@
     "languageDescription": "앱 표시 언어를 변경합니다",
     "languageLoadFailed": "언어 데이터를 불러오지 못했습니다. 통신 상태를 확인한 후 다시 시도해 주세요.",
     "themeColor": "테마 색상",
-    "themeColorDescription": "앱의 강조 색상을 선택합니다",
+    "themeColorDescription": "앱의 색상을 64가지 중에서 고를 수 있습니다",
     "glassMode": "글래스 스타일",
     "glassModeDescription": "반투명 글래스 느낌의 디자인으로 전환합니다 (선택한 색상으로 물듭니다)",
     "background": {
@@ -80,8 +80,27 @@
       "violet": "바이올렛",
       "rose": "로즈",
       "amber": "앰버",
-      "green": "그린"
+      "green": "그린",
+      "red": "레드",
+      "orange": "오렌지",
+      "mustard": "머스터드",
+      "lime": "라임",
+      "cyan": "시안",
+      "sky": "스카이",
+      "indigo": "인디고",
+      "magenta": "마젠타",
+      "pink": "핑크",
+      "slate": "그레이"
     },
+    "themeTones": {
+      "vivid": "비비드",
+      "soft": "소프트",
+      "dusty": "더스티",
+      "deep": "딥"
+    },
+    "themeFamilyLabel": "색상",
+    "themeToneLabel": "톤",
+    "themeColorName": "{{family}} · {{tone}}",
     "languageJa": "일본어",
     "languageEn": "영어",
     "languageKo": "한국어",

@@ -345,20 +345,15 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
 
       {/* Stats Grid（各カードはジム設定でON/OFF可能。全てOFFならセクションごと非表示） */}
       {(() => {
-        type StatCard = { label: string; value: string; sub?: string; icon: typeof CalendarDays; color: string };
+        type StatCard = { label: string; value: string; icon: typeof CalendarDays; color: string };
         const statCards = ([
           showStatTodaySessions && { label: t("dashboard.statTodaySessions"), value: t("dashboard.countUnit", { count: todayBookings.length }), icon: CalendarDays, color: 'text-accent' },
           // 「アクティブ顧客」なので休会中は数えない。顧客一覧の総数（休会も含む）とは
           // 意図的に食い違う。合わせたくなったら、まずラベルの意味を決め直すこと。
-          showStatActiveClients && {
-            label: activeClientBasis === "next_booking" ? t("dashboard.statActiveClientsNextBooking") : t("dashboard.statActiveClients"),
-            value: t("dashboard.peopleUnit", { count: activeClients }),
-            // 「次回予約あり」で数える店だけ、残りの内訳を出す（在籍の全員の店は今まで通り）
-            sub: activeClientBasis === "next_booking"
-              ? t("dashboard.activeClientsBreakdown", { awaiting: presence.awaiting.length, away: presence.away.length })
-              : undefined,
-            icon: Users, color: 'text-info',
-          },
+          // 見出しは数え方によらず「アクティブ顧客」だけ。内訳（予約待ち・離れている）も出さない
+          // （2026-09-24 宗本さん「下の文字いらない。アクティブ顧客のみでいい」）。
+          // 次の予約が無い人は、下の「次の予約待ち」「フォローが必要な顧客」の一覧に出る。
+          showStatActiveClients && { label: t("dashboard.statActiveClients"), value: t("dashboard.peopleUnit", { count: activeClients }), icon: Users, color: 'text-info' },
           showStatMonthSessions && { label: t("dashboard.statMonthSessions"), value: t("dashboard.countUnit", { count: monthBookings.length }), icon: Clock, color: 'text-success' },
           showStatMonthRevenue && { label: t("dashboard.statMonthRevenue"), value: `¥${currentMonthRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-warning' },
         ] as (StatCard | false)[]).filter((s): s is StatCard => !!s);
@@ -371,7 +366,6 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
                   <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color} mb-1.5 sm:mb-2`} />
                   <p className="text-lg sm:text-2xl font-extrabold truncate">{stat.value}</p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{stat.label}</p>
-                  {stat.sub && <p className="text-[10px] text-muted-foreground/80 mt-1 leading-tight" data-testid="active-clients-breakdown">{stat.sub}</p>}
                 </CardContent>
               </Card>
             ))}

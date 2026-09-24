@@ -337,7 +337,7 @@
       },
       "activeClientsBasisDesc": {
         "enrolled": "Counts everyone who is not paused or withdrawn (the previous behaviour).",
-        "next_booking": "Counts only clients with a booking today or later. Someone coming today is counted for the whole day. The rest are shown as “awaiting” or “away”."
+        "next_booking": "Counts only clients with a booking today or later. Someone coming today is counted for the whole day. Clients without a next booking appear on the home screen under “Awaiting next booking” and “Customers needing follow-up”."
       },
       "followUpAfterLabel": "Follow-up threshold",
       "followUpAfterOption": "{{days}} days after last visit",
@@ -1121,9 +1121,7 @@
     "utilizationEmpty": "No booking data in the past 28 days yet",
     "utilizationHint": "Share (%) of days in the past 28 days that slot had a booking. Darker = more consistently booked.",
     "monthLabel": "{{month}}",
-    "monthMan": "k",
-    "statActiveClientsNextBooking": "Active clients (next booking)",
-    "activeClientsBreakdown": "Awaiting {{awaiting}} · Away {{away}}"
+    "monthMan": "k"
   },
   "clientList": {
     "title": "Clients",

@@ -337,7 +337,7 @@
       },
       "activeClientsBasisDesc": {
         "enrolled": "休会・退会にしていない方を全員数えます（今まで通り）。",
-        "next_booking": "今日以降に予約が入っている方だけを数えます。今日来る方は今日いっぱい数えます。残りは「予約待ち」「離れている」に分けて表示します。"
+        "next_booking": "今日以降に予約が入っている方だけを数えます。今日来る方は今日いっぱい数えます。次の予約が無い方は、ホーム画面の「次の予約待ち」「フォローが必要な顧客」に出ます。"
       },
       "followUpAfterLabel": "フォローの目安",
       "followUpAfterOption": "最後の来店から{{days}}日",
@@ -1121,9 +1121,7 @@
     "utilizationEmpty": "過去28日間の予約データがまだありません",
     "utilizationHint": "過去28日間で、その時間帯に予約が入っていた日の割合（%）。色が濃いほどよく埋まっています。",
     "monthLabel": "{{month}}月",
-    "monthMan": "万",
-    "statActiveClientsNextBooking": "アクティブ顧客（次回予約あり）",
-    "activeClientsBreakdown": "予約待ち {{awaiting}}名 ・ 離れている {{away}}名"
+    "monthMan": "万"
   },
   "clientList": {
     "title": "顧客一覧",

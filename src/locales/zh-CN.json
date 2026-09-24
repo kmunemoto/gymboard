@@ -337,7 +337,7 @@
       },
       "activeClientsBasisDesc": {
         "enrolled": "统计所有未暂停、未退会的客户（与之前相同）。",
-        "next_booking": "只统计今天及以后有预约的客户。今天到店的客户当天全天都计入。其余客户分为“待预约”和“已流失”显示。"
+        "next_booking": "只统计今天及以后有预约的客户。今天到店的客户当天全天都计入。没有下次预约的客户显示在首页的“等待下次预约”和“需要跟进的客户”中。"
       },
       "followUpAfterLabel": "跟进标准",
       "followUpAfterOption": "距最近到店 {{days}} 天",
@@ -1121,9 +1121,7 @@
     "utilizationEmpty": "过去28天内暂无预约数据",
     "utilizationHint": "过去28天中，该时段有预约的天数占比（%）。颜色越深表示越经常被预约。",
     "monthLabel": "{{month}}月",
-    "monthMan": "万",
-    "statActiveClientsNextBooking": "活跃客户（已有下次预约）",
-    "activeClientsBreakdown": "待预约 {{awaiting}}人 · 已流失 {{away}}人"
+    "monthMan": "万"
   },
   "clientList": {
     "title": "客户列表",

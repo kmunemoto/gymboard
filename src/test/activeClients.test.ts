@@ -297,9 +297,16 @@ describe("🔴 ホーム画面", () => {
     expect(DASH).toContain("resolveFollowUpAfterDays(tenant?.follow_up_after_days)");
   });
 
-  it("内訳と「次の予約待ち」は、次回予約ありで数える店だけに出す", () => {
-    expect(DASH).toMatch(/sub: activeClientBasis === "next_booking"/);
+  it("「次の予約待ち」は、次回予約ありで数える店だけに出す", () => {
     expect(DASH).toMatch(/showRetentionAlerts && activeClientBasis === "next_booking" && \(/);
+  });
+
+  it("統計カードは「アクティブ顧客」だけ。数え方の注記も内訳も出さない（2026-09-24）", () => {
+    // 宗本さん「アクティブ顧客の下の文字いらない。アクティブ顧客のみでいい」
+    expect(DASH).toContain('label: t("dashboard.statActiveClients")');
+    expect(DASH).not.toContain("statActiveClientsNextBooking");
+    expect(DASH).not.toContain("activeClientsBreakdown");
+    expect(DASH).not.toMatch(/stat\.sub/);
   });
 });
 
@@ -336,9 +343,9 @@ describe("文言（5言語）", () => {
   for (const lang of ["ja", "en", "ko", "zh-CN", "zh-TW"]) {
     it(lang, () => {
       const j = JSON.parse(readFileSync(`src/locales/${lang}.json`, "utf8"));
-      expect(j.dashboard.statActiveClientsNextBooking).toBeTruthy();
-      expect(j.dashboard.activeClientsBreakdown).toContain("{{awaiting}}");
-      expect(j.dashboard.activeClientsBreakdown).toContain("{{away}}");
+      // 使わなくなった文言は残さない（2026-09-24 に統計カードから外した）
+      expect(j.dashboard.statActiveClientsNextBooking).toBeUndefined();
+      expect(j.dashboard.activeClientsBreakdown).toBeUndefined();
       expect(j.awaitingNext.recent).toContain("{{date}}");
       expect(j.awaitingNext.title && j.awaitingNext.new).toBeTruthy();
       for (const b of ACTIVE_CLIENT_BASES) {

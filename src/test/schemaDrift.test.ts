@@ -79,8 +79,17 @@ function readDeclaredSchema(): Map<string, Set<string>> {
   for (const file of files) {
     const sql = stripSqlComments(readFileSync(`${MIGRATIONS_DIR}/${file}`, "utf8"));
 
-    const dropped = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:public\.)?"?(\w+)"?/gi;
-    for (let m = dropped.exec(sql); m; m = dropped.exec(sql)) schema.delete(m[1]);
+    // 🔴 1文で複数を落とす形（`DROP TABLE IF EXISTS public.a, public.b, … CASCADE;`）も読む。
+    //    ゲーム要素の撤去（20260905020000_drop_gamification.sql）は49テーブルを1文で落としており、
+    //    先頭の1つしか外せていなかった。types.ts が古いまま（落としたテーブルが載ったまま）の間は
+    //    気づけず、2026-09-24 に Lovable が types.ts を本番から作り直した瞬間に赤くなった。
+    const dropped = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^;]*?)(?:\s+(?:CASCADE|RESTRICT))?\s*;/gi;
+    for (let m = dropped.exec(sql); m; m = dropped.exec(sql)) {
+      for (const raw of m[1].split(",")) {
+        const name = raw.trim().replace(/^public\./, "").replace(/"/g, "");
+        if (/^\w+$/.test(name)) schema.delete(name);
+      }
+    }
 
     const created = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?"?(\w+)"?\s*\(([\s\S]*?)\n\s*\);/gi;
     for (let m = created.exec(sql); m; m = created.exec(sql)) {

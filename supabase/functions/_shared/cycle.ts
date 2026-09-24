@@ -163,7 +163,12 @@ export function computeSubscriptionUsage(params: {
     if (anchorToFirstBooking && used > 0) {
       const firstCore = inWin[lent];
       if (firstCore != null && firstCore > w.start) {
+        // 🔴 期間を1回目の日に引き直したら、回数も引き直した期間で数え直す（2026-09-24）。
+        //    クライアント resolveEffectiveCycle の finalizeWindow と同じ（理由はそちら）。
+        //    以前は期間だけ引き直して回数は元の暦窓のままだった。
         const key = isoToJstYmd(new Date(firstCore).toISOString());
+        const rebased = computeSubscriptionUsage({ ...params, startYmd: key });
+        if (rebased) return rebased;
         w = getCycleWindow(key, firstCore, cycleMonths, cycleUnit);
       }
     }

@@ -203,9 +203,23 @@ export const resolveEffectiveCycle = (params: {
     if (anchorToFirstBooking && used > 0) {
       const firstCore = inWindow[lent]; // 繰入分を飛ばした最初の予約＝本来の1回目
       if (firstCore && startOfDay(firstCore).getTime() > w.start.getTime()) {
+        // 🔴 期間を1回目の日に引き直したら、**回数も引き直した期間で数え直す**（2026-09-24）。
+        //
+        //    以前は期間だけ引き直し、回数は元の暦窓で数えていた。起算日 9/17・予約
+        //    10/3, 10/10, 10/24 のお客様で、カードは「利用期間 10/3〜11/3」なのに
+        //    暦窓 [9/17, 10/18) の2件だけを数えて「予約済み 2/4・2回予約可能」と出ていた
+        //    （10/24 は表示している期間の中なのに数えていない。宗本さん「カウントの仕方おかしい」）。
+        //
+        //    1回目の日を起算日とみなして解決し直す＝起算日が1回目の日に合っていた場合と
+        //    同じ結果になる（使い切りロール・猶予も、その期間を基準に同じ規則で働く）。
+        //    起算日は1回目の日へ進むだけなので、再帰は予約の数より深くならない。
+        //
+        //    ⚠️ 超過を許さないプラン（allow_overflow=false）は引き直さない。DB（GB004）は
+        //       暦窓で数えて拒否するので、表示もその窓のまま（期間と回数と DB が揃う）。
+        if (!allowOverflow) return { cycleStartDate: anchorKey, window: w, lent, used };
         const key = format(startOfDay(firstCore), "yyyy-MM-dd");
-        const rebased = getCycleWindow(key, firstCore, cycleMonths, cycleUnit);
-        if (rebased) return { cycleStartDate: key, window: rebased, lent, used };
+        const rebased = resolveEffectiveCycle({ ...params, cycleStartDate: key });
+        if (rebased) return rebased;
       }
     }
     return { cycleStartDate: anchorKey, window: w, lent, used };

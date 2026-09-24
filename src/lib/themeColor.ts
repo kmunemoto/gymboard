@@ -3,19 +3,37 @@
 // localStorage に保存し、起動時に適用する（DB 不要・即時反映・全テナント共通機能）。
 // 既定(teal)の値は index.css の初期値と一致するため、未選択時の見た目は変わらない。
 
+import {
+  THEME_FAMILIES, THEME_TONES, buildThemeTriple,
+  type ThemeFamily, type ThemeTone, type ThemeTriple,
+} from "@/lib/themePalette";
+
+export type { ThemeFamily, ThemeTone } from "@/lib/themePalette";
+export { THEME_FAMILIES, THEME_TONES } from "@/lib/themePalette";
+
+// 🔴 64色（16の色 × 4つのトーン）に増やした（2026-09-24）。色の作り方は themePalette.ts。
+//    id は `${色}-${トーン}`（例: "teal-soft"）。
+
 export interface ThemeColorPreset {
   id: string;
-  /** i18n キー（色名・aria-label 用） */
+  family: ThemeFamily;
+  tone: ThemeTone;
+  /** i18n キー（色の名前）。トーン名と組み合わせて「ティール・ビビッド」のように出す */
   nameKey: string;
+  /** i18n キー（トーンの名前） */
+  toneKey: string;
   /** スウォッチ表示に使う代表色（HSL トリプル） */
   swatch: string;
   /** documentElement に設定する CSS 変数（HSL トリプル） */
   vars: Record<string, string>;
 }
 
-const make = (id: string, primary: string, accent: string, accent2: string): ThemeColorPreset => ({
-  id,
-  nameKey: `settings.themeColors.${id}`,
+const make = (family: ThemeFamily, tone: ThemeTone, { primary, accent, accent2 }: ThemeTriple): ThemeColorPreset => ({
+  id: `${family}-${tone}`,
+  family,
+  tone,
+  nameKey: `settings.themeColors.${family}`,
+  toneKey: `settings.themeTones.${tone}`,
   swatch: accent,
   vars: {
     "--primary": primary,
@@ -27,22 +45,57 @@ const make = (id: string, primary: string, accent: string, accent2: string): The
   },
 });
 
-export const THEME_COLORS: ThemeColorPreset[] = [
-  make("teal", "174 60% 45%", "174 63% 39%", "180 58% 41%"),
-  make("blue", "214 70% 48%", "210 80% 52%", "198 85% 55%"),
-  make("violet", "256 55% 56%", "262 70% 60%", "276 70% 64%"),
-  make("rose", "342 65% 53%", "346 78% 58%", "356 80% 62%"),
-  make("amber", "30 80% 50%", "36 90% 53%", "44 92% 55%"),
-  make("green", "150 50% 40%", "148 55% 44%", "138 55% 48%"),
-];
+/**
+ * 🔴 以前からの6色。**値を1文字も変えない**（選んでいた人の見た目を変えないため）。
+ *    64色のうち、いちばん近いトーンの枠に置く。ティールだけ「ソフト」
+ *    （新しく作ったソフトとほぼ同じ色だった。ビビッドに置くと、ソフトと見分けがつかない
+ *    2色が並ぶ）。ほかの5色は「ビビッド」。
+ *    保存してある古い id（"teal" 等）は LEGACY_THEME_IDS で読み替える。
+ */
+export const LEGACY_COLORS: Partial<Record<ThemeFamily, { tone: ThemeTone; triple: ThemeTriple }>> = {
+  teal: { tone: "soft", triple: { primary: "174 60% 45%", accent: "174 63% 39%", accent2: "180 58% 41%" } },
+  blue: { tone: "vivid", triple: { primary: "214 70% 48%", accent: "210 80% 52%", accent2: "198 85% 55%" } },
+  violet: { tone: "vivid", triple: { primary: "256 55% 56%", accent: "262 70% 60%", accent2: "276 70% 64%" } },
+  rose: { tone: "vivid", triple: { primary: "342 65% 53%", accent: "346 78% 58%", accent2: "356 80% 62%" } },
+  amber: { tone: "vivid", triple: { primary: "30 80% 50%", accent: "36 90% 53%", accent2: "44 92% 55%" } },
+  green: { tone: "vivid", triple: { primary: "150 50% 40%", accent: "148 55% 44%", accent2: "138 55% 48%" } },
+};
 
-export const DEFAULT_THEME_ID = "teal";
+/** 6色だったころの id → 今の id */
+export const LEGACY_THEME_IDS: Record<string, string> = Object.fromEntries(
+  Object.entries(LEGACY_COLORS).map(([f, v]) => [f, `${f}-${v!.tone}`]),
+);
+
+const tripleFor = (family: ThemeFamily, tone: ThemeTone): ThemeTriple => {
+  const legacy = LEGACY_COLORS[family];
+  return legacy && legacy.tone === tone ? legacy.triple : buildThemeTriple(family, tone);
+};
+
+/** 並びは「色の順 → トーンの順」。画面の4×4とトーンの列はこの順に出す。 */
+export const THEME_COLORS: ThemeColorPreset[] = THEME_FAMILIES.flatMap((f) =>
+  THEME_TONES.map((tone) => make(f.id, tone, tripleFor(f.id, tone))),
+);
+
+/** 既定＝以前からのティール（index.css の初期値と同じ色） */
+export const DEFAULT_THEME_ID = "teal-soft";
+
+export const findThemeColor = (family: ThemeFamily, tone: ThemeTone): ThemeColorPreset =>
+  THEME_COLORS.find((p) => p.family === family && p.tone === tone) ??
+  THEME_COLORS.find((p) => p.id === DEFAULT_THEME_ID)!;
+
+/** 保存してある id を今の id に直す（古い id・知らない id も受ける）。知らなければ既定 */
+export const resolveThemeColorId = (raw: string | null | undefined): string => {
+  if (!raw) return DEFAULT_THEME_ID;
+  const id = LEGACY_THEME_IDS[raw] ?? raw;
+  return THEME_COLORS.some((p) => p.id === id) ? id : DEFAULT_THEME_ID;
+};
+
 const STORAGE_KEY = "gymboard.themeColor";
 const GLASS_KEY = "gymboard.glassMode";
 
 export function getStoredThemeColor(): string {
   try {
-    return localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME_ID;
+    return resolveThemeColorId(localStorage.getItem(STORAGE_KEY));
   } catch {
     return DEFAULT_THEME_ID;
   }
@@ -86,7 +139,8 @@ export function applyGlassMode(on: boolean): void {
 }
 
 export function applyThemeColor(id: string): void {
-  const preset = THEME_COLORS.find((p) => p.id === id) ?? THEME_COLORS[0];
+  const resolved = resolveThemeColorId(id);
+  const preset = THEME_COLORS.find((p) => p.id === resolved)!;
   const root = document.documentElement;
   Object.entries(preset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
   try {
@@ -100,6 +154,7 @@ export function applyThemeColor(id: string): void {
 export function initThemeColor(): void {
   const id = getStoredThemeColor();
   const preset = THEME_COLORS.find((p) => p.id === id);
+  // 既定（以前からのティール）は index.css の初期値のまま（上書きしない＝今まで通り）
   if (preset && preset.id !== DEFAULT_THEME_ID) {
     const root = document.documentElement;
     Object.entries(preset.vars).forEach(([k, v]) => root.style.setProperty(k, v));

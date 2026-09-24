@@ -57,7 +57,7 @@
     "languageDescription": "切换应用的显示语言",
     "languageLoadFailed": "语言数据加载失败，请检查网络后重试。",
     "themeColor": "主题颜色",
-    "themeColorDescription": "选择应用的强调色",
+    "themeColorDescription": "可从64种颜色中选择应用的配色",
     "glassMode": "玻璃质感",
     "glassModeDescription": "采用磨砂半透明设计（随所选颜色着色）",
     "background": {
@@ -80,8 +80,27 @@
       "violet": "紫色",
       "rose": "玫红",
       "amber": "琥珀",
-      "green": "绿色"
+      "green": "绿色",
+      "red": "红色",
+      "orange": "橙色",
+      "mustard": "芥末黄",
+      "lime": "青柠",
+      "cyan": "湖蓝",
+      "sky": "天蓝",
+      "indigo": "靛蓝",
+      "magenta": "洋红",
+      "pink": "粉色",
+      "slate": "灰色"
     },
+    "themeTones": {
+      "vivid": "鲜艳",
+      "soft": "柔和",
+      "dusty": "莫兰迪",
+      "deep": "深色"
+    },
+    "themeFamilyLabel": "颜色",
+    "themeToneLabel": "色调",
+    "themeColorName": "{{family}}·{{tone}}",
     "languageJa": "日语",
     "languageEn": "英语",
     "languageKo": "韩语",

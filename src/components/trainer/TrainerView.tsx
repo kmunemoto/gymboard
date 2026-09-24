@@ -31,6 +31,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { useTenant } from "@/hooks/useTenant";
 import { isNavTabVisible } from "@/lib/gymDisplaySettings";
+import { useRememberScreen, useRestoredScreen } from "@/hooks/useScreenMemory";
+import { isTrainerScreen, screenStorageKey } from "@/lib/screenRestore";
 
 // 定義は src/lib/trainerTabs.ts に移した（lib がコンポーネントを import しないため）。
 // ここから使っている箇所を壊さないよう再エクスポートする。
@@ -42,12 +44,18 @@ const TrainerView = () => {
   const headerRef = useRef<HTMLDivElement>(null);
   useMeasuredHeightVar(headerRef, APP_HEADER_VAR);
   const { t } = useTranslation();
-  const [tab, setTab] = useState<TrainerTab>("dashboard");
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   // 離脱アラートの「声かけ」等からメッセージ画面を開くときの宛先（開いたら選択済みにする）
   const [messageClientId, setMessageClientId] = useState<string | null>(null);
   const { signOut } = useAuth();
   const { user } = useAuth();
+  // 🔴 開いていたタブとカルテを覚えておき、アプリが起動し直しても戻す（src/lib/screenRestore.ts）。
+  //    iOS が裏のアプリを終了させたとき・再読み込みしたときの備え（主因は Index.tsx で直した）。
+  const screenKey = user ? screenStorageKey("trainer", user.id) : null;
+  const restored = useRestoredScreen(screenKey, isTrainerScreen);
+  const [tab, setTab] = useState<TrainerTab>(restored?.tab ?? "dashboard");
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(restored?.clientId ?? null);
+  // カルテは顧客タブの中にしか無い。他のタブのときは覚えない（戻したときに食い違わない）
+  useRememberScreen(screenKey, { tab, clientId: tab === "clients" ? selectedClientId : null });
   // 共有受信箱: 別のスタッフ宛ての未読もバッジに出す（誰も気づかない会話を作らない）
   const staff = useStaffDirectory();
   const { count: unreadMessages, refetch: refetchUnread } = useUnreadCount(staff.ids);

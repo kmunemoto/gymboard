@@ -27,6 +27,9 @@ import { useAnnouncementUnreadCount } from "@/hooks/useAnnouncements";
 import AnnouncementsDialog from "./AnnouncementsDialog";
 import PlanLimitBanner from "@/components/PlanLimitBanner";
 import { useTenant } from "@/hooks/useTenant";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRememberScreen, useRestoredScreen } from "@/hooks/useScreenMemory";
+import { isCustomerScreen, screenStorageKey } from "@/lib/screenRestore";
 import {
   WORKOUT_LOG_ENABLED,
   MEALS_ENABLED,
@@ -34,14 +37,23 @@ import {
   MONTHLY_REPORT_ENABLED,
 } from "@/lib/featureFlags";
 
-export type CustomerTab = "home" | "booking" | "training" | "meals" | "chat" | "settings" | "posture" | "report" | "photos" | "videos";
+// 定義は src/lib/customerTabs.ts（「開いていた画面を戻す」が値の一覧を要るため）。
+export type { CustomerTab } from "@/lib/customerTabs";
+import type { CustomerTab } from "@/lib/customerTabs";
 
 const CustomerView = () => {
   // ヘッダーの実測の高さを --app-header-h へ。チャットの上端がこれを避ける。
   const headerRef = useRef<HTMLDivElement>(null);
   useMeasuredHeightVar(headerRef, APP_HEADER_VAR);
   const { t } = useTranslation();
-  const [tab, setTab] = useState<CustomerTab>("home");
+  // 🔴 開いていたタブを覚えておき、アプリが起動し直しても戻す（src/lib/screenRestore.ts）。
+  //    iOS が裏のアプリを終了させたとき・再読み込みしたときの備え。戻るたびにホームへ
+  //    戻っていた件の主因は Index.tsx（画面の作り直し）で、そちらで直してある。
+  const { user } = useAuth();
+  const screenKey = user ? screenStorageKey("customer", user.id) : null;
+  const restored = useRestoredScreen(screenKey, isCustomerScreen);
+  const [tab, setTab] = useState<CustomerTab>(restored?.tab ?? "home");
+  useRememberScreen(screenKey, { tab });
   const { count: unreadChat, refetch: refetchUnread } = useUnreadCount();
   const { count: unreadAnnouncements, refetch: refetchAnnouncements } = useAnnouncementUnreadCount();
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);

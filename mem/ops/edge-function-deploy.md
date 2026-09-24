@@ -197,3 +197,18 @@ new-account-notification, trial-booking-reminder, booking-reminder, customer-inv
 `preview-transactional-email` を `LOVABLE_API_KEY` で叩いて一覧を見てもらうほうが早い
 （`send-transactional-email` 側の service_role 認証は、Lovable のサンドボックスからも
 通らないことがある）。
+
+---
+
+## ⚠️ デプロイを頼むと、Lovable が main に直接 push することがある（2026-09-24）
+
+`push-period-reminder` の再デプロイを頼んだら、デプロイ自体は済んだが、Lovable が
+**`src/integrations/supabase/types.ts` を本番のスキーマから作り直して main に2コミット push した**
+（`Work in progress` / `Lovable update`。CI を通らずに main へ入る）。
+中身は正しかった（9/5 に落としたゲーム要素の49テーブルが型から消えた）が、
+`schemaDrift.test.ts` のパーサが `DROP TABLE a, b, …;`（1文で複数）の先頭しか読んでおらず、
+**main の `npm test` が赤になった**。パーサを直して解消。
+
+- 頼んだあとは **`git fetch origin main` で Lovable のコミットが無いか見る**。あればゲート4つを回す
+- ついでに頼んでいない調査（プレビューの白画面など）をして 4.3 クレジット使っていた。
+  依頼文には「デプロイだけ」と書いてあっても、こうなることがある

@@ -1982,6 +1982,7 @@ export type Database = {
           owner_user_id: string | null
           phone: string | null
           primary_color: string | null
+          public_theme_color: string | null
           reminder_email_note: string | null
           same_day_cancel_penalty_enabled: boolean
           show_counseling_responses: boolean
@@ -2052,6 +2053,7 @@ export type Database = {
           owner_user_id?: string | null
           phone?: string | null
           primary_color?: string | null
+          public_theme_color?: string | null
           reminder_email_note?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_counseling_responses?: boolean
@@ -2122,6 +2124,7 @@ export type Database = {
           owner_user_id?: string | null
           phone?: string | null
           primary_color?: string | null
+          public_theme_color?: string | null
           reminder_email_note?: string | null
           same_day_cancel_penalty_enabled?: boolean
           show_counseling_responses?: boolean
@@ -2536,6 +2539,7 @@ export type Database = {
           logo_url: string
           operating_hours: Json
           primary_color: string
+          public_theme_color: string
           slot_duration_minutes: number
           trial_ignores_blocked_slots: boolean
           trial_info_body: string

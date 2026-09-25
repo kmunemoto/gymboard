@@ -26,6 +26,7 @@ import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLED } from "@/lib/marketing";
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { isDropInAvailable } from "@/lib/dropInTenant";
+import { usePublicPageTheme } from "@/hooks/usePublicPageTheme";
 
 // TrialBooking.tsx の複製（英語圏の観光客向け「単発ドロップインセッション ¥8,000・
 // 会員登録不要・現地決済」専用ページ）。無料体験(/trial)とは見出し・文言・言語が別物のため
@@ -50,6 +51,8 @@ interface PublicTenant {
   address: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  /** 公開ページの色（テーマカラーの id、例 "teal-soft"）。null は端末のテーマカラーのまま */
+  public_theme_color: string | null;
   trial_info_title: string | null;
   trial_info_body: string | null;
   booking_buffer_minutes: number | null;
@@ -75,6 +78,8 @@ const DropInBooking = () => {
   const { tenantId } = useParams<{ tenantId?: string }>();
   const [searchParams] = useSearchParams();
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
+  // ジムが決めた色で固定する（未設定なら見ている端末のテーマカラーのまま＝今まで通り）
+  usePublicPageTheme(tenant?.public_theme_color);
   const gymName = tenant?.gym_name || "the gym";
   const [guestName, setGuestName] = useState(() => searchParams.get("name") ?? "");
   const [guestEmail, setGuestEmail] = useState(() => searchParams.get("email") ?? "");

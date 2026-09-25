@@ -29,6 +29,7 @@ import { GYMBOARD_MARKETING_URL, POWERED_BY_GYMBOARD, POWERED_BY_GYMBOARD_ENABLE
 import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
+import { usePublicPageTheme } from "@/hooks/usePublicPageTheme";
 
 interface TrialSlotBooking {
   date: string;
@@ -45,6 +46,8 @@ interface PublicTenant {
   address: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  /** 公開ページの色（テーマカラーの id、例 "teal-soft"）。null は端末のテーマカラーのまま */
+  public_theme_color: string | null;
   trial_info_title: string | null;
   trial_info_body: string | null;
   /** 体験の料金（税込・円）。null は「料金を表示しない」で、0（無料と明示）とは別。 */
@@ -83,6 +86,8 @@ const TrialBooking = () => {
   // ?name=&email= で引き継いで入力の手間を省く（未指定なら通常どおり空欄）。
   const [searchParams] = useSearchParams();
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
+  // ジムが決めた色で固定する（未設定なら見ている端末のテーマカラーのまま＝今まで通り）
+  usePublicPageTheme(tenant?.public_theme_color);
   const gymName = tenant?.gym_name || t("trialBooking.defaultGymName");
   const [guestName, setGuestName] = useState(() => searchParams.get("name") ?? "");
   const [guestEmail, setGuestEmail] = useState(() => searchParams.get("email") ?? "");

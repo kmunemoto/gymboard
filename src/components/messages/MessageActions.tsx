@@ -41,6 +41,7 @@ const MessageActions = ({
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startY = useRef(0);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const cancel = () => {
     if (timer.current) {
@@ -52,9 +53,19 @@ const MessageActions = ({
   useEffect(() => cancel, []);
 
   // 開いている間は、外側のどこを触っても閉じる
+  //
+  // 🔴 **メニューの中を触ったときは閉じない**（2026-10-01）。
+  //    以前は中も外も区別せず pointerdown で閉じていた。ボタンに指を置いた瞬間
+  //    （pointerdown）にメニューが消え、指を離した時点でボタンはもう無いので、
+  //    click が届かない。**「送信取消」「返信」「リアクション」が一度も効いていなかった**
+  //    （宗本さん「チャットの返信取り消し機能が機能してない」）。
+  //    テストは click だけを直接撃っていたので気づけなかった。
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
+    const close = (e: Event) => {
+      if (e.target instanceof Node && menuRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     // 同じタップで即閉じないよう次のフレームから拾う
     const id = setTimeout(() => {
       window.addEventListener("pointerdown", close);
@@ -98,6 +109,7 @@ const MessageActions = ({
 
       {open && (
         <div
+          ref={menuRef}
           onClick={(e) => e.stopPropagation()}
           className={`absolute z-20 mt-1 flex items-center gap-1 rounded-xl border border-border bg-popover p-1 shadow-lg ${
             alignEnd ? "right-0" : "left-0"

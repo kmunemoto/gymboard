@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
 // hasRole（user_roles ベース）はここでは使わない。テナント横断のグローバルロールなので
@@ -50,8 +50,8 @@ function base64UrlDecode(str: string): Uint8Array {
   return bytes;
 }
 
-function base64UrlEncode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function base64UrlEncode(buffer: Uint8Array | ArrayBuffer): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let str = "";
   for (const b of bytes) str += String.fromCharCode(b);
   return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -278,7 +278,7 @@ interface TenantMembership { tenantId: string; active: boolean }
  *     テナント境界の内側であることは変わらない。
  */
 async function loadTenantMemberships(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   userIds: string[],
 ): Promise<Map<string, TenantMembership[]>> {
   const map = new Map<string, TenantMembership[]>();

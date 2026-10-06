@@ -81,7 +81,7 @@ export type DayRemainingBadge =
  *
  * - 選べる日 … 「残N」（N が少なければ色を変える）。0 なら何も出さない
  *   （当日で締切を過ぎた日など。押せるが取れない＝数字を出すと誤解させる）
- * - **満枠で選べない日だけ**「満」。定休日・受付終了・予約できる範囲の外などは何も出さない
+ * - **満枠・1日の上限に達した日だけ**「満」。定休日・手で閉めた日・予約できる範囲の外などは何も出さない
  *   （「満」は「埋まっている（キャンセルが出れば空く）」の意味。休みと混ぜない）
  */
 export const dayRemainingBadge = (
@@ -89,7 +89,8 @@ export const dayRemainingBadge = (
   /** 残りの回数。選べない日では数えないで済むよう、関数でも受ける */
   count: number | (() => number),
 ): DayRemainingBadge => {
-  if (reason === "full") return { kind: "full" };
+  // 満枠の日と、1日の上限人数に達した日は「満」（どちらもキャンセルが出れば戻る）
+  if (reason === "full" || reason === "limitReached") return { kind: "full" };
   if (reason !== null) return null;
   const n = typeof count === "function" ? count() : count;
   if (n <= 0) return null;

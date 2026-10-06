@@ -47,6 +47,7 @@ import { closedDayReason, isDayHardClosed, isDayViewOnly, isDayClosedError } fro
 import { dayUnselectableReason, isDayUnselectable } from "@/lib/bookingCalendarDay";
 import { countRemainingSlots, dayRemainingBadge } from "@/lib/dayRemainingSlots";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
+import { useDailyLimitLeft } from "@/hooks/useDailyLimitLeft";
 import BookingCalendarDay, { RemainingSlotsLegend, TALL_CALENDAR_CLASS } from "@/components/booking/BookingCalendarDay";
 import { useNextCyclePaymentGate } from "@/hooks/useNextCyclePaymentGate";
 import NextCyclePaymentNotice from "@/components/booking/NextCyclePaymentNotice";
@@ -161,7 +162,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // 受付を終了した日（手で閉めた日＋1日の上限に達した日）。最終判定は DB（GB007）。
   // 読めなければ空配列＝「閉まっている日は無い」に倒れるので、予約が取れなくなることはない。
-  const { closedDays } = useBookingClosedDays(getJSTToday(), maxBookableKey);
+  const { closedDays, refetch: refetchClosedDays } = useBookingClosedDays(getJSTToday(), maxBookableKey);
   // 「この日以降は次回分の入金が要る」日付。null＝止めるものが無い（既定）。判定は DB（GB009）
   const { gate: nextCyclePaymentGate } = useNextCyclePaymentGate(tenant?.id ?? null);
   // 会員の予約で聞く質問だけ（体験専用の質問は出さない）。
@@ -255,9 +256,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // dateKey は範囲を変えないが、日付を押し直したら読み直すために依存へ入れる（鮮度）。
   useEffect(() => { void fetchBookedSlots(); }, [dateKey, fetchBookedSlots]);
-  // 残り枠を出す店だけ、開いている間1分ごと＋戻ったときに読み直す（src/hooks/useLiveRefresh.ts）
-  const showRemaining = tenant?.show_remaining_slots === true;
-  useLiveRefresh(fetchBookedSlots, showRemaining);
+  const showRemaining = tenant?.show_remaining_slots === true; // 残り枠を出す店か（ON の店だけ下の2つが動く）
+  useLiveRefresh(fetchBookedSlots, showRemaining); // 開いている間1分ごと＋アプリに戻ったときに読み直す
+  const limitLeftOn = useDailyLimitLeft(showRemaining, maxBookableKey, bookedSlots, refetchClosedDays); // 1日の上限人数まで、あと何件
 
   // 日付ごとに束ねる。カレンダーは1回の描画で数十日ぶん引くので、毎回の全走査を避ける。
   const bookedSlotsByDate = useMemo(() => groupBookedSlotsByDate(bookedSlots), [bookedSlots]);
@@ -374,13 +375,13 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 日付の下の「残N」「満」（店が ON のときだけ）。数え方と、枠一覧と食い違わない理由は src/lib/dayRemainingSlots.ts
   const remainingBadgeFor = (key: string) => !showRemaining ? null : dayRemainingBadge(
     dayUnselectableReason(key, calendarDayRules),
-    () => countRemainingSlots({
+    () => Math.min(limitLeftOn(key), countRemainingSlots({
       starts: staffBookingSlotMinutes(businessHours, totalMinutes, weekdayOfDateKey(key), staffSchedules, selectedStaffId),
       bookedSlots: bookedSlotsOnDate(bookedSlotsByDate, key), date: key, weekday: weekdayOfDateKey(key),
       footprintMinutes: sessionFootprintMinutes(slotMinutes, gridOptionMinutes, bookingBufferMinutes),
       capacityWindows, defaultCapacity: bookingCapacity, staffUserId: selectedStaffId, exclude: excludeSlot,
       isClosedAt: (m) => isSlotNotAccepting(key, minutesToTime(m)) || isSlotPastCutoff(key, minutesToTime(m), cutoff),
-    }),
+    })),
   );
 
   const generateSlots = () => {
@@ -1113,8 +1114,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         <BookingCalendarDay
                           date={dayDate} ownUpcoming={futureDateSet.has(key)} ownPast={pastDateSet.has(key)}
                           badge={activeModifiers.outside ? null : remainingBadgeFor(key)}
-                          onColoredCell={!!(activeModifiers.selected || activeModifiers.today)}
-                        />
+                          onColoredCell={!!(activeModifiers.selected || activeModifiers.today)} />
                       );
                     },
                   }}

@@ -64,7 +64,7 @@ export interface CalendarDayRules {
  * 真偽だけでなく**最初に当たった理由**を返す。順番は下の 🔴 のとおり上から。
  */
 export type DayUnselectableReason =
-  | "past" | "closed" | "hardClosed" | "full" | "paymentGate" | "staffOff" | "beyondWindow";
+  | "past" | "closed" | "hardClosed" | "limitReached" | "full" | "paymentGate" | "staffOff" | "beyondWindow";
 
 export const dayUnselectableReason = (dateKey: string, r: CalendarDayRules): DayUnselectableReason | null => {
   // 過去日。当日は塞がない（上の 🔴 参照）
@@ -76,7 +76,11 @@ export const dayUnselectableReason = (dateKey: string, r: CalendarDayRules): Day
   // ⚠️ 上限で埋まった**当日**を、**その日に自分の予約がある人**にだけ開ける
   //    （押しても予約はできない。空き時間を見せるだけ）。
   //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
-  if (isDayHardClosed(r.closedDays, dateKey, r.hasOwnBookingOn(dateKey))) return "hardClosed";
+  //    手で閉めた日（hardClosed）と、1日の上限に達した日（limitReached）を分けて返す
+  //    （後者だけ「満」を出す。手で閉めた日は休みと同じで、数字も「満」も出さない）。
+  if (isDayHardClosed(r.closedDays, dateKey, r.hasOwnBookingOn(dateKey))) {
+    return r.closedDays.find((d) => d.closed_date === dateKey)?.manual === false ? "limitReached" : "hardClosed";
+  }
   // 全枠が満枠／受付しない時間帯の日。定休日と同じ見た目にする
   if (r.isDayFull(dateKey)) return "full";
   // 次回分の入金がまだの日（店が設定している場合のみ）。最終判定は DB（GB009）

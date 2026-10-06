@@ -216,7 +216,7 @@ describe("会員の予約画面が受付終了を反映している", () => {
     // 塞ぐこと自体は変わっていない（当日 × 上限のときだけ、押して中身を見せる）。
     // 2026-09-22 に「その日を選べるか」の規則ごと src/lib/bookingCalendarDay.ts へ移した。
     expect(readCode(CALENDAR_DAY)).toMatch(
-      /if \(isDayHardClosed\(r\.closedDays, dateKey, r\.hasOwnBookingOn\(dateKey\)\)\) return "hardClosed";/,
+      /if \(isDayHardClosed\(r\.closedDays, dateKey, r\.hasOwnBookingOn\(dateKey\)\)\) \{/,
     );
     // 画面は材料を渡しているか（渡し忘れると規則が空振りする）
     expect(readCode(CUSTOMER)).toContain("closedDays, hasOwnBookingOn,");
@@ -410,7 +410,7 @@ describe("🔴 見せるだけで、押せないこと", () => {
   it("カレンダーは hard closed だけ塞ぐ", () => {
     // 規則の本体は src/lib/bookingCalendarDay.ts（2026-09-22 に切り出した）
     expect(readCode(CALENDAR_DAY)).toMatch(
-      /if \(isDayHardClosed\(r\.closedDays, dateKey, r\.hasOwnBookingOn\(dateKey\)\)\) return "hardClosed";/,
+      /if \(isDayHardClosed\(r\.closedDays, dateKey, r\.hasOwnBookingOn\(dateKey\)\)\) \{/,
     );
     expect(readCode(CALENDAR_DAY), "isDayViewOnly で塞ぐと当日の空き状況が見せられない")
       .not.toContain("isDayViewOnly");

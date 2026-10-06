@@ -73,6 +73,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "next_cycle_payment_required, next_cycle_payment_required_since",
   // ホーム画面の「アクティブ顧客」の数え方と、フォローの目安日数（src/lib/activeClients.ts）。
   "active_client_basis, follow_up_after_days",
+  // お客様の予約カレンダーに「残N」を出すか。既定 false（現状維持）。
+  "show_remaining_slots",
 ];
 
 /**
@@ -128,6 +130,8 @@ export const TENANT_DEFAULT_FALSE_COLS: readonly string[] = [
   // 🔴 列が読めない環境では「止めない」に倒す。ここを true に倒すと、
   //    未適用の環境で全店のお客様が次回分を予約できなくなる。
   "next_cycle_payment_required",
+  // 列が読めない環境では出さない（今まで通り）。出すと、未適用の環境で読み直しが走り続ける
+  "show_remaining_slots",
 ];
 
 /** boolean 以外の列の既定値（null は「未設定」＝関連UIを出さない、の意味で使われる） */

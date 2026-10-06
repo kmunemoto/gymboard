@@ -44,7 +44,10 @@ import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimit
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
 import { useBookingClosedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, isDayHardClosed, isDayViewOnly, isDayClosedError } from "@/lib/bookingClosedDays";
-import { isDayUnselectable } from "@/lib/bookingCalendarDay";
+import { dayUnselectableReason, isDayUnselectable } from "@/lib/bookingCalendarDay";
+import { countRemainingSlots, dayRemainingBadge } from "@/lib/dayRemainingSlots";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
+import BookingCalendarDay, { RemainingSlotsLegend, TALL_CALENDAR_CLASS } from "@/components/booking/BookingCalendarDay";
 import { useNextCyclePaymentGate } from "@/hooks/useNextCyclePaymentGate";
 import NextCyclePaymentNotice from "@/components/booking/NextCyclePaymentNotice";
 import { isDayFullyBooked } from "@/lib/bookingDayFull";
@@ -252,6 +255,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // dateKey は範囲を変えないが、日付を押し直したら読み直すために依存へ入れる（鮮度）。
   useEffect(() => { void fetchBookedSlots(); }, [dateKey, fetchBookedSlots]);
+  // 残り枠を出す店だけ、開いている間1分ごと＋戻ったときに読み直す（src/hooks/useLiveRefresh.ts）
+  const showRemaining = tenant?.show_remaining_slots === true;
+  useLiveRefresh(fetchBookedSlots, showRemaining);
 
   // 日付ごとに束ねる。カレンダーは1回の描画で数十日ぶん引くので、毎回の全走査を避ける。
   const bookedSlotsByDate = useMemo(() => groupBookedSlotsByDate(bookedSlots), [bookedSlots]);
@@ -364,6 +370,18 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     staffSchedules, staffUserId: selectedStaffId, bookingWindowDays,
     nextCyclePaymentGate,
   };
+
+  // 日付の下の「残N」「満」（店が ON のときだけ）。数え方と、枠一覧と食い違わない理由は src/lib/dayRemainingSlots.ts
+  const remainingBadgeFor = (key: string) => !showRemaining ? null : dayRemainingBadge(
+    dayUnselectableReason(key, calendarDayRules),
+    () => countRemainingSlots({
+      starts: staffBookingSlotMinutes(businessHours, totalMinutes, weekdayOfDateKey(key), staffSchedules, selectedStaffId),
+      bookedSlots: bookedSlotsOnDate(bookedSlotsByDate, key), date: key, weekday: weekdayOfDateKey(key),
+      footprintMinutes: sessionFootprintMinutes(slotMinutes, gridOptionMinutes, bookingBufferMinutes),
+      capacityWindows, defaultCapacity: bookingCapacity, staffUserId: selectedStaffId, exclude: excludeSlot,
+      isClosedAt: (m) => isSlotNotAccepting(key, minutesToTime(m)) || isSlotPastCutoff(key, minutesToTime(m), cutoff),
+    }),
+  );
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean; dayFull: boolean }[] = [];
@@ -1087,26 +1105,16 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   // 🔴 「その日を選べるか」の規則は src/lib/bookingCalendarDay.ts に集めてある。
                   //    ここに書き足さないこと（理由が散り、規則としてのテストが書けなくなる）。
                   disabled={(date) => isDayUnselectable(format(date, "yyyy-MM-dd"), calendarDayRules)}
-                  className="pointer-events-auto"
+                  className={showRemaining ? `pointer-events-auto ${TALL_CALENDAR_CLASS}` : "pointer-events-auto"}
                   components={{
-                    DayContent: ({ date: dayDate }) => {
+                    DayContent: ({ date: dayDate, activeModifiers }) => {
                       const key = format(dayDate, "yyyy-MM-dd");
-                      const isFuture = futureDateSet.has(key);
-                      const isPast = pastDateSet.has(key);
                       return (
-                        <div className="relative flex flex-col items-center">
-                          <span className="relative z-[1]">{dayDate.getDate()}</span>
-                          {(isFuture || isPast) && (
-                            <span
-                              className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full z-[1]"
-                              style={{
-                                width: 6,
-                                height: 6,
-                                backgroundColor: isFuture ? "#3FB6AC" : "#999",
-                              }}
-                            />
-                          )}
-                        </div>
+                        <BookingCalendarDay
+                          date={dayDate} ownUpcoming={futureDateSet.has(key)} ownPast={pastDateSet.has(key)}
+                          badge={activeModifiers.outside ? null : remainingBadgeFor(key)}
+                          onColoredCell={!!(activeModifiers.selected || activeModifiers.today)}
+                        />
                       );
                     },
                   }}
@@ -1115,6 +1123,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 <NextCyclePaymentNotice gate={nextCyclePaymentGate} />
               </CardContent>
             </Card>
+            {showRemaining && <RemainingSlotsLegend />}
 
             {selectedDate && (
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">

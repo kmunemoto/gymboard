@@ -57,25 +57,39 @@ export interface CalendarDayRules {
   nextCyclePaymentGate: string | null;
 }
 
-/** カレンダーでその日を選べないか。`<Calendar disabled>` にそのまま渡す答え。 */
-export const isDayUnselectable = (dateKey: string, r: CalendarDayRules): boolean => {
+/**
+ * その日を選べない理由。選べるなら null。
+ *
+ * 「満枠で選べない日」だけに「満」を出すため（2026-10-06 残り枠の表示）に、
+ * 真偽だけでなく**最初に当たった理由**を返す。順番は下の 🔴 のとおり上から。
+ */
+export type DayUnselectableReason =
+  | "past" | "closed" | "hardClosed" | "full" | "paymentGate" | "staffOff" | "beyondWindow";
+
+export const dayUnselectableReason = (dateKey: string, r: CalendarDayRules): DayUnselectableReason | null => {
   // 過去日。当日は塞がない（上の 🔴 参照）
-  if (!!dateKey && dateKey < r.today) return true;
+  if (!!dateKey && dateKey < r.today) return "past";
   // 定休日。toDate があっても、その間の定休日は個別に塞ぐ必要がある
-  if (isClosedDate(r.businessHours, dateKey)) return true;
+  if (isClosedDate(r.businessHours, dateKey)) return "closed";
   // 店が「その日はもう受けない」とした日、または1日の上限に達した日。
   // 定休日と同じ見た目（選べない）にする。最終判定は DB（GB007）。
   // ⚠️ 上限で埋まった**当日**を、**その日に自分の予約がある人**にだけ開ける
   //    （押しても予約はできない。空き時間を見せるだけ）。
   //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
-  if (isDayHardClosed(r.closedDays, dateKey, r.hasOwnBookingOn(dateKey))) return true;
+  if (isDayHardClosed(r.closedDays, dateKey, r.hasOwnBookingOn(dateKey))) return "hardClosed";
   // 全枠が満枠／受付しない時間帯の日。定休日と同じ見た目にする
-  if (r.isDayFull(dateKey)) return true;
+  if (r.isDayFull(dateKey)) return "full";
   // 次回分の入金がまだの日（店が設定している場合のみ）。最終判定は DB（GB009）
-  if (isBlockedByNextCyclePayment(r.nextCyclePaymentGate, dateKey)) return true;
+  if (isBlockedByNextCyclePayment(r.nextCyclePaymentGate, dateKey)) return "paymentGate";
   // 指名した担当が出勤していない曜日。指名なしなら常に false
   if (!staffWorksOnWeekday(r.businessHours, weekdayOfDateKey(dateKey), r.staffSchedules, r.staffUserId)) {
-    return true;
+    return "staffOff";
   }
-  return isBeyondBookingWindow(dateKey, r.bookingWindowDays, { months: LEGACY_MEMBER_WINDOW_MONTHS });
+  return isBeyondBookingWindow(dateKey, r.bookingWindowDays, { months: LEGACY_MEMBER_WINDOW_MONTHS })
+    ? "beyondWindow"
+    : null;
 };
+
+/** カレンダーでその日を選べないか。`<Calendar disabled>` にそのまま渡す答え。 */
+export const isDayUnselectable = (dateKey: string, r: CalendarDayRules): boolean =>
+  dayUnselectableReason(dateKey, r) !== null;

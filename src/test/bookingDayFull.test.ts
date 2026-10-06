@@ -65,7 +65,7 @@ describe("🔴 カレンダー側の組み込み", () => {
     expect(code).toContain("isDayFull,");
     expect(code).toContain("isDayUnselectable(format(date, \"yyyy-MM-dd\"), calendarDayRules)");
     expect(stripJs(readFileSync("src/lib/bookingCalendarDay.ts", "utf8")))
-      .toMatch(/if \(r\.isDayFull\(dateKey\)\) return true;/);
+      .toMatch(/if \(r\.isDayFull\(dateKey\)\) return "full";/);
   });
 
   it("🔴 当日は対象外（空き状況を見せる仕様を壊さない）", () => {

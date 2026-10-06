@@ -1993,6 +1993,7 @@ export type Database = {
           show_nav_notifications: boolean
           show_nav_trial_followups: boolean
           show_nav_videos: boolean
+          show_remaining_slots: boolean
           show_renewal_alerts: boolean
           show_retention_alerts: boolean
           show_revenue_chart: boolean
@@ -2064,6 +2065,7 @@ export type Database = {
           show_nav_notifications?: boolean
           show_nav_trial_followups?: boolean
           show_nav_videos?: boolean
+          show_remaining_slots?: boolean
           show_renewal_alerts?: boolean
           show_retention_alerts?: boolean
           show_revenue_chart?: boolean
@@ -2135,6 +2137,7 @@ export type Database = {
           show_nav_notifications?: boolean
           show_nav_trial_followups?: boolean
           show_nav_videos?: boolean
+          show_remaining_slots?: boolean
           show_renewal_alerts?: boolean
           show_retention_alerts?: boolean
           show_revenue_chart?: boolean

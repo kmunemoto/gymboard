@@ -57,6 +57,11 @@ export interface Tenant {
    */
   next_cycle_payment_required_since?: string | null;
   /**
+   * お客様の予約カレンダーの日付の下に「残N」（その日あと何回入れられるか）を出すか。既定 false。
+   * 数え方は `src/lib/dayRemainingSlots.ts`。ON の店だけ、開いている間1分ごとに読み直す。
+   */
+  show_remaining_slots?: boolean;
+  /**
    * ホーム画面の「アクティブ顧客」の数え方。既定 "enrolled"（在籍の全員＝今まで通り）。
    * "next_booking" は今日以降に予約がある人だけ。判定は `src/lib/activeClients.ts`。
    */

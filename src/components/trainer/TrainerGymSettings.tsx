@@ -23,6 +23,7 @@ import TrainerStaffManager from "./TrainerStaffManager";
 import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
+import RemainingSlotsCard from "./RemainingSlotsCard";
 import NextCyclePaymentCard from "./NextCyclePaymentCard";
 import ActiveClientsSettingsCard from "./ActiveClientsSettingsCard";
 import TrainerPlanManager from "./TrainerPlanManager";
@@ -1208,6 +1209,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           営業時間カード（何時から何時まで開けるか）とは目的が違う。 */}
       <section className="space-y-3">
         <TrainerDailyBookingLimit />
+        <RemainingSlotsCard />{/* お客様の予約カレンダーに「残N」を出すか（別ファイル: 行数の上限のため） */}
       </section>
 
       {/* === 予約のオプション === トレーニング後の30分ストレッチなど。追加した時間は

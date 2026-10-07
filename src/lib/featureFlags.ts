@@ -205,5 +205,41 @@ export const LANGUAGE_SWITCHER_ENABLED = true;
  * 審査での見え方が変わる可能性があるため、切れる形にしてある。
  *
  * 経緯と、リジェクトされたときの手順は `mem/features/native-checkout.md`。
+ *
+ * ⚠️ **2026-10-07 に 1.8.0 がこの理由（3.1.1）で却下された。** いまは下の
+ * `IOS_BILLING_GUIDANCE_ENABLED = false` で iPhone の購入導線ごと止めているので、
+ * iPhone ではこの値に関係なくボタンは出ない（Android はこの値が効く）。
  */
 export const NATIVE_DIRECT_CHECKOUT = true;
+
+/**
+ * **アプリに、ジムボードの有料プランの購入導線を出すか**（お店がジムボードに払う月額プラン）。
+ *
+ * 2026-10-07、iOS 1.8.0 (167) が App Store の審査で却下された（ガイドライン 3.1.1）。
+ * アプリの機能を有料で開放するなら Apple のアプリ内課金を使え、
+ * 外部の決済へ誘導するボタン・リンク・案内文も置くな、という指摘。
+ * 宗本さん「一旦アプリから課金への案内の導線をけしてください。
+ *          システムは消さずにまたいつでも戻せる様にして」。
+ *
+ * ## false で消えるもの（その端末のアプリだけ。Web はそのまま）
+ *
+ *   - 設定 → プラン・お支払い … プランの一覧・料金・「このプランにする」・
+ *     「Webでプランに申し込む」・Web での契約を案内する文。**いまのプランの表示だけ残す**
+ *   - プラン上限の警告バナー … 「プランの変更はWebサイトから行えます」の一文
+ *   - ヘルプ … 「5. プランのご契約方法」の節ごと
+ *
+ * 「Webで契約できます」と書くだけでも外部決済への誘導とみなされる（日本のストア）。
+ * 文言を言い換えて残さないこと。
+ *
+ * ## 消さないもの
+ *
+ * 課金の仕組みは一切止めない。Web での契約・Stripe・webhook・席数上限・延滞の判定・
+ * 決済からアプリへ戻る経路（/billing/return）はそのまま。契約済みのお店は何も変わらない。
+ * お客様がジムに払う会費・回数券（店舗で受けるサービス）は 3.1.1 の対象外なので関係ない。
+ *
+ * 復活方法: true に戻すだけ。Android は指摘されていないので true のまま。
+ * Google Play で同じ指摘を受けたら `ANDROID_BILLING_GUIDANCE_ENABLED` を false にする。
+ * 経緯は `mem/features/native-checkout.md`。
+ */
+export const IOS_BILLING_GUIDANCE_ENABLED = false;
+export const ANDROID_BILLING_GUIDANCE_ENABLED = true;

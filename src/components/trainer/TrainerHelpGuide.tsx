@@ -1,5 +1,6 @@
 import { useTranslation, Trans } from "react-i18next";
 import { PRODUCTION_WEB_ORIGIN } from "@/lib/brand";
+import { showsAppBillingGuidance } from "@/lib/appBillingGuidance";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Accordion,
@@ -170,46 +171,50 @@ const TrainerHelpGuide = () => {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="plan-subscription">
-            <AccordionTrigger className="text-sm font-bold">
-              <span className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-accent" />
-                {t("help.section5Title")}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2">
-              <p>{t("help.section5Intro")}</p>
-              <ol className="space-y-3 list-decimal list-inside">
-                <li>
-                  <b className="text-foreground">{t("help.section5Step1")}</b>
-                  <p className="ml-5 mt-1">
-                    {/* 直書きにしない。フォークで上流の課金画面へ案内してしまう
-                        （brand.ts 経由にすること。mem/features/native-checkout.md） */}
-                    {t("help.section5Step1Desc", { url: PRODUCTION_WEB_ORIGIN })}
-                  </p>
-                </li>
-                <li>
-                  <b className="text-foreground">{t("help.section5Step2")}</b>
-                  <p className="ml-5 mt-1">{t("help.section5Step2Desc")}</p>
-                </li>
-                <li>
-                  <b className="text-foreground">{t("help.section5Step3")}</b>
-                  <p className="ml-5 mt-1">{t("help.section5Step3Desc")}</p>
-                </li>
-                <li>
-                  <b className="text-foreground">{t("help.section5Step4")}</b>
-                  <p className="ml-5 mt-1">{t("help.section5Step4Desc")}</p>
-                </li>
-                <li>
-                  <b className="text-foreground">{t("help.section5Step5")}</b>
-                  <p className="ml-5 mt-1">{t("help.section5Step5Desc")}</p>
-                </li>
-              </ol>
-              <p className="text-xs">
-                <b className="text-foreground">{t("help.section5Notice")}</b>{t("help.section5NoticeDesc")}
-              </p>
-            </AccordionContent>
-          </AccordionItem>
+          {/* 「プランのご契約方法」（Web での契約の手順）。購入の導線を止めている端末（iPhone）では節ごと出さない
+              （App Store 3.1.1。featureFlags.ts の IOS_BILLING_GUIDANCE_ENABLED） */}
+          {showsAppBillingGuidance() && (
+            <AccordionItem value="plan-subscription">
+              <AccordionTrigger className="text-sm font-bold">
+                <span className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-accent" />
+                  {t("help.section5Title")}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2">
+                <p>{t("help.section5Intro")}</p>
+                <ol className="space-y-3 list-decimal list-inside">
+                  <li>
+                    <b className="text-foreground">{t("help.section5Step1")}</b>
+                    <p className="ml-5 mt-1">
+                      {/* 直書きにしない。フォークで上流の課金画面へ案内してしまう
+                          （brand.ts 経由にすること。mem/features/native-checkout.md） */}
+                      {t("help.section5Step1Desc", { url: PRODUCTION_WEB_ORIGIN })}
+                    </p>
+                  </li>
+                  <li>
+                    <b className="text-foreground">{t("help.section5Step2")}</b>
+                    <p className="ml-5 mt-1">{t("help.section5Step2Desc")}</p>
+                  </li>
+                  <li>
+                    <b className="text-foreground">{t("help.section5Step3")}</b>
+                    <p className="ml-5 mt-1">{t("help.section5Step3Desc")}</p>
+                  </li>
+                  <li>
+                    <b className="text-foreground">{t("help.section5Step4")}</b>
+                    <p className="ml-5 mt-1">{t("help.section5Step4Desc")}</p>
+                  </li>
+                  <li>
+                    <b className="text-foreground">{t("help.section5Step5")}</b>
+                    <p className="ml-5 mt-1">{t("help.section5Step5Desc")}</p>
+                  </li>
+                </ol>
+                <p className="text-xs">
+                  <b className="text-foreground">{t("help.section5Notice")}</b>{t("help.section5NoticeDesc")}
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          )}
         </Accordion>
       </CardContent>
     </Card>

@@ -2219,6 +2219,7 @@
     "listSeparator": "、",
     "overTitle": "已超出方案上限（{{detail}}）。",
     "overDescNative": "請將客戶數量降至上限以下。方案變更可在網站上進行。在解決之前，無法建立新的預約、記錄等。",
+    "overDescApp": "請將客戶數量降至上限以下。在解決之前，無法建立新的預約、記錄等。",
     "overDescWeb": "請升級方案或將客戶數量降至上限以下。在解決之前，無法建立新的預約、記錄等。",
     "upgrade": "升級方案",
     "manageCustomers": "客戶管理",

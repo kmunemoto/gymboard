@@ -81,16 +81,19 @@ export type DayRemainingBadge =
  *
  * - 選べる日 … 「残N」（N が少なければ色を変える）。0 なら何も出さない
  *   （当日で締切を過ぎた日など。押せるが取れない＝数字を出すと誤解させる）
- * - **満枠・1日の上限に達した日だけ**「満」。定休日・手で閉めた日・予約できる範囲の外などは何も出さない
- *   （「満」は「埋まっている（キャンセルが出れば空く）」の意味。休みと混ぜない）
+ * - **満枠・1日の上限に達した日・受付を止めた日**は「満」。定休日・予約できる範囲の外などは何も出さない
+ *
+ * 受付を止めた日（ジムが手で受付終了にした日。トレーナー側の「受付停止中」）も「満」にする
+ * （2026-10-07 宗本さん「受付停止中も満と表示するようにして、枠の上限と同意味」）。
+ * お客様から見れば「その日はもう取れない」で同じ。定休日（曜日で決まった休み）は今まで通り出さない。
  */
 export const dayRemainingBadge = (
   reason: DayUnselectableReason | null,
   /** 残りの回数。選べない日では数えないで済むよう、関数でも受ける */
   count: number | (() => number),
 ): DayRemainingBadge => {
-  // 満枠の日と、1日の上限人数に達した日は「満」（どちらもキャンセルが出れば戻る）
-  if (reason === "full" || reason === "limitReached") return { kind: "full" };
+  // 満枠の日・1日の上限人数に達した日・受付を止めた日は「満」（お客様にはどれも「もう取れない日」）
+  if (reason === "full" || reason === "limitReached" || reason === "hardClosed") return { kind: "full" };
   if (reason !== null) return null;
   const n = typeof count === "function" ? count() : count;
   if (n <= 0) return null;

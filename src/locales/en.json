@@ -339,7 +339,7 @@
       "trialIgnoreBlocksSection": "Trials and time blocks",
       "trialIgnoreBlocksLabel": "Let trial bookings ignore time blocks",
       "showRemainingSlotsLabel": "Show open slots on the booking calendar",
-      "showRemainingSlotsDesc": "Shows how many slots are left for each date on the customer booking calendar. Fully booked dates show \"Full\". While the booking screen is open, it updates every minute.",
+      "showRemainingSlotsDesc": "Shows how many slots are left for each date on the customer booking calendar. Fully booked dates and dates you have stopped accepting bookings show \"Full\". While the booking screen is open, it updates every minute.",
       "showRemainingSlotsSaved": "Settings saved",
       "showRemainingSlotsSaveFailed": "Failed to save settings",
       "trialIgnoreBlocksDesc": "When on, trial bookings can be made even during times you blocked on the schedule. Member bookings, staff-made bookings and drop-ins stay blocked as before. Capacity, business hours and the booking cutoff still apply.",

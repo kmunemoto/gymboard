@@ -77,7 +77,7 @@ export const dayUnselectableReason = (dateKey: string, r: CalendarDayRules): Day
   //    （押しても予約はできない。空き時間を見せるだけ）。
   //    手で止めた日と、先の日付の上限は今までどおり塞ぐ。
   //    手で閉めた日（hardClosed）と、1日の上限に達した日（limitReached）を分けて返す
-  //    （後者だけ「満」を出す。手で閉めた日は休みと同じで、数字も「満」も出さない）。
+  //    （上限の日だけ当日を開ける例外があるため。残り枠の表示ではどちらも「満」。2026-10-07）。
   if (isDayHardClosed(r.closedDays, dateKey, r.hasOwnBookingOn(dateKey))) {
     return r.closedDays.find((d) => d.closed_date === dateKey)?.manual === false ? "limitReached" : "hardClosed";
   }

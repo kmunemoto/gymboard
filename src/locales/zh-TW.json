@@ -339,7 +339,7 @@
       "trialIgnoreBlocksSection": "體驗預約與時間鎖定",
       "trialIgnoreBlocksLabel": "體驗預約忽略時間鎖定",
       "showRemainingSlotsLabel": "在預約日曆上顯示剩餘名額",
-      "showRemainingSlotsDesc": "在客戶的預約日曆上按日期顯示剩餘名額。約滿的日期顯示「滿」。預約頁面開啟期間每分鐘自動更新。",
+      "showRemainingSlotsDesc": "在客戶的預約日曆上按日期顯示剩餘名額。約滿的日期和已停止受理預約的日期顯示「滿」。預約頁面開啟期間每分鐘自動更新。",
       "showRemainingSlotsSaved": "設定已儲存",
       "showRemainingSlotsSaveFailed": "設定儲存失敗",
       "trialIgnoreBlocksDesc": "開啟後，即使是日程表上「時間鎖定」的時段也可接受體驗預約。會員預約、代理預約與臨時到店仍照舊被鎖定。同時接待人數、營業時間與預約截止仍然有效。",

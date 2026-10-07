@@ -93,9 +93,11 @@ describe("その日、あと何回入れられるか", () => {
 });
 
 describe("日付の下に何を出すか", () => {
-  it("満枠で選べない日だけ「満」。定休日などの理由では何も出さない", () => {
-    expect(dayRemainingBadge("full", 0)).toEqual({ kind: "full" });
-    for (const r of ["past", "closed", "hardClosed", "paymentGate", "staffOff", "beyondWindow"] as const) {
+  it("満枠・上限・受付を止めた日は「満」。定休日などの理由では何も出さない", () => {
+    for (const r of ["full", "limitReached", "hardClosed"] as const) {
+      expect(dayRemainingBadge(r, 0), r).toEqual({ kind: "full" });
+    }
+    for (const r of ["past", "closed", "paymentGate", "staffOff", "beyondWindow"] as const) {
       expect(dayRemainingBadge(r, 5), r).toBeNull();
     }
   });

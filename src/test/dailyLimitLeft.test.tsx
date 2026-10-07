@@ -7,7 +7,7 @@
  * 🔴 壊しやすいもの:
  *   1. 上限を見ない（残7のまま）
  *   2. 画面側で予約を数え直す（体験・当日キャンセル消化の扱いが DB とズレる）
- *   3. 上限に達した日に何も出ない（「満」にする）／手で閉めた日に「満」が出る
+ *   3. 上限に達した日・手で閉めた日に何も出ない（どちらも「満」にする。2026-10-07）
  *   4. 他のジムの会員・未ログインにも日ごとの件数を返す
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -61,7 +61,7 @@ describe("useDailyLimitLeft", () => {
   });
 });
 
-describe("上限に達した日は「満」、手で閉めた日は何も出さない", () => {
+describe("上限に達した日も、手で閉めた日（受付停止中）も「満」", () => {
   const rules = (manual: boolean) => ({
     today: "2026-10-06", businessHours: { start: "10:00", end: "22:30" } as never,
     closedDays: [{ closed_date: "2026-10-13", manual, reason: null }],
@@ -75,10 +75,11 @@ describe("上限に達した日は「満」、手で閉めた日は何も出さ�
     expect(dayRemainingBadge(reason, 0)).toEqual({ kind: "full" });
   });
 
-  it("手で閉めた日 → hardClosed → 何も出さない", () => {
+  it("手で閉めた日（受付停止中） → hardClosed → 「満」", () => {
+    // 宗本さん「受付停止中も満と表示するようにして、枠の上限と同意味」（2026-10-07）
     const reason = dayUnselectableReason("2026-10-13", rules(true));
     expect(reason).toBe("hardClosed");
-    expect(dayRemainingBadge(reason, 0)).toBeNull();
+    expect(dayRemainingBadge(reason, 0)).toEqual({ kind: "full" });
   });
 });
 

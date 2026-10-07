@@ -2219,6 +2219,7 @@
     "listSeparator": ", ",
     "overTitle": "You've exceeded your plan limit ({{detail}}).",
     "overDescNative": "Please bring customers under the limit. Plan changes can be made on the website. Until resolved, you can't create new bookings, records, etc.",
+    "overDescApp": "Please bring customers under the limit. Until resolved, you can't create new bookings, records, etc.",
     "overDescWeb": "Please upgrade or bring customers under the limit. Until resolved, you can't create new bookings, records, etc.",
     "upgrade": "Upgrade plan",
     "manageCustomers": "Manage customers",

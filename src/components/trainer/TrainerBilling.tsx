@@ -20,6 +20,7 @@ import {
 } from "@/lib/gymboardPlans";
 import { PRODUCTION_WEB_ORIGIN } from "@/lib/brand";
 import { NATIVE_DIRECT_CHECKOUT } from "@/lib/featureFlags";
+import { showsAppBillingGuidance } from "@/lib/appBillingGuidance";
 import { Check, CreditCard, ExternalLink, Users, Info } from "lucide-react";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
@@ -161,23 +162,29 @@ const TrainerBilling = () => {
     const currentCard = PLAN_CARDS.find((p) => p.plan === currentPlan)!;
     // ⚠️ 直書きしないこと。兄弟アプリが上流の課金画面に飛ぶ（2026-08-06 に実際にそうなっていた）
     const webPlansUrl = `${PRODUCTION_WEB_ORIGIN}/?tab=billing`;
+    const currentPlanCard = (
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">{t("settings.billing.currentPlan")}</p>
+              <p className="text-lg font-bold">{currentCard.name}</p>
+            </div>
+            <CreditCard className="w-5 h-5 text-accent" />
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <Users className="w-4 h-4 text-muted-foreground" />
+            <span>{t("settings.billing.customers", { limit: formatLimit(currentCard.maxCustomers) })}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+    // 🔴 購入の導線を止めている端末（iPhone・App Store 3.1.1）では、いまのプランを見せるだけ。
+    //    料金・プランの一覧・Web での契約の案内も出さない（featureFlags.ts の IOS_BILLING_GUIDANCE_ENABLED）
+    if (!showsAppBillingGuidance()) return currentPlanCard;
     return (
       <div className="space-y-4">
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{t("settings.billing.currentPlan")}</p>
-                <p className="text-lg font-bold">{currentCard.name}</p>
-              </div>
-              <CreditCard className="w-5 h-5 text-accent" />
-            </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <span>{t("settings.billing.customers", { limit: formatLimit(currentCard.maxCustomers) })}</span>
-            </div>
-          </CardContent>
-        </Card>
+        {currentPlanCard}
 
         <div className="flex items-center justify-center gap-2">
           <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1">

@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useTenantLimit } from "@/hooks/useTenantLimit";
 import { BILLING_ENABLED } from "@/lib/featureFlags";
+import { showsAppBillingGuidance } from "@/lib/appBillingGuidance";
 
 interface Props {
   onUpgrade?: () => void;
@@ -42,7 +43,12 @@ const PlanLimitBanner = ({ onUpgrade, onManageCustomers }: Props) => {
             <>
               <p className="font-bold">{t("planLimit.overTitle", { detail })}</p>
               <p className="text-muted-foreground mt-0.5">
-                {isNative ? t("planLimit.overDescNative") : t("planLimit.overDescWeb")}
+                {/* 購入の導線を止めている端末（iPhone）では「Webで変更できます」も書かない（App Store 3.1.1） */}
+                {!isNative
+                  ? t("planLimit.overDescWeb")
+                  : showsAppBillingGuidance()
+                    ? t("planLimit.overDescNative")
+                    : t("planLimit.overDescApp")}
               </p>
               {(onUpgrade || onManageCustomers) && (
                 <div className="flex flex-wrap gap-2 mt-2">

@@ -2219,6 +2219,7 @@
     "listSeparator": "、",
     "overTitle": "已超出套餐上限（{{detail}}）。",
     "overDescNative": "请将客户数量降至上限以下。套餐变更可在网站上进行。在解决之前，无法创建新的预约、记录等。",
+    "overDescApp": "请将客户数量降至上限以下。在解决之前，无法创建新的预约、记录等。",
     "overDescWeb": "请升级套餐或将客户数量降至上限以下。在解决之前，无法创建新的预约、记录等。",
     "upgrade": "升级套餐",
     "manageCustomers": "客户管理",

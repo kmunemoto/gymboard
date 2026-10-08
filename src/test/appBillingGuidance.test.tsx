@@ -11,8 +11,8 @@
  *   3. フラグを true に戻しても元に戻らない（「いつでも戻せる」が嘘になる）
  *   4. Android・Web まで消える（指摘されていない）
  *
- * フラグの値そのもの（いま false か）は断言しない。true に戻すときにテストまで
- * 直させないため。値は各テストで差し込む。
+ * フラグの値そのもの（いま true か false か）は断言しない。止める／戻すたびにテストまで
+ * 直させないため。値は各テストで差し込む（2026-10-07 に止め、10-08 に戻したが、このファイルは無変更で通る）。
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
@@ -21,7 +21,8 @@ import { PLAN_CARDS } from "@/lib/gymboardPlans";
 
 type Platform = "ios" | "android" | "web";
 interface Flags { ios: boolean; android: boolean }
-const NOW: Flags = { ios: false, android: true };
+/** iPhone だけ止めた状態（2026-10-07 に出した形） */
+const IOS_HIDDEN: Flags = { ios: false, android: true };
 
 afterEach(() => {
   cleanup();
@@ -36,7 +37,7 @@ afterEach(() => {
   ]) vi.doUnmock(m);
 });
 
-const setup = async (platform: Platform, flags: Flags = NOW) => {
+const setup = async (platform: Platform, flags: Flags = IOS_HIDDEN) => {
   vi.doMock("@capacitor/core", async (orig) => ({
     ...(await orig<typeof import("@capacitor/core")>()),
     Capacitor: { isNativePlatform: () => platform !== "web", getPlatform: () => platform },

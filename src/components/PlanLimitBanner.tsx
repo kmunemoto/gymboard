@@ -43,7 +43,7 @@ const PlanLimitBanner = ({ onUpgrade, onManageCustomers }: Props) => {
             <>
               <p className="font-bold">{t("planLimit.overTitle", { detail })}</p>
               <p className="text-muted-foreground mt-0.5">
-                {/* 購入の導線を止めている端末（iPhone）では「Webで変更できます」も書かない（App Store 3.1.1） */}
+                {/* 購入の導線を止めている端末では「Webで変更できます」も書かない（App Store 3.1.1 対策） */}
                 {!isNative
                   ? t("planLimit.overDescWeb")
                   : showsAppBillingGuidance()

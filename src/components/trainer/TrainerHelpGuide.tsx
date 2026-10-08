@@ -171,8 +171,8 @@ const TrainerHelpGuide = () => {
             </AccordionContent>
           </AccordionItem>
 
-          {/* 「プランのご契約方法」（Web での契約の手順）。購入の導線を止めている端末（iPhone）では節ごと出さない
-              （App Store 3.1.1。featureFlags.ts の IOS_BILLING_GUIDANCE_ENABLED） */}
+          {/* 「プランのご契約方法」（Web での契約の手順）。購入の導線を止めている端末では節ごと出さない
+              （App Store 3.1.1 対策。featureFlags.ts の *_BILLING_GUIDANCE_ENABLED） */}
           {showsAppBillingGuidance() && (
             <AccordionItem value="plan-subscription">
               <AccordionTrigger className="text-sm font-bold">

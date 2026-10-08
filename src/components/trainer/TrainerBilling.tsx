@@ -179,8 +179,8 @@ const TrainerBilling = () => {
         </CardContent>
       </Card>
     );
-    // 🔴 購入の導線を止めている端末（iPhone・App Store 3.1.1）では、いまのプランを見せるだけ。
-    //    料金・プランの一覧・Web での契約の案内も出さない（featureFlags.ts の IOS_BILLING_GUIDANCE_ENABLED）
+    // 🔴 購入の導線を止めている端末（App Store 3.1.1 対策）では、いまのプランを見せるだけ。
+    //    料金・プランの一覧・Web での契約の案内も出さない（featureFlags.ts の *_BILLING_GUIDANCE_ENABLED）
     if (!showsAppBillingGuidance()) return currentPlanCard;
     return (
       <div className="space-y-4">

@@ -206,9 +206,10 @@ export const LANGUAGE_SWITCHER_ENABLED = true;
  *
  * 経緯と、リジェクトされたときの手順は `mem/features/native-checkout.md`。
  *
- * ⚠️ **2026-10-07 に 1.8.0 がこの理由（3.1.1）で却下された。** いまは下の
- * `IOS_BILLING_GUIDANCE_ENABLED = false` で iPhone の購入導線ごと止めているので、
- * iPhone ではこの値に関係なくボタンは出ない（Android はこの値が効く）。
+ * ⚠️ **2026-10-07 に 1.8.0 がこの理由（3.1.1）で却下された。** 一度は下の
+ * `IOS_BILLING_GUIDANCE_ENABLED = false` で iPhone の購入導線ごと止めたが、
+ * 2026-10-08 に宗本さんの指示で戻した。いまは iPhone・Android ともこの値が効く。
+ * 下のフラグが false の端末では、この値に関係なくボタンは出ない。
  */
 export const NATIVE_DIRECT_CHECKOUT = true;
 
@@ -237,9 +238,15 @@ export const NATIVE_DIRECT_CHECKOUT = true;
  * 決済からアプリへ戻る経路（/billing/return）はそのまま。契約済みのお店は何も変わらない。
  * お客様がジムに払う会費・回数券（店舗で受けるサービス）は 3.1.1 の対象外なので関係ない。
  *
- * 復活方法: true に戻すだけ。Android は指摘されていないので true のまま。
+ * ## 2026-10-08: iPhone も true に戻した
+ *
+ * 宗本さん「iosのプランの購入を復活させて」。止めていたのは 1.8.0 の #168・#169 の2ビルドだけ。
+ * ⚠️ **3.1.1 そのものは解決していない**（アプリ内課金も、外部決済の許可も無い）。
+ * 次の審査で同じ指摘を受けたら、ここを false にして出し直す。
+ *
+ * 止める: false にするだけ。戻す: true にするだけ（どちらもテストは直さなくてよい）。
  * Google Play で同じ指摘を受けたら `ANDROID_BILLING_GUIDANCE_ENABLED` を false にする。
  * 経緯は `mem/features/native-checkout.md`。
  */
-export const IOS_BILLING_GUIDANCE_ENABLED = false;
+export const IOS_BILLING_GUIDANCE_ENABLED = true;
 export const ANDROID_BILLING_GUIDANCE_ENABLED = true;

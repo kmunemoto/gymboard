@@ -11,7 +11,7 @@ import {
   presetToValues,
 } from "@/lib/gymDisplaySettings";
 import i18n from "@/lib/i18n";
-import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
+import { BILLING_ENABLED, TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 
 // ジム設定画面の構造テスト。
 // gymDisplaySettings.test.ts は「定義」を、TrainerSidebar.test.tsx は「反映先」を見ている。
@@ -140,6 +140,28 @@ describe("TrainerGymSettings（設定画面の構造）", () => {
     // カテゴリーの行（基本情報）より DOM 上で前 = 画面上でより上
     const firstRow = screen.getByText(i18n.t("settings.trainer.cat.profile"));
     expect(invite.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("🔴 ジムボードの利用プラン（Stripe 決済）は、招待コードのすぐ下に開いたまま出す。プラン管理には入れない", () => {
+    // 2026-10-08 宗本さん「これとこれを同じところに入れないで。Stripe決済のプラン、それだけは独立させて
+    // 設定欄に招待コードの一番下にそのまましまわず記載して」。
+    // お客様向けのプラン（回数券・月額）と、ジムがジムボードに払うプランを同じページに並べない
+    render(<TrainerGymSettings onSignOut={vi.fn()} />);
+    if (!BILLING_ENABLED) {
+      expect(screen.queryByTestId("billing")).toBeNull();
+      return;
+    }
+    // 一覧を開いた時点で見えている（カテゴリーを開かなくてよい）
+    const billing = screen.getByTestId("billing");
+    // 招待コードの欄のすぐ次の欄。カテゴリーの行より上
+    const inviteSection = screen.getByTestId("invite-code-card").closest("section");
+    expect(inviteSection?.nextElementSibling).toBe(billing.closest("section"));
+    const firstRow = screen.getByText(i18n.t("settings.trainer.cat.profile"));
+    expect(billing.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // プラン管理のページは、お客様向けのプランだけ
+    fireEvent.click(screen.getByText(i18n.t("settings.trainer.cat.plans")));
+    expect(screen.getByTestId("plan-manager")).toBeTruthy();
+    expect(screen.queryByTestId("billing")).toBeNull();
   });
 
   it("一覧にカテゴリーの行が出て、タップで該当ページへ・戻るで一覧へ", () => {

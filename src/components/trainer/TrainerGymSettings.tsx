@@ -725,6 +725,15 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
             <InviteCodeCard />
           </section>
 
+          {/* 🔴 ジムボードの利用プラン（Stripe 決済）は、お客様向けのプラン管理とは別物なので
+              カテゴリーにしまわず、招待コードのすぐ下に開いたまま出す（2026-10-08 宗本さん）。課金無効化中は非表示 */}
+          {BILLING_ENABLED && (
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
+              <TrainerBilling />
+            </section>
+          )}
+
           {settingsMenu.map((group) => {
             const items = group.items.filter((i) => i.enabled);
             if (items.length === 0) return null;
@@ -974,25 +983,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         </>
       )}
 
-      {/* === プラン・お支払い === */}
+      {/* === プラン管理（お客様向けの契約プラン）===
+          ジムボードの利用プラン（請求）はここに入れない。一覧の招待コードの下に独立させてある */}
       {settingsView === "plans" && (
-        <>
-      {/* === プラン管理 === */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.planManage")}</h3>
         <TrainerPlanManager />
       </section>
-
-      {/* GymBoard SaaS の請求。課金無効化中は非表示 */}
-      {BILLING_ENABLED && (
-        <>
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.billingSection")}</h3>
-            <TrainerBilling />
-          </section>
-        </>
-      )}
-        </>
       )}
 
       {/* === 営業時間・受け入れ枠 === */}

@@ -24,6 +24,7 @@ import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
 import RemainingSlotsCard from "./RemainingSlotsCard";
+import ArrivalLeadCard from "./ArrivalLeadCard";
 import NextCyclePaymentCard from "./NextCyclePaymentCard";
 import ActiveClientsSettingsCard from "./ActiveClientsSettingsCard";
 import TrainerPlanManager from "./TrainerPlanManager";
@@ -1206,6 +1207,11 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       <section className="space-y-3">
         <TrainerDailyBookingLimit />
         <RemainingSlotsCard />{/* お客様の予約カレンダーに「残N」を出すか（別ファイル: 行数の上限のため） */}
+      </section>
+
+      {/* === 来店の目安 === 「ご来店は 13:55 以降にお願いします」をお客様に出すか（別ファイル: 行数の上限のため） */}
+      <section className="space-y-3">
+        <ArrivalLeadCard />
       </section>
 
       {/* === 予約のオプション === トレーニング後の30分ストレッチなど。追加した時間は

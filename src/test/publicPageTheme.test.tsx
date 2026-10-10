@@ -120,12 +120,20 @@ describe("🔴 DB（マイグレーション）", () => {
     expect(grant).toBeGreaterThan(create);
   });
 
-  it("このマイグレーションが get_tenant_public の最後の定義（後から古い形で上書きされていない）", () => {
+  it("get_tenant_public の最後の定義が public_theme_color を返す（後から古い形で上書きされていない）", () => {
+    // 以前は「このマイグレーションが最後の定義」と固定していたが、get_tenant_public に列を足すたびに
+    // 必ず赤くなる（2026-10-10 に arrival_lead_minutes を足したとき）。見たいのは「最後の定義に
+    // この列が残っていること」なので、最後の定義のファイルを引いて中身を見る。
     const files = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
     const last = files.filter((f) =>
       /CREATE OR REPLACE FUNCTION public\.get_tenant_public\(/.test(readFileSync(`supabase/migrations/${f}`, "utf8")),
     ).pop();
-    expect(last).toBe("20260925010000_public_page_theme.sql");
+    expect(last, "get_tenant_public を定義する migration が無い").toBeTruthy();
+    expect(last! >= "20260925010000_public_page_theme.sql", `${last} がテーマ色の migration より古い`).toBe(true);
+    const body = readFileSync(`supabase/migrations/${last}`, "utf8").replace(/--[^\n]*/g, "");
+    expect(body).toMatch(/public_theme_color text/);
+    expect(body).toContain("t.public_theme_color");
+    expect(body).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_tenant_public\(uuid\) TO anon/);
   });
 
   it("特定のジムの値はマイグレーションに書かない（リポジトリは public）", () => {

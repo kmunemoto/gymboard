@@ -28,6 +28,7 @@ import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
+import ArrivalNotice from "@/components/booking/ArrivalNotice";
 import PlanUsageCard from "./PlanUsageCard";
 import StreakCard from "./StreakCard";
 import { useGymVideoCount } from "@/hooks/useGymVideos";
@@ -302,6 +303,9 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                   <CalendarDays className="w-5 h-5 text-accent-foreground" />
                 </div>
               </div>
+              {/* 設定している店だけ「ご来店は 13:55 以降に」。右のアイコンに幅を取られないよう行の下に置く
+                  （理由の一文は予約完了画面で出しているので省く） */}
+              <div className="mt-3"><ArrivalNotice compact startTime={nextBooking.startTime} lead={tenant?.arrival_lead_minutes} /></div>
             </CardContent>
           </Card>
         ) : (

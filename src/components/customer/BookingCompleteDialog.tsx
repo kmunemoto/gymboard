@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Check, CalendarDays, Clock, Sparkles } from "lucide-react";
 import { ja } from "date-fns/locale";
 import { formatJST } from "@/lib/timezone";
+import { useTenant } from "@/hooks/useTenant";
+import ArrivalNotice from "@/components/booking/ArrivalNotice";
 
 interface BookingCompleteDialogProps {
   open: boolean;
@@ -54,6 +56,8 @@ const BookingCompleteDialog = ({
   optionsLabel,
 }: BookingCompleteDialogProps) => {
   const { t } = useTranslation();
+  // 「ご来店は 13:55 以降に」。CustomerBooking（行数の上限）に引数を足さないよう、ここで店の設定を読む
+  const { tenant } = useTenant();
   const resolvedGym = gymName || t("workoutShare.brandFallback");
   // Always render in JST regardless of viewer timezone.
   const formattedDate = date ? formatJST(`${date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }) : "";
@@ -90,6 +94,8 @@ const BookingCompleteDialog = ({
               </p>
             )}
           </div>
+
+          <ArrivalNotice startTime={startTime} lead={tenant?.arrival_lead_minutes} />
 
           <a
             href={calendarUrl}

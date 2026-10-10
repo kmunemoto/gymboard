@@ -30,6 +30,7 @@ import { LEGACY_DEFAULT_TENANT_ID } from "@/lib/legacyDefaultTenant";
 import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
 import { usePublicPageTheme } from "@/hooks/usePublicPageTheme";
+import ArrivalNotice from "@/components/booking/ArrivalNotice";
 
 interface TrialSlotBooking {
   date: string;
@@ -72,6 +73,11 @@ interface PublicTenant {
    * 従来どおりブロックが体験も塞ぐ（安全側）。判定は `=== true` で行うこと。
    */
   trial_ignores_blocked_slots: boolean | null;
+  /**
+   * 「ご来店は 13:55 以降にお願いします」の「何分前から」。null/未設定（＝ get_tenant_public に
+   * この列が無い環境）は案内を出さない（今まで通り）。src/lib/arrivalGuide.ts
+   */
+  arrival_lead_minutes?: number | null;
 }
 
 // テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
@@ -462,6 +468,7 @@ const TrialBooking = () => {
               <p className="text-sm">{completedInfo.time}{t("trialBooking.completedMinutes", { count: sessionMinutes })}</p>
               <p className="text-xs text-muted-foreground mt-2">{t("trialBooking.completedSubtitle")}</p>
             </div>
+            <ArrivalNotice startTime={completedInfo.rawStartTime} lead={tenant?.arrival_lead_minutes} />
             <a
               href={calendarUrl}
               target="_blank"

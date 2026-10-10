@@ -62,6 +62,12 @@ export interface Tenant {
    */
   show_remaining_slots?: boolean;
   /**
+   * お客様に案内する「開始の何分前から来てよいか」（分）。null=案内を出さない。
+   * 予約完了画面・ホームの次回の予約・体験予約の完了画面に「ご来店は 13:55 以降にお願いします」を出す
+   * （`src/lib/arrivalGuide.ts`）。undefined=列がまだ読めない環境（出さない）。
+   */
+  arrival_lead_minutes?: number | null;
+  /**
    * ホーム画面の「アクティブ顧客」の数え方。既定 "enrolled"（在籍の全員＝今まで通り）。
    * "next_booking" は今日以降に予約がある人だけ。判定は `src/lib/activeClients.ts`。
    */

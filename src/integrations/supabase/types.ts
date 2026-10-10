@@ -1950,6 +1950,7 @@ export type Database = {
         Row: {
           active_client_basis: string
           address: string | null
+          arrival_lead_minutes: number | null
           booking_buffer_minutes: number
           booking_capacity: number
           booking_capacity_confirmed_at: string | null
@@ -2022,6 +2023,7 @@ export type Database = {
         Insert: {
           active_client_basis?: string
           address?: string | null
+          arrival_lead_minutes?: number | null
           booking_buffer_minutes?: number
           booking_capacity?: number
           booking_capacity_confirmed_at?: string | null
@@ -2094,6 +2096,7 @@ export type Database = {
         Update: {
           active_client_basis?: string
           address?: string | null
+          arrival_lead_minutes?: number | null
           booking_buffer_minutes?: number
           booking_capacity?: number
           booking_capacity_confirmed_at?: string | null
@@ -2531,6 +2534,7 @@ export type Database = {
         Args: { p_id: string }
         Returns: {
           address: string
+          arrival_lead_minutes: number
           booking_buffer_minutes: number
           booking_capacity: number
           booking_cutoff_hours: number

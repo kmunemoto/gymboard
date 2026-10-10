@@ -75,6 +75,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "active_client_basis, follow_up_after_days",
   // お客様の予約カレンダーに「残N」を出すか。既定 false（現状維持）。
   "show_remaining_slots",
+  // 「ご来店は 13:55 以降にお願いします」の「何分前から」。NULL = 案内を出さない（現状維持）。
+  "arrival_lead_minutes",
 ];
 
 /**
@@ -167,6 +169,9 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   //    "next_booking" に倒すと、未適用の環境で全店のアクティブ顧客の数字が勝手に変わる。
   active_client_basis: "enrolled",
   follow_up_after_days: 14,
+  // 🔴 列が読めない環境では**出さない**（今まで通り）に倒す。数字を置くと、
+  //    未適用の環境で全店のお客様に「13:55 以降に」と出てしまう。
+  arrival_lead_minutes: null,
 };
 
 /**

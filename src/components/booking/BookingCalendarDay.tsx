@@ -12,7 +12,8 @@ import type { DayRemainingBadge } from "@/lib/dayRemainingSlots";
  * | 状態 | 日付の下 |
  * |---|---|
  * | 空きあり | 「残N」（控えめな色） |
- * | 残りわずか（`FEW_REMAINING_SLOTS` 以下） | 「残N」を目立つ色・太字に |
+ * | 残りわずか（`FEW_REMAINING_SLOTS` 以下） | 「残N」をオレンジ・太字に |
+ * | 最後の1枠（`LAST_REMAINING_SLOT`。2026-10-11） | 「残1」を赤・太字に（残2 と同じ色では「最後」が伝わらない） |
  * | 満枠（押せない） | 「満」 |
  * | 定休日・受付終了・範囲外・当日で締切後 | 何も出さない |
  *
@@ -41,9 +42,11 @@ const BookingCalendarDay = ({ date, ownUpcoming, ownPast, badge, onColoredCell }
         : null;
   const tone = !badge || onColoredCell
     ? "opacity-90"
-    : badge.kind === "remaining" && badge.few
-      ? "text-warning font-bold"
-      : "text-muted-foreground";
+    : badge.kind === "remaining" && badge.last
+      ? "text-destructive font-bold"
+      : badge.kind === "remaining" && badge.few
+        ? "text-warning font-bold"
+        : "text-muted-foreground";
   return (
     <div className="relative flex flex-col items-center">
       <span className="relative z-[1]">{date.getDate()}</span>

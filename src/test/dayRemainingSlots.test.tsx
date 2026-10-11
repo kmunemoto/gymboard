@@ -18,7 +18,7 @@ import { isFootprintBlocked } from "@/lib/bookingOptionFit";
 import { isDayFullyBooked } from "@/lib/bookingDayFull";
 import { dayUnselectableReason, isDayUnselectable, type CalendarDayRules } from "@/lib/bookingCalendarDay";
 import {
-  countRemainingSlots, dayRemainingBadge, FEW_REMAINING_SLOTS, type RemainingSlotsInput,
+  countRemainingSlots, dayRemainingBadge, FEW_REMAINING_SLOTS, LAST_REMAINING_SLOT, type RemainingSlotsInput,
 } from "@/lib/dayRemainingSlots";
 import type { BookedSlot } from "@/lib/bookedSlots";
 import BookingCalendarDay from "@/components/booking/BookingCalendarDay";
@@ -102,17 +102,22 @@ describe("日付の下に何を出すか", () => {
     }
   });
 
-  it("0 なら出さない（当日で締切を過ぎた日など）。少なければ目立たせる", () => {
+  it("0 なら出さない（当日で締切を過ぎた日など）。少なければ目立たせ、最後の1枠はさらに目立たせる", () => {
     expect(dayRemainingBadge(null, 0)).toBeNull();
-    expect(dayRemainingBadge(null, FEW_REMAINING_SLOTS)).toEqual({ kind: "remaining", count: FEW_REMAINING_SLOTS, few: true });
-    expect(dayRemainingBadge(null, FEW_REMAINING_SLOTS + 1)).toEqual({ kind: "remaining", count: FEW_REMAINING_SLOTS + 1, few: false });
+    expect(dayRemainingBadge(null, FEW_REMAINING_SLOTS + 1)).toEqual({ kind: "remaining", count: FEW_REMAINING_SLOTS + 1, few: false, last: false });
+    expect(dayRemainingBadge(null, FEW_REMAINING_SLOTS)).toEqual({ kind: "remaining", count: FEW_REMAINING_SLOTS, few: true, last: false });
+    expect(dayRemainingBadge(null, LAST_REMAINING_SLOT)).toEqual({ kind: "remaining", count: LAST_REMAINING_SLOT, few: true, last: true });
+  });
+
+  it("「最後の1枠」は残りわずかより厳しい（残2 と同じ段階にならない）", () => {
+    expect(LAST_REMAINING_SLOT).toBeLessThan(FEW_REMAINING_SLOTS);
   });
 
   it("選べない日では数えない（重い計算を無駄にしない）", () => {
     const count = vi.fn(() => 3);
     dayRemainingBadge("closed", count);
     expect(count).not.toHaveBeenCalled();
-    expect(dayRemainingBadge(null, count)).toEqual({ kind: "remaining", count: 3, few: false });
+    expect(dayRemainingBadge(null, count)).toEqual({ kind: "remaining", count: 3, few: false, last: false });
   });
 
   it("選べない理由は、今までの「選べるか」と1対1（足しても判定は変わらない）", () => {
@@ -136,18 +141,40 @@ describe("カレンダーの1日ぶん", () => {
   afterEach(cleanup);
   const day = new Date(2026, 9, 15);
 
-  it("「残N」を出す。少ない日は目立つ色", () => {
-    render(<BookingCalendarDay date={day} ownUpcoming={false} ownPast={false} onColoredCell={false}
-      badge={{ kind: "remaining", count: 1, few: true }} />);
-    const el = screen.getByTestId("day-remaining");
-    expect(el).toHaveTextContent(i18n.t("booking.remainingSlots", { count: 1 }));
-    expect(el.className).toContain("text-warning");
+  it("「残N」を出す。残2 はオレンジ・太字、最後の1枠（残1）は赤・太字、余裕のある日は控えめな色", () => {
+    const cls = (count: number, few: boolean, last: boolean) => {
+      const { unmount } = render(<BookingCalendarDay date={day} ownUpcoming={false} ownPast={false} onColoredCell={false}
+        badge={{ kind: "remaining", count, few, last }} />);
+      const el = screen.getByTestId("day-remaining");
+      expect(el).toHaveTextContent(i18n.t("booking.remainingSlots", { count }));
+      const c = el.className;
+      unmount();
+      return c;
+    };
+    const plenty = cls(3, false, false);
+    const two = cls(2, true, false);
+    const one = cls(1, true, true);
+    expect(plenty).toContain("text-muted-foreground");
+    expect(two).toContain("text-warning");
+    expect(two).toContain("font-bold");
+    expect(one).toContain("text-destructive");
+    expect(one).toContain("font-bold");
+    // 残1 が残2 と同じ色になっていない（これが今回の要望）
+    expect(one).not.toContain("text-warning");
+    expect(two).not.toContain("text-destructive");
   });
 
   it("選択中・今日のマス（背景に色）では目立つ色にしない（色の上に色で読めなくなる）", () => {
-    render(<BookingCalendarDay date={day} ownUpcoming={false} ownPast={false} onColoredCell
-      badge={{ kind: "remaining", count: 1, few: true }} />);
-    expect(screen.getByTestId("day-remaining").className).not.toContain("text-warning");
+    for (const badge of [
+      { kind: "remaining", count: 1, few: true, last: true },
+      { kind: "remaining", count: 2, few: true, last: false },
+    ] as const) {
+      const { unmount } = render(<BookingCalendarDay date={day} ownUpcoming={false} ownPast={false} onColoredCell badge={badge} />);
+      const c = screen.getByTestId("day-remaining").className;
+      expect(c).not.toContain("text-warning");
+      expect(c).not.toContain("text-destructive");
+      unmount();
+    }
   });
 
   it("満枠の日は「満」", () => {

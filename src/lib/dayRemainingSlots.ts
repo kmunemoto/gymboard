@@ -34,8 +34,16 @@ import { minutesToTime } from "@/lib/businessHours";
 import type { BookedSlot } from "@/lib/bookedSlots";
 import type { DayUnselectableReason } from "@/lib/bookingCalendarDay";
 
-/** これ以下なら「残りわずか」として色を変える。 */
+/** これ以下なら「残りわずか」として色を変える（オレンジ）。 */
 export const FEW_REMAINING_SLOTS = 2;
+
+/**
+ * 残りがこれだけなら「最後の1枠」としてさらに目立たせる（赤）。2026-10-11 宗本さん
+ * （カレンダーのスクリーンショットで「残1は色変えた方がいいと思いますか？ 私の意図わかりますか？」
+ * →「最後の1枠」と「残り2枠」が同じオレンジでは足りない、と答えて「お願い」）。
+ * 誰かが1件入れた瞬間に「満」になる日なので、迷っているお客様に今取る理由が伝わるようにする。
+ */
+export const LAST_REMAINING_SLOT = 1;
 
 export interface RemainingSlotsInput
   extends Omit<FootprintBlockedInput, "startMinutes" | "bookedSlots"> {
@@ -72,14 +80,14 @@ export const countRemainingSlots = (input: RemainingSlotsInput): number => {
 };
 
 export type DayRemainingBadge =
-  | { kind: "remaining"; count: number; few: boolean }
+  | { kind: "remaining"; count: number; few: boolean; last: boolean }
   | { kind: "full" }
   | null;
 
 /**
  * カレンダーの日付の下に何を出すか。
  *
- * - 選べる日 … 「残N」（N が少なければ色を変える）。0 なら何も出さない
+ * - 選べる日 … 「残N」（N が少なければ色を変える。残2 以下はオレンジ、残1 は赤）。0 なら何も出さない
  *   （当日で締切を過ぎた日など。押せるが取れない＝数字を出すと誤解させる）
  * - **満枠・1日の上限に達した日・受付を止めた日**は「満」。定休日・予約できる範囲の外などは何も出さない
  *
@@ -97,5 +105,5 @@ export const dayRemainingBadge = (
   if (reason !== null) return null;
   const n = typeof count === "function" ? count() : count;
   if (n <= 0) return null;
-  return { kind: "remaining", count: n, few: n <= FEW_REMAINING_SLOTS };
+  return { kind: "remaining", count: n, few: n <= FEW_REMAINING_SLOTS, last: n <= LAST_REMAINING_SLOT };
 };

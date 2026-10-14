@@ -77,6 +77,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "show_remaining_slots",
   // 「ご来店は 13:55 以降にお願いします」の「何分前から」。NULL = 案内を出さない（現状維持）。
   "arrival_lead_minutes",
+  // 体験も含めた1日の合計の上限。NULL = 上限なし（体験は今まで通り上限なく受け付ける）。
+  "daily_total_limit",
 ];
 
 /**
@@ -172,6 +174,9 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 🔴 列が読めない環境では**出さない**（今まで通り）に倒す。数字を置くと、
   //    未適用の環境で全店のお客様に「13:55 以降に」と出てしまう。
   arrival_lead_minutes: null,
+  // 🔴 列が読めない環境では「上限なし」に倒す（daily_booking_limit と同じ理由。
+  //    数字を置くと、未適用の環境で全店の受付が勝手に止まる）。
+  daily_total_limit: null,
 };
 
 /**

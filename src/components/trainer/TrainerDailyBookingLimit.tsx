@@ -28,11 +28,22 @@ const LIMIT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
  *
  * 🔴 店側の代理予約には効かない。上限に達した日でも、予定表から手で入れる分は通る。
  *    最終判定は DB（`tenant_day_closed` / GB007）。
+ *
+ * ## 体験も含めた合計の上限（`tenants.daily_total_limit`・2026-10-14）
+ *
+ * 宗本さん「一日4枠までしか取れませんが、体験の予約ではそれ以上取れます。体験予約も
+ * その日がすでに5枠埋まっていれば体験予約も取れない様にしたい」→ 会員も合計5で止める、
+ * 「その日だけ上限を外す」日は両方外す、と確認済み。
+ *
+ * 上の数字（会員だけを数える）はそのまま。下の数字は会員＋体験の合計で、達した日は
+ * 会員も体験も受け付けない。会員の上限より大きくすると、その差の分だけ体験を受けられる。
+ * 判定は DB の `tenant_day_total_reached` 1か所（体験予約ページ・会員の画面も同じ関数で数える）。
  */
 const TrainerDailyBookingLimit = () => {
   const { t } = useTranslation();
   const { tenant, refetch: refetchTenant } = useTenant();
   const [value, setValue] = useState<string>(NO_LIMIT);
+  const [totalValue, setTotalValue] = useState<string>(NO_LIMIT);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -40,13 +51,19 @@ const TrainerDailyBookingLimit = () => {
     setValue(typeof current === "number" && current >= 1 ? String(current) : NO_LIMIT);
   }, [tenant?.daily_booking_limit]);
 
+  useEffect(() => {
+    const current = tenant?.daily_total_limit;
+    setTotalValue(typeof current === "number" && current >= 1 ? String(current) : NO_LIMIT);
+  }, [tenant?.daily_total_limit]);
+
   const handleSave = async () => {
     if (!tenant) return;
     setSaving(true);
     const next = value === NO_LIMIT ? null : parseInt(value, 10);
+    const nextTotal = totalValue === NO_LIMIT ? null : parseInt(totalValue, 10);
     const { error } = await supabase
       .from("tenants")
-      .update({ daily_booking_limit: next } as never)
+      .update({ daily_booking_limit: next, daily_total_limit: nextTotal } as never)
       .eq("id", tenant.id);
     if (error) {
       console.error("1日の上限人数の保存に失敗:", error);
@@ -70,7 +87,7 @@ const TrainerDailyBookingLimit = () => {
           <div className="space-y-1.5">
             <Label className="text-xs font-bold">{t("closedDays.limitLabel")}</Label>
             <Select value={value} onValueChange={setValue}>
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-10" aria-label={t("closedDays.limitLabel")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -82,6 +99,23 @@ const TrainerDailyBookingLimit = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold">{t("closedDays.totalLimitLabel")}</Label>
+            <Select value={totalValue} onValueChange={setTotalValue}>
+              <SelectTrigger className="h-10" aria-label={t("closedDays.totalLimitLabel")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_LIMIT}>{t("closedDays.limitNone")}</SelectItem>
+                {LIMIT_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {t("closedDays.limitUnit", { count: n })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{t("closedDays.totalLimitDesc")}</p>
           </div>
           <p className="text-xs text-muted-foreground">{t("closedDays.limitProxyNote")}</p>
           <Button onClick={handleSave} disabled={saving || !tenant} size="sm" className="h-10">

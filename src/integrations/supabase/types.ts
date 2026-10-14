@@ -1964,6 +1964,7 @@ export type Database = {
           current_period_end: string | null
           daily_booking_limit: number | null
           daily_summary_enabled: boolean
+          daily_total_limit: number | null
           email: string | null
           follow_up_after_days: number
           google_review_url: string | null
@@ -2037,6 +2038,7 @@ export type Database = {
           current_period_end?: string | null
           daily_booking_limit?: number | null
           daily_summary_enabled?: boolean
+          daily_total_limit?: number | null
           email?: string | null
           follow_up_after_days?: number
           google_review_url?: string | null
@@ -2110,6 +2112,7 @@ export type Database = {
           current_period_end?: string | null
           daily_booking_limit?: number | null
           daily_summary_enabled?: boolean
+          daily_total_limit?: number | null
           email?: string | null
           follow_up_after_days?: number
           google_review_url?: string | null
@@ -2552,6 +2555,12 @@ export type Database = {
           trial_info_body: string
           trial_info_title: string
           trial_price_yen: number
+        }[]
+      }
+      get_tenant_trial_closed_days: {
+        Args: { from_date: string; p_tenant_id: string; to_date: string }
+        Returns: {
+          closed_date: string
         }[]
       }
       get_trainer_ids: {

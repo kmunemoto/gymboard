@@ -87,6 +87,13 @@ export interface Tenant {
    * 🔴 店側の代理予約には効かない。undefined=列がまだ読めない環境。
    */
   daily_booking_limit?: number | null;
+  /**
+   * 体験も含めた1日の合計の上限（会員の予約＋体験・ドロップイン）。null=上限なし。
+   * 達した日は会員の自己予約も体験予約も受け付けない（判定は DB の `tenant_day_total_reached`）。
+   * 会員の上限（daily_booking_limit）より大きくすると、その差の分だけ体験を受けられる。
+   * 「その日だけ上限を外す」日は外れる。undefined=列がまだ読めない環境（上限なし）。
+   */
+  daily_total_limit?: number | null;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
   /** Googleの口コミ投稿ページURL。null/空なら口コミ依頼バナーを表示しない */

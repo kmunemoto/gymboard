@@ -31,6 +31,7 @@ import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
 import { usePublicPageTheme } from "@/hooks/usePublicPageTheme";
 import ArrivalNotice from "@/components/booking/ArrivalNotice";
+import { useTrialFullDays } from "@/hooks/useTrialFullDays";
 
 interface TrialSlotBooking {
   date: string;
@@ -156,6 +157,9 @@ const TrialBooking = () => {
   // ⚠️ 料金はジムごとに違う。**呼称に料金を含めないこと**（「無料体験」に戻さない）。
   //    金額は tenants.trial_price_yen を出す。
   const headerTitle = t("trialBooking.headerTitle");
+
+  // 「体験も含めた1日の上限（合計）」に達した日（2026-10-14）。手で止めた日・会員の上限の日は含まない
+  const trialFullDays = useTrialFullDays(TRIAL_BOOKING_ENABLED, effectiveTenantId);
 
   // テナント限定の埋まり枠を60日分まとめて1回で取得する (get_tenant_booked_slots)
   const fetchExistingSlots = useCallback(async () => {
@@ -312,6 +316,17 @@ const TrialBooking = () => {
     const insertTenantId = tenantId || tenant?.id || DEFAULT_TENANT_ID;
     if (!insertTenantId) {
       toast.error(t("trialBooking.errInvalidLink"));
+      setSubmitting(false);
+      return;
+    }
+
+    // 🔴 開いている間に「合計の上限」に達することがある。送信の直前にもう一度見る。
+    //    ここで止めないと trial-book が 500 を返し、お客様には汎用の失敗しか出ない
+    //    （受付終了だと伝わらない）。src/hooks/useTrialFullDays.ts
+    if (await trialFullDays.recheck(dateKey)) {
+      toast.error(t("closedDays.errorClosed"));
+      setSelectedDate(undefined);
+      setSelectedSlot(null);
       setSubmitting(false);
       return;
     }
@@ -648,6 +663,8 @@ const TrialBooking = () => {
                   if (isDayPastCutoff(yyyyMMdd, cutoff, Date.now(), lastBookableStartOn(yyyyMMdd))) return true;
                   // 定休日（曜日別の営業時間で閉めている日）。
                   if (isClosedDate(tenant?.operating_hours, yyyyMMdd)) return true;
+                  // 体験も含めた1日の上限（合計）に達した日。手で止めた日・会員の上限の日は弾かない
+                  if (trialFullDays.isFull(yyyyMMdd)) return true;
                   // 何日先まで受けるか。店が未設定なら従来どおり10日先まで。
                   return isBeyondBookingWindow(
                     yyyyMMdd, tenant?.booking_window_days ?? null, { days: LEGACY_GUEST_WINDOW_DAYS },

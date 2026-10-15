@@ -16,9 +16,11 @@
  *   3. 起算日固定（pinned）のお客様まで引き直す（店の設定が最上位）
  *   4. 猶予で前の区切りへ回した予約が、引き直しで数えられなくなる
  *   5. サーバー側の写し（期限のお知らせ）とずれる
+ *   6. お客様のホーム「次回の予約・今回 n/4回目」だけ別の数え方のまま（ここも暦窓で数えていた）
  */
 import { describe, it, expect } from "vitest";
-import { getBookingProgressIndex, resolveEffectiveCycle, type BookingForProgress } from "@/lib/courseProgress";
+import { getBookingProgressIndex, getNextBookingOrdinal, resolveEffectiveCycle, type BookingForProgress } from "@/lib/courseProgress";
+import { readFileSync } from "node:fs";
 import { computePlanUsage } from "@/lib/planUsage";
 import { computeSubscriptionUsage } from "../../supabase/functions/_shared/cycle";
 import { toJSTDate } from "@/lib/timezone";
@@ -124,5 +126,46 @@ describe("サーバー側の写し（期限のお知らせ）と揃う", () => {
     })!;
     expect(new Date(server.windowStart).toISOString().slice(0, 10)).toBe("2026-12-03");
     expect(server.used).toBe(1);
+  });
+});
+
+describe("お客様のホーム「次回の予約・今回 n/m回目」もチップと同じ数え方", () => {
+  const ordinal = (bookings: BookingForProgress[], date: string, plan: string, maxSessions: number, pinned = false) =>
+    getNextBookingOrdinal({
+      bookingId: bookings.find((x) => x.booking_date.startsWith(date))!.id,
+      cycleStartDate: START, plan, maxSessions, bookings, cycleMonths: 1, graceDays: 0, cycleUnit: "months", pinned,
+    });
+
+  it("🔴 11/12 は「今回 4/4回目」（以前は暦窓 [11/7, 12/7) の1件目で 1/4）", () => {
+    expect(ordinal(REAL, "2026-11-12", "月4回", 4)).toBe(4);
+    expect(ordinal(REAL, "2026-11-05", "月4回", 4)).toBe(3);
+    // 予約一覧のチップと必ず一致する
+    for (const d of ["2026-10-22", "2026-10-29", "2026-11-05", "2026-11-12"]) {
+      expect(`${ordinal(REAL, d, "月4回", 4)}/4`).toBe(chip(REAL, d));
+    }
+  });
+
+  it("起算日固定（pinned）はチップと同じく店が決めた暦どおり（11/12 は 1/4）", () => {
+    expect(ordinal(REAL, "2026-11-12", "月4回", 4, true)).toBe(1);
+  });
+
+  it("チップで数えられないプラン（回数券・通い放題）とプラン名の回数が食い違うときは従来どおり暦窓（他店の表示を変えない）", () => {
+    expect(ordinal(REAL, "2026-11-12", "回数券10回", 10)).toBe(1);
+    expect(ordinal(REAL, "2026-11-12", "通い放題", 15)).toBe(1);
+    expect(ordinal(REAL, "2026-11-12", "月4回", 8)).toBe(1);
+    expect(ordinal(REAL, "2026-11-05", "回数券10回", 10)).toBe(3);
+  });
+
+  it("数えられないときは 0（画面は「?」）: 起算日なし・予約が見つからない・回数0", () => {
+    const b = REAL.find((x) => x.booking_date.startsWith("2026-11-12"))!;
+    expect(getNextBookingOrdinal({ bookingId: b.id, cycleStartDate: null, plan: "月4回", maxSessions: 4, bookings: REAL })).toBe(0);
+    expect(getNextBookingOrdinal({ bookingId: "nope", cycleStartDate: START, plan: "月4回", maxSessions: 4, bookings: REAL })).toBe(0);
+    expect(getNextBookingOrdinal({ bookingId: b.id, cycleStartDate: START, plan: "月4回", maxSessions: 0, bookings: REAL })).toBe(0);
+  });
+
+  it("ホーム画面はこの関数で数える（暦窓で数え直す処理を書き戻さない）", () => {
+    const src = readFileSync("src/components/customer/CustomerHome.tsx", "utf8");
+    expect(src).toContain("getNextBookingOrdinal(");
+    expect(src).not.toContain("nextBookingCycle");
   });
 });

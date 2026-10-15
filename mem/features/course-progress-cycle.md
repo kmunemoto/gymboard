@@ -8,8 +8,9 @@
 |---|---|---|
 | 予約チップの「2/4」 | `getBookingProgressIndex` | `TrainerSchedule` / `WeekTimelineView` / `TrainerDashboard` / `CustomerBooking` |
 | プロフィールの「予約済み 2/4・利用期間 7/28〜8/29」 | `computePlanUsage` | `PlanUsageCard`（`src/lib/planUsage.ts`） |
+| ホームの「次回の予約・今回 2/4回目」 | `getNextBookingOrdinal`（中身はチップと同じ） | `CustomerHome` |
 
-**この2つは必ず同じ窓で数えること。** 別々の窓を使っていたのが下記の不具合。
+**これらは必ず同じ窓で数えること。** 別々の窓を使っていたのが下記の不具合。
 
 ## 暦窓（getCycleWindow）と実効サイクル（resolveEffectiveCycle）
 - `getCycleWindow` は起算日の**応当日ベースの暦窓**。起算日 6/30・1ヶ月なら
@@ -125,6 +126,21 @@ DB（`plan_cycle_window`）は今も保存された起算日の暦窓のまま�
   （`mem/ops/edge-function-deploy.md`）。デプロイ前は、区切りの境目が動いたお客様だけ
   お知らせの日付がカードと数日ずれうる
 
-見張り: `src/test/cycleReanchorRoutines.test.ts`（9件。日付は本番の実データ、名前は持たない）と
+### お客様のホーム「今回 n/m回目」も別の数え方だった
+
+ホームの「次回の予約・今回 n/m回目」（`CustomerHome`）は、チップとは別に**保存された起算日の
+暦窓だけ**で数えていた（使い切りロールも猶予も引き直しも無し）。本番で次回の予約がある
+お客様25人のうち**6人が、予定表・予約一覧のチップと食い違っていた**（今回の修正より前から）。
+例: 9/19 から始まった区切り（9/19, 9/27, 10/4, 10/11）を使い切った次の 10/18 が「今回 4/4回目」
+（チップは 1/4）、猶予で前回分になる期限翌日の予約が「今回 1/4回目」（チップは 4/4 前回分）。
+
+`getNextBookingOrdinal` に寄せて、チップと同じ値を出すようにした。ただし**チップで数えられない
+プラン**（回数券・通い放題・名前に「月N回」が無いプラン）と、プラン名の回数と店の設定
+（`max_sessions`）が食い違うときは従来どおり暦窓で数える（他店の表示を変えない）。
+
+- `CustomerSettings` にも暦窓で数える `cycleCount` があるが、画面には出していない（未使用）
+- ホームの「今回のレポート・来店◯回」も暦窓のまま（来店数の目安で、回数の表示ではないので据え置き）
+
+見張り: `src/test/cycleReanchorRoutines.test.ts`（14件。ホームの5件を含む。日付は本番の実データ、名前は持たない）と
 `courseProgress.test.ts` の猶予の2件。変異6件（チップで引き直さない／途中の区切りを引き直さない／
-未来の1回目でも引き直す／pinned でも引き直す／allow_overflow=false でも引き直す／Deno 側を戻す）がすべて赤。
+未来の1回目でも引き直す／pinned でも引き直す／allow_overflow=false でも引き直す／Deno 側を戻す）と、ホームの変異2件（チップの数え方を使わない／回数の食い違いを確かめない）がすべて赤。

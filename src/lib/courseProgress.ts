@@ -683,3 +683,37 @@ export const getBookingProgressIndex = (
     isGraceCarryover: false,
   };
 };
+
+/**
+ * ホームの「次回の予約・今回 n/m回目」の n（m は呼び出し側で解決済みの回数 `maxSessions`）。
+ *
+ * 🔴 **予約一覧・予定表のチップ（getBookingProgressIndex）と同じ数え方にする**（2026-10-15）。
+ * 以前はここだけ保存された起算日の暦窓で数えていた。起算日 10/6・月4回・予約 10/22, 10/29,
+ * 11/5, 11/12 のお客様で、11/12（10/22〜11/22 の4回目）が「今回 1/4回目」と出ていた。
+ *
+ * チップで数えられないプラン（回数券・通い放題・名前に「月N回」が無いプラン）と、プラン名の
+ * 回数と `maxSessions` が食い違うときは、従来どおり暦窓で数える（他店の表示を変えない）。
+ * 1始まり。数えられないときは 0（画面は「?」）。
+ */
+export const getNextBookingOrdinal = (params: {
+  bookingId: string;
+  cycleStartDate: string | null | undefined;
+  plan: string | null | undefined;
+  maxSessions: number;
+  bookings: BookingForProgress[];
+  cycleMonths?: number | null;
+  graceDays?: number | null;
+  cycleUnit?: string | null;
+  pinned?: boolean | null;
+}): number => {
+  const { bookingId, cycleStartDate, plan, maxSessions, bookings, cycleMonths, graceDays, cycleUnit, pinned } = params;
+  const target = bookings.find((b) => b.id === bookingId);
+  if (!target || maxSessions <= 0) return 0;
+  const chip = getBookingProgressIndex(bookingId, cycleStartDate, plan, bookings, cycleMonths, graceDays, cycleUnit, pinned);
+  if (chip && !chip.isUnlimited && !chip.isUnconfigured && chip.total === maxSessions && chip.index > 0) {
+    return chip.index;
+  }
+  const progress = computeCourseProgress(cycleStartDate, plan, bookings, toJSTDate(target.booking_date), cycleMonths, cycleUnit);
+  const raw = progress.cycleBookings.findIndex((b) => b.id === bookingId) + 1;
+  return raw > 0 ? ((raw - 1) % maxSessions) + 1 : 0;
+};

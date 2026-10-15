@@ -1,5 +1,5 @@
 import { lazy, useEffect, useRef, useState } from "react";
-import { TrendingDown, TrendingUp, CalendarDays, Flame, Target, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera, Star, X, Video as VideoIcon } from "lucide-react";
+import { TrendingDown, TrendingUp, CalendarDays, Flame, ScanLine, BarChart3, ChevronRight, Dumbbell, Share2, Weight, Calendar as CalendarIcon, Save, Camera, Star, X, Video as VideoIcon } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { Input } from "@/components/ui/input";
@@ -31,11 +31,9 @@ import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
 import ArrivalNotice from "@/components/booking/ArrivalNotice";
 import PlanUsageCard from "./PlanUsageCard";
-import StreakCard from "./StreakCard";
 import { useGymVideoCount } from "@/hooks/useGymVideos";
 import MilestoneGoalCard from "./MilestoneGoalCard";
 import {
-  STREAK_ENABLED,
   MONTHLY_REPORT_ENABLED,
   WORKOUT_LOG_ENABLED,
   POSTURE_ENABLED,
@@ -59,7 +57,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
   const { allPlans: tenantPlans, tenant } = useTenant();
   const { bookings, loading: bookingsLoading } = useMyBookings();
   const { chartData, latest, loading: metricsLoading, saveMeasurement } = useMeasurements(user?.id);
-  const { currentStreak, bestStreak, hasFutureBookingThisWeek, loading: streakLoading } = useStreak(user?.id);
+  const { currentStreak, loading: streakLoading } = useStreak(user?.id);
   // 動画ライブラリの入口は「公開中の動画が1本以上あるジム」にしか出さない。
   // お客様側にジムごとの表示ON/OFFが無いので、これが実質の出し分けになる。
   const { count: videoCount } = useGymVideoCount();
@@ -256,19 +254,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         <div className="relative">
           <p className="text-sm opacity-75 flex items-center gap-1">{t("home.greeting")} <Flame className="w-3.5 h-3.5" /></p>
           <h1 className="text-xl font-bold mt-1">{t("home.greetingName", { name: displayName })}</h1>
-          <div className="flex items-center gap-4 mt-4">
-            <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
-              <Target className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">{t("home.sessionsAchieved", { count: bookings.length })}</span>
-            </div>
-            {/* STREAK_ENABLED=false でもここだけ残っていた漏れを塞ぐ */}
-            {STREAK_ENABLED && (
-              <div className="flex items-center gap-1.5 bg-primary-foreground/15 rounded-full px-3 py-1">
-                <Flame className="w-3.5 h-3.5" />
-                <span className="text-xs font-medium">{currentStreak > 0 ? t("home.weeksStreak", { count: currentStreak }) : t("home.keepingUp")}</span>
-              </div>
-            )}
-          </div>
+          {/* 「◯回達成」「継続中」のバッジは置かない（宗本さん「いらない」2026-10-16） */}
         </div>
     </div>
   );
@@ -335,14 +321,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
       {/* 2.6 3ヶ月目標（棚卸し目標）: 設定しているお客様にのみ表示 */}
       <MilestoneGoalCard milestoneGoal={profile?.milestone_goal} />
 
-      {/* 3. Streak */}
-      {STREAK_ENABLED && !streakLoading && (currentStreak > 0 || bestStreak > 0) && (
-        <StreakCard
-          currentStreak={currentStreak}
-          bestStreak={bestStreak}
-          hasFutureBookingThisWeek={hasFutureBookingThisWeek}
-        />
-      )}
+      {/* 連続来店のカード（StreakCard）は置かない（宗本さん「いらない」2026-10-16） */}
 
       {/* 3.5 口コミ依頼バナー */}
       {showReviewBanner && (

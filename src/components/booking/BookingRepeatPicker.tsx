@@ -22,9 +22,11 @@ interface Props {
   cap: number;
   /** オプションを付けているか。付けているときだけ、スキップの注記を出す。 */
   optionNote: boolean;
+  /** 途中の回から次の利用期間に入るときの一言（src/lib/calendarPeriod.ts の repeatPeriodBreak）。無ければ null */
+  periodNote?: string | null;
 }
 
-const BookingRepeatPicker = ({ value, onChange, cap, optionNote }: Props) => {
+const BookingRepeatPicker = ({ value, onChange, cap, optionNote, periodNote }: Props) => {
   const { t } = useTranslation();
   return (
     <div className="mb-3 text-left">
@@ -62,6 +64,9 @@ const BookingRepeatPicker = ({ value, onChange, cap, optionNote }: Props) => {
       )}
       {value > 1 && optionNote && (
         <p className="text-[11px] text-muted-foreground mt-1.5">{t("bookingOptions.repeatNote")}</p>
+      )}
+      {value > 1 && periodNote && (
+        <p className="text-[11px] font-bold text-accent mt-1.5" data-testid="repeat-period-note">{periodNote}</p>
       )}
     </div>
   );

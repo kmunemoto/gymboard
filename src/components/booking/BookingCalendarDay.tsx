@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { format } from "date-fns";
 import type { DayRemainingBadge } from "@/lib/dayRemainingSlots";
 
 /**
@@ -63,6 +64,28 @@ const BookingCalendarDay = ({ date, ownUpcoming, ownPast, badge, onColoredCell }
       )}
     </div>
   );
+};
+
+/**
+ * 予約カレンダーの DayContent（react-day-picker の components に渡す）。
+ * CustomerBooking の行数上限（`qualityRatchet.test.ts`）のため、ここで組み立てる。
+ * 前後の月の日（outside）には残り枠を出さない。選んだ日・今日のマスは背景に色が付く。
+ */
+export const bookingDayContent = (p: {
+  futureDateSet: Set<string>;
+  pastDateSet: Set<string>;
+  remainingBadgeFor: (key: string) => DayRemainingBadge;
+}) => {
+  const DayContent = ({ date, activeModifiers }: { date: Date; activeModifiers: Record<string, boolean | undefined> }) => {
+    const key = format(date, "yyyy-MM-dd");
+    return (
+      <BookingCalendarDay
+        date={date} ownUpcoming={p.futureDateSet.has(key)} ownPast={p.pastDateSet.has(key)}
+        badge={activeModifiers.outside ? null : p.remainingBadgeFor(key)}
+        onColoredCell={!!(activeModifiers.selected || activeModifiers.today)} />
+    );
+  };
+  return DayContent;
 };
 
 /** カレンダーの下の説明（残り枠を出している店だけ） */

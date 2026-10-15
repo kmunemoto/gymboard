@@ -24,6 +24,7 @@ import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
 import { supabase } from "@/integrations/supabase/client";
 import { getCycleWindow, getNextBookingOrdinal, resolveCycleMonths, resolveCycleUnit, resolveGraceDays } from "@/lib/courseProgress";
+import { reportPeriodAt } from "@/lib/reportPeriod";
 import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
@@ -600,7 +601,16 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                   <p className="font-bold text-sm flex items-center gap-1.5"><BarChart3 className="w-4 h-4" />{t("home.thisReport")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {(() => {
-                       const currentCycle = getCycleWindow(profile?.cycle_start_date, now, resolveCycleMonths(currentPlan, tenantPlans), resolveCycleUnit(currentPlan, tenantPlans));
+                      // 「今回」はカードの利用期間と同じ区切り（src/lib/reportPeriod.ts。2026-10-15）。
+                      // 回数券・期間プラン・起算日なしは従来どおり起算日からの区切り
+                      const currentCycle = reportPeriodAt({
+                        planName: currentPlan,
+                        cycleStartDate: profile?.cycle_start_date,
+                        cycleStartPinned: profile?.cycle_start_pinned,
+                        graceEnabled: profile?.grace_enabled,
+                        tenantPlans,
+                        bookings: bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+                      }, 0, now) ?? getCycleWindow(profile?.cycle_start_date, now, resolveCycleMonths(currentPlan, tenantPlans), resolveCycleUnit(currentPlan, tenantPlans));
                       if (!currentCycle) return t("home.checkData");
                       const cycleVisited = bookings.filter(b => {
                         // 同日キャンセル消化は実際には来店していないため「来店◯回」に含めない

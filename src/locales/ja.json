@@ -2303,6 +2303,9 @@
     "thisMonth": "今月",
     "lastMonth": "先月",
     "monthsAgo": "{{count}}ヶ月前",
+    "thisPeriod": "今回",
+    "lastPeriod": "前回",
+    "periodsAgo": "{{count}}回前",
     "noRecords": "トレーニング記録がありません"
   },
   "monthlyComment": {

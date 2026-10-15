@@ -56,6 +56,7 @@ import { isMilestoneOverdue } from "@/lib/milestoneGoal";
 import DiagnosisHistorySection from "@/components/customer/posture/DiagnosisHistorySection";
 import TrainerMonthlyComment from "./TrainerMonthlyComment";
 import MuscleBalanceRadar from "@/components/customer/MuscleBalanceRadar";
+import type { ReportPeriodSource } from "@/lib/reportPeriod";
 
 import TrainerWeightJourneyPanel from "./TrainerWeightJourneyPanel";
 import { getMuscleIconUrl } from "@/lib/muscleMapIcon";
@@ -318,6 +319,16 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages.length]);
+
+  // 部位バランスの期間の材料。消化状況カードと同じもの（期間をカードの利用期間と揃える。2026-10-15）
+  const radarPeriodSource = useMemo<ReportPeriodSource | null>(() => (loadingBookings ? null : {
+    planName: clientPlan,
+    cycleStartDate: cycleStartDate || null,
+    cycleStartPinned,
+    graceEnabled,
+    tenantPlans,
+    bookings: clientBookings2.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status })),
+  }), [loadingBookings, clientPlan, cycleStartDate, cycleStartPinned, graceEnabled, tenantPlans, clientBookings2]);
 
   if (loadingProfile) {
     return (
@@ -1361,7 +1372,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
         <TabsContent value="training" className="space-y-4">
           {/* Muscle Balance Radar — MUSCLE_RADAR_ENABLED */}
           {MUSCLE_RADAR_ENABLED && (
-            <MuscleBalanceRadar userId={clientId} cycleStartDate={cycleStartDate || null} />
+            <MuscleBalanceRadar userId={clientId} periodSource={radarPeriodSource} />
           )}
 
           <Card>

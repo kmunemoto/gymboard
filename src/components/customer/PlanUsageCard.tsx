@@ -4,7 +4,7 @@ import { ja } from "date-fns/locale";
 import { CreditCard, Clock, CalendarCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import PlanUsageBadge from "./PlanUsageBadge";
-import { computePlanUsage, resolvePlanUsageInput, type PlanUsageBooking } from "@/lib/planUsage";
+import { computePlanUsage, PLAN_USAGE_EXCLUDED_PLAN_NAMES, resolvePlanUsageInput, type PlanUsageBooking } from "@/lib/planUsage";
 import type { TenantPlan } from "@/hooks/useTenant";
 import { getJSTNow } from "@/lib/timezone";
 
@@ -30,13 +30,11 @@ interface PlanUsageCardProps {
   className?: string;
 }
 
-// 予約種別ではないもの（体験・未設定）はカードを出さない
-const EXCLUDED_PLAN_NAMES = new Set(["初回無料体験", "プラン未設定"]);
-
 const PlanUsageCard = ({ planName, cycleStartDate, tenantPlans, bookings, cycleStartPinned, graceEnabled, showUsagePeriod, className }: PlanUsageCardProps) => {
   const { t } = useTranslation();
 
-  if (!planName || EXCLUDED_PLAN_NAMES.has(planName)) return null;
+  // 予約種別ではないもの（体験・未設定）はカードを出さない
+  if (!planName || PLAN_USAGE_EXCLUDED_PLAN_NAMES.has(planName)) return null;
   const tenantPlan = tenantPlans.find((p) => p.plan_name === planName) ?? null;
   const input = resolvePlanUsageInput(planName, tenantPlan, cycleStartDate, cycleStartPinned);
   if (!input) return null;

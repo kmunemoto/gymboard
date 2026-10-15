@@ -2303,6 +2303,9 @@
     "thisMonth": "이번 달",
     "lastMonth": "지난달",
     "monthsAgo": "{{count}}개월 전",
+    "thisPeriod": "이번 기간",
+    "lastPeriod": "지난 기간",
+    "periodsAgo": "{{count}}기간 전",
     "noRecords": "트레이닝 기록이 없습니다"
   },
   "monthlyComment": {

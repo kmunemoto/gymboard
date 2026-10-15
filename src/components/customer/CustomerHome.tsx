@@ -23,7 +23,7 @@ import { getJSTNow, formatJST } from "@/lib/timezone";
 import { ja } from "date-fns/locale";
 import { formatDate } from "@/lib/dateFormat";
 import { supabase } from "@/integrations/supabase/client";
-import { getCycleWindow, resolveCycleMonths, resolveCycleUnit } from "@/lib/courseProgress";
+import { getCycleWindow, getNextBookingOrdinal, resolveCycleMonths, resolveCycleUnit, resolveGraceDays } from "@/lib/courseProgress";
 import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
@@ -166,28 +166,22 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
     : (currentPlan ? (fallbackPlanMaxSessions[currentPlan] || 4) : 0);
   const maxSessions = hasPlan ? resolvedMax : 0;
 
-  const nextBookingCycle = nextBooking ? getCycleWindow(profile?.cycle_start_date, parseISO(nextBooking.date), resolveCycleMonths(currentPlan, tenantPlans), resolveCycleUnit(currentPlan, tenantPlans)) : null;
-
-  const cycleBookings = (() => {
-    if (!nextBookingCycle) return [];
-    return bookings
-      .filter((b) => {
-        // 「今回n/m回目」のnを出すための消化数カウント。同日キャンセル消化
-        // (SAME_DAY_FORFEIT_STATUS) はプラン消化数として数える対象なので、
-        // ここではあえて除外しない（courseProgress.ts と同じ扱い）。
-        if (b.status === "キャンセル済み") return false;
-        const d = parseISO(b.date);
-        return d >= nextBookingCycle.start && d < nextBookingCycle.end;
+  // 「今回n/m回目」の n。予約一覧のチップと同じ数え方（どの区切りも1回目の日から1ヶ月。2026-10-15）。
+  // 同日キャンセル消化 (SAME_DAY_FORFEIT_STATUS) はプラン消化数として数える対象なので、
+  // ここではあえて除外しない（courseProgress.ts と同じ扱い）。
+  const nextBookingOrdinal = nextBooking
+    ? getNextBookingOrdinal({
+        bookingId: nextBooking.id,
+        cycleStartDate: profile?.cycle_start_date,
+        plan: currentPlan,
+        maxSessions,
+        bookings: bookings.map((b) => ({ id: b.id, booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+        cycleMonths: resolveCycleMonths(currentPlan, tenantPlans),
+        graceDays: resolveGraceDays(currentPlan, tenantPlans, profile?.grace_enabled),
+        cycleUnit: resolveCycleUnit(currentPlan, tenantPlans),
+        pinned: profile?.cycle_start_pinned,
       })
-      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
-  })();
-
-  const rawOrdinal = nextBooking
-    ? cycleBookings.findIndex((b) => b.id === nextBooking.id) + 1
     : 0;
-  const nextBookingOrdinal = (rawOrdinal > 0 && maxSessions > 0)
-    ? ((rawOrdinal - 1) % maxSessions) + 1
-    : rawOrdinal;
 
   // Streak LINE notification
   useEffect(() => {

@@ -220,11 +220,16 @@ describe("resolveGraceDays × お客様ごとのON/OFF（grace_enabled）", () =
 });
 
 describe("getBookingProgressIndex × 猶予（大目に見た回は前サイクルの回数として表示）", () => {
-  // 長尾さんのケース: 起算日 6/4・月8回・期限 7/4。7回消化済みで、期限翌日 7/5 に8回目。
+  // 起算日 6/4・月8回・期限 7/4。7回消化済みで、期限翌日 7/5 に8回目。
+  //
+  // ⚠️ 1回目を起算日と同じ 6/4 にしてある（2026-10-15）。区切りは「その区切りの1回目の日から
+  //    1ヶ月」になったので、1回目が 6/6 だと期限は 7/6 まで延び、7/5 は猶予ではなく
+  //    今の区切りの 8/8 になる（下の「1回目が起算日より後」のテスト）。ここで見たいのは
+  //    「期限が本当に切れた翌日の予約」の扱いなので、期限が 7/4 になる並びにしている。
   const mk = (dates: string[]): BookingForProgress[] =>
     dates.map((d, i) => ({ id: `${d}-${i}`, booking_date: `${d}T10:00:00+09:00`, status: "予約済み" }));
   const seven = mk([
-    "2026-06-06", "2026-06-10", "2026-06-14", "2026-06-18",
+    "2026-06-04", "2026-06-10", "2026-06-14", "2026-06-18",
     "2026-06-24", "2026-06-29", "2026-07-02",
   ]);
   const graceBooking: BookingForProgress = { id: "grace-1", booking_date: "2026-07-05T12:45:00+09:00", status: "予約済み" };
@@ -253,6 +258,26 @@ describe("getBookingProgressIndex × 猶予（大目に見た回は前サイク�
     const r = getBookingProgressIndex("next-1", "2026-06-04", "月8回", [...seven, graceBooking, next], 1, 7);
     expect(r!.index).toBe(1);
     expect(r!.total).toBe(8);
+  });
+
+  it("🔴 猶予で前回分に回した予約のチップは、あとに次の区切りの予約が入っていても 8/8（前回分）のまま", () => {
+    // 区切りの引き直し（2026-10-15）は「1回目の日がもう来ている」ときだけ。来ていない 7/8 を
+    // 先回りして起算日にすると、7/5（前回分）が区切りから外れてチップが消える。
+    const next: BookingForProgress = { id: "next-1", booking_date: "2026-07-08T10:00:00+09:00", status: "予約済み" };
+    const r = getBookingProgressIndex("grace-1", "2026-06-04", "月8回", [...seven, graceBooking, next], 1, 7);
+    expect(r).not.toBeNull();
+    expect(r!.index).toBe(8);
+    expect(r!.isGraceCarryover).toBe(true);
+  });
+
+  it("1回目が起算日より後（6/6）なら期限は 7/6 まで。7/5 は猶予ではなく今の区切りの 8/8（2026-10-15）", () => {
+    const fromSixth = mk([
+      "2026-06-06", "2026-06-10", "2026-06-14", "2026-06-18",
+      "2026-06-24", "2026-06-29", "2026-07-02",
+    ]);
+    const r = getBookingProgressIndex("grace-1", "2026-06-04", "月8回", [...fromSixth, graceBooking], 1, 7);
+    expect(r!.index).toBe(8);
+    expect(r!.isGraceCarryover).toBe(false);
   });
 
   it("前サイクルを使い切っていれば猶予帯でも繰り入れず 1/8", () => {

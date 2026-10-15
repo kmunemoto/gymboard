@@ -48,7 +48,8 @@ import { dayUnselectableReason, isDayUnselectable } from "@/lib/bookingCalendarD
 import { countRemainingSlots, dayRemainingBadge } from "@/lib/dayRemainingSlots";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { useDailyLimitLeft } from "@/hooks/useDailyLimitLeft";
-import BookingCalendarDay, { RemainingSlotsLegend, TALL_CALENDAR_CLASS } from "@/components/booking/BookingCalendarDay";
+import { bookingDayContent, RemainingSlotsLegend, TALL_CALENDAR_CLASS } from "@/components/booking/BookingCalendarDay";
+import { CalendarPeriodHint, CalendarPeriodLegend, useCalendarPeriod } from "@/components/booking/CalendarPeriod";
 import { useNextCyclePaymentGate } from "@/hooks/useNextCyclePaymentGate";
 import NextCyclePaymentNotice from "@/components/booking/NextCyclePaymentNotice";
 import { isDayFullyBooked } from "@/lib/bookingDayFull";
@@ -276,6 +277,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const excludeSlot = rescheduleTarget
     ? { date: rescheduleTarget.date, startTime: rescheduleTarget.startTime }
     : null;
+  // カレンダーの「今回の利用期間」（帯・下の説明・日を選んだときの一言。src/components/booking/CalendarPeriod.tsx）
+  const period = useCalendarPeriod(planUsageInput, planBookingsForUsage, profile?.show_usage_period, excludeSlot);
 
   // 🔴 判定の本体は src/lib/bookingOptionFit.ts に**移してある**（写しではない）。
   //    確認カードの「この枠にオプションを付けられるか」と同じ式でなければ、画面が
@@ -1106,24 +1109,16 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   // 🔴 「その日を選べるか」の規則は src/lib/bookingCalendarDay.ts に集めてある。
                   //    ここに書き足さないこと（理由が散り、規則としてのテストが書けなくなる）。
                   disabled={(date) => isDayUnselectable(format(date, "yyyy-MM-dd"), calendarDayRules)}
-                  className={showRemaining ? `pointer-events-auto ${TALL_CALENDAR_CLASS}` : "pointer-events-auto"}
-                  components={{
-                    DayContent: ({ date: dayDate, activeModifiers }) => {
-                      const key = format(dayDate, "yyyy-MM-dd");
-                      return (
-                        <BookingCalendarDay
-                          date={dayDate} ownUpcoming={futureDateSet.has(key)} ownPast={pastDateSet.has(key)}
-                          badge={activeModifiers.outside ? null : remainingBadgeFor(key)}
-                          onColoredCell={!!(activeModifiers.selected || activeModifiers.today)} />
-                      );
-                    },
-                  }}
+                  className={`pointer-events-auto ${showRemaining ? TALL_CALENDAR_CLASS : ""} ${period.calendarClass}`}
+                  {...period.dayPicker}
+                  components={{ DayContent: bookingDayContent({ futureDateSet, pastDateSet, remainingBadgeFor }) }}
                 />
                 {/* 🔴 押す前に理由が分かるようにする（薄いだけだと店へ問い合わせになる） */}
                 <NextCyclePaymentNotice gate={nextCyclePaymentGate} />
               </CardContent>
             </Card>
             {showRemaining && <RemainingSlotsLegend />}
+            <CalendarPeriodLegend view={period.view} />
 
             {selectedDate && (
               <div id="time-slots-section" className="mt-4 slide-up scroll-mt-4">
@@ -1131,6 +1126,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   <Clock className="w-3.5 h-3.5" />
                   {t("booking.availableSlots", { date: formatDate(selectedDate, "monthDayDow") })}
                 </h3>
+                {!isViewOnlyDay(dateKey) && <CalendarPeriodHint hint={period.hintFor(dateKey)} />}
                 {isViewOnlyDay(dateKey) && (
                   <div className="mb-3 rounded-xl border border-accent/30 bg-accent/5 p-3">
                     <div className="flex items-start gap-2">
@@ -1269,6 +1265,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         onChange={setRepeatWeeks}
                         cap={maxRepeatWeeksFor(selectedDate, maxBookableDate)}
                         optionNote={effectiveOptionMinutes > 0}
+                        periodNote={period.repeatNoteFor(dateKey, repeatWeeks)}
                       />
                     )}
                     {/* 何が予約されるかの最終確認。ボタンの文言は変えない

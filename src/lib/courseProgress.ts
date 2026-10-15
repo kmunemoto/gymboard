@@ -137,6 +137,27 @@ export const resolveEffectiveCycle = (params: {
   /** 表示用: サイクル窓を「実際の1回目のトレーニング日」起点に引き直す（既定 false=暦窓のまま） */
   anchorToFirstBooking?: boolean;
   /**
+   * 🔴 **どの区切りも「その区切りの1回目の予約日」から数える**（2026-10-15）。
+   *
+   * 宗本さん（予定表のスクリーンショット）「次回の1回目のトレーニング日が10/22やから
+   * 11/22までで4回なのに11/12の予約がまた1回目ってどういうこと？
+   * 1回目から自動的に1ヶ月間で計算するようにしろ」。
+   *
+   * 起算日 10/6・月4回・予約 10/22, 10/29, 11/5, 11/12 のお客様で、チップが
+   * 暦窓 [10/6, 11/7) / [11/7, 12/7) で数えて **11/12 を「1/4」**と出していた（正しくは 4/4）。
+   * 期限が切れて間が空いたあとの区切りを、1回目の日ではなく起算日の応当日（毎月6日）で
+   * 切っていたのが原因。`anchorToFirstBooking` は**最後の区切り1つ**しか引き直さず、
+   * チップはそれすら使っていなかった。
+   *
+   * true のとき、区切りを順に進める途中でも、区切りの最初の（猶予繰入を除いた）予約が
+   * 区切りの開始日より後なら、その日を起算日として区切りを引き直す。
+   * ただし**その1回目の日が referenceDate までに来ている場合だけ**（来ていない区切りを
+   * 先回りして動かすと、猶予で前の区切りへ繰り入れた予約が区切りから外れて数えられなくなる）。
+   * `anchorToFirstBooking` を true にすると、これも有効になる（カードとチップを同じ数え方にする）。
+   * 起算日固定（pinned）・超過を許さないプラン（allowOverflow=false）では引き直さない。
+   */
+  reanchorRoutines?: boolean;
+  /**
    * 上限を超えた予約を許すか（`tenant_plans.allow_overflow`。既定 true＝従来どおり）。
    *
    * 🔴 false のときは**自動ロールを止める**。超過を DB が拒否する設定なのに窓が
@@ -159,6 +180,8 @@ export const resolveEffectiveCycle = (params: {
   const allowOverflow = params.allowOverflow !== false;
   const pinned = params.pinned === true;
   const anchorToFirstBooking = params.anchorToFirstBooking === true && !pinned;
+  // 区切りを進める途中でも1回目の日に引き直すか（上の reanchorRoutines を参照）
+  const reanchor = (params.reanchorRoutines === true || anchorToFirstBooking) && !pinned && allowOverflow;
   let anchorKey = params.cycleStartDate;
   if (!anchorKey) return null;
   // 型注釈は必須。付けないと、この下のループが
@@ -227,6 +250,23 @@ export const resolveEffectiveCycle = (params: {
 
   for (let i = 0; i < 240; i++) {
     const { lent, inWindow } = summarize(window, anchorKey);
+    // 🔴 区切りの1回目（猶予繰入を除く）が区切りの開始日より後で、その日がもう来ているなら、
+    //    その日を起算日として区切りを引き直す（2026-10-15。上の reanchorRoutines を参照）。
+    //    起算日は1回目の日へ進むだけなので、引き直しの回数は予約の数を超えない。
+    if (reanchor) {
+      const firstCore = inWindow[lent];
+      if (firstCore) {
+        const firstDay = startOfDay(firstCore);
+        if (firstDay > window.start && firstDay <= refDay) {
+          const key = format(firstDay, "yyyy-MM-dd");
+          if (key > anchorKey) {
+            anchorKey = key;
+            window = getCycleWindow(anchorKey, firstDay, cycleMonths, cycleUnit)!;
+            continue;
+          }
+        }
+      }
+    }
     // 🔴 起算日固定（pinned）中は使い切りロールをしない（店の設定が最上位）
     if (!pinned && allowOverflow && maxSessions != null && maxSessions > 0 && inWindow.length - lent > maxSessions) {
       // 回数上限を超過 → (上限+1)回目（猶予繰入はスキップ）の予約日を新しい起算日にロール
@@ -583,6 +623,10 @@ export const getBookingProgressIndex = (
       bookings,
       referenceDate: targetDate,
       pinned,
+      // 🔴 カード（computePlanUsage）と同じく、どの区切りも1回目の日から数える（2026-10-15）。
+      //    これが無いと、期限が切れて間が空いたあとの区切りを起算日の応当日で切り、
+      //    カードは 4/4 なのにチップは 1/4、になる
+      reanchorRoutines: true,
     });
     if (eff) {
       cycle = eff.window;

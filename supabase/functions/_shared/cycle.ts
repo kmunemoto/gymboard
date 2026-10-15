@@ -143,6 +143,9 @@ export function computeSubscriptionUsage(params: {
   if (!startYmd) return null;
   const pinned = params.pinned === true;
   const anchorToFirstBooking = params.anchorToFirstBooking === true && !pinned;
+  // 🔴 区切りを進める途中でも1回目の日に引き直す（2026-10-15）。クライアント
+  //    resolveEffectiveCycle の reanchorRoutines と同じ（理由はそちら）。
+  const reanchor = anchorToFirstBooking;
   const graceDays = normGraceDays(g);
   const dates = bookingIsos.map((iso) => ymdToEpoch(isoToJstYmd(iso))).sort((a, b) => a - b);
   const refDay = ymdToEpoch(nowJstYmd);
@@ -186,6 +189,19 @@ export function computeSubscriptionUsage(params: {
 
   for (let i = 0; i < 240; i++) {
     const { lent, inWin } = summarize(win, anchor);
+    // 🔴 区切りの1回目（猶予繰入を除く）が区切りの開始日より後で、その日がもう来ているなら、
+    //    その日を起算日として区切りを引き直す（クライアントと同じ。2026-10-15）
+    if (reanchor) {
+      const firstCore = inWin[lent];
+      if (firstCore != null && firstCore > win.start && firstCore <= refDay) {
+        const key = isoToJstYmd(new Date(firstCore).toISOString());
+        if (ymdToEpoch(key) > ymdToEpoch(anchor)) {
+          anchor = key;
+          win = getCycleWindow(anchor, firstCore, cycleMonths, cycleUnit);
+          continue;
+        }
+      }
+    }
     // 🔴 起算日固定（pinned）中は使い切りロールをしない（店の設定が最上位）
     if (!pinned && maxSessions != null && maxSessions > 0 && inWin.length - lent > maxSessions) {
       const rollDate = inWin[lent + maxSessions];

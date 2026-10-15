@@ -150,7 +150,9 @@ describe("🔴 DBの内部キー『初回無料体験』は改名していない
   // 突き合わせに使われている。改名すると既存行と一致しなくなる。
   const KEY = "初回無料体験";
   const KEY_USERS = [
-    "src/components/customer/PlanUsageCard.tsx",
+    // カード（PlanUsageCard）とレポートの期間（reportPeriod）が共通で使う除外リスト。
+    // 2026-10-15 に PlanUsageCard の中から planUsage.ts へ移した（PLAN_USAGE_EXCLUDED_PLAN_NAMES）
+    "src/lib/planUsage.ts",
     "src/components/customer/CustomerHome.tsx",
     "src/components/customer/CustomerMonthlyReport.tsx",
   ];

@@ -2303,6 +2303,9 @@
     "thisMonth": "本月",
     "lastMonth": "上月",
     "monthsAgo": "{{count}} 個月前",
+    "thisPeriod": "本期",
+    "lastPeriod": "上期",
+    "periodsAgo": "{{count}} 期前",
     "noRecords": "暫無訓練記錄"
   },
   "monthlyComment": {

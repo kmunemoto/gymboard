@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useStreak } from "@/hooks/useStreak";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addMonths, addDays, differenceInDays, isBefore } from "date-fns";
+import { format, addMonths, addDays, differenceInDays, isBefore, startOfMonth } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getJSTNow, toJSTDate, formatJST } from "@/lib/timezone";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
@@ -17,7 +17,8 @@ import { useTenant } from "@/hooks/useTenant";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { getCycleWindow as getSharedCycleWindow, resolveCycleMonths, resolveCycleUnit } from "@/lib/courseProgress";
 import { useTranslation } from "react-i18next";
-import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
+import { SAME_DAY_FORFEIT_STATUS, useMyBookings } from "@/hooks/useBookings";
+import { reportPeriodAt, reportPeriodLabel, type ReportPeriodSource } from "@/lib/reportPeriod";
 import {
   WORKOUT_LOG_ENABLED,
   MEALS_ENABLED,
@@ -34,7 +35,8 @@ interface Props {
 const CustomerMonthlyReport = ({ onBack }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading } = useProfile();
+  const { bookings: myBookings, loading: myBookingsLoading } = useMyBookings();
   // allPlans: 非公開プランでも既存会員の契約解決は続ける（useTenant の allPlans コメント参照）
   const { allPlans: tenantPlans } = useTenant();
   const planMaxMap = useMemo(() => {
@@ -62,7 +64,38 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
   const cycleUnit = resolveCycleUnit(profile?.plan, tenantPlans);
   const spanDays = cycleUnit === "weeks" ? cycleMonths * 7 : cycleUnit === "days" ? cycleMonths : null;
 
-  const { cycleStart, cycleEnd, prevCycleStart, prevCycleEnd, isCurrentCycle } = useMemo(() => {
+  // 🔴 期間はプロフィールのカードの「利用期間」と同じ区切り（src/lib/reportPeriod.ts。2026-10-15）。
+  //    材料（プロフィール・予約）が揃うまでは期間を決めない（違う期間を一瞬読んでしまわないように）。
+  const periodSource = useMemo<ReportPeriodSource | null>(() => {
+    if (profileLoading || myBookingsLoading) return null;
+    return {
+      planName: profile?.plan,
+      cycleStartDate: profile?.cycle_start_date,
+      cycleStartPinned: profile?.cycle_start_pinned,
+      graceEnabled: profile?.grace_enabled,
+      tenantPlans: tenantPlans ?? [],
+      bookings: myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+    };
+  }, [profileLoading, myBookingsLoading, profile?.plan, profile?.cycle_start_date, profile?.cycle_start_pinned, profile?.grace_enabled, tenantPlans, myBookings]);
+
+  const { cycleStart, cycleEnd, prevCycleStart, prevCycleEnd, isCurrentCycle, periodLabel } = useMemo(() => {
+    const cur = periodSource ? reportPeriodAt(periodSource, cycleOffset) : null;
+    const prevPeriod = cur && periodSource ? reportPeriodAt(periodSource, cycleOffset - 1) : null;
+    if (cur && prevPeriod) {
+      return {
+        cycleStart: cur.start,
+        cycleEnd: cur.end,
+        prevCycleStart: prevPeriod.start,
+        prevCycleEnd: prevPeriod.end,
+        isCurrentCycle: cycleOffset === 0,
+        periodLabel: reportPeriodLabel(cur),
+      };
+    }
+    // 以下は従来どおり（回数券・期間プラン・起算日なし）
+    // 週・日の窓は end が排他的上限なので最終日（end-1日）を出す。月は従来どおり応当日。
+    const labelOf = (start: Date, end: Date) => spanDays != null
+      ? `${format(start, "M/d", { locale: ja })}〜${format(addDays(end, -1), "M/d", { locale: ja })}`
+      : `${format(start, "M/d", { locale: ja })}〜${format(addMonths(start, cycleMonths), "M/d", { locale: ja })}`;
     if (!cycleStartDate) {
       const now = getJSTNow();
       const base = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -73,6 +106,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
         prevCycleStart: addMonths(shifted, -cycleMonths),
         prevCycleEnd: shifted,
         isCurrentCycle: cycleOffset === 0,
+        periodLabel: labelOf(shifted, addMonths(shifted, cycleMonths)),
       };
     }
     const now = getJSTNow();
@@ -95,20 +129,31 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       prevCycleStart: prev.start,
       prevCycleEnd: prev.end,
       isCurrentCycle: cycleOffset === 0,
+      periodLabel: labelOf(shifted.start, shifted.end),
     };
-  }, [cycleStartDate, cycleOffset, cycleMonths, cycleUnit, spanDays]);
+  }, [periodSource, cycleStartDate, cycleOffset, cycleMonths, cycleUnit, spanDays]);
+  // 期間が決まるまで（材料の読み込み中）は読みに行かない
+  const periodReady = periodSource !== null;
+  // 依存は日時の数値で持つ（予約のリアルタイム更新で同じ期間の Date が作り直されても読み直さない）
+  const cycleStartMs = cycleStart.getTime();
+  const cycleEndMs = cycleEnd.getTime();
+  const prevCycleStartMs = prevCycleStart.getTime();
+  const prevCycleEndMs = prevCycleEnd.getTime();
 
   const canGoNext = cycleOffset < 0;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !periodReady) return;
     const fetchAll = async () => {
       setLoading(true);
       const csStr = cycleStart.toISOString();
       const ceStr = cycleEnd.toISOString();
       const pcsStr = prevCycleStart.toISOString();
       const pceStr = prevCycleEnd.toISOString();
-      const monthStr = format(cycleStart, "yyyy-MM-dd");
+      // トレーナーの月次コメントは暦の月ごと（TrainerMonthlyComment は月初の日付で保存する）。
+      // 期間が始まった月のコメントを出す。以前は期間の開始日そのもので探していて、
+      // 開始日が1日でないお客様にはコメントが一度も出ていなかった。
+      const monthStr = format(startOfMonth(cycleStart), "yyyy-MM-dd");
 
       const [bRes, mRes, mlRes, dRes, pdRes, pbRes, wRes, pwRes, tcRes] = await Promise.all([
         supabase.from("bookings").select("*").eq("user_id", user.id).gte("booking_date", csStr).lt("booking_date", ceStr).neq("status", "キャンセル済み").neq("status", SAME_DAY_FORFEIT_STATUS),
@@ -134,7 +179,8 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       setLoading(false);
     };
     fetchAll();
-  }, [user, cycleStart, cycleEnd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 期間は上の数値で見る
+  }, [user, periodReady, cycleStartMs, cycleEndMs, prevCycleStartMs, prevCycleEndMs]);
 
   const currentPlan = profile?.plan;
   const hasPlan = !!currentPlan && currentPlan !== '初回無料体験';
@@ -295,11 +341,6 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
 
     return parts.join(" ");
   };
-
-  // 週・日の窓は end が排他的上限なので最終日（end-1日）を出す。月は従来どおり応当日。
-  const periodLabel = spanDays != null
-    ? `${format(cycleStart, "M/d", { locale: ja })}〜${format(addDays(cycleEnd, -1), "M/d", { locale: ja })}`
-    : `${format(cycleStart, "M/d", { locale: ja })}〜${format(addMonths(cycleStart, cycleMonths), "M/d", { locale: ja })}`;
 
   if (loading) {
     return (

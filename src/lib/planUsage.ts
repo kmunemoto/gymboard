@@ -88,6 +88,9 @@ export interface PlanUsage {
 
 const isCancelled = (s: string) => s === "キャンセル済み";
 
+/** 予約種別ではないもの（体験・未設定）。カード（PlanUsageCard）もレポートの期間も出さない */
+export const PLAN_USAGE_EXCLUDED_PLAN_NAMES: ReadonlySet<string> = new Set(["初回無料体験", "プラン未設定"]);
+
 const UNCONFIGURED: PlanUsage = {
   kind: "unconfigured",
   total: null,

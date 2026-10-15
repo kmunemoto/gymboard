@@ -2303,6 +2303,9 @@
     "thisMonth": "This month",
     "lastMonth": "Last month",
     "monthsAgo": "{{count}} months ago",
+    "thisPeriod": "This period",
+    "lastPeriod": "Last period",
+    "periodsAgo": "{{count}} periods ago",
     "noRecords": "No training records"
   },
   "monthlyComment": {

@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Activity } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
-import { addMonths, parseISO, format } from "date-fns";
+import { addMonths, format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
+import { useTenant } from "@/hooks/useTenant";
+import { useMyBookings } from "@/hooks/useBookings";
 import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow } from "@/lib/timezone";
 import { getMuscleGroup, loadMuscleGroupMap, subscribeMuscleGroup } from "@/lib/muscleGroup";
@@ -14,17 +16,8 @@ import {
   loadTenantMuscleGroups,
   subscribeTenantMuscleGroups,
 } from "@/lib/tenantMuscleGroups";
-import { getCycleWindow as sharedGetCycleWindow } from "@/lib/courseProgress";
+import { reportPeriodAt, reportPeriodLabel, type ReportPeriodSource } from "@/lib/reportPeriod";
 import { formatDate } from "@/lib/dateFormat";
-
-/**
- * 共通の courseProgress.getCycleWindow に統一。
- * アニバーサリー日は前サイクルの最終日として扱う。
- */
-const getCycleWindow = (cycleStartDate: string, targetDate: Date) => {
-  const w = sharedGetCycleWindow(cycleStartDate, targetDate);
-  return w ?? { start: parseISO(cycleStartDate), end: addMonths(parseISO(cycleStartDate), 1) };
-};
 
 interface WorkoutRow {
   workout_date: string;
@@ -37,15 +30,47 @@ interface WorkoutRow {
 
 interface Props {
   userId?: string;
-  cycleStartDate?: string | null;
+  /**
+   * 期間の材料（トレーナーのお客様詳細から、そのお客様の分を渡す。読み込み中は null）。
+   * 省略時はログイン中のお客様自身の分を使う。
+   */
+  periodSource?: ReportPeriodSource | null;
 }
 
-const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: Props = {}) => {
-  const { t } = useTranslation();
+/**
+ * トレーニング部位バランス。
+ *
+ * 🔴 期間はプロフィールのカードの「利用期間」と同じ区切り（src/lib/reportPeriod.ts。2026-10-15）。
+ *    以前は暦の月（1日〜月末）で、カードの利用期間とずれていた。
+ *    回数券・期間プラン・起算日なしのお客様は従来どおり暦の月。
+ */
+const MuscleBalanceRadar = ({ userId, periodSource }: Props = {}) =>
+  periodSource !== undefined
+    ? <RadarCard userId={userId} periodSource={periodSource} />
+    : <OwnRadarCard />;
+
+/** お客様自身の画面: 自分のプロフィールと予約から期間を出す */
+const OwnRadarCard = () => {
   const { user } = useAuth();
-  const { profile } = useProfile();
-  const userId = userIdProp ?? user?.id;
-  const cycleStartDate = cycleProp !== undefined ? cycleProp : profile?.cycle_start_date;
+  const { profile, loading: profileLoading } = useProfile();
+  const { allPlans } = useTenant();
+  const { bookings, loading: bookingsLoading } = useMyBookings();
+  const periodSource = useMemo<ReportPeriodSource | null>(() => {
+    if (profileLoading || bookingsLoading) return null;
+    return {
+      planName: profile?.plan,
+      cycleStartDate: profile?.cycle_start_date,
+      cycleStartPinned: profile?.cycle_start_pinned,
+      graceEnabled: profile?.grace_enabled,
+      tenantPlans: allPlans ?? [],
+      bookings: bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+    };
+  }, [profileLoading, bookingsLoading, profile?.plan, profile?.cycle_start_date, profile?.cycle_start_pinned, profile?.grace_enabled, allPlans, bookings]);
+  return <RadarCard userId={user?.id} periodSource={periodSource} />;
+};
+
+const RadarCard = ({ userId, periodSource }: { userId?: string; periodSource: ReportPeriodSource | null }) => {
+  const { t } = useTranslation();
   const [cycleOffset, setCycleOffset] = useState(0);
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
   // 種目→部位マップ・部位一覧のいずれかが更新されたら +1 し、下の useMemo を再計算させる
@@ -68,16 +93,25 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
   // ジムごとに編集可能な部位一覧（tenant_muscle_groups）。並び順はジムの設定どおり。
   const muscleGroups = useMemo(() => getTenantMuscleGroups().map((g) => g.name), [groupVersion]);
 
-  // Monthly aggregation: always use calendar month windows (1st → 1st of next month).
+  // カードと同じ区切りの期間。対象外（回数券・期間プラン・起算日なし）は null
+  const period = useMemo(
+    () => (periodSource ? reportPeriodAt(periodSource, cycleOffset) : null),
+    [periodSource, cycleOffset],
+  );
   const { start, end } = useMemo(() => {
+    if (period) return period;
+    // 従来どおり暦の月（1日〜翌月1日）
     const now = getJSTNow();
     const base = new Date(now.getFullYear(), now.getMonth(), 1);
     const shifted = addMonths(base, cycleOffset);
     return { start: shifted, end: addMonths(shifted, 1) };
-  }, [cycleOffset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 期間は日時の数値で見る
+  }, [period?.start.getTime(), period?.end.getTime(), cycleOffset]);
+  // 期間の材料が揃うまで（読み込み中）は読みに行かない
+  const ready = periodSource !== null;
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !ready) return;
     const fetch = async () => {
       const startStr = format(start, "yyyy-MM-dd");
       const endStr = format(end, "yyyy-MM-dd");
@@ -102,7 +136,7 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
       }
     };
     fetch();
-  }, [userId, start, end]);
+  }, [userId, ready, start, end]);
 
   const chartData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -128,8 +162,11 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
     };
   }, [workouts, muscleGroups]);
 
-  const periodLabel = formatDate(start, "yearMonth");
+  const periodLabel = period ? reportPeriodLabel(period) : formatDate(start, "yearMonth");
   const isCurrent = cycleOffset === 0;
+  const offsetLabel = period
+    ? (isCurrent ? t("muscleBalance.thisPeriod") : cycleOffset === -1 ? t("muscleBalance.lastPeriod") : t("muscleBalance.periodsAgo", { count: Math.abs(cycleOffset) }))
+    : (isCurrent ? t("muscleBalance.thisMonth") : cycleOffset === -1 ? t("muscleBalance.lastMonth") : t("muscleBalance.monthsAgo", { count: Math.abs(cycleOffset) }));
 
   return (
     <Card>
@@ -151,7 +188,7 @@ const MuscleBalanceRadar = ({ userId: userIdProp, cycleStartDate: cycleProp }: P
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-xs text-muted-foreground">
-            {isCurrent ? t("muscleBalance.thisMonth") : cycleOffset === -1 ? t("muscleBalance.lastMonth") : t("muscleBalance.monthsAgo", { count: Math.abs(cycleOffset) })}
+            {offsetLabel}
           </span>
           <button
             onClick={() => setCycleOffset((n) => Math.min(0, n + 1))}

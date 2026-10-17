@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Moon } from "lucide-react";
 import { blockPurposeName } from "@/lib/blockPurpose";
 import { indexesOverlappingBlocks } from "@/lib/scheduleOverlap";
 import { format, addDays, isSameDay } from "date-fns";
@@ -252,11 +253,13 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                             : "bg-accent text-accent-foreground"
                       }`}
                       style={{ top, height }}
-                      title={`${b.isBlocked ? blockName : b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}${onBlock ? ` / ${t("schedule.overlapsBlock")}` : ""}`}
+                      title={`${b.isBlocked ? blockName : b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}${onBlock ? ` / ${t("schedule.overlapsBlock")}` : ""}${b.outsideHours ? ` / ${t("schedule.outsideHoursBadge")}` : ""}`}
                     >
                       <div className="font-bold truncate">
                         {shortName}
                         {hasOptions && <span className="ml-0.5" aria-hidden="true">＋</span>}
+                        {/* 営業時間外に店がイレギュラーで入れた予約（2026-10-17） */}
+                        {b.outsideHours && <Moon className="inline w-2.5 h-2.5 ml-0.5" aria-label={t("schedule.outsideHoursBadge")} />}
                       </div>
                       {height > 24 && (
                         <div className="opacity-80 truncate">{b.startTime}</div>

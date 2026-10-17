@@ -572,6 +572,7 @@
     "shareImageAlt": "Workout share"
   },
   "booking": {
+    "outsideHoursRescheduleNote": "This booking was specially arranged by the gym. Please contact the gym to change its date or time",
     "title": "Book a Session",
     "selectDateTimePrompt": "Please choose your preferred date and time",
     "advanceNotice": "* Please book by the day before (same-day booking is not available)",
@@ -1200,6 +1201,15 @@
     "deleteAria": "Delete"
   },
   "schedule": {
+    "outsideHoursToggle": "Book outside hours / on a closed day (irregular)",
+    "outsideHoursToggleDesc": "Add a special booking outside business hours or on a closed day. It doesn't count toward the daily limit. The customer receives it as a normal booking",
+    "outsideHoursBefore": "Before opening",
+    "outsideHoursAfter": "After closing",
+    "outsideHoursClosedDay": "Closed day (all day)",
+    "outsideHoursNone": "No times are available outside business hours on this day",
+    "outsideHoursConfirm": "This booking is outside business hours: {{date}} {{start}}–{{end}}. If the time is right, press the button again",
+    "outsideHoursConfirmBtn": "Book this time",
+    "outsideHoursBadge": "Off-hours",
     "title": "Booking Management",
     "blockTime": "Block time",
     "proxyBooking": "Booking on behalf",

@@ -672,6 +672,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // 予約変更モードに入る: 対象を記録し、日付・スロット選択をリセットしてカレンダーへ誘導
   const startReschedule = (b: BookingWithTime) => {
+    if (b.outsideHours) { toast.info(t("booking.outsideHoursRescheduleNote")); return; } // 店が営業時間外に入れた予約は店に連絡（変更の巻き戻しで元に戻せないため）
     setRescheduleTarget(b);
     setSelectedDate(undefined);
     setSelectedSlot(null);

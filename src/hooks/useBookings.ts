@@ -34,6 +34,8 @@ export interface BookingRow {
   /** 付けたオプション（src/lib/bookingOptions.ts 参照）。列が無い環境では undefined */
   option_minutes?: number | null;
   booking_options?: unknown;
+  /** 営業時間外に店がイレギュラーで入れた予約（2026-10-17）。列が無い環境では undefined */
+  outside_hours?: boolean | null;
 }
 
 // Feature flag: customer-side LINE notifications for booking creation/cancellation.
@@ -45,6 +47,7 @@ const NOTIFY_CUSTOMER_LINE_ON_BOOKING = false;
 // ここから使っている箇所を壊さないよう再エクスポートする。
 export { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";
 import { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";
+import { resyncCalendarCreate } from "@/lib/calendarResync";
 
 const logEmailInvoke = (
   context: string,
@@ -81,6 +84,8 @@ export interface BookingWithTime {
   optionMinutes?: number;
   /** 付けたオプションの控え（名前・時間・料金）。無ければ空配列。 */
   bookingOptions?: BookingOptionSnapshot[];
+  /** 営業時間外に店がイレギュラーで入れた予約。1日の上限に数えない（src/lib/outsideHours.ts） */
+  outsideHours?: boolean;
 }
 
 // tenantDefaultMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
@@ -118,6 +123,7 @@ function parseBooking(
     customAnswers: parseAnswerSnapshot(row.custom_answers),
     optionMinutes,
     bookingOptions: parseOptionSnapshot(row.booking_options),
+    outsideHours: row.outside_hours === true,
   };
 }
 
@@ -450,6 +456,8 @@ export const createBooking = async (
     optionMinutes?: number | null;
     /** 付けたオプションの控え。あとから booking_options を直しても内容が変わらないように残す。 */
     bookingOptions?: BookingOptionSnapshot[] | null;
+    /** 営業時間外に店がイレギュラーで入れる（店のスタッフだけが付けられる。DB の guard_booking_outside_hours_flag） */
+    outsideHours?: boolean;
   } = {},
 ) => {
   const bookingDate = `${date}T${startTime}:00+09:00`;
@@ -477,6 +485,8 @@ export const createBooking = async (
     ...(customAnswers ? { custom_answers: customAnswers } : {}),
     ...(optionMinutes > 0 ? { option_minutes: optionMinutes } : {}),
     ...(bookingOptions ? { booking_options: bookingOptions } : {}),
+    // 付けるときだけ入れる（列が未適用のDBでも、印の無い予約は従来どおり通る）
+    ...(opts.outsideHours ? { outside_hours: true } : {}),
   };
   // silent＝予約変更（reschedule）の内部 INSERT。サーバー側の通知トリガー
   // （notify_booking_created）が「新規予約」通知を出さないようマーカーを付ける
@@ -565,6 +575,8 @@ export const createRecurringBookings = async (
   // オプションも全回に同じものを付ける（回答と同じ理由）。
   optionMinutes: number = 0,
   bookingOptions: BookingOptionSnapshot[] | null = null,
+  // 営業時間外（店のイレギュラー）の予約として入れる。同じ曜日・同じ時刻なので全回に同じ印
+  outsideHours = false,
 ): Promise<{ booked: { id: string; date: string }[]; skipped: { date: string; code?: string }[] }> => {
   const booked: { id: string; date: string }[] = [];
   // スキップ理由の code（SQLSTATE）も返す。満枠と回数上限（GB003）では案内が違う
@@ -577,7 +589,7 @@ export const createRecurringBookings = async (
     const d = new Date(y, mo - 1, da + i * 7);
     const dateKey = format(d, "yyyy-MM-dd");
     const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, {
-      staffUserId, customAnswers, optionMinutes, bookingOptions,
+      staffUserId, customAnswers, optionMinutes, bookingOptions, outsideHours,
     });
     if (error || !data) {
       skipped.push({ date: dateKey, code: (error as { code?: string } | null)?.code });
@@ -587,36 +599,6 @@ export const createRecurringBookings = async (
   }
   return { booked, skipped };
 };
-
-/**
- * 予約行に紐づく Googleカレンダー予定を作り直す（存在しなければ新規作成）。
- * 消化(forfeit)キャンセルは Googleカレンダー予定を削除して google_event_id を null に
- * するため、消化を「予約済み」に戻すだけではカレンダー予定が復活しない。リスケ失敗の
- * ロールバック時にこれを呼び、トレーナーの外部カレンダーに予定を復元する。best-effort。
- */
-async function resyncCalendarCreate(bookingId: string): Promise<void> {
-  const { data: b } = await supabase
-    .from("bookings")
-    .select("id, user_id, booking_date, booking_type, option_minutes")
-    .eq("id", bookingId)
-    .maybeSingle();
-  if (!b) return;
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("user_id", b.user_id)
-    .maybeSingle();
-  await supabase.functions.invoke("google-calendar-sync", {
-    body: {
-      action: "create",
-      booking_id: b.id,
-      booking_date: b.booking_date,
-      booking_type: b.booking_type,
-      client_name: prof?.display_name || "顧客",
-      option_minutes: readOptionMinutes((b as { option_minutes?: number | null }).option_minutes),
-    },
-  });
-}
 
 /**
  * 予約の日時をワンタップで変更（リスケジュール）する。

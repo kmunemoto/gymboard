@@ -49,6 +49,9 @@ import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { canSelectStaff, isStaffConflictError, staffNameMap } from "@/lib/tenantStaff";
 import DayReceptionToggle from "./DayReceptionToggle";
 import { useDayReception } from "@/hooks/useDayReception";
+import BookingRepeatPicker from "@/components/booking/BookingRepeatPicker";
+import { OutsideHoursBadge, OutsideHoursPicker, OutsideHoursToggle } from "./OutsideHoursPicker";
+import { withBookingStartTimes } from "@/lib/outsideHours";
 
 const TrainerSchedule = () => {
   const { t } = useTranslation();
@@ -67,6 +70,9 @@ const TrainerSchedule = () => {
   const [assignSaving, setAssignSaving] = useState(false);
   // 定期予約: 毎週同じ曜日・時間で何回分まとめて予約するか（1=この回のみ）
   const [proxyRepeatWeeks, setProxyRepeatWeeks] = useState(1);
+  // 営業時間外・定休日に入れる（イレギュラー。2026-10-17）。Confirm は「もう一度押すと入る」確認
+  const [proxyOutside, setProxyOutside] = useState(false);
+  const [proxyOutsideConfirm, setProxyOutsideConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; clientName: string; date: string; startTime: string; isBlocked?: boolean; recurrenceGroup?: string | null } | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -163,7 +169,7 @@ const TrainerSchedule = () => {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   // 週表示の行は営業時間そのもの（施術の長さは引かない）。
   // 以前は 600→1335（10:00-22:15）が直書きで、営業時間と無関係だった。
-  const timeSlots = businessGridMinutes(tenant?.operating_hours).map(minutesToTime);
+  const timeSlots = withBookingStartTimes(businessGridMinutes(tenant?.operating_hours).map(minutesToTime), bookings);
 
   const getSession = (day: Date, time: string) => {
     const dateStr = format(day, "yyyy-MM-dd");
@@ -181,7 +187,7 @@ const TrainerSchedule = () => {
     }
     // 指名した担当がその曜日に出勤していないなら、DB に届く前にここで止める
     // （届いても GB002 で落ちるが、理由が分かる文言で止めたほうが親切）。
-    if (proxyStaffId && !staffWorksOnWeekday(tenant?.operating_hours, weekdayOfDateKey(proxyDateKey), staffSchedules, proxyStaffId)) {
+    if (!proxyOutside && proxyStaffId && !staffWorksOnWeekday(tenant?.operating_hours, weekdayOfDateKey(proxyDateKey), staffSchedules, proxyStaffId)) {
       toast.error(t("staff.errorStaffOffShift"));
       return;
     }
@@ -211,6 +217,7 @@ const TrainerSchedule = () => {
       return;
     }
 
+    if (proxyOutside && !proxyOutsideConfirm) { setProxyOutsideConfirm(true); return; } // 時間外は2回押して入れる（打ち間違い防止）
     setSubmitting(true);
 
     // 定期予約: proxyRepeatWeeks > 1 なら毎週同じ曜日・時間でまとめて作成。
@@ -219,7 +226,7 @@ const TrainerSchedule = () => {
     if (proxyRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
         proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true,
-        proxyStaffId || null, proxyAnswerSnapshot, proxyOpts.minutes, proxyOpts.snapshot);
+        proxyStaffId || null, proxyAnswerSnapshot, proxyOpts.minutes, proxyOpts.snapshot, proxyOutside);
       if (booked.length === 0) {
         toast.error(t("schedule.errorAddFailed"));
         setSubmitting(false);
@@ -242,7 +249,7 @@ const TrainerSchedule = () => {
       const { data: bookingData, error } = await createBooking(
         proxyClient, proxyDateKey, proxyTime, proxyBookingType, true,
         { staffUserId: proxyStaffId || null, customAnswers: proxyAnswerSnapshot,
-          optionMinutes: proxyOpts.minutes, bookingOptions: proxyOpts.snapshot },
+          optionMinutes: proxyOpts.minutes, bookingOptions: proxyOpts.snapshot, outsideHours: proxyOutside },
       );
       if (error) {
         // 店に空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
@@ -266,6 +273,7 @@ const TrainerSchedule = () => {
     setProxyBookingType("");
     setProxyStaffId("");
     setProxyRepeatWeeks(1);
+    setProxyOutside(false); setProxyOutsideConfirm(false);
     setSubmitting(false);
     void refetch();
 
@@ -672,6 +680,7 @@ const TrainerSchedule = () => {
                                   </Button>
                                   <p className="font-bold truncate">{session.isBlocked ? (blockPurposeName(session.clientName) || t("schedule.blockedLabel")) : session.clientName}</p>
                                   <p className="opacity-75 truncate">{session.startTime}〜{session.endTime}</p>
+                                  {session.outsideHours && <OutsideHoursBadge />}
                                   {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{session.booking_type}</p>}
                                   {!session.isBlocked && staffSelectable && session.staff_user_id && (
                                     <p className="opacity-60 truncate text-[9px]">{staffNames[session.staff_user_id] ?? ""}</p>
@@ -724,7 +733,7 @@ const TrainerSchedule = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate">{booking.isBlocked ? (blockPurposeName(booking.clientName) || t("schedule.blockedLabel")) : booking.clientName}</p>
-                              <p className="text-xs text-muted-foreground">{booking.startTime}〜{booking.endTime}</p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5">{booking.startTime}〜{booking.endTime}{booking.outsideHours && <OutsideHoursBadge />}</p>
                               {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{booking.booking_type}</p>}
                               {!booking.isBlocked && staffSelectable && (
                                 <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
@@ -814,7 +823,7 @@ const TrainerSchedule = () => {
         </div>
       )}
 
-      <Dialog open={proxyDialogOpen} onOpenChange={setProxyDialogOpen}>
+      <Dialog open={proxyDialogOpen} onOpenChange={(o) => { setProxyDialogOpen(o); if (!o) { setProxyOutside(false); setProxyOutsideConfirm(false); } }}>
         <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("schedule.proxyDialogTitle")}</DialogTitle>
@@ -872,6 +881,8 @@ const TrainerSchedule = () => {
                 </select>
               </div>
             )}
+            <OutsideHoursToggle checked={proxyOutside} disabled={submitting}
+              onChange={(on) => { setProxyOutside(on); setProxyTime(""); setProxyOutsideConfirm(false); }} />
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelDate")}</label>
               <Calendar
@@ -879,7 +890,7 @@ const TrainerSchedule = () => {
                 selected={proxyDate}
                 onSelect={(d) => {
                   setProxyDate(d);
-                  setProxyTime("");
+                  setProxyTime(""); setProxyOutsideConfirm(false);
                   if (d) {
                     setTimeout(() => {
                       document.getElementById("proxy-time-slots-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -888,6 +899,7 @@ const TrainerSchedule = () => {
                 }}
                 locale={ja}
                 disabled={(date) => {
+                  if (proxyOutside) return false; // 時間外の入力では、定休日・担当の休みの曜日も選べる
                   const key = format(date, "yyyy-MM-dd");
                   // ⚠️ 受付期間（tenants.booking_window_days）は**わざと見ていない**。
                   //    あれは「お客様に向けた受付の制限」であって、店が自分で入れる
@@ -908,6 +920,11 @@ const TrainerSchedule = () => {
               <div id="proxy-time-slots-section" className="scroll-mt-4">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("schedule.labelStartTime")}</label>
                 <BookingOptionPicker options={proxyOpts.options} selectedIds={proxyOpts.selectedIds} onToggle={proxyOpts.toggle} disabled={submitting} className="mb-3" />
+                {proxyOutside ? (
+                  <OutsideHoursPicker dateKey={proxyDateKey} operatingHours={tenant?.operating_hours} sessionMinutes={proxySessionMinutes}
+                    value={proxyTime} onChange={(v) => { setProxyTime(v); setProxyOutsideConfirm(false); }} confirming={proxyOutsideConfirm}
+                    isBlocked={(time) => checkSlotBlocked(bookings, proxyDateKey, time, undefined, bookingBufferMinutes, proxySessionMinutes, capacityAt(proxyDateKey, time), proxyStaffId || null)} />
+                ) : (
                 <div className="grid grid-cols-4 gap-1.5 max-h-48 overflow-y-auto">
                   {(() => {
                     const slots: { time: string; blocked: boolean }[] = [];
@@ -942,6 +959,7 @@ const TrainerSchedule = () => {
                     ));
                   })()}
                 </div>
+                )}
               </div>
             )}
             {/* 事前アンケート（店が設定した質問）。店が代わりに入力する。 */}
@@ -962,43 +980,17 @@ const TrainerSchedule = () => {
                 />
               </div>
             )}
-            {/* 定期予約: 毎週同じ曜日・時間でまとめて予約 */}
+            {/* 定期予約: 毎週同じ曜日・時間でまとめて予約（お客様側と同じ部品。店が入れるので受付期間の上限は無し） */}
             {proxyDate && proxyTime && (
-              <div>
-                <p className="text-[11px] font-bold text-muted-foreground mb-1.5 flex items-center gap-1">
-                  <Repeat className="w-3 h-3" />
-                  {t("booking.repeatTitle")}
-                </p>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[1, 2, 3, 4].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setProxyRepeatWeeks(n)}
-                      aria-pressed={proxyRepeatWeeks === n}
-                      className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        proxyRepeatWeeks === n
-                          ? "bg-accent text-accent-foreground shadow-sm"
-                          : "bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {n === 1 ? t("booking.repeatOnce") : t("booking.repeatTimes", { count: n })}
-                    </button>
-                  ))}
-                </div>
-                {proxyRepeatWeeks > 1 && (
-                  <p className="text-[11px] text-muted-foreground mt-1.5">
-                    {t("booking.repeatWeeklyDesc", { count: proxyRepeatWeeks })}
-                  </p>
-                )}
-              </div>
+              <BookingRepeatPicker value={proxyRepeatWeeks} onChange={setProxyRepeatWeeks} cap={4} optionNote={proxyOpts.minutes > 0} />
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setProxyDialogOpen(false)} className="w-full sm:w-auto">{t("common.cancel")}</Button>
             <Button variant="accent" onClick={handleProxyBook} disabled={!proxyDate || !proxyTime || !proxyClient || submitting} className="w-full sm:w-auto">
               {submitting && <DumbbellLoader className="w-4 h-4 mr-1" />}
-              {proxyRepeatWeeks > 1 ? t("booking.confirmRepeatBooking", { count: proxyRepeatWeeks }) : t("schedule.bookNow")}
+              {proxyOutside && proxyOutsideConfirm ? t("schedule.outsideHoursConfirmBtn")
+                : proxyRepeatWeeks > 1 ? t("booking.confirmRepeatBooking", { count: proxyRepeatWeeks }) : t("schedule.bookNow")}
             </Button>
           </DialogFooter>
         </DialogContent>

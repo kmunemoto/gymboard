@@ -572,6 +572,7 @@
     "shareImageAlt": "トレーニングシェア"
   },
   "booking": {
+    "outsideHoursRescheduleNote": "このご予約はジムが特別にお取りした時間のため、日時の変更はジムにご連絡ください",
     "title": "予約する",
     "selectDateTimePrompt": "ご希望の日時を選択してください",
     "advanceNotice": "※ご予約は前日までにお願いいたします（当日のご予約はできません）",
@@ -1200,6 +1201,15 @@
     "deleteAria": "削除"
   },
   "schedule": {
+    "outsideHoursToggle": "営業時間外・定休日に入れる（イレギュラー）",
+    "outsideHoursToggleDesc": "営業時間の外や定休日に、特別に予約を入れます。1日の上限には数えません。お客様には普通の予約として届きます",
+    "outsideHoursBefore": "開店前",
+    "outsideHoursAfter": "閉店後",
+    "outsideHoursClosedDay": "定休日（終日）",
+    "outsideHoursNone": "この日は営業時間外に入れられる時刻がありません",
+    "outsideHoursConfirm": "営業時間外の予約です：{{date}} {{start}}〜{{end}}。この時間でよければ、もう一度ボタンを押してください",
+    "outsideHoursConfirmBtn": "この時間で入れる",
+    "outsideHoursBadge": "時間外",
     "title": "予約管理",
     "blockTime": "時間ブロック",
     "proxyBooking": "代理予約",

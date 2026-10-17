@@ -180,6 +180,9 @@ GB003 / GB004 / GB006 と同じ非対称。「今日はもう受けない」と�
 - ブロック枠（`blocked_slots`）は数えない。予約ではないため（休憩を入れただけで
   受付が止まるのはおかしい）。
 - 体験・ドロップイン（`trial-guest` の行）は数えない（上記）。
+- 営業時間外に店が入れた予約（`bookings.outside_hours = true`）は数えない（2026-10-17・
+  `mem/features/outside-hours-booking.md`）。DB の `tenant_day_booking_count` /
+  `get_tenant_closed_days` と、画面の `bookedCountOn` の3か所で外している。
 - 予定表の一覧（`getDayBookings`）は「同日キャンセル済み」を**表示から**外している。
   人数を数えるときにそれを使い回さないこと。`useDayReception` の `bookedCountOn` を通す。
 

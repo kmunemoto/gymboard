@@ -564,6 +564,7 @@ export type Database = {
           google_event_id: string | null
           id: string
           option_minutes: number
+          outside_hours: boolean
           source: string | null
           staff_user_id: string | null
           status: string
@@ -581,6 +582,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           option_minutes?: number
+          outside_hours?: boolean
           source?: string | null
           staff_user_id?: string | null
           status?: string
@@ -598,6 +600,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           option_minutes?: number
+          outside_hours?: boolean
           source?: string | null
           staff_user_id?: string | null
           status?: string

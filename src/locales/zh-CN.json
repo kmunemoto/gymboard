@@ -572,6 +572,7 @@
     "shareImageAlt": "训练分享"
   },
   "booking": {
+    "outsideHoursRescheduleNote": "此预约是健身房特别安排的时间，如需更改日期时间请联系健身房",
     "title": "预约",
     "selectDateTimePrompt": "请选择您希望的日期和时间",
     "advanceNotice": "※ 请于前一天之前预约（不可当天预约）",
@@ -1200,6 +1201,15 @@
     "deleteAria": "删除"
   },
   "schedule": {
+    "outsideHoursToggle": "在营业时间外·休息日预约（例外）",
+    "outsideHoursToggleDesc": "在营业时间外或休息日特别添加预约。不计入每日上限。客户会收到普通预约",
+    "outsideHoursBefore": "开店前",
+    "outsideHoursAfter": "闭店后",
+    "outsideHoursClosedDay": "休息日（全天）",
+    "outsideHoursNone": "这一天没有可在营业时间外预约的时间",
+    "outsideHoursConfirm": "这是营业时间外的预约：{{date}} {{start}}～{{end}}。如果时间无误，请再按一次按钮",
+    "outsideHoursConfirmBtn": "以此时间预约",
+    "outsideHoursBadge": "时间外",
     "title": "预约管理",
     "blockTime": "时间封锁",
     "proxyBooking": "代理预约",

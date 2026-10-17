@@ -572,6 +572,7 @@
     "shareImageAlt": "트레이닝 공유"
   },
   "booking": {
+    "outsideHoursRescheduleNote": "이 예약은 체육관에서 특별히 잡은 시간이므로, 일시 변경은 체육관에 연락해 주세요",
     "title": "예약하기",
     "selectDateTimePrompt": "원하시는 날짜와 시간을 선택해 주세요",
     "advanceNotice": "※ 예약은 전날까지 부탁드립니다 (당일 예약은 불가합니다)",
@@ -1200,6 +1201,15 @@
     "deleteAria": "삭제"
   },
   "schedule": {
+    "outsideHoursToggle": "영업시간 외·휴무일에 예약 (예외)",
+    "outsideHoursToggleDesc": "영업시간 외나 휴무일에 특별히 예약을 넣습니다. 1일 상한에는 포함되지 않습니다. 고객에게는 일반 예약으로 전달됩니다",
+    "outsideHoursBefore": "개점 전",
+    "outsideHoursAfter": "폐점 후",
+    "outsideHoursClosedDay": "휴무일(종일)",
+    "outsideHoursNone": "이 날은 영업시간 외에 넣을 수 있는 시간이 없습니다",
+    "outsideHoursConfirm": "영업시간 외 예약입니다: {{date}} {{start}}~{{end}}. 이 시간이 맞으면 버튼을 한 번 더 눌러 주세요",
+    "outsideHoursConfirmBtn": "이 시간으로 예약",
+    "outsideHoursBadge": "시간 외",
     "title": "예약 관리",
     "blockTime": "시간 차단",
     "proxyBooking": "대리 예약",

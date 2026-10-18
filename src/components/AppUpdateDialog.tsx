@@ -56,7 +56,7 @@ const AppUpdateDialog = () => {
       aria-labelledby="app-update-title"
       data-testid="app-update-dialog"
     >
-      <div className="w-full max-w-sm rounded-2xl bg-card p-6 text-center shadow-xl animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-sm rounded-2xl bg-card px-6 pb-3 pt-6 text-center shadow-xl animate-in zoom-in-95 duration-200">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <ArrowUpCircle className="h-6 w-6 text-primary" />
         </div>
@@ -74,7 +74,7 @@ const AppUpdateDialog = () => {
         </Button>
         <button
           type="button"
-          className="mt-3 w-full text-sm text-muted-foreground underline-offset-2 hover:underline"
+          className="mt-1 min-h-[44px] w-full text-sm text-muted-foreground underline-offset-2 hover:underline"
           onClick={dismiss}
           data-testid="app-update-later"
         >

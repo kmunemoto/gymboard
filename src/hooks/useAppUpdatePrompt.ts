@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STORE_URLS } from "@/lib/brand";
 import {
   DISMISS_WINDOW_MS,
+  LATEST_CACHE_MS,
   dismissKey,
   updatePromptDecision,
   type UpdatePromptDecision,
@@ -29,6 +30,9 @@ import {
  *
  * 起動時と、バックグラウンドから戻ってきたとき（`appStateChange` の `isActive`）。
  * ストアで更新してアプリに戻ってきた直後に、案内が消えていてほしいため。
+ *
+ * ストアに出ている版（RPC）は `LATEST_CACHE_MS`（1時間）だけ控えて使い回す。
+ * 寿命が切れたら、次の復帰で聞き直す（起動しっぱなしの端末にも新しい版の案内を届ける）。
  *
  * ## フェイルセーフ
  *
@@ -76,8 +80,8 @@ const isDismissed = (platform: string, latestVersion: string): boolean => {
 
 export const useAppUpdatePrompt = (): AppUpdatePrompt => {
   const [state, setState] = useState(EMPTY);
-  // 復帰のたびに RPC を投げ直さないための、直前の結果の控え
-  const latestRef = useRef<{ version: string; platform: string } | null>(null);
+  // 復帰のたびに RPC を投げ直さないための、直前の結果の控え（at から LATEST_CACHE_MS だけ有効）
+  const latestRef = useRef<{ version: string; platform: string; at: number } | null>(null);
 
   const evaluate = useCallback(async () => {
     // 🔴 ここより先はネイティブでしか動かさない（Web は getInfo が投げる）
@@ -102,7 +106,9 @@ export const useAppUpdatePrompt = (): AppUpdatePrompt => {
       return;
     }
 
-    let latestVersion = latestRef.current?.platform === platform ? latestRef.current.version : "";
+    const cached = latestRef.current;
+    let latestVersion =
+      cached && cached.platform === platform && Date.now() - cached.at < LATEST_CACHE_MS ? cached.version : "";
     if (!latestVersion) {
       try {
         const { data, error } = await supabase.rpc("get_app_release", { p_platform: platform });
@@ -117,7 +123,7 @@ export const useAppUpdatePrompt = (): AppUpdatePrompt => {
         setState({ ...EMPTY, reason: "no-config" });
         return;
       }
-      latestRef.current = { version: latestVersion, platform };
+      latestRef.current = { version: latestVersion, platform, at: Date.now() };
     }
 
     const decision = updatePromptDecision(runningVersion, latestVersion);

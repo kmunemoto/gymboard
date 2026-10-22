@@ -277,14 +277,15 @@ describe("設定（予約のルール → 1日の上限人数）", () => {
   it("保存すると2つとも書く", async () => {
     await renderCard();
     fireEvent.click(screen.getByRole("button", { name: i18n.t("common.save") }));
-    await waitFor(() => expect(updates).toEqual([{ daily_booking_limit: 4, daily_total_limit: 5 }]));
+    // 週に何日か上限を増やす設定（2026-10-22）も一緒に書く。この店は未設定なので null のまま
+    await waitFor(() => expect(updates).toEqual([{ daily_booking_limit: 4, daily_total_limit: 5, weekly_peak_days: null, weekly_peak_limit: null }]));
   });
 
   it("🔴 合計を設定していない店は『上限なし』のまま保存される（今まで通り）", async () => {
     tenantRef.current = { id: "t1", daily_booking_limit: 4, daily_total_limit: null };
     await renderCard();
     fireEvent.click(screen.getByRole("button", { name: i18n.t("common.save") }));
-    await waitFor(() => expect(updates).toEqual([{ daily_booking_limit: 4, daily_total_limit: null }]));
+    await waitFor(() => expect(updates).toEqual([{ daily_booking_limit: 4, daily_total_limit: null, weekly_peak_days: null, weekly_peak_limit: null }]));
   });
 });
 

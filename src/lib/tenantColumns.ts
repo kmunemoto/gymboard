@@ -79,6 +79,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "arrival_lead_minutes",
   // 体験も含めた1日の合計の上限。NULL = 上限なし（体験は今まで通り上限なく受け付ける）。
   "daily_total_limit",
+  // 週に何日かだけ会員の1日の上限を増やす（人数・日数）。NULL = 増やさない（今まで通り）。
+  "weekly_peak_limit, weekly_peak_days",
 ];
 
 /**
@@ -177,6 +179,9 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 🔴 列が読めない環境では「上限なし」に倒す（daily_booking_limit と同じ理由。
   //    数字を置くと、未適用の環境で全店の受付が勝手に止まる）。
   daily_total_limit: null,
+  // 🔴 列が読めない環境では「増やさない」に倒す（DB の判定も NULL なら今まで通り）。
+  weekly_peak_limit: null,
+  weekly_peak_days: null,
 };
 
 /**

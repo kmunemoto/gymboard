@@ -2023,6 +2023,8 @@ export type Database = {
           trial_price_yen: number | null
           updated_at: string
           website_url: string | null
+          weekly_peak_days: number | null
+          weekly_peak_limit: number | null
         }
         Insert: {
           active_client_basis?: string
@@ -2097,6 +2099,8 @@ export type Database = {
           trial_price_yen?: number | null
           updated_at?: string
           website_url?: string | null
+          weekly_peak_days?: number | null
+          weekly_peak_limit?: number | null
         }
         Update: {
           active_client_basis?: string
@@ -2171,6 +2175,8 @@ export type Database = {
           trial_price_yen?: number | null
           updated_at?: string
           website_url?: string | null
+          weekly_peak_days?: number | null
+          weekly_peak_limit?: number | null
         }
         Relationships: []
       }

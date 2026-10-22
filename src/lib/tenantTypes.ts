@@ -94,6 +94,14 @@ export interface Tenant {
    * 「その日だけ上限を外す」日は外れる。undefined=列がまだ読めない環境（上限なし）。
    */
   daily_total_limit?: number | null;
+  /**
+   * 週（月曜〜日曜）に `weekly_peak_days` 日まで、会員の1日の上限をこの人数に増やす（2026-10-22）。
+   * その週に、この人数まで入った日が `weekly_peak_days` 日になったら、残りの日は daily_booking_limit。
+   * どちらかが null なら増やさない（今まで通り）。判定は DB の `tenant_member_day_limits`。
+   */
+  weekly_peak_limit?: number | null;
+  /** 会員の1日の上限を weekly_peak_limit に増やせる日数（週に）。null=増やさない */
+  weekly_peak_days?: number | null;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
   /** Googleの口コミ投稿ページURL。null/空なら口コミ依頼バナーを表示しない */

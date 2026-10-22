@@ -140,19 +140,19 @@ describe("その日の会員の上限", () => {
 describe("予定表の n/◯人（useDayReception）", () => {
   const booking = (date: string, extra: Record<string, unknown> = {}) => ({ date, status: "予約済み", user_id: "u", ...extra });
 
-  it("🔴 日ごとの上限を返す（月・火に5人 → 水は4）。体験・営業時間外は数えない", async () => {
+  it("🔴 日ごとの上限を返す（月・火に5人 → 水は4）。体験は数えない・営業時間外は数える", async () => {
     const { useDayReception } = await import("@/hooks/useDayReception");
     const bookings = [
       ...Array.from({ length: 5 }, () => booking("2027-02-01")),
-      ...Array.from({ length: 4 }, () => booking("2027-02-02")),
+      ...Array.from({ length: 3 }, () => booking("2027-02-02")),
       booking("2027-02-02", { user_id: "trial-guest" }),
-      booking("2027-02-02", { outsideHours: true }),
+      booking("2027-02-02", { outsideHours: true }), // 2026-10-23〜 時間外も1枠として数える
     ];
     const { result, rerender } = renderHook(
       ({ list }) => useDayReception("2027-02-01", "2027-02-07", list, 4, { limit: 5, days: 2 }),
       { initialProps: { list: bookings } },
     );
-    // 火は会員4人（体験・時間外は数えない）→ 多い日は月だけ → 水も5
+    // 火は会員4人（通常3＋時間外1。体験は数えない）→ 多い日は月だけ → 水も5
     expect(result.current.dailyLimitOn("2027-02-03")).toBe(5);
     rerender({ list: [...bookings, booking("2027-02-02")] });
     expect(result.current.dailyLimitOn("2027-02-03")).toBe(4);
@@ -211,9 +211,8 @@ describe("DB: 上限の計算は tenant_member_day_limits の1か所", () => {
   const limits = fnBody(SQL, "tenant_member_day_limits");
   const counts = fnBody(SQL, "tenant_member_day_counts");
 
-  it("会員の数え方は tenant_day_booking_count と同じ（キャンセル済み以外・営業時間外を除く・JST）", () => {
+  it("会員の数え方は tenant_day_booking_count と同じ（キャンセル済み以外・JST）", () => {
     expect(counts).toContain("b.status <> 'キャンセル済み'");
-    expect(counts).toContain("AND NOT b.outside_hours");
     expect(counts).toContain("(b.booking_date AT TIME ZONE 'Asia/Tokyo')::date");
     expect(counts).toContain("FROM public.bookings b");
     expect(counts).not.toContain("trial_bookings");

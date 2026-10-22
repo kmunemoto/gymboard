@@ -15,7 +15,7 @@
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, renderHook, screen, cleanup, fireEvent } from "@testing-library/react";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import i18n from "@/lib/i18n";
 import { endTimeOf, isOutsideBusinessHours, outsideHoursStarts, withBookingStartTimes } from "@/lib/outsideHours";
 import { minutesToTime } from "@/lib/businessHours";
@@ -110,27 +110,40 @@ describe("時刻を選ぶ部品", () => {
   });
 });
 
-describe("1日の上限に数えない（決めたこと 1）", () => {
-  it("🔴 予定表の人数（受付の札）から時間外の予約を除く", () => {
+// 🔴 2026-10-17 は「数えない」で入れたが、本番で5件入った日（うち1件が時間外）に6件目の体験が通った。
+//    2026-10-23 に宗本さん「全ての予約を合わせて1日5枠まで」「会員の4枠にも数える」で改めた。
+describe("1日の上限に数える（2026-10-23 に改めた）", () => {
+  it("🔴 予定表の人数（受付の札）に時間外の予約も数える", () => {
     const bookings = [
       { date: "2026-10-20", status: "予約済み", user_id: "a" },
       { date: "2026-10-20", status: "予約済み", user_id: "b", outsideHours: true },
       { date: "2026-10-20", status: "予約済み", user_id: "c" },
     ];
     const { result } = renderHook(() => useDayReception("2026-10-19", "2026-10-25", bookings, 4));
-    expect(result.current.bookedCountOn("2026-10-20")).toBe(2);
+    expect(result.current.bookedCountOn("2026-10-20")).toBe(3);
   });
 
   const SQL = readFileSync("supabase/migrations/20261017010000_outside_hours_bookings.sql", "utf8");
-  const fn = (name: string) => {
-    const i = SQL.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
-    expect(i, name).toBeGreaterThan(-1);
-    return SQL.slice(i, SQL.indexOf("$function$;", i));
+
+  /** その関数を最後に定義している migration の本文（コメントを除く） */
+  const latest = (name: string): { file: string; body: string } => {
+    let hit = { file: "", body: "" };
+    for (const f of readdirSync("supabase/migrations").filter((x) => x.endsWith(".sql")).sort()) {
+      const s = readFileSync(`supabase/migrations/${f}`, "utf8").replace(/--[^\n]*/g, "");
+      const i = s.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
+      if (i < 0) continue;
+      const end = s.slice(i).search(/\$(fn|function)\$;/);
+      hit = { file: f, body: s.slice(i, end > 0 ? i + end : undefined) };
+    }
+    return hit;
   };
 
-  it("🔴 DB の数え方（tenant_day_booking_count・get_tenant_closed_days）も時間外を除く", () => {
-    expect(fn("tenant_day_booking_count")).toContain("AND NOT b.outside_hours");
-    expect(fn("get_tenant_closed_days")).toContain("AND NOT b.outside_hours");
+  it("🔴 DB の数え方（会員の件数・日ごとの件数）の最後の定義が、時間外を除いていない", () => {
+    for (const name of ["tenant_day_booking_count", "tenant_member_day_counts"]) {
+      const { file, body } = latest(name);
+      expect(body, name).toContain("b.status <> 'キャンセル済み'");
+      expect(body, `${name}（${file}）が時間外の予約を除いている`).not.toContain("outside_hours");
+    }
   });
 
   it("列の既定は false（今までの予約は全部「時間内」のまま）・テナント固有の値を入れない", () => {
@@ -146,7 +159,7 @@ describe("1日の上限に数えない（決めたこと 1）", () => {
   });
 
   it("🔴 担当のシフト外（GB002）は、時間外の予約で、入れた人が店のスタッフのときだけ見ない", () => {
-    const shift = fn("guard_booking_staff_shift");
+    const shift = latest("guard_booking_staff_shift").body;
     expect(shift).toMatch(/outside_hours'\)::boolean, false\)\s+AND \(auth\.uid\(\) IS NULL\s+OR public\.has_tenant_role\(NEW\.tenant_id, auth\.uid\(\), ARRAY\['owner', 'trainer'\]\)\)/);
     expect(shift).toContain("ERRCODE = 'GB002'"); // それ以外は今まで通り断る
   });

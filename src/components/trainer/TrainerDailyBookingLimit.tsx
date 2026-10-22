@@ -16,6 +16,12 @@ const NO_LIMIT = "__none__";
 
 const LIMIT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
 
+/** 上限を増やせる日数（週に）。7日すべてなら会員の上限そのものを上げればよいので 6 まで（DB も 1〜6） */
+const PEAK_DAY_OPTIONS = [1, 2, 3, 4, 5, 6];
+
+const toSelectValue = (n: number | null | undefined): string =>
+  typeof n === "number" && n >= 1 ? String(n) : NO_LIMIT;
+
 /**
  * 1日に受ける予約の上限件数（`tenants.daily_booking_limit`）。
  *
@@ -38,12 +44,21 @@ const LIMIT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
  * 上の数字（会員だけを数える）はそのまま。下の数字は会員＋体験の合計で、達した日は
  * 会員も体験も受け付けない。会員の上限より大きくすると、その差の分だけ体験を受けられる。
  * 判定は DB の `tenant_day_total_reached` 1か所（体験予約ページ・会員の画面も同じ関数で数える）。
+ *
+ * ## 週に何日かだけ上限を増やす（`weekly_peak_days` / `weekly_peak_limit`・2026-10-22）
+ *
+ * 宗本さん「基本一日5枠までにして、週に2日5枠が埋まったら他の曜日は4枠までにする」。
+ * 週は月曜〜日曜。体験は数えず、合計の上限はそのまま効く（確認済み）。
+ * 「週に◯日まで」と「◯人まで」の両方を選んだときだけ効く。人数は会員の上限より大きいものだけ選べる。
+ * 判定は DB の `tenant_member_day_limits`（src/lib/weeklyPeak.ts は予定表の表示用の写し）。
  */
 const TrainerDailyBookingLimit = () => {
   const { t } = useTranslation();
   const { tenant, refetch: refetchTenant } = useTenant();
   const [value, setValue] = useState<string>(NO_LIMIT);
   const [totalValue, setTotalValue] = useState<string>(NO_LIMIT);
+  const [peakDays, setPeakDays] = useState<string>(NO_LIMIT);
+  const [peakLimit, setPeakLimit] = useState<string>(NO_LIMIT);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -56,14 +71,35 @@ const TrainerDailyBookingLimit = () => {
     setTotalValue(typeof current === "number" && current >= 1 ? String(current) : NO_LIMIT);
   }, [tenant?.daily_total_limit]);
 
+  useEffect(() => {
+    setPeakDays(toSelectValue(tenant?.weekly_peak_days));
+    setPeakLimit(toSelectValue(tenant?.weekly_peak_limit));
+  }, [tenant?.weekly_peak_days, tenant?.weekly_peak_limit]);
+
+  const memberLimit = value === NO_LIMIT ? null : parseInt(value, 10);
+  // 増やした日の人数は、会員の上限より大きいものだけ
+  const peakLimitOptions = memberLimit === null ? [] : LIMIT_OPTIONS.filter((n) => n > memberLimit);
+
   const handleSave = async () => {
     if (!tenant) return;
-    setSaving(true);
-    const next = value === NO_LIMIT ? null : parseInt(value, 10);
+    const next = memberLimit;
     const nextTotal = totalValue === NO_LIMIT ? null : parseInt(totalValue, 10);
+    // 「週に◯日まで」を選んでいなければ、人数が残っていても増やさない（両方そろって初めて効く）
+    const nextPeakDays = peakDays === NO_LIMIT || next === null ? null : parseInt(peakDays, 10);
+    const nextPeakLimit = nextPeakDays === null || peakLimit === NO_LIMIT ? null : parseInt(peakLimit, 10);
+    if (nextPeakDays !== null && (nextPeakLimit === null || next === null || nextPeakLimit <= next)) {
+      toast.error(t("closedDays.peakInvalid"));
+      return;
+    }
+    setSaving(true);
     const { error } = await supabase
       .from("tenants")
-      .update({ daily_booking_limit: next, daily_total_limit: nextTotal } as never)
+      .update({
+        daily_booking_limit: next,
+        daily_total_limit: nextTotal,
+        weekly_peak_days: nextPeakDays,
+        weekly_peak_limit: nextPeakDays === null ? null : nextPeakLimit,
+      } as never)
       .eq("id", tenant.id);
     if (error) {
       console.error("1日の上限人数の保存に失敗:", error);
@@ -99,6 +135,38 @@ const TrainerDailyBookingLimit = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5" data-testid="weekly-peak">
+            <Label className="text-xs font-bold">{t("closedDays.peakLabel")}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={peakDays} onValueChange={setPeakDays} disabled={memberLimit === null}>
+                <SelectTrigger className="h-10" aria-label={t("closedDays.peakDaysAria")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_LIMIT}>{t("closedDays.peakNone")}</SelectItem>
+                  {PEAK_DAY_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {t("closedDays.peakDaysUnit", { count: n })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={peakLimit} onValueChange={setPeakLimit} disabled={memberLimit === null || peakDays === NO_LIMIT}>
+                <SelectTrigger className="h-10" aria-label={t("closedDays.peakLimitAria")}>
+                  <SelectValue placeholder={t("closedDays.peakLimitPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_LIMIT}>{t("closedDays.peakLimitPlaceholder")}</SelectItem>
+                  {peakLimitOptions.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {t("closedDays.limitUnit", { count: n })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("closedDays.peakDesc")}</p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold">{t("closedDays.totalLimitLabel")}</Label>

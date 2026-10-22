@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useBookingClosedDays, useCloseDay, useUncapDay, useUncappedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, countsTowardDailyLimit, type ClosedDay } from "@/lib/bookingClosedDays";
+import { memberLimitOn } from "@/lib/weeklyPeak";
 
 interface BookingLike {
   date: string;
@@ -30,6 +31,8 @@ export function useDayReception(
   toKey: string,
   bookings: readonly BookingLike[],
   dailyLimit: number | null,
+  /** 週に何日かだけ上限を増やす設定（tenants.weekly_peak_limit / weekly_peak_days。2026-10-22） */
+  weeklyPeak: { limit: number | null; days: number | null } = { limit: null, days: null },
 ) {
   const { t } = useTranslation();
   const { closedDays, refetch } = useBookingClosedDays(fromKey, toKey);
@@ -103,6 +106,18 @@ export function useDayReception(
     [uncappedDays],
   );
 
+  const peakLimit = weeklyPeak.limit;
+  const peakDays = weeklyPeak.days;
+  /**
+   * その日の会員の上限（予定表の「n/◯人」）。週の「多い日」を反映する（src/lib/weeklyPeak.ts）。
+   * 🔴 判定の正は DB の `tenant_member_day_limits`。表示だけここで同じ計算をする。
+   */
+  const dailyLimitOn = useCallback(
+    (dateKey: string): number | null =>
+      memberLimitOn(dateKey, { dailyLimit, peakLimit, peakDays }, bookedCountOn, uncappedOn),
+    [dailyLimit, peakLimit, peakDays, bookedCountOn, uncappedOn],
+  );
+
   /**
    * その日だけ上限を外す。
    *
@@ -137,7 +152,7 @@ export function useDayReception(
   );
 
   return {
-    closedOn, bookedCountOn, closeDay, reopenDay, dailyLimit,
+    closedOn, bookedCountOn, closeDay, reopenDay, dailyLimit, dailyLimitOn,
     saving: saving || uncapSaving,
     uncappedOn, liftCap, restoreCap,
   };

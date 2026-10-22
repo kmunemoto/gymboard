@@ -186,6 +186,12 @@ GB003 / GB004 / GB006 と同じ非対称。「今日はもう受けない」と�
 - 予定表の一覧（`getDayBookings`）は「同日キャンセル済み」を**表示から**外している。
   人数を数えるときにそれを使い回さないこと。`useDayReception` の `bookedCountOn` を通す。
 
+## 週に何日かだけ上限を増やす（2026-10-22）
+
+「1日5人まで、ただし5人の日は週に2日まで。残りの日は4人」ができる
+（`tenants.weekly_peak_limit` / `weekly_peak_days`）。上限の計算は `tenant_member_day_limits` の1か所。
+詳細は `mem/features/weekly-peak-days.md`。
+
 ## 上限は毎日おなじ1つの数字
 
 曜日別には持たない（2026-09-01 にそう決めた）。曜日で変えたい日は、予定表から

@@ -84,7 +84,7 @@ export interface BookingWithTime {
   optionMinutes?: number;
   /** 付けたオプションの控え（名前・時間・料金）。無ければ空配列。 */
   bookingOptions?: BookingOptionSnapshot[];
-  /** 営業時間外に店がイレギュラーで入れた予約。1日の上限に数えない（src/lib/outsideHours.ts） */
+  /** 営業時間外に店がイレギュラーで入れた予約（src/lib/outsideHours.ts）。1日の上限にはほかの予約と同じく数える */
   outsideHours?: boolean;
 }
 

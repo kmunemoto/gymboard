@@ -1202,7 +1202,7 @@
   },
   "schedule": {
     "outsideHoursToggle": "在营业时间外·休息日预约（例外）",
-    "outsideHoursToggleDesc": "在营业时间外或休息日特别添加预约。不计入每日上限。客户会收到普通预约",
+    "outsideHoursToggleDesc": "在营业时间外或休息日特别添加预约。与其他预约一样计入每日上限。客户会收到普通预约",
     "outsideHoursBefore": "开店前",
     "outsideHoursAfter": "闭店后",
     "outsideHoursClosedDay": "休息日（全天）",

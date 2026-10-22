@@ -1202,7 +1202,7 @@
   },
   "schedule": {
     "outsideHoursToggle": "Book outside hours / on a closed day (irregular)",
-    "outsideHoursToggleDesc": "Add a special booking outside business hours or on a closed day. It doesn't count toward the daily limit. The customer receives it as a normal booking",
+    "outsideHoursToggleDesc": "Add a special booking outside business hours or on a closed day. It counts toward the daily limit like any other booking. The customer receives it as a normal booking",
     "outsideHoursBefore": "Before opening",
     "outsideHoursAfter": "After closing",
     "outsideHoursClosedDay": "Closed day (all day)",

@@ -1202,7 +1202,7 @@
   },
   "schedule": {
     "outsideHoursToggle": "영업시간 외·휴무일에 예약 (예외)",
-    "outsideHoursToggleDesc": "영업시간 외나 휴무일에 특별히 예약을 넣습니다. 1일 상한에는 포함되지 않습니다. 고객에게는 일반 예약으로 전달됩니다",
+    "outsideHoursToggleDesc": "영업시간 외나 휴무일에 특별히 예약을 넣습니다. 1일 상한에는 다른 예약과 똑같이 1건으로 포함됩니다. 고객에게는 일반 예약으로 전달됩니다",
     "outsideHoursBefore": "개점 전",
     "outsideHoursAfter": "폐점 후",
     "outsideHoursClosedDay": "휴무일(종일)",

@@ -1202,7 +1202,7 @@
   },
   "schedule": {
     "outsideHoursToggle": "営業時間外・定休日に入れる（イレギュラー）",
-    "outsideHoursToggleDesc": "営業時間の外や定休日に、特別に予約を入れます。1日の上限には数えません。お客様には普通の予約として届きます",
+    "outsideHoursToggleDesc": "営業時間の外や定休日に、特別に予約を入れます。1日の上限には、ほかの予約と同じく1枠として数えます。お客様には普通の予約として届きます",
     "outsideHoursBefore": "開店前",
     "outsideHoursAfter": "閉店後",
     "outsideHoursClosedDay": "定休日（終日）",

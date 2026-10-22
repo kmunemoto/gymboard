@@ -10,8 +10,6 @@ interface BookingLike {
   status: string;
   user_id: string;
   isBlocked?: boolean;
-  /** 営業時間外に店がイレギュラーで入れた予約（1日の上限に数えない。2026-10-17） */
-  outsideHours?: boolean;
 }
 
 /**
@@ -50,8 +48,10 @@ export function useDayReception(
    *                        「体験予約は上限なく受け付けます」。止めないだけでなく、
    *                        1日の人数にも数えない。DB 側も bookings しか数えていない。
    *   ブロック枠         … 予約ではない（休憩を入れただけで受付が止まるのはおかしい）
-   *   営業時間外の予約   … 店がイレギュラーで足した枠（2026-10-17 宗本さん「数えない」）
    *   キャンセル済み     … `countsTowardDailyLimit` が弾く
+   *
+   * 🔴 営業時間外に店が入れた予約は**数える**（2026-10-23 宗本さん「全ての予約を合わせて1日5枠まで」）。
+   *    2026-10-17〜10-22 は除いていたが、そのせいで5件入った日に6件目の体験が通った。
    *
    * ⚠️ 予定表の一覧（getDayBookings）は「同日キャンセル済み」を**表示から**外しているが、
    *    DB は数える。そちらを使い回すと、人数だけ1人少なく見える。
@@ -62,7 +62,6 @@ export function useDayReception(
         (b) =>
           b.date === dateKey &&
           !b.isBlocked &&
-          !b.outsideHours &&
           b.user_id !== TRIAL_GUEST &&
           countsTowardDailyLimit(b.status),
       ).length,

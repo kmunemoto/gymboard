@@ -16,6 +16,9 @@ import { activeOptions, type BookingOption } from "@/lib/bookingOptions";
  *
  * 返すのは**受付中のものだけ**（`activeOptions`）。停止中のオプションは
  * 選択肢に出さない。
+ *
+ * 🔴 店が指定したお客様だけのオプション（`restricted`）は、**DB の読み取り権限が**
+ * 指定されたお客様と店のスタッフにだけ返す（2026-10-26）。ここで絞り直さないこと。
  */
 export function useBookingOptions() {
   const { tenant } = useTenant();
@@ -32,7 +35,7 @@ export function useBookingOptions() {
     setLoading(true);
     const { data, error } = await supabase
       .from("booking_options")
-      .select("id, name, duration_minutes, price_yen, description, enabled, sort_order")
+      .select("id, name, duration_minutes, price_yen, description, enabled, sort_order, restricted")
       .eq("tenant_id", tenantId)
       .order("sort_order", { ascending: true });
     if (error || !data) {
@@ -48,6 +51,7 @@ export function useBookingOptions() {
             description: (row.description as string | null) ?? null,
             enabled: row.enabled !== false,
             sort_order: typeof row.sort_order === "number" ? row.sort_order : 0,
+            restricted: row.restricted === true,
           })),
         ),
       );

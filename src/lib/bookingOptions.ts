@@ -64,6 +64,11 @@ export interface BookingOption {
   description?: string | null;
   enabled?: boolean;
   sort_order?: number;
+  /**
+   * 店が指定したお客様だけに出すオプション（2026-10-26・src/lib/bookingOptionAccess.ts）。
+   * お客様には指定されたときだけ届く（DB の読み取り権限で絞っている）。店側の画面に「限定」と出す。
+   */
+  restricted?: boolean;
 }
 
 /** 名前の長さの上限（DB の CHECK と同じ値）。 */

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Clock, Sparkles } from "lucide-react";
+import { Clock, Sparkles, UserCheck } from "lucide-react";
 import type { BookingOption } from "@/lib/bookingOptions";
 
 /**
@@ -56,7 +56,16 @@ const BookingOptionPicker = ({ options, selectedIds, onToggle, disabled, classNa
                 onCheckedChange={() => onToggle(o.id)}
               />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold break-words">{o.name}</span>
+                <span className="block text-sm font-bold break-words">
+                  {o.name}
+                  {/* 店が指定したお客様だけのオプション。この欄は店側の画面（代理予約・あとから足す）だけで出す */}
+                  {o.restricted && (
+                    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded px-1 py-px align-middle text-[10px] font-bold bg-primary/10 text-primary">
+                      <UserCheck className="w-3 h-3" />
+                      {t("bookingOptions.restrictedBadge")}
+                    </span>
+                  )}
+                </span>
                 <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                   {o.duration_minutes > 0 && (
                     <span className="inline-flex items-center gap-1">

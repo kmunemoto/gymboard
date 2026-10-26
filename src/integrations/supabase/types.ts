@@ -388,6 +388,42 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_option_customers: {
+        Row: {
+          created_at: string
+          option_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          option_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          option_id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_option_customers_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "booking_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_option_customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_options: {
         Row: {
           created_at: string
@@ -397,6 +433,7 @@ export type Database = {
           id: string
           name: string
           price_yen: number
+          restricted: boolean
           sort_order: number
           tenant_id: string
           updated_at: string
@@ -409,6 +446,7 @@ export type Database = {
           id?: string
           name: string
           price_yen?: number
+          restricted?: boolean
           sort_order?: number
           tenant_id: string
           updated_at?: string
@@ -421,6 +459,7 @@ export type Database = {
           id?: string
           name?: string
           price_yen?: number
+          restricted?: boolean
           sort_order?: number
           tenant_id?: string
           updated_at?: string

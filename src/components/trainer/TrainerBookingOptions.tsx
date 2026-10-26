@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, RefreshCw, Save, Sparkles, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Save, Sparkles, Trash2, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,8 @@ import {
   validateBookingOption,
   OPTION_DESCRIPTION_MAX,
 } from "@/lib/bookingOptions";
+import { allowedCustomersDiff } from "@/lib/bookingOptionAccess";
+import BookingOptionCustomersDialog from "./BookingOptionCustomersDialog";
 
 /**
  * 予約のオプション（`booking_options`）を編集する。
@@ -38,6 +40,12 @@ import {
  * 🔴 行の id は保存しても変わらない（差し替えではなく更新する）。
  *    予約側がオプションを id で指すようになるため、保存のたびに id が変わると
  *    過去の予約から「何を付けたか」が辿れなくなる。
+ *
+ * ## 指定したお客様だけに出す（2026-10-26・src/lib/bookingOptionAccess.ts）
+ *
+ * `restricted` と「選べるお客様」（`booking_option_customers`）。読み込みはオプションと
+ * 一緒に1回で取る（埋め込み）。保存は、オプションの保存が全部終わってから**差分だけ**書く
+ * （新しく足したオプションは、採番された id が分かってから）。
  */
 
 interface EditableOption {
@@ -54,7 +62,17 @@ interface EditableOption {
    */
   description: string;
   enabled: boolean;
+  /** 指定したお客様だけに出す */
+  restricted: boolean;
+  /** 選べるお客様（user_id）。画面で直した後の値 */
+  allowedUserIds: string[];
+  /** 読み込んだときの値。保存で差分だけ書くために持つ */
+  loadedAllowedUserIds: string[];
 }
+
+/** オプションと「選べるお客様」を1回で読む（埋め込み）。型の推論を通さないため string で持つ */
+const OPTION_COLUMNS: string =
+  "id, name, duration_minutes, price_yen, description, enabled, sort_order, restricted, booking_option_customers(user_id)";
 
 const newKey = () => `o-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -67,6 +85,9 @@ const defaultOption = (): EditableOption => ({
   price: "",
   description: "",
   enabled: true,
+  restricted: false,
+  allowedUserIds: [],
+  loadedAllowedUserIds: [],
 });
 
 const toPriceYen = (price: string): number => {
@@ -83,6 +104,8 @@ const TrainerBookingOptions = () => {
   // 保存を押しただけで既存のオプションを全削除できてしまう。
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 「お客様を選ぶ」を開いているオプションの key（開いていなければ null）
+  const [pickerKey, setPickerKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!tenant?.id) return;
@@ -90,7 +113,7 @@ const TrainerBookingOptions = () => {
     setLoadFailed(false);
     const { data, error } = await supabase
       .from("booking_options")
-      .select("id, name, duration_minutes, price_yen, description, enabled, sort_order")
+      .select(OPTION_COLUMNS)
       .eq("tenant_id", tenant.id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
@@ -99,15 +122,23 @@ const TrainerBookingOptions = () => {
       setLoadFailed(true);
     } else {
       setOptions(
-        data.map((o) => ({
-          key: o.id,
-          id: o.id,
-          name: o.name,
-          duration: o.duration_minutes,
-          price: o.price_yen > 0 ? String(o.price_yen) : "",
-          description: o.description ?? "",
-          enabled: o.enabled,
-        })),
+        (data as unknown as Record<string, unknown>[]).map((o) => {
+          const allowed = Array.isArray(o.booking_option_customers)
+            ? (o.booking_option_customers as { user_id: string }[]).map((c) => c.user_id)
+            : [];
+          return {
+            key: String(o.id),
+            id: String(o.id),
+            name: String(o.name ?? ""),
+            duration: Number(o.duration_minutes ?? 0),
+            price: Number(o.price_yen ?? 0) > 0 ? String(o.price_yen) : "",
+            description: (o.description as string | null) ?? "",
+            enabled: o.enabled !== false,
+            restricted: o.restricted === true,
+            allowedUserIds: allowed,
+            loadedAllowedUserIds: allowed,
+          };
+        }),
       );
     }
     setLoading(false);
@@ -144,6 +175,7 @@ const TrainerBookingOptions = () => {
       // 空欄は NULL にする（"" のまま入れると「説明がある」扱いで空行が出る）
       description: o.description.trim() || null,
       enabled: o.enabled,
+      restricted: o.restricted,
       sort_order: i,
     }));
 
@@ -214,6 +246,35 @@ const TrainerBookingOptions = () => {
       setSaving(false);
       void load();
       return;
+    }
+
+    // 4) 選べるお客様（差分だけ書く）。新しく足したオプションは 2) で採番された id を使う
+    //    （insert は渡した順に返る）。オプションを消した場合は外部キーで一緒に消える。
+    const addedKeys = options.filter((o) => !o.id).map((o) => o.key);
+    for (const o of options) {
+      const optionId = o.id ?? addedIds[addedKeys.indexOf(o.key)] ?? null;
+      if (!optionId) continue;
+      const { add, remove } = allowedCustomersDiff(o.loadedAllowedUserIds, o.allowedUserIds);
+      let listErr: { message?: string } | null = null;
+      if (remove.length > 0) {
+        ({ error: listErr } = await supabase
+          .from("booking_option_customers")
+          .delete()
+          .eq("option_id", optionId)
+          .in("user_id", remove));
+      }
+      if (!listErr && add.length > 0) {
+        ({ error: listErr } = await supabase
+          .from("booking_option_customers")
+          .insert(add.map((user_id) => ({ option_id: optionId, user_id, tenant_id: tenant.id }))));
+      }
+      if (listErr) {
+        console.error("選べるお客様の保存に失敗:", listErr);
+        toast.error(t("bookingOptions.saveFailed"));
+        setSaving(false);
+        void load();
+        return;
+      }
     }
 
     toast.success(options.length === 0 ? t("bookingOptions.cleared") : t("bookingOptions.saved"));
@@ -330,6 +391,32 @@ const TrainerBookingOptions = () => {
                   <span className="ml-1 tabular-nums">{o.description.length}/{OPTION_DESCRIPTION_MAX}</span>
                 </p>
               </div>
+              <div className="space-y-1.5 rounded-lg bg-muted/40 p-2.5" data-testid="option-restricted">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-xs font-bold flex items-center gap-1">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    {t("bookingOptions.restrictedLabel")}
+                  </Label>
+                  <Switch
+                    checked={o.restricted}
+                    aria-label={t("bookingOptions.restrictedLabel")}
+                    onCheckedChange={(on) => patch(o.key, { restricted: on })}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">{t("bookingOptions.restrictedHelp")}</p>
+                {o.restricted && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-xs font-semibold ${o.allowedUserIds.length === 0 ? "text-destructive" : ""}`}>
+                      {o.allowedUserIds.length === 0
+                        ? t("bookingOptions.restrictedNone")
+                        : t("bookingOptions.restrictedCount", { count: o.allowedUserIds.length })}
+                    </span>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setPickerKey(o.key)}>
+                      {t("bookingOptions.chooseCustomers")}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
 
@@ -352,6 +439,17 @@ const TrainerBookingOptions = () => {
           <p className="text-xs text-muted-foreground">{t("bookingOptions.footprintNote")}</p>
         </CardContent>
       </Card>
+      {(() => {
+        const target = options.find((o) => o.key === pickerKey);
+        return target ? (
+          <BookingOptionCustomersDialog
+            optionName={target.name}
+            selected={target.allowedUserIds}
+            onDone={(ids) => { patch(target.key, { allowedUserIds: ids }); setPickerKey(null); }}
+            onClose={() => setPickerKey(null)}
+          />
+        ) : null;
+      })()}
     </div>
   );
 };

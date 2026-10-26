@@ -10,6 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { weeklyPeakEnabled, weeklyPeakSaveValues } from "@/lib/weeklyPeak";
 
 /** 「上限なし」を表す Select の値。空文字は Radix の Select が受け付けないため文字列を使う。 */
 const NO_LIMIT = "__none__";
@@ -72,9 +73,18 @@ const TrainerDailyBookingLimit = () => {
   }, [tenant?.daily_total_limit]);
 
   useEffect(() => {
-    setPeakDays(toSelectValue(tenant?.weekly_peak_days));
-    setPeakLimit(toSelectValue(tenant?.weekly_peak_limit));
-  }, [tenant?.weekly_peak_days, tenant?.weekly_peak_limit]);
+    // 🔴 効いていない週の設定（人数が1日の上限以下・1日の上限なし）は「増やさない」として見せる。
+    //    古い版の画面で1日の上限だけ上げると残り、そのまま見せると保存のたびに
+    //    「人数を選んでください」で止まる（2026-10-26: 1日の上限5・週の設定5人/2日が残っていた）。
+    //    保存すれば NULL に片付く。判定（DB の tenant_member_day_limits）も効いていない扱い。
+    const active = weeklyPeakEnabled({
+      dailyLimit: tenant?.daily_booking_limit ?? null,
+      peakLimit: tenant?.weekly_peak_limit ?? null,
+      peakDays: tenant?.weekly_peak_days ?? null,
+    });
+    setPeakDays(active ? toSelectValue(tenant?.weekly_peak_days) : NO_LIMIT);
+    setPeakLimit(active ? toSelectValue(tenant?.weekly_peak_limit) : NO_LIMIT);
+  }, [tenant?.weekly_peak_days, tenant?.weekly_peak_limit, tenant?.daily_booking_limit]);
 
   const memberLimit = value === NO_LIMIT ? null : parseInt(value, 10);
   // 増やした日の人数は、会員の上限より大きいものだけ
@@ -85,9 +95,12 @@ const TrainerDailyBookingLimit = () => {
     const next = memberLimit;
     const nextTotal = totalValue === NO_LIMIT ? null : parseInt(totalValue, 10);
     // 「週に◯日まで」を選んでいなければ、人数が残っていても増やさない（両方そろって初めて効く）
-    const nextPeakDays = peakDays === NO_LIMIT || next === null ? null : parseInt(peakDays, 10);
-    const nextPeakLimit = nextPeakDays === null || peakLimit === NO_LIMIT ? null : parseInt(peakLimit, 10);
-    if (nextPeakDays !== null && (nextPeakLimit === null || next === null || nextPeakLimit <= next)) {
+    const peak = weeklyPeakSaveValues(
+      next,
+      peakDays === NO_LIMIT ? null : parseInt(peakDays, 10),
+      peakLimit === NO_LIMIT ? null : parseInt(peakLimit, 10),
+    );
+    if (peak === "invalid") {
       toast.error(t("closedDays.peakInvalid"));
       return;
     }
@@ -97,8 +110,7 @@ const TrainerDailyBookingLimit = () => {
       .update({
         daily_booking_limit: next,
         daily_total_limit: nextTotal,
-        weekly_peak_days: nextPeakDays,
-        weekly_peak_limit: nextPeakDays === null ? null : nextPeakLimit,
+        ...peak,
       } as never)
       .eq("id", tenant.id);
     if (error) {

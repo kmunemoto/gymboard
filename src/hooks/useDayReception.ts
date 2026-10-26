@@ -31,6 +31,8 @@ export function useDayReception(
   dailyLimit: number | null,
   /** 週に何日かだけ上限を増やす設定（tenants.weekly_peak_limit / weekly_peak_days。2026-10-22） */
   weeklyPeak: { limit: number | null; days: number | null } = { limit: null, days: null },
+  /** 体験も含めた1日の合計の上限（tenants.daily_total_limit）。予定表の「n/◯人」に使う */
+  dailyTotalLimit: number | null = null,
 ) {
   const { t } = useTranslation();
   const { closedDays, refetch } = useBookingClosedDays(fromKey, toKey);
@@ -117,6 +119,36 @@ export function useDayReception(
     [dailyLimit, peakLimit, peakDays, bookedCountOn, uncappedOn],
   );
 
+  /** その日の体験・ドロップインの件数。DB の `tenant_day_trial_count` と同じ（キャンセル済み以外） */
+  const trialCountOn = useCallback(
+    (dateKey: string): number =>
+      bookings.filter(
+        (b) => b.date === dateKey && !b.isBlocked && b.user_id === TRIAL_GUEST && countsTowardDailyLimit(b.status),
+      ).length,
+    [bookings],
+  );
+
+  /**
+   * 予定表の札に出す「n/◯人」（2026-10-26）。
+   *
+   * 合計の上限（体験込み）が会員の上限以下なら、合計のほうが先に効くので、**体験も足して**
+   * 合計の上限と並べる。宗本さん「全ての予約を含めて一日5枠まで（体験も含める）」。
+   *   会員5・合計5 → 会員3＋体験1 は「4/5人」
+   *   会員4・合計5 → 今まで通り会員だけ「3/4人」（5枠目は体験のために空けてある設定）
+   * 上限を外した日は合計の上限も外れる（DB の tenant_day_total_reached と同じ）。
+   */
+  const chipCountOn = useCallback(
+    (dateKey: string): { bookedCount: number; dailyLimit: number | null } => {
+      const members = bookedCountOn(dateKey);
+      const memberLimit = dailyLimitOn(dateKey);
+      if (dailyTotalLimit != null && !uncappedOn(dateKey) && (memberLimit == null || dailyTotalLimit <= memberLimit)) {
+        return { bookedCount: members + trialCountOn(dateKey), dailyLimit: dailyTotalLimit };
+      }
+      return { bookedCount: members, dailyLimit: memberLimit };
+    },
+    [bookedCountOn, dailyLimitOn, uncappedOn, trialCountOn, dailyTotalLimit],
+  );
+
   /**
    * その日だけ上限を外す。
    *
@@ -151,7 +183,7 @@ export function useDayReception(
   );
 
   return {
-    closedOn, bookedCountOn, closeDay, reopenDay, dailyLimit, dailyLimitOn,
+    closedOn, bookedCountOn, closeDay, reopenDay, dailyLimit, dailyLimitOn, chipCountOn,
     saving: saving || uncapSaving,
     uncappedOn, liftCap, restoreCap,
   };

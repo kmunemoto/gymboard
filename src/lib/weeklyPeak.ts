@@ -28,6 +28,21 @@ export interface WeeklyPeakSettings {
 export const weeklyPeakEnabled = (s: WeeklyPeakSettings): boolean =>
   s.dailyLimit != null && s.peakLimit != null && s.peakDays != null && s.peakLimit > s.dailyLimit;
 
+/**
+ * 設定画面で保存する値。
+ * 「週に◯日まで」を選んでいなければ増やさない（両方 null。人数が残っていても書かない）。
+ * 日数を選んだのに、人数が無い・1日の上限以下なら "invalid"（増やす意味が無い）。
+ */
+export const weeklyPeakSaveValues = (
+  dailyLimit: number | null,
+  peakDays: number | null,
+  peakLimit: number | null,
+): { weekly_peak_days: number | null; weekly_peak_limit: number | null } | "invalid" => {
+  if (peakDays === null || dailyLimit === null) return { weekly_peak_days: null, weekly_peak_limit: null };
+  if (peakLimit === null || peakLimit <= dailyLimit) return "invalid";
+  return { weekly_peak_days: peakDays, weekly_peak_limit: peakLimit };
+};
+
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** その日を含む週（月曜〜日曜）の7日分の "yyyy-MM-dd"。端末のタイムゾーンに左右されないよう UTC で数える */

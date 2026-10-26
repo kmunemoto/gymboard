@@ -38,6 +38,7 @@ import { isBookingLimitError } from "@/lib/bookingLimits";
 import { isStaffOffShiftError } from "@/lib/staffSchedule";
 import { isStaffConflictError } from "@/lib/tenantStaff";
 import { isNextCyclePaymentError } from "@/lib/nextCyclePayment";
+import { isRestrictedOptionError } from "@/lib/bookingOptionAccess";
 
 /**
  * このアプリが意味を知っている SQLSTATE。**DB の migrations にあるものと同じ集合**に保つ。
@@ -54,6 +55,7 @@ export const KNOWN_GUARD_CODES = [
   "GB007", // その日は受付終了（1日の上限に到達／店が手で停止）
   "GB008", // あとからオプションを足せない（すぐ後ろが空いていない）
   "GB009", // 次回分が未入金（店が「入金まで次回分を受け付けない」設定にしている）
+  "GB010", // 店が指定したお客様だけのオプションを、指定されていないお客様が付けた
 ] as const;
 
 /** 予約のガードが使う SQLSTATE の形。ここに当てはまるものだけを「規則による拒否」とみなす。 */
@@ -84,6 +86,7 @@ export const GENERIC_BOOKING_ERROR_KEY = "booking.errorBookingFailed";
  */
 export const bookingErrorKey = (error: unknown): string =>
   isNextCyclePaymentError(error) ? "nextCyclePayment.errorUnpaid"
+    : isRestrictedOptionError(error) ? "bookingOptions.errorRestricted"
     : isPlanLimitError(error) ? "planSessions.errorReached"
       : isDayClosedError(error) ? "closedDays.errorClosed"
         : isBlockedWindowError(error) ? "blockedWindows.errorNotAccepting"

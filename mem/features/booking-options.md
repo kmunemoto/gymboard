@@ -526,6 +526,48 @@ const { error: delErr } = keepIds.length > 0
 
 ---
 
+## 指定したお客様だけに出す（2026-10-26）
+
+> オプションをお店が指定した特定のお客様だけがアプリから予約の際に選べる様にできる機能を追加して
+
+設定 → 予約のルール → 予約のオプション → 各オプションの **「指定したお客様だけに出す」** を ON →
+「お客様を選ぶ」でチェック → 決定 → オプションの「保存」。
+
+| どこ | 何をしているか |
+|---|---|
+| `booking_options.restricted`（既定 false） | 限定かどうか |
+| `booking_option_customers`（option_id, user_id, tenant_id） | 選べるお客様。読み書きは店のスタッフだけ。オプションを消すと一緒に消える |
+| `booking_options_select`（読み取り権限） | 🔴 限定のものは**店のスタッフと指定されたお客様にだけ**返す（`booking_option_allowed`） |
+| `get_tenant_booking_options`（公開ページ用） | 限定のものは返さない |
+| `guard_booking_restricted_options`（BEFORE INSERT・**GB010**） | お客様の自己予約に、指定されていない限定オプションが付いていたら断る |
+
+決めたこと（既定の判断）:
+
+- 指定されていないお客様には**出さない**（選択肢に現れない。「選べません」と見せることもしない）
+- 🔴 **出し分けは読み取り権限でやる。** お客様の予約画面は `booking_options` を直接読んでいるので、
+  **古いアプリにも効く**。画面側（`useBookingOptions`）で絞り直す処理は持たない
+- 店の代理予約・あとから足す（GB008 の画面）は今まで通り、**どのお客様にも付けられる**（店の裁量）。
+  店側の選択欄（`BookingOptionPicker`）には「限定」の印を出す
+- すでに入っている予約はそのまま。**日時の変更（`created_via = 'reschedule'`）では引き継ぐ**。
+  変更は「元の予約を消してから入れ直す」ので、元の予約を探して確かめられない。そのため例外にしてある
+  （API を直接叩いて変更の印を付ければ通る、という穴は残る。画面からは起きない）
+- ON にして誰も選んでいなければ、お客様の誰にも出ない（店側には出る）
+- 保存は差分だけ（`allowedCustomersDiff`）。新しく足したオプションは、採番された id が分かってから書く
+
+GB010 は `KNOWN_GUARD_CODES` に足してある（最新のアプリに「更新してください」と出さない）。
+画面から起きるのは、予約画面を開いている間に店が指定を外したときだけ。文言は
+`bookingOptions.errorRestricted`（オプションを外してもう一度）。
+
+本番での確認（2026-10-26・予行はすべて取り消し）:
+指定なしのお客様に見えない／付けて自己予約すると GB010／オプション無しと日時変更の引き継ぎは通る／
+自分を一覧に足せない（42501）、指定ありのお客様に見えて予約できる、オーナーは見えて代理予約で付けられる・
+よその人は指定できない（42501）、未ログインの公開 RPC は 0件・一覧は読めない、限定を外すと全員に見える。
+
+- `src/lib/bookingOptionAccess.ts` / `src/components/trainer/BookingOptionCustomersDialog.tsx`
+- `supabase/migrations/20261026020000_booking_option_customers.sql`
+- `supabase/migrations/20261026020100_delete_gym_booking_option_customers.sql` — ジムを閉じるときの消し込み（本番の定義から写して1行足した）
+- テスト: `src/test/bookingOptionRestricted.test.tsx`
+
 ## 説明文（`description`）— 列は最初からあったが、画面2つが欠けていた（2026-09-20）
 
 > こんな感じでオプションに、僕のジムの場合ならストレッチの説明やメリットも説明書きしたい。

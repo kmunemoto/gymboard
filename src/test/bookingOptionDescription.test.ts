@@ -78,7 +78,9 @@ describe("🔴 店が設定できること", () => {
 
   it("読み込みの select に description が入っている", () => {
     // ここに無いと、保存しても次に開いたとき空に戻る
-    expect(code).toMatch(/\.select\("id, name, duration_minutes, price_yen, description, enabled, sort_order"\)/);
+    // 2026-10-26〜 選べるお客様と一緒に1回で読むため、列は定数（OPTION_COLUMNS）に持っている
+    expect(code).toMatch(/const OPTION_COLUMNS: string =\s*"id, name, duration_minutes, price_yen, description, enabled, sort_order, restricted/);
+    expect(code).toContain(".select(OPTION_COLUMNS)");
   });
 
   it("入力欄がある（1行の Input ではなく複数行）", () => {

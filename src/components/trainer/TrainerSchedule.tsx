@@ -498,6 +498,7 @@ const TrainerSchedule = () => {
     bookings,
     tenant?.daily_booking_limit ?? null,
     { limit: tenant?.weekly_peak_limit ?? null, days: tenant?.weekly_peak_days ?? null },
+    tenant?.daily_total_limit ?? null,
   );
 
   // その日の受付の札（止める／解除／上限を外す／戻す）。週タイムライン・週テーブル・
@@ -508,8 +509,7 @@ const TrainerSchedule = () => {
       compact={compact}
       dateKey={d}
       closed={dayReception.closedOn(d)}
-      bookedCount={dayReception.bookedCountOn(d)}
-      dailyLimit={dayReception.dailyLimitOn(d)}
+      {...dayReception.chipCountOn(d)}
       uncapped={dayReception.uncappedOn(d)}
       saving={dayReception.saving}
       onClose={dayReception.closeDay}

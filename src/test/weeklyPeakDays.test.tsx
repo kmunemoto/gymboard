@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, renderHook, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { readFileSync, readdirSync } from "node:fs";
 import i18n from "@/lib/i18n";
-import { isoWeekKeys, memberLimitOn, weeklyPeakEnabled, type WeeklyPeakSettings } from "@/lib/weeklyPeak";
+import { isoWeekKeys, memberLimitOn, weeklyPeakEnabled, weeklyPeakSaveValues, type WeeklyPeakSettings } from "@/lib/weeklyPeak";
 import { TENANT_VALUE_DEFAULTS, normalizeTenantRow, tenantOptionalColumnNames } from "@/lib/tenantColumns";
 
 const updates: unknown[] = [];
@@ -166,9 +166,38 @@ describe("予定表の n/◯人（useDayReception）", () => {
     expect(result.current.dailyLimitOn("2027-02-03")).toBe(4);
   });
 
+  it("🔴 合計の上限が会員の上限以下なら、札は体験も足して合計と並べる（全ての予約で5枠・2026-10-26）", async () => {
+    const { useDayReception } = await import("@/hooks/useDayReception");
+    const list = [
+      ...Array.from({ length: 3 }, () => booking("2027-02-03")),
+      booking("2027-02-03", { user_id: "trial-guest" }),
+      booking("2027-02-03", { user_id: "trial-guest", status: "キャンセル済み" }), // 取り消した体験は数えない
+    ];
+    const allIn = renderHook(() => useDayReception("2027-02-01", "2027-02-07", list, 5, { limit: null, days: null }, 5));
+    expect(allIn.result.current.chipCountOn("2027-02-03")).toEqual({ bookedCount: 4, dailyLimit: 5 });
+    // 会員4・合計5（5枠目は体験用）: 今まで通り会員だけ
+    const trialSlot = renderHook(() => useDayReception("2027-02-01", "2027-02-07", list, 4, { limit: null, days: null }, 5));
+    expect(trialSlot.result.current.chipCountOn("2027-02-03")).toEqual({ bookedCount: 3, dailyLimit: 4 });
+    // 会員の上限なし・合計5: 合計で並べる
+    const totalOnly = renderHook(() => useDayReception("2027-02-01", "2027-02-07", list, null, { limit: null, days: null }, 5));
+    expect(totalOnly.result.current.chipCountOn("2027-02-03")).toEqual({ bookedCount: 4, dailyLimit: 5 });
+    // 合計なし: 今まで通り
+    const none = renderHook(() => useDayReception("2027-02-01", "2027-02-07", list, 5));
+    expect(none.result.current.chipCountOn("2027-02-03")).toEqual({ bookedCount: 3, dailyLimit: 5 });
+  });
+
+  it("上限を外した日は、札も上限なし（合計の上限も外れる）", async () => {
+    uncappedRef.current = ["2027-02-03"];
+    const { useDayReception } = await import("@/hooks/useDayReception");
+    const { result } = renderHook(() =>
+      useDayReception("2027-02-01", "2027-02-07", [booking("2027-02-03")], 5, { limit: null, days: null }, 5),
+    );
+    expect(result.current.chipCountOn("2027-02-03")).toEqual({ bookedCount: 1, dailyLimit: null });
+  });
+
   it("予定表の札に日ごとの上限を渡している", () => {
     const schedule = readFileSync("src/components/trainer/TrainerSchedule.tsx", "utf8");
-    expect(schedule).toContain("dailyLimit={dayReception.dailyLimitOn(d)}");
+    expect(schedule).toContain("{...dayReception.chipCountOn(d)}"); // 日ごとの上限（＋合計が先に効く日は体験込み）
     expect(schedule).toContain("{ limit: tenant?.weekly_peak_limit ?? null, days: tenant?.weekly_peak_days ?? null }");
   });
 });
@@ -313,12 +342,26 @@ describe("設定（予約のルール → 1日の上限人数）", () => {
     );
   });
 
-  it("🔴 人数が会員の上限以下なら保存しない（増やす意味が無い）", async () => {
+  it("🔴 画面で選んだ人数が1日の上限以下・人数が空なら保存しない（増やす意味が無い）", () => {
+    expect(weeklyPeakSaveValues(4, 2, 4)).toBe("invalid");
+    expect(weeklyPeakSaveValues(5, 2, 5)).toBe("invalid");
+    expect(weeklyPeakSaveValues(4, 2, null)).toBe("invalid");
+    expect(weeklyPeakSaveValues(4, 2, 5)).toEqual({ weekly_peak_days: 2, weekly_peak_limit: 5 });
+    // 日数を選んでいない・1日の上限なし → 増やさない（人数が残っていても書かない）
+    expect(weeklyPeakSaveValues(4, null, 5)).toEqual({ weekly_peak_days: null, weekly_peak_limit: null });
+    expect(weeklyPeakSaveValues(null, 2, 5)).toEqual({ weekly_peak_days: null, weekly_peak_limit: null });
+  });
+
+  it("🔴 効いていない週の設定（人数が1日の上限以下）は「増やさない」と見せ、保存で片付く（エラーにしない）", async () => {
+    // 古い版の画面で1日の上限だけ5に上げると、週の設定（5人/2日）が残る（2026-10-26 に本番で発生）
     tenantRef.current = { id: "t1", daily_booking_limit: 5, daily_total_limit: 5, weekly_peak_days: 2, weekly_peak_limit: 5 };
     await renderCard();
+    expect(screen.getByText(i18n.t("closedDays.peakNone"))).toBeTruthy();
     save();
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith(i18n.t("closedDays.peakInvalid")));
-    expect(updates).toEqual([]);
+    await waitFor(() =>
+      expect(updates).toEqual([{ daily_booking_limit: 5, daily_total_limit: 5, weekly_peak_days: null, weekly_peak_limit: null }]),
+    );
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("会員の上限が「上限なし」なら、増やす設定も外して保存する", async () => {

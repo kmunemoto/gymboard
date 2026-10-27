@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_audience: {
+        Row: {
+          announcement_id: string
+          created_at: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          created_at?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          created_at?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_audience_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_audience_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -2449,6 +2485,10 @@ export type Database = {
         Args: { _sets: Json; _weight: number }
         Returns: number
       }
+      announcement_audience_has: {
+        Args: { p_announcement_id: string; p_user_id: string }
+        Returns: boolean
+      }
       assert_can_act_for: {
         Args: { _target_user_id: string }
         Returns: undefined
@@ -2720,6 +2760,18 @@ export type Database = {
       resolve_booking_capacity: {
         Args: { p_booking_date: string; p_tenant_id: string }
         Returns: number
+      }
+      save_announcement: {
+        Args: {
+          p_body: string
+          p_icon: string
+          p_id?: string
+          p_published_at: string
+          p_target: string
+          p_title: string
+          p_user_ids?: string[]
+        }
+        Returns: string
       }
       shares_tenant_with_me: {
         Args: { _target_user_id: string }

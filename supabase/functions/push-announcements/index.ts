@@ -4,7 +4,13 @@
 // 呼び出し元:
 //   - お知らせ作成/更新直後のアプリ（fire-and-forget。即時公開分をすぐ届ける）
 //   - pg_cron（10分おき等。予約公開（published_at が未来）分を公開時刻に届ける）
-// 対象者: target='all' はテナントの有効なお客様全員、target=<user_id> はその1名。
+// 対象者（2026-10-27〜。選んだ人は announcement_audience）:
+//   target='all'       … テナントの有効なお客様全員
+//   target='except'    … 全員から、選んだ人を除く
+//   target='only'      … 選んだ人だけ（複数）
+//   target=<user_id>   … その1名（古いアプリが書く）
+// 🔴 選んだ人が読めなかったときは送らない（除くはずの人に届くよりまし）。
+//    クレームを外して、次の実行でやり直す。
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
 
@@ -76,7 +82,24 @@ Deno.serve(async (req) => {
 
       // 対象者を解決
       let userIds: string[] = [];
-      if (a.target && a.target !== "all") {
+      let audience: string[] = [];
+      if (a.target === "except" || a.target === "only") {
+        const { data: rows, error: audErr } = await supabase
+          .from("announcement_audience")
+          .select("user_id")
+          .eq("announcement_id", a.id);
+        if (audErr) {
+          // 除く人が分からないまま「全員」に送ると、除いた人に届いてしまう。送らずにやり直す
+          console.error(`announcement audience fetch failed for ${a.id}:`, audErr);
+          await supabase.from("announcements").update({ push_sent_at: null } as any).eq("id", a.id);
+          results.push({ id: a.id, recipients: 0, skipped: "audience_error" });
+          continue;
+        }
+        audience = (rows ?? []).map((r: any) => r.user_id);
+      }
+      if (a.target === "only") {
+        userIds = audience;
+      } else if (a.target && a.target !== "all" && a.target !== "except") {
         userIds = [a.target];
       } else if (a.tenant_id) {
         const { data: members } = await supabase
@@ -85,7 +108,8 @@ Deno.serve(async (req) => {
           .eq("tenant_id", a.tenant_id)
           .eq("role", "customer")
           .eq("status", "active");
-        userIds = (members ?? []).map((m: any) => m.user_id);
+        const excluded = new Set(a.target === "except" ? audience : []);
+        userIds = (members ?? []).map((m: any) => m.user_id).filter((id: string) => !excluded.has(id));
       }
       if (userIds.length === 0) {
         results.push({ id: a.id, recipients: 0, skipped: "no_recipients" });

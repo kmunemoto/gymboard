@@ -52,6 +52,8 @@
 - Edge Function は push しても本番に出ない。Lovable にデプロイを頼む（`mem/ops/edge-function-deploy.md`）。
   未デプロイの間に `except` / `only` のお知らせを出すと、古い関数は `target` を user_id として扱い、
   **誰にも送らない**（全員に送る方向には壊れない）
+- **2026-10-27 にデプロイ済み・確認済み。** 実在しない2人だけを宛先にした試しのお知らせで
+  `recipients: 2` が返った（古いコードなら 1）。試しの行は消した。確かめ方は `mem/ops/edge-function-deploy.md`
 
 ## 本番への適用（2026-10-27）
 

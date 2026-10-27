@@ -68,6 +68,11 @@ export interface Tenant {
    */
   arrival_lead_minutes?: number | null;
   /**
+   * お客様に伝える「ご来店前のお願い」（2026-10-27・src/lib/preVisitNote.ts）。
+   * 予約完了画面・ホームの次回の予約・体験予約の完了画面に出す。null=出さない
+   */
+  pre_visit_note?: string | null;
+  /**
    * ホーム画面の「アクティブ顧客」の数え方。既定 "enrolled"（在籍の全員＝今まで通り）。
    * "next_booking" は今日以降に予約がある人だけ。判定は `src/lib/activeClients.ts`。
    */

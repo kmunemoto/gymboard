@@ -2025,6 +2025,7 @@ export type Database = {
           operating_hours: Json | null
           owner_user_id: string | null
           phone: string | null
+          pre_visit_note: string | null
           primary_color: string | null
           public_theme_color: string | null
           reminder_email_note: string | null
@@ -2101,6 +2102,7 @@ export type Database = {
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
+          pre_visit_note?: string | null
           primary_color?: string | null
           public_theme_color?: string | null
           reminder_email_note?: string | null
@@ -2177,6 +2179,7 @@ export type Database = {
           operating_hours?: Json | null
           owner_user_id?: string | null
           phone?: string | null
+          pre_visit_note?: string | null
           primary_color?: string | null
           public_theme_color?: string | null
           reminder_email_note?: string | null
@@ -2596,6 +2599,7 @@ export type Database = {
           id: string
           logo_url: string
           operating_hours: Json
+          pre_visit_note: string
           primary_color: string
           public_theme_color: string
           slot_duration_minutes: number

@@ -24,7 +24,7 @@ import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
 import RemainingSlotsCard from "./RemainingSlotsCard";
-import ArrivalLeadCard from "./ArrivalLeadCard";
+import VisitGuideCards from "./VisitGuideCards";
 import NextCyclePaymentCard from "./NextCyclePaymentCard";
 import ActiveClientsSettingsCard from "./ActiveClientsSettingsCard";
 import TrainerPlanManager from "./TrainerPlanManager";
@@ -1211,7 +1211,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
 
       {/* === 来店の目安 === 「ご来店は 13:55 以降にお願いします」をお客様に出すか（別ファイル: 行数の上限のため） */}
       <section className="space-y-3">
-        <ArrivalLeadCard />
+        <VisitGuideCards />{/* 来店の目安時刻＋ご来店前のお願い（別ファイル: 行数の上限のため） */}
       </section>
 
       {/* === 予約のオプション === トレーニング後の30分ストレッチなど。追加した時間は

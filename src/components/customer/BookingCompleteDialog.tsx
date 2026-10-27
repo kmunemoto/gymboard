@@ -6,6 +6,7 @@ import { ja } from "date-fns/locale";
 import { formatJST } from "@/lib/timezone";
 import { useTenant } from "@/hooks/useTenant";
 import ArrivalNotice from "@/components/booking/ArrivalNotice";
+import PreVisitNote from "@/components/booking/PreVisitNote";
 
 interface BookingCompleteDialogProps {
   open: boolean;
@@ -96,6 +97,7 @@ const BookingCompleteDialog = ({
           </div>
 
           <ArrivalNotice startTime={startTime} lead={tenant?.arrival_lead_minutes} />
+          <PreVisitNote note={tenant?.pre_visit_note} />
 
           <a
             href={calendarUrl}

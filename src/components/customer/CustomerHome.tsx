@@ -30,6 +30,7 @@ import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
 import { useTenant } from "@/hooks/useTenant";
 import ArrivalNotice from "@/components/booking/ArrivalNotice";
+import PreVisitNote from "@/components/booking/PreVisitNote";
 import PlanUsageCard from "./PlanUsageCard";
 import { useGymVideoCount } from "@/hooks/useGymVideos";
 import MilestoneGoalCard from "./MilestoneGoalCard";
@@ -287,6 +288,8 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
               {/* 設定している店だけ「ご来店は 13:55 以降に」。右のアイコンに幅を取られないよう行の下に置く
                   （理由の一文は予約完了画面で出しているので省く） */}
               <div className="mt-3"><ArrivalNotice compact startTime={nextBooking.startTime} lead={tenant?.arrival_lead_minutes} /></div>
+              {/* 店が書いた「ご来店前のお願い」（例: 1〜2時間前に軽く食べてから。2026-10-27） */}
+              {tenant?.pre_visit_note && <div className="mt-2"><PreVisitNote compact note={tenant.pre_visit_note} /></div>}
             </CardContent>
           </Card>
         ) : (

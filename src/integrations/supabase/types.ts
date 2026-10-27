@@ -2493,6 +2493,10 @@ export type Database = {
         Args: { _target_user_id: string }
         Returns: undefined
       }
+      booking_option_allowed: {
+        Args: { p_option_id: string; p_user_id: string }
+        Returns: boolean
+      }
       claim_my_profile: { Args: never; Returns: boolean }
       compute_rank_for_level: { Args: { _level: number }; Returns: string }
       create_gym_with_owner: {
@@ -2621,6 +2625,13 @@ export type Database = {
           closed_date: string
           manual: boolean
           reason: string
+        }[]
+      }
+      get_tenant_daily_limit_left: {
+        Args: { from_date: string; p_tenant_id: string; to_date: string }
+        Returns: {
+          left_count: number
+          limit_date: string
         }[]
       }
       get_tenant_limit_status: { Args: { p_tenant_id: string }; Returns: Json }
@@ -2792,6 +2803,48 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: boolean
+      }
+      tenant_day_total_reached: {
+        Args: {
+          p_date: string
+          p_exclude_booking_id?: string
+          p_exclude_trial_id?: string
+          p_tenant_id: string
+        }
+        Returns: boolean
+      }
+      tenant_day_trial_count: {
+        Args: {
+          p_date: string
+          p_exclude_trial_id?: string
+          p_tenant_id: string
+        }
+        Returns: number
+      }
+      tenant_member_day_counts: {
+        Args: {
+          from_date: string
+          p_exclude_booking_id?: string
+          p_tenant_id: string
+          to_date: string
+        }
+        Returns: {
+          day: string
+          n: number
+        }[]
+      }
+      tenant_member_day_limits: {
+        Args: {
+          from_date: string
+          p_exclude_booking_id?: string
+          p_tenant_id: string
+          to_date: string
+        }
+        Returns: {
+          booked: number
+          day: string
+          member_limit: number
+        }[]
       }
       transfer_gym_ownership: {
         Args: { _to_user_id: string }

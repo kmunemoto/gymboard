@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Megaphone, Plus, Pencil, Trash2, Users, User as UserIcon, Clock, CheckCircle2 } from "lucide-react";
+import { Megaphone, Plus, Pencil, Trash2, Users, User as UserIcon, UserMinus, Clock, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { toast } from "sonner";
@@ -20,6 +20,10 @@ import {
 import IconPicker from "@/components/IconPicker";
 import RenderIcon from "@/components/RenderIcon";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import AnnouncementAudiencePicker from "@/components/trainer/AnnouncementAudiencePicker";
+import {
+  type AudienceMode, audienceErrorKey, audienceLabel, audienceModeOf, audienceSaveArgs, audienceUserIdsOf,
+} from "@/lib/announcementAudience";
 
 interface AnnouncementRow {
   id: string;
@@ -29,6 +33,8 @@ interface AnnouncementRow {
   target: string;
   published_at: string;
   created_at: string;
+  /** 配信対象で選んだ人（target が except / only のとき。src/lib/announcementAudience.ts） */
+  announcement_audience?: { user_id: string }[] | null;
 }
 
 const TrainerAnnouncementManager = () => {
@@ -47,8 +53,8 @@ const TrainerAnnouncementManager = () => {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [icon, setIcon] = useState("Bell");
-  const [targetMode, setTargetMode] = useState<"all" | "user">("all");
-  const [targetUserId, setTargetUserId] = useState("");
+  const [targetMode, setTargetMode] = useState<AudienceMode>("all");
+  const [audienceIds, setAudienceIds] = useState<string[]>([]);
   const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
   const [publishedAt, setPublishedAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +63,7 @@ const TrainerAnnouncementManager = () => {
     setLoading(true);
     const { data: anns } = await supabase
       .from("announcements")
-      .select("*")
+      .select("*, announcement_audience(user_id)")
       .order("published_at", { ascending: false });
     const list = (anns as AnnouncementRow[] | null) ?? [];
     setItems(list);
@@ -84,7 +90,7 @@ const TrainerAnnouncementManager = () => {
 
   const resetForm = () => {
     setTitle(""); setBody(""); setIcon("Bell");
-    setTargetMode("all"); setTargetUserId("");
+    setTargetMode("all"); setAudienceIds([]);
     setScheduleMode("now"); setPublishedAt("");
     setEditing(null);
   };
@@ -96,11 +102,8 @@ const TrainerAnnouncementManager = () => {
     setTitle(a.title);
     setBody(a.body);
     setIcon(a.icon || "Bell");
-    if (a.target === "all") {
-      setTargetMode("all"); setTargetUserId("");
-    } else {
-      setTargetMode("user"); setTargetUserId(a.target);
-    }
+    setTargetMode(audienceModeOf(a.target));
+    setAudienceIds(audienceUserIdsOf(a.target, a.announcement_audience));
     const future = new Date(a.published_at).getTime() > Date.now();
     if (future) {
       setScheduleMode("later");
@@ -117,23 +120,21 @@ const TrainerAnnouncementManager = () => {
   const handleSubmit = async () => {
     if (!user) return;
     if (!title.trim() || !body.trim()) { toast.error(t("announcement.errTitleBody")); return; }
-    if (targetMode === "user" && !targetUserId) { toast.error(t("announcement.errTarget")); return; }
+    const audienceErr = audienceErrorKey(targetMode, audienceIds);
+    if (audienceErr) { toast.error(t(audienceErr)); return; }
     if (scheduleMode === "later" && !publishedAt) { toast.error(t("announcement.errSchedule")); return; }
 
     setSubmitting(true);
-    const payload = {
-      title: title.trim(),
-      body: body.trim(),
-      icon,
-      target: targetMode === "all" ? "all" : targetUserId,
-      published_at: scheduleMode === "later" ? new Date(publishedAt).toISOString() : new Date().toISOString(),
-    };
-
-    const { fetchMyTenantId, withTenant } = await import("@/lib/tenantHelper");
-    const tenantId = await fetchMyTenantId();
-    const { error } = editing
-      ? await supabase.from("announcements").update(payload).eq("id", editing.id)
-      : await supabase.from("announcements").insert(withTenant({ ...payload, created_by: user.id }, tenantId) as any);
+    // お知らせの行と「選んだ人」を1つのトランザクションで書く（間に配信が挟まって、
+    // 除く人がまだ居ない状態で全員に送らないように）。ジムは DB 側で自分の所属に決まる
+    const { error } = await supabase.rpc("save_announcement", {
+      p_title: title.trim(),
+      p_body: body.trim(),
+      p_icon: icon,
+      p_published_at: scheduleMode === "later" ? new Date(publishedAt).toISOString() : new Date().toISOString(),
+      ...audienceSaveArgs(targetMode, audienceIds),
+      ...(editing ? { p_id: editing.id } : {}),
+    });
 
     setSubmitting(false);
     if (error) { toast.error(t("announcement.saveFailed", { msg: error.message })); return; }
@@ -161,10 +162,18 @@ const TrainerAnnouncementManager = () => {
     fetchAll();
   };
 
-  const targetLabel = (target: string) => {
-    if (target === "all") return t("announcement.targetAll");
-    const p = profiles.find((p) => p.user_id === target);
-    return p?.display_name || t("announcement.targetIndividual");
+  const targetLabel = (a: AnnouncementRow) => {
+    const { key, values } = audienceLabel(
+      a.target,
+      audienceUserIdsOf(a.target, a.announcement_audience),
+      (id) => profiles.find((p) => p.user_id === id)?.display_name,
+    );
+    return t(key, values);
+  };
+  const targetIcon = (target: string) => {
+    const mode = audienceModeOf(target);
+    const Icon = mode === "all" ? Users : mode === "except" ? UserMinus : UserIcon;
+    return <Icon className="inline w-3 h-3 mr-0.5" />;
   };
 
   if (loading) {
@@ -212,8 +221,8 @@ const TrainerAnnouncementManager = () => {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {format(new Date(a.published_at), "yyyy/M/d HH:mm", { locale: ja })}
                       <span className="mx-1.5">·</span>
-                      {a.target === "all" ? <Users className="inline w-3 h-3 mr-0.5" /> : <UserIcon className="inline w-3 h-3 mr-0.5" />}
-                      {targetLabel(a.target)}
+                      {targetIcon(a.target)}
+                      {targetLabel(a)}
                       <span className="mx-1.5">·</span>
                       {t("announcement.readsCount", { count: reads })}
                     </p>
@@ -259,25 +268,14 @@ const TrainerAnnouncementManager = () => {
               <IconPicker value={icon} onChange={setIcon} />
             </div>
 
-            <div className="space-y-1.5">
-              <Label>{t("announcement.fieldTarget")}</Label>
-              <div className="flex gap-2">
-                <Button type="button" size="sm" variant={targetMode === "all" ? "default" : "outline"} onClick={() => setTargetMode("all")}>{t("announcement.targetAll")}</Button>
-                <Button type="button" size="sm" variant={targetMode === "user" ? "default" : "outline"} onClick={() => setTargetMode("user")}>{t("announcement.targetIndividual")}</Button>
-              </div>
-              {targetMode === "user" && (
-                <select
-                  className="w-full mt-2 h-9 rounded-md border border-input bg-background px-2 text-sm"
-                  value={targetUserId}
-                  onChange={(e) => setTargetUserId(e.target.value)}
-                >
-                  <option value="">{t("announcement.selectClientPrompt")}</option>
-                  {profiles.map((p) => (
-                    <option key={p.user_id} value={p.user_id}>{p.display_name || p.user_id}</option>
-                  ))}
-                </select>
-              )}
-            </div>
+            {/* 切り替えたら選び直す（「除く」で選んだ人が「個別」の送り先に化けないように） */}
+            <AnnouncementAudiencePicker
+              mode={targetMode}
+              onModeChange={(m) => { if (m !== targetMode) { setTargetMode(m); setAudienceIds([]); } }}
+              selected={audienceIds}
+              onChange={setAudienceIds}
+              customers={profiles}
+            />
 
             <div className="space-y-1.5">
               <Label>{t("announcement.fieldSchedule")}</Label>

@@ -41,6 +41,7 @@ import {
 
 /** 顧客の個人データを持ち、テナント越境を塞ぐ必要があるテーブル */
 const CUSTOMER_DATA_TABLES = [
+  "announcement_audience",
   "announcements",
   "blocked_slots",
   "booking_waitlist",

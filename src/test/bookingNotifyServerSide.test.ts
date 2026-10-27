@@ -135,7 +135,9 @@ describe("記録簿（booking_notify_log）と付随トリガー", () => {
     //    面倒に見えるが、これが「閉じたジムの行が残る」を止めている唯一の関門
     //    （2026-08-26 に email_send_log を足したときも、ここが最初に赤くなった）。
     const expected = [
-      "announcement_reads", "member_agreements", "message_reactions", "messages",
+      "announcement_reads",
+      "announcement_audience", // 2026-10-27 お知らせの配信対象で選んだお客様
+      "member_agreements", "message_reactions", "messages",
       "message_templates", "gym_videos", "operator_feedback", "workouts", "exercise_id_map",
       "exercises", "tenant_muscle_groups", "booking_waitlist", "bookings",
       "booking_notify_log", "email_send_log", "blocked_slots", "trial_bookings", "booking_questions",

@@ -205,9 +205,11 @@ describe("配線とDB", () => {
   });
 
   it("設定カードは『予約のルール』のページに置いてある", () => {
+    // 2026-10-27〜「ご来店前のお願い」と2枚まとめて VisitGuideCards から置く（行数の上限のため）
+    expect(read("src/components/trainer/VisitGuideCards.tsx")).toContain("<ArrivalLeadCard />");
     const src = read("src/components/trainer/TrainerGymSettings.tsx");
-    const at = src.indexOf("<ArrivalLeadCard />");
-    expect(at, "<ArrivalLeadCard /> が置かれていない").toBeGreaterThan(0);
+    const at = src.indexOf("<VisitGuideCards />");
+    expect(at, "<VisitGuideCards /> が置かれていない").toBeGreaterThan(0);
     // 直前のカテゴリーのガードが rules（他のカテゴリーのブロックの中ではない）
     const before = src.slice(0, at);
     expect(before.lastIndexOf('settingsView === "')).toBe(before.lastIndexOf('settingsView === "rules"'));

@@ -81,6 +81,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "daily_total_limit",
   // 週に何日かだけ会員の1日の上限を増やす（人数・日数）。NULL = 増やさない（今まで通り）。
   "weekly_peak_limit, weekly_peak_days",
+  // ご来店前のお願い（店が書く文）。NULL = 出さない（今まで通り）。
+  "pre_visit_note",
 ];
 
 /**
@@ -182,6 +184,8 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 🔴 列が読めない環境では「増やさない」に倒す（DB の判定も NULL なら今まで通り）。
   weekly_peak_limit: null,
   weekly_peak_days: null,
+  // 🔴 列が読めない環境では「出さない」。上流が文言を代弁しない（cancel_policy_body と同じ方針）。
+  pre_visit_note: null,
 };
 
 /**

@@ -244,3 +244,26 @@ new-account-notification, trial-booking-reminder, booking-reminder, customer-inv
 
 実在しない人なので通知はどこにも届かない。定期実行（10分おき）に先に拾われると返事が読めないので、
 cron の直後に行う。
+
+### 返事が変わらないときは、DB の実行記録（pg_stat_statements）で見る（2026-10-28）
+
+新旧で返事が同じになる変更（例: 宛先の絞り込みに `.neq("staff_access", "limited")` を足しただけ）は、
+**新しいコードだけが投げる形のクエリ**が `extensions.pg_stat_statements` に現れるかで確かめる。
+PostgREST が組み立てた SQL がそのまま（値は `$1` に置き換わって）記録される。読み取りだけで、誰にも何も届かない。
+
+```sql
+-- 例: notify-new-booking が予約を読む select に staff_user_id を足したとき
+SELECT
+  coalesce(sum(calls) FILTER (WHERE query LIKE '%"public"."bookings"."option_minutes", "public"."bookings"."staff_user_id" FROM "public"."bookings"%'), 0) AS new_shape,
+  coalesce(sum(calls) FILTER (WHERE query LIKE '%"public"."bookings"."option_minutes" FROM "public"."bookings"%'), 0) AS old_shape
+FROM extensions.pg_stat_statements;
+```
+
+1. デプロイ前に数を控える（新しい形は 0 のはず）
+2. 害の無い呼び方で1回叩く。notify-new-booking なら実在しない `booking_id`（`gen_random_uuid()`）を
+   `net.http_post` で渡す → 予約を読む select だけ走って `{"skipped":"booking_not_found"}` で終わる
+3. 新しい形が 0 → 1 になり、古い形が増えていなければ新しいコード
+
+2026-10-28 のインストラクター対応ではこれで notify-new-booking を確かめた（新しい形 0→1、古い形 172 のまま）。
+害の無い呼び方が無い関数（体験予約・毎日のまとめ）は、本番で自然に動いたあとに同じ数え方で見られる
+（宛先の絞り込みなら `"tenant_members"."staff_access" <> ` を含む形）。

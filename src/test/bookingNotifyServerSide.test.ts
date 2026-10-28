@@ -145,6 +145,7 @@ describe("記録簿（booking_notify_log）と付随トリガー", () => {
       "booking_blocked_windows", "booking_closed_days", "booking_uncapped_days",
       "booking_option_customers", // 2026-10-26 限定オプションを選べるお客様
       "booking_options",
+      "booking_menus", // 2026-10-28 予約メニュー
       "member_payments", "counseling_responses",
       "monthly_reports", "progress_photos", "user_measurements", "meals",
       "notification_settings", "announcements", "migration_user_map", "tenant_plans",

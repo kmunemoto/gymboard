@@ -45,6 +45,7 @@ import { resolveSlotCapacity, type BookingCapacityWindow } from "@/lib/bookingCa
 import { footprintOverlaps, sessionFootprintMinutes, sessionMinutes } from "@/lib/bookingOptions";
 import { staffDayMinutes, type StaffScheduleRow } from "@/lib/staffSchedule";
 import type { BookedSlot } from "@/lib/bookedSlots";
+import { isReservedBlock } from "@/lib/bookingMenus";
 
 export interface FootprintBlockedInput {
   bookedSlots: ReadonlyArray<BookedSlot>;
@@ -76,6 +77,9 @@ export const isFootprintBlocked = (input: FootprintBlockedInput): boolean => {
 
   const overlapping = bookedSlots.filter((b) => {
     if (b.date !== date) return false;
+    // 担当のいるメニューの時間（専用・担当つきのブロック）は、担当を決めた予約（そのメニュー）を
+    // 塞がない・数えない。担当のいない予約には普通のブロック（src/lib/bookingMenus.ts）
+    if (staffUserId && isReservedBlock(b)) return false;
     // 予約変更中は、変更対象（旧枠）を占有としてカウントしない。
     // これで同日の近い時刻（旧枠のバッファ内）にも移動できる（旧枠は削除して作り直すため）。
     if (exclude && b.date === exclude.date && b.startTime === exclude.startTime) return false;

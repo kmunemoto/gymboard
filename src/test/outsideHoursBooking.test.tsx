@@ -174,8 +174,9 @@ describe("配線", () => {
     expect(SCHEDULE).toContain("<OutsideHoursToggle checked={proxyOutside}");
     expect(SCHEDULE).toContain("<OutsideHoursPicker dateKey={proxyDateKey}");
     expect(SCHEDULE).toContain("if (proxyOutside && !proxyOutsideConfirm) { setProxyOutsideConfirm(true); return; }");
-    expect(SCHEDULE).toContain("outsideHours: proxyOutside }");
-    expect(SCHEDULE).toContain("proxyOpts.minutes, proxyOpts.snapshot, proxyOutside);");
+    // 予約メニュー（2026-10-28）を後ろに足した
+    expect(SCHEDULE).toContain("outsideHours: proxyOutside, menuId: proxyMenu?.id ?? null }");
+    expect(SCHEDULE).toContain("proxyOpts.minutes, proxyOpts.snapshot, proxyOutside, proxyMenu?.id ?? null);");
     expect(SCHEDULE).toContain("if (!o) { setProxyOutside(false); setProxyOutsideConfirm(false); }");
   });
 

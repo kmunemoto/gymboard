@@ -3034,5 +3034,37 @@
   "staffAccount": {
     "title": "Account",
     "ownerOnly": "Only the owner can change the gym settings, announcements, videos, and delete customers."
+  },
+  "bookingMenus": {
+    "pickerLabel": "Menu",
+    "pickerStaffHint": "{{name}} will take this session. Only {{name}}'s hours can be selected.",
+    "errorReserved": "That time is reserved for another menu. Please choose a different time.",
+    "errorUnavailable": "This menu can't be booked right now. Please reopen the screen and choose again.",
+    "title": "Booking menus",
+    "desc": "Menus customers choose when booking (e.g. Training, Yoga, Machine Pilates). Turn on two or more and a \"Menu\" choice appears on the customer booking screen. Session counts, prices and length stay as in the current plan.",
+    "namePlaceholder": "Menu name (e.g. Yoga)",
+    "nameAria": "Menu name",
+    "staffLabel": "Staff",
+    "staffNone": "No staff",
+    "staffAria": "Staff for {{name}}",
+    "staffHint": "A menu with assigned staff can only be booked during that person's shift (Staff shifts).",
+    "add": "Add",
+    "addedToast": "Added \"{{name}}\"",
+    "activeAria": "Show {{name}} to customers",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "deleteAria": "Delete {{name}}",
+    "deleteTitle": "Delete menu",
+    "deleteConfirm": "Delete \"{{name}}\"? A menu that has been used for bookings can't be deleted (turn it off so customers can't choose it).",
+    "deletedToast": "Deleted \"{{name}}\"",
+    "errorInUse": "A menu used for bookings can't be deleted. Turn it off so customers can't choose it.",
+    "errorSave": "Couldn't save",
+    "errorNameTooLong": "Menu names can be up to {{max}} characters",
+    "noShiftWarning": "{{name}} has no shift set. Set the days and hours in \"Staff shifts\" above (until then, this menu can be booked any time during business hours and has no reserved hours).",
+    "exclusiveTitle": "Reserve staff hours for their menus",
+    "exclusiveOn": "On: during the assigned staff's shift, menus without staff (e.g. Training) and trial bookings are not accepted (bookings made by the gym are still allowed).",
+    "exclusiveOff": "Off: first come, first served. Whichever booking comes first gets the time.",
+    "exclusiveOnToast": "Staff hours are now reserved for their menus",
+    "exclusiveOffToast": "Switched to first come, first served"
   }
 }

@@ -39,6 +39,7 @@ import { isStaffOffShiftError } from "@/lib/staffSchedule";
 import { isStaffConflictError } from "@/lib/tenantStaff";
 import { isNextCyclePaymentError } from "@/lib/nextCyclePayment";
 import { isRestrictedOptionError } from "@/lib/bookingOptionAccess";
+import { isMenuReservedError, isMenuUnavailableError } from "@/lib/bookingMenus";
 
 /**
  * このアプリが意味を知っている SQLSTATE。**DB の migrations にあるものと同じ集合**に保つ。
@@ -56,6 +57,8 @@ export const KNOWN_GUARD_CODES = [
   "GB008", // あとからオプションを足せない（すぐ後ろが空いていない）
   "GB009", // 次回分が未入金（店が「入金まで次回分を受け付けない」設定にしている）
   "GB010", // 店が指定したお客様だけのオプションを、指定されていないお客様が付けた
+  "GB011", // その時間は担当のいるメニュー（例: ピラティス）専用
+  "GB012", // そのメニューは今は予約できない（店が外した・別のジムのメニュー）
 ] as const;
 
 /** 予約のガードが使う SQLSTATE の形。ここに当てはまるものだけを「規則による拒否」とみなす。 */
@@ -87,6 +90,8 @@ export const GENERIC_BOOKING_ERROR_KEY = "booking.errorBookingFailed";
 export const bookingErrorKey = (error: unknown): string =>
   isNextCyclePaymentError(error) ? "nextCyclePayment.errorUnpaid"
     : isRestrictedOptionError(error) ? "bookingOptions.errorRestricted"
+    : isMenuReservedError(error) ? "bookingMenus.errorReserved"
+    : isMenuUnavailableError(error) ? "bookingMenus.errorUnavailable"
     : isPlanLimitError(error) ? "planSessions.errorReached"
       : isDayClosedError(error) ? "closedDays.errorClosed"
         : isBlockedWindowError(error) ? "blockedWindows.errorNotAccepting"
@@ -120,7 +125,8 @@ export const bookingErrorKeyForAll = (errors: ReadonlyArray<unknown>): string =>
  *   選んだときだけ（`auth.uid() = user_id` になり自己予約扱いになる）
  */
 export const proxyBookingErrorKey = (error: unknown): string =>
-  isPlanLimitError(error) ? "planSessions.errorReachedProxy"
+  isMenuUnavailableError(error) ? "bookingMenus.errorUnavailable"
+  : isPlanLimitError(error) ? "planSessions.errorReachedProxy"
     : isBlockedWindowError(error) ? "blockedWindows.errorNotAcceptingProxy"
       : isBookingLimitError(error) ? "bookingLimits.errorOverLimitProxy"
         : isStaffOffShiftError(error) ? "staff.errorStaffOffShift"

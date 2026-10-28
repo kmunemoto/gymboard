@@ -46,6 +46,7 @@ import {
 } from "@/lib/bookingWindow";
 import { EMAIL_NOTE_MAX_LENGTH, normalizeEmailNote } from "@/lib/emailNotes";
 import TrainerStaffSchedule from "./TrainerStaffSchedule";
+import TrainerBookingMenus from "./TrainerBookingMenus";
 import TrainerBookingQuestions from "./TrainerBookingQuestions";
 import TrainerBookingLimits from "./TrainerBookingLimits";
 import TrainerCapacityWindows from "./TrainerCapacityWindows";
@@ -638,8 +639,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     }
   };
 
-
-
   // === 設定のカテゴリー分け（2026-08-23） ===
   // 項目が20超に伸びて1枚の縦一覧では目的の設定に辿り着けなくなったため、
   // iOS の設定アプリ式に「一覧（カテゴリーの行）→ タップで該当ページ」の2階層にした。
@@ -1172,10 +1171,10 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
         <TrainerCapacityWindows />
       </section>
 
-
       {/* === スタッフ別のシフト === 担当を指名する店だけに関係する。2人以上のジムでのみ描画される */}
       <section className="space-y-3">
         <TrainerStaffSchedule />
+        <TrainerBookingMenus />{/* 予約メニュー（担当のシフトの時間と組み合わせて使う。別ファイル: 行数の上限のため） */}
       </section>
         </>
       )}

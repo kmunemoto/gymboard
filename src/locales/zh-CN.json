@@ -3034,5 +3034,37 @@
   "staffAccount": {
     "title": "账户",
     "ownerOnly": "店铺设置、公告、视频以及删除顾客，只有店主可以操作。"
+  },
+  "bookingMenus": {
+    "pickerLabel": "项目",
+    "pickerStaffHint": "由{{name}}负责。只能选择负责人的时间。",
+    "errorReserved": "该时间专供其他项目。请选择其他时间。",
+    "errorUnavailable": "该项目目前无法预约。请重新打开页面后选择。",
+    "title": "预约项目",
+    "desc": "顾客预约时选择的项目（例：训练・瑜伽・器械普拉提）。开启两个以上后，顾客的预约页面会出现“项目”选择。次数・费用・时长仍按当前方案。",
+    "namePlaceholder": "项目名称（例：瑜伽）",
+    "nameAria": "项目名称",
+    "staffLabel": "负责人",
+    "staffNone": "无负责人",
+    "staffAria": "{{name}}的负责人",
+    "staffHint": "指定了负责人的项目，只能在该负责人的排班（员工排班）时间内预约。",
+    "add": "添加",
+    "addedToast": "已添加“{{name}}”",
+    "activeAria": "向顾客显示{{name}}",
+    "moveUp": "将{{name}}上移",
+    "moveDown": "将{{name}}下移",
+    "deleteAria": "删除{{name}}",
+    "deleteTitle": "删除项目",
+    "deleteConfirm": "将删除“{{name}}”。已用于预约的项目无法删除（关闭后顾客将无法选择）。",
+    "deletedToast": "已删除“{{name}}”",
+    "errorInUse": "已用于预约的项目无法删除。关闭后顾客将无法选择。",
+    "errorSave": "保存失败",
+    "errorNameTooLong": "项目名称最多{{max}}个字",
+    "noShiftWarning": "{{name}}尚未设置排班。请在上方的“员工排班”中设置星期和时间（未设置期间，营业时间内随时可预约，也没有专用时间）。",
+    "exclusiveTitle": "有负责人的项目时间设为该项目专用",
+    "exclusiveOn": "开启：负责人排班时间内，不接受无负责人的项目（例：训练）和体验预约（店铺代为预约仍可）。",
+    "exclusiveOff": "关闭：先到先得。无论哪个项目，先预约的优先。",
+    "exclusiveOnToast": "已将有负责人的项目时间设为专用",
+    "exclusiveOffToast": "已改为先到先得"
   }
 }

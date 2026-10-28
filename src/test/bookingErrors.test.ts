@@ -114,6 +114,8 @@ describe("理由ごとの案内", () => {
     ["GB006", "blockedWindows.errorNotAccepting"],
     ["GB007", "closedDays.errorClosed"],
     ["GB009", "nextCyclePayment.errorUnpaid"],
+    ["GB011", "bookingMenus.errorReserved"], // 2026-10-28 予約メニュー（担当のいるメニューの時間は専用）
+    ["GB012", "bookingMenus.errorUnavailable"],
     [UNKNOWN_CODE, "booking.errorAppOutdated"],
   ];
 

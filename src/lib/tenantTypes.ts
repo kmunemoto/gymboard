@@ -114,6 +114,11 @@ export interface Tenant {
    * 判定は DB の `tenant_member_day_limits`。体験込みの合計（daily_total_limit）は全曜日同じ
    */
   daily_booking_limit_weekdays?: Record<string, number> | null;
+  /**
+   * 担当のいる予約メニュー（例: ピラティス）の担当のシフトの時間を、そのメニュー専用にするか（2026-10-28）。
+   * true=専用（担当のいない予約・体験を受けない）/ false=先着順。判定は DB（src/lib/bookingMenus.ts）
+   */
+  menu_staff_hours_exclusive?: boolean;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
   /** Googleの口コミ投稿ページURL。null/空なら口コミ依頼バナーを表示しない */

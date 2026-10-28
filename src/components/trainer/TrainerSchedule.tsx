@@ -47,6 +47,9 @@ import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { canSelectStaff, isStaffConflictError, staffNameMap } from "@/lib/tenantStaff";
+import { useBookingMenus } from "@/hooks/useBookingMenus";
+import { defaultMenu, menuNameOf, selectableMenus } from "@/lib/bookingMenus";
+import ProxyStaffMenuSelect from "./ProxyStaffMenuSelect";
 import DayReceptionToggle from "./DayReceptionToggle";
 import { useDayReception } from "@/hooks/useDayReception";
 import BookingRepeatPicker from "@/components/booking/BookingRepeatPicker";
@@ -65,6 +68,7 @@ const TrainerSchedule = () => {
   const [proxyBookingType, setProxyBookingType] = useState<string>("");
   // 代理予約の担当スタッフ（""＝指名なし）。スタッフが2人以上のジムでだけ選択欄を出す。
   const [proxyStaffId, setProxyStaffId] = useState<string>("");
+  const [proxyMenuId, setProxyMenuId] = useState<string>(""); // 予約メニュー（""＝既定のメニュー・src/lib/bookingMenus.ts）
   // 既存予約の担当変更ダイアログ（null＝閉じている）
   const [assignTarget, setAssignTarget] = useState<{ id: string; clientName: string; date: string; startTime: string; staffUserId: string | null } | null>(null);
   const [assignSaving, setAssignSaving] = useState(false);
@@ -105,6 +109,11 @@ const TrainerSchedule = () => {
   const [missingProxyAnswerIds, setMissingProxyAnswerIds] = useState<string[]>([]);
   const staffSelectable = canSelectStaff(staff);
   const staffNames = staffNameMap(staff);
+  const { menus: allMenus } = useBookingMenus();
+  const proxyMenus = selectableMenus(allMenus, staff.map((s) => s.user_id));
+  const proxyMenu = proxyMenus.find((m) => m.id === proxyMenuId) ?? defaultMenu(proxyMenus);
+  // 予定のカードに添える「メニュー・プラン」（メニューが2つ以上ある店だけメニュー名が付く）
+  const typeLabel = (b: BookingWithTime) => [menuNameOf(allMenus, b.menuId), b.booking_type].filter(Boolean).join("・");
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   // 代理予約する候補（proxyBookingType）の占有時間。プランごとの設定があればそちらを使う。
@@ -226,7 +235,7 @@ const TrainerSchedule = () => {
     if (proxyRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
         proxyClient, proxyDateKey, proxyTime, proxyBookingType, proxyRepeatWeeks, true,
-        proxyStaffId || null, proxyAnswerSnapshot, proxyOpts.minutes, proxyOpts.snapshot, proxyOutside);
+        proxyStaffId || null, proxyAnswerSnapshot, proxyOpts.minutes, proxyOpts.snapshot, proxyOutside, proxyMenu?.id ?? null);
       if (booked.length === 0) {
         toast.error(t("schedule.errorAddFailed"));
         setSubmitting(false);
@@ -249,7 +258,7 @@ const TrainerSchedule = () => {
       const { data: bookingData, error } = await createBooking(
         proxyClient, proxyDateKey, proxyTime, proxyBookingType, true,
         { staffUserId: proxyStaffId || null, customAnswers: proxyAnswerSnapshot,
-          optionMinutes: proxyOpts.minutes, bookingOptions: proxyOpts.snapshot, outsideHours: proxyOutside },
+          optionMinutes: proxyOpts.minutes, bookingOptions: proxyOpts.snapshot, outsideHours: proxyOutside, menuId: proxyMenu?.id ?? null },
       );
       if (error) {
         // 店に空きがあるのに担当だけ埋まっている場合は、別の担当なら取れると案内する。
@@ -271,7 +280,7 @@ const TrainerSchedule = () => {
     setProxyTime("");
     setProxyClient("");
     setProxyBookingType("");
-    setProxyStaffId("");
+    setProxyStaffId(""); setProxyMenuId("");
     setProxyRepeatWeeks(1);
     setProxyOutside(false); setProxyOutsideConfirm(false);
     setSubmitting(false);
@@ -684,7 +693,7 @@ const TrainerSchedule = () => {
                                   <p className="font-bold truncate">{session.isBlocked ? (blockPurposeName(session.clientName) || t("schedule.blockedLabel")) : session.clientName}</p>
                                   <p className="opacity-75 truncate">{session.startTime}〜{session.endTime}</p>
                                   {session.outsideHours && <OutsideHoursBadge />}
-                                  {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{session.booking_type}</p>}
+                                  {!session.isBlocked && <p className="opacity-60 truncate text-[9px] mt-0.5">{typeLabel(session)}</p>}
                                   {!session.isBlocked && staffSelectable && session.staff_user_id && (
                                     <p className="opacity-60 truncate text-[9px]">{staffNames[session.staff_user_id] ?? ""}</p>
                                   )}
@@ -737,7 +746,7 @@ const TrainerSchedule = () => {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate">{booking.isBlocked ? (blockPurposeName(booking.clientName) || t("schedule.blockedLabel")) : booking.clientName}</p>
                               <p className="text-xs text-muted-foreground flex items-center gap-1.5">{booking.startTime}〜{booking.endTime}{booking.outsideHours && <OutsideHoursBadge />}</p>
-                              {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{booking.booking_type}</p>}
+                              {!booking.isBlocked && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{typeLabel(booking)}</p>}
                               {!booking.isBlocked && staffSelectable && (
                                 <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
                                   <UserRound className="w-3 h-3 shrink-0" />
@@ -867,23 +876,12 @@ const TrainerSchedule = () => {
                 ))}
               </select>
             </div>
-            {/* 担当スタッフ。1人しか居ないジムには出さない（選ぶ意味が無い）。
-                選び直すと空き枠の見え方が変わるので、選択中の時刻は解除する。 */}
-            {staffSelectable && (
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("staff.selectLabel")}</label>
-                <select
-                  value={proxyStaffId}
-                  onChange={(e) => { setProxyStaffId(e.target.value); setProxyTime(""); }}
-                  className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  <option value="">{t("staff.anyone")}</option>
-                  {staff.map((sm) => (
-                    <option key={sm.user_id} value={sm.user_id}>{sm.display_name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {/* メニュー（予約メニューが2つ以上ある店）と担当。選び直すと空き枠の見え方が変わるので、
+                選択中の時刻は解除する（ProxyStaffMenuSelect） */}
+            <ProxyStaffMenuSelect
+              menus={proxyMenus} menuId={proxyMenuId} staff={staff} staffSelectable={staffSelectable} staffId={proxyStaffId}
+              onChange={(next) => { setProxyMenuId(next.menuId); setProxyStaffId(next.staffId); setProxyTime(""); }}
+            />
             <OutsideHoursToggle checked={proxyOutside} disabled={submitting}
               onChange={(on) => { setProxyOutside(on); setProxyTime(""); setProxyOutsideConfirm(false); }} />
             <div>

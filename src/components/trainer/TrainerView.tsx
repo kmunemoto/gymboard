@@ -18,6 +18,7 @@ import TrainerVideoManager from "./TrainerVideoManager";
 import TrainerNotificationSettings from "./TrainerNotificationSettings";
 import CounselingResponseList from "./CounselingResponseList";
 import TrainerTrialFollowUps from "./TrainerTrialFollowUps";
+import StaffAccountSettings from "./StaffAccountSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import GymLogo from "@/components/GymLogo";
@@ -31,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
 import { useTenant } from "@/hooks/useTenant";
 import { isNavTabVisible } from "@/lib/gymDisplaySettings";
+import { canOpenTab } from "@/lib/staffAccess";
 import { useRememberScreen, useRestoredScreen } from "@/hooks/useScreenMemory";
 import { isTrainerScreen, screenStorageKey } from "@/lib/screenRestore";
 
@@ -60,7 +62,10 @@ const TrainerView = () => {
   const staff = useStaffDirectory();
   const { count: unreadMessages, refetch: refetchUnread } = useUnreadCount(staff.ids);
   const { unreadCount: unreadCounseling } = useCounselingResponses();
-  const { tenant } = useTenant();
+  const { tenant, isLimitedStaff } = useTenant();
+  // インストラクター（制限付きスタッフ）が開けないタブ（お知らせ・動画）は、ホームとして出す。
+  // 覚えていた画面を戻したとき・他の画面から移ってきたときも同じ（src/lib/staffAccess.ts）
+  const shownTab: TrainerTab = canOpenTab(tab, isLimitedStaff) ? tab : "dashboard";
 
   useEffect(() => {
     if (tenant?.primary_color) {
@@ -169,36 +174,43 @@ const TrainerView = () => {
         </div>
       </div>
       <div style={{ paddingTop: "calc(3rem + env(safe-area-inset-top, 0px))" }}>
-        <SubscriptionBlockedBanner
-          onManage={() => { setTab("gym-settings"); setSelectedClientId(null); }}
-        />
-        <PlanLimitBanner
-          onUpgrade={() => { setTab("gym-settings"); setSelectedClientId(null); }}
-          onManageCustomers={() => { setTab("clients"); setSelectedClientId(null); }}
-        />
+        {/* 契約・プランの案内は店の運営なので、インストラクターには出さない（押しても何もできない） */}
+        {!isLimitedStaff && (
+          <>
+            <SubscriptionBlockedBanner
+              onManage={() => { setTab("gym-settings"); setSelectedClientId(null); }}
+            />
+            <PlanLimitBanner
+              onUpgrade={() => { setTab("gym-settings"); setSelectedClientId(null); }}
+              onManageCustomers={() => { setTab("clients"); setSelectedClientId(null); }}
+            />
+          </>
+        )}
         <div className="flex">
           <TrainerSidebar
-            activeTab={tab}
+            activeTab={shownTab}
             onTabChange={(nextTab) => { setTab(nextTab); setSelectedClientId(null); }}
             unreadMessages={unreadMessages}
             unreadCounseling={unreadCounseling}
           />
           {/* min-w-0: フレックス子の既定 min-width:auto を解除。これが無いと中身（日付入力等）の
               intrinsic 幅に引っ張られて main が画面幅を超え、右端要素が見切れる（Android で顕著）。 */}
-          <main className="flex-1 min-w-0 ml-0 md:ml-60 p-3 sm:p-4 md:p-8 max-w-6xl" key={`${tab}-${selectedClientId}`}>
+          <main className="flex-1 min-w-0 ml-0 md:ml-60 p-3 sm:p-4 md:p-8 max-w-6xl" key={`${shownTab}-${selectedClientId}`}>
             <LazyBoundary>
-              {tab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} onMessageClient={handleMessageClient} onNavigateFollowUps={handleNavigateFollowUps} />}
-              {tab === "clients" && !selectedClientId && <TrainerClientList onSelectClient={handleSelectClient} />}
-              {tab === "clients" && selectedClientId && <TrainerClientDetail clientId={selectedClientId} onBack={handleBackToList} />}
-              {tab === "schedule" && <TrainerSchedule />}
-              {tab === "messages" && <TrainerMessages initialCustomerId={messageClientId} />}
-              {tab === "exercises" && <TrainerExerciseManager />}
-              {tab === "counseling" && <CounselingResponseList />}
-              {tab === "announcements" && <TrainerAnnouncementManager />}
-              {tab === "videos" && <TrainerVideoManager />}
-              {tab === "notifications" && <TrainerNotificationSettings />}
-              {tab === "trial-followups" && <TrainerTrialFollowUps />}
-              {tab === "gym-settings" && <TrainerGymSettings onSignOut={signOut} />}
+              {shownTab === "dashboard" && <TrainerDashboard onSelectClient={handleSelectClient} onMessageClient={handleMessageClient} onNavigateFollowUps={handleNavigateFollowUps} />}
+              {shownTab === "clients" && !selectedClientId && <TrainerClientList onSelectClient={handleSelectClient} />}
+              {shownTab === "clients" && selectedClientId && <TrainerClientDetail clientId={selectedClientId} onBack={handleBackToList} />}
+              {shownTab === "schedule" && <TrainerSchedule />}
+              {shownTab === "messages" && <TrainerMessages initialCustomerId={messageClientId} />}
+              {shownTab === "exercises" && <TrainerExerciseManager />}
+              {shownTab === "counseling" && <CounselingResponseList />}
+              {shownTab === "announcements" && <TrainerAnnouncementManager />}
+              {shownTab === "videos" && <TrainerVideoManager />}
+              {shownTab === "notifications" && <TrainerNotificationSettings />}
+              {shownTab === "trial-followups" && <TrainerTrialFollowUps />}
+              {shownTab === "gym-settings" && (isLimitedStaff
+                ? <StaffAccountSettings onSignOut={signOut} />
+                : <TrainerGymSettings onSignOut={signOut} />)}
             </LazyBoundary>
           </main>
         </div>

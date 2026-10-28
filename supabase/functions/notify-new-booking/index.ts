@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       .from("bookings")
       // option_minutes: 予約に付けたオプション（例: トレーニング後の30分ストレッチ）。
       // メールとプッシュの時間帯に足す。列が無い環境でも落ちないよう COALESCE で 0 に倒す。
-      .select("id, tenant_id, user_id, booking_date, booking_type, status, created_via, option_minutes")
+      .select("id, tenant_id, user_id, booking_date, booking_type, status, created_via, option_minutes, staff_user_id")
       .eq("id", booking_id)
       .maybeSingle();
     if (bkErr) throw bkErr;
@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
         .eq("tenant_id", booking.tenant_id)
         .in("role", ["trainer", "owner"])
         .eq("status", "active")
+        .neq("staff_access", "limited") // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
         .order("joined_at", { ascending: true }),
     ]);
 
@@ -293,7 +294,8 @@ Deno.serve(async (req) => {
       } else {
         const { error: pushErr } = await supabase.functions.invoke("send-push-notification", {
           body: {
-            user_ids: [...new Set([...staffIds, booking.user_id])],
+            // 予約の担当（インストラクターを含む）にも届ける。担当が無ければ今まで通り
+            user_ids: [...new Set([...staffIds, booking.user_id, ...(booking.staff_user_id ? [booking.staff_user_id as string] : [])])],
             title: "新しい予約",
             body: `${customerName}が${month}月${day}日 ${startTime}〜${endTime}を予約しました`,
             url: "/",

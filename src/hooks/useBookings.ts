@@ -7,6 +7,7 @@ import { ja } from "date-fns/locale";
 import { toJSTDate, formatJST } from "@/lib/timezone";
 import { getGymNameForUser } from "@/lib/tenantLookup";
 import { fetchMyTenantStaffIds, fetchMyTenantTrainerId } from "@/lib/tenantHelper";
+import { withAssignedStaff } from "@/lib/staffAccess";
 import { WAITLIST_ENABLED } from "@/lib/featureFlags";
 import { shouldRebaseCycleStart, getMonthlySessionCount } from "@/lib/courseProgress";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
@@ -674,7 +675,7 @@ export const rescheduleBooking = async (
     }
     // 3) トレーナーへ「変更」通知（#131で堅牢化済み）。旧枠は予定表に「同日キャンセル済み」で残る。
     //    当日変更＝変更前の予約は1回消化のため、その旨を通知本文に明記する（forfeit=true）。
-    sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type, true).catch((e) =>
+    sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type, true, oldStaffUserId).catch((e) =>
       console.error("sendRescheduleToTrainer failed:", e),
     );
     return { data: { id: created.id }, error: null };
@@ -719,7 +720,7 @@ export const rescheduleBooking = async (
   }
 
   // 3) トレーナーへ「変更」通知を1通だけ（LINE＋プッシュ、fire-and-forget）
-  sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type).catch((e) =>
+  sendRescheduleToTrainer(old.user_id, oldDateKey, newDate, newStartTime, old.booking_type, false, oldStaffUserId).catch((e) =>
     console.error("sendRescheduleToTrainer failed:", e),
   );
 
@@ -733,6 +734,7 @@ async function sendRescheduleToTrainer(
   newStartTime: string,
   bookingType: string,
   forfeit = false, // 当日変更で変更前の予約が1回消化扱いになったか
+  staffUserId: string | null = null, // 予約の担当。インストラクターでも、自分の担当の予約なら届ける
 ) {
   // 宛先は自テナントのスタッフ（trainer優先→owner）。get_trainer_ids は全テナント横断のため
   // 使わない（別ジムのトレーナーに通知が飛ぶ/自ジムに届かない）。チャット #141 と同じ対応。
@@ -751,7 +753,7 @@ async function sendRescheduleToTrainer(
   // （以前は await の LINE 送信を待ってから、かつ先頭トレーナー1人だけに送っていたため、
   //  LINE 側の遅延やトレーナー取得の失敗でプッシュまで届かない可能性があった）
   const shortNew = formatJST(`${newDate}T${newStartTime}:00+09:00`, "M月d日 HH:mm", { locale: ja });
-  const pushTargets = [...new Set([...trainers, userId])];
+  const pushTargets = withAssignedStaff([...trainers, userId], staffUserId);
   supabase.functions.invoke("send-push-notification", {
     body: {
       user_ids: pushTargets,
@@ -1074,7 +1076,7 @@ async function sendCancelEmailNotification(
 }
 
 async function sendCancelPushNotification(
-  booking: { user_id: string; booking_date: string },
+  booking: { user_id: string; booking_date: string; staff_user_id?: string | null },
   cancelledByTrainer: boolean,
   forfeit: boolean,
 ) {
@@ -1112,11 +1114,12 @@ async function sendCancelPushNotification(
       },
     });
 
-    // Notify trainers
-    if (trainers.length > 0) {
+    // Notify trainers（インストラクターは自分が担当の予約だけ・src/lib/staffAccess.ts）
+    const staffTargets = withAssignedStaff(trainers, booking.staff_user_id);
+    if (staffTargets.length > 0) {
       await supabase.functions.invoke("send-push-notification", {
         body: {
-          user_ids: trainers,
+          user_ids: staffTargets,
           title: "予約キャンセル",
           body: `${customerName}さんが ${md} ${hm} の予約をキャンセルしました${forfeitSuffix}`,
           url: "/",

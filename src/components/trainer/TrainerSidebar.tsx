@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { TrainerTab } from "./TrainerView";
 import { useTenant } from "@/hooks/useTenant";
 import { isNavTabVisible } from "@/lib/gymDisplaySettings";
+import { canOpenTab } from "@/lib/staffAccess";
 
 interface TrainerSidebarProps {
   activeTab: TrainerTab;
@@ -43,7 +44,7 @@ const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCoun
   const navRef = useRef<HTMLElement>(null);
   useMeasuredHeightVar(navRef, NAV_HEIGHT_VAR);
   const { t } = useTranslation();
-  const { tenant } = useTenant();
+  const { tenant, isLimitedStaff } = useTenant();
   const getBadgeCount = (tabId: TrainerTab) => {
     if (tabId === "messages") return unreadMessages;
     if (tabId === "counseling") return unreadCounseling;
@@ -52,7 +53,12 @@ const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCoun
 
   // ジム設定でオフにしたタブはメニューから外す。ただし今開いているタブは、
   // 消えて操作の文脈を見失わないよう例外的に残す（他画面から遷移してきた場合など）。
-  const isVisible = (tabId: TrainerTab) => tabId === activeTab || isNavTabVisible(tenant, tabId);
+  // インストラクター（制限付きスタッフ）には、お知らせ・動画を出さない（今開いていても出さない）。
+  // 設定タブは「アカウント」（ログアウトだけ）として出す（src/lib/staffAccess.ts）
+  const isVisible = (tabId: TrainerTab) =>
+    canOpenTab(tabId, isLimitedStaff) && (tabId === activeTab || isNavTabVisible(tenant, tabId));
+  const labelOf = (tab: { id: TrainerTab; labelKey: string }, accountKey: string) =>
+    isLimitedStaff && tab.id === "gym-settings" ? t(accountKey) : t(tab.labelKey);
   const visibleDesktopTabs = desktopTabs.filter((tab) => isVisible(tab.id));
   const visibleMobileTabs = mobileTabs.filter((tab) => isVisible(tab.id));
 
@@ -75,7 +81,7 @@ const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCoun
               }`}
             >
               <tab.icon className="w-4.5 h-4.5" />
-              {t(tab.labelKey)}
+              {labelOf(tab, "trainerNav.account")}
               {badgeCount > 0 && (
                 <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {badgeCount}
@@ -115,7 +121,7 @@ const TrainerSidebar = ({ activeTab, onTabChange, unreadMessages = 0, unreadCoun
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] font-semibold">{t(tab.labelKey)}</span>
+                <span className="text-[10px] font-semibold">{labelOf(tab, "trainerNav.mAccount")}</span>
               </button>
             );
           })}

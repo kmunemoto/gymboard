@@ -261,6 +261,7 @@ async function performCancel(
     .eq("tenant_id", booking.tenant_id)
     .in("role", ["trainer", "owner"])
     .eq("status", "active")
+    .neq("staff_access", "limited") // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
     .order("joined_at", { ascending: true });
   const staffRows = staff ?? [];
   const trainerId = (staffRows.find((m: any) => m.role === "trainer") ?? staffRows[0])?.user_id ?? null;

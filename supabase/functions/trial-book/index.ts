@@ -299,6 +299,7 @@ Deno.serve(async (req) => {
       .eq("tenant_id", tenantId)
       .in("role", ["trainer", "owner"])
       .eq("status", "active")
+      .neq("staff_access", "limited") // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
       .order("joined_at", { ascending: true });
     if (staffErr) console.error("[trial-book] staff lookup failed:", staffErr.message);
     const staffRows = staff ?? [];

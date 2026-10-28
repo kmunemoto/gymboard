@@ -76,7 +76,7 @@ interface TrainerClientDetailProps {
 
 const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => {
   const { t } = useTranslation();
-  const { plans: tenantPlans, tenant } = useTenant();
+  const { plans: tenantPlans, tenant, isLimitedStaff } = useTenant();
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   const [profile, setProfile] = useState<any>(null);
   // tenant_members 側の在籍状態。profiles とは別テーブルなので分けて持つ
@@ -885,6 +885,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               <div>
                 <select
                   value={clientPlan}
+                  disabled={isLimitedStaff}
                   onChange={(e) => handlePlanChange(e.target.value)}
                   className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
@@ -919,10 +920,11 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Input
                   type="date"
                   value={cycleStartDate}
+                  disabled={isLimitedStaff}
                   onChange={(e) => handleCycleStartDateChange(e.target.value)}
                   className="flex-1 min-w-0 h-9 text-sm"
                 />
-                <Button variant="outline" size="sm" onClick={handleResetCycleToToday} className="shrink-0 h-9 text-xs gap-1">
+                <Button variant="outline" size="sm" disabled={isLimitedStaff} onClick={handleResetCycleToToday} className="shrink-0 h-9 text-xs gap-1">
                   <RotateCcw className="w-3 h-3" />
                   {t("clientDetail.resetToToday")}
                 </Button>
@@ -935,7 +937,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 </div>
                 <Switch
                   checked={cycleStartPinned}
-                  disabled={!cycleStartDate}
+                  disabled={!cycleStartDate || isLimitedStaff}
                   onCheckedChange={handleCycleStartPinnedToggle}
                 />
               </div>
@@ -1015,7 +1017,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                     <span className={`text-xs font-bold ${graceEnabled ? 'text-success' : 'text-muted-foreground'}`}>
                       {graceEnabled ? t("clientDetail.graceOn") : t("clientDetail.graceOff")}
                     </span>
-                    <Switch checked={graceEnabled} onCheckedChange={handleGraceToggle} />
+                    <Switch checked={graceEnabled} disabled={isLimitedStaff} onCheckedChange={handleGraceToggle} />
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
@@ -1122,6 +1124,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             suspendedUntil={membership.suspended_until}
             onChanged={() => setMemberRefreshKey((k) => k + 1)}
             onWithdrawn={onBack}
+            canManageStatus={!isLimitedStaff}
           />
 
           {/* 活動タイムライン（2026-08-26）。
@@ -1134,11 +1137,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
             refreshKey={memberRefreshKey}
           />
 
-          <MemberPaymentsSection
-            clientId={clientId}
-            currentPlanName={clientPlan || null}
-            suggestedAmountYen={clientPlan ? getPrice(clientPlan) : null}
-          />
+          {/* 入金・プランの変更は店の運営なので、インストラクターには出さない（DB も断る） */}
+          {!isLimitedStaff && (
+            <MemberPaymentsSection
+              clientId={clientId}
+              currentPlanName={clientPlan || null}
+              suggestedAmountYen={clientPlan ? getPrice(clientPlan) : null}
+            />
+          )}
 
           <MemberAgreementsSection clientId={clientId} />
 

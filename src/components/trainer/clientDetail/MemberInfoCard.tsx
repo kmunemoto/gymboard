@@ -44,10 +44,12 @@ interface MemberInfoCardProps {
   onChanged: () => void;
   /** 退会にしたとき。一覧から消えるのでカルテを閉じる */
   onWithdrawn?: () => void;
+  /** 休会・退会を操作できるか。インストラクター（制限付きスタッフ）は false（DB も断る・src/lib/staffAccess.ts） */
+  canManageStatus?: boolean;
 }
 
 const MemberInfoCard = ({
-  clientId, phone, nameKana, status, suspendedFrom, suspendedUntil, onChanged, onWithdrawn,
+  clientId, phone, nameKana, status, suspendedFrom, suspendedUntil, onChanged, onWithdrawn, canManageStatus = true,
 }: MemberInfoCardProps) => {
   const { t } = useTranslation();
   const [phoneDraft, setPhoneDraft] = useState(phone ?? "");
@@ -173,7 +175,7 @@ const MemberInfoCard = ({
               <span className="text-sm font-medium">{t("member.statusLabel")}</span>
               <Badge variant={suspended || withdrawn ? "secondary" : "default"}>{label}</Badge>
             </div>
-            {!withdrawn && (
+            {!withdrawn && canManageStatus && (
               <div className="flex items-center gap-1.5">
                 {suspended ? (
                   <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={doResume}>

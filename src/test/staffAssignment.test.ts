@@ -89,8 +89,8 @@ describe("担当スタッフを指名したときの空き枠判定（checkSlotB
 
 describe("tenantStaff のヘルパー", () => {
   const staff: TenantStaff[] = [
-    { user_id: A, display_name: "オーナー", role: "owner" },
-    { user_id: B, display_name: "山田", role: "trainer" },
+    { user_id: A, display_name: "オーナー", role: "owner", access: "full" },
+    { user_id: B, display_name: "山田", role: "trainer", access: "full" },
   ];
 
   it("スタッフが1人以下なら担当セレクタを出さない", () => {

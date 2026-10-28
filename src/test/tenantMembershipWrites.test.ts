@@ -37,9 +37,13 @@ const allMigrations = readdirSync(MIGRATIONS_DIR)
  * そのコマンドを許すポリシー。`FOR ALL` は INSERT / UPDATE / DELETE を
  * まとめて開けるので、どのコマンドの検査にも含める。
  * （これを忘れると「FOR ALL が復活したときに INSERT の検査だけ素通り」になる）
+ *
+ * RESTRICTIVE は許すポリシーと AND で効く＝絞るだけで、何も開けない
+ * （例: インストラクターの limited_staff_no_update / _no_delete・2026-10-28）。
+ * 「誰に開いているか」の検査からは外す。
  */
 const policiesFor = (cmd: "INSERT" | "UPDATE" | "DELETE") =>
-  memberPolicies.filter((p) => p.cmd === cmd || p.cmd === "ALL");
+  memberPolicies.filter((p) => !p.restrictive && (p.cmd === cmd || p.cmd === "ALL"));
 
 /** そのポリシーが「自分の行だけ」を要求しているか */
 const requiresOwnRow = (body: string) => /user_id\s*=\s*auth\.uid\(\)|auth\.uid\(\)\s*=\s*user_id/.test(body);

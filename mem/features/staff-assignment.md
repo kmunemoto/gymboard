@@ -95,6 +95,12 @@
 **お客様用の `invite_code` とは別のコード。** 兼用すると
 「お客様に配ったリンクからスタッフになれる」＝顧客データ全件が見える権限が漏れる。
 
+> 🔴 **2026-10-28: コードは `tenant_staff_invites` に移した。`tenants.staff_invite_code` は常に NULL。**
+> 列単位の `REVOKE SELECT (staff_invite_code)` は、authenticated に表全体の SELECT が
+> 付いていると効かない。本番で「ログインしたお客様が自分のジムのコードを読める」ことを確認して塞いだ
+> （その時点でオーナー以外のスタッフはどのジムにも居なかった＝使われた形跡は無い）。
+> インストラクター用のコードも同じ表にある。詳細は `mem/features/instructor-staff.md`。
+
 | RPC | 権限 | 内容 |
 |---|---|---|
 | `get_my_staff_invite_code()` | オーナー | 未発行なら発行して返す |

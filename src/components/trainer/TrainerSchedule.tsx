@@ -94,7 +94,7 @@ const TrainerSchedule = () => {
 
   const { bookings, loading, refetch, removeBooking } = useAllBookings();
   const { profiles } = useAllCustomerProfiles();
-  const { tenant, plans } = useTenant();
+  const { tenant, plans, isLimitedStaff } = useTenant();
   const { staff } = useTenantStaff();
   // スタッフのシフト。読めなければ空＝全員シフト未設定＝営業時間どおり（従来の挙動）。
   const { schedules: staffSchedules } = useStaffSchedules();
@@ -517,6 +517,7 @@ const TrainerSchedule = () => {
       onReopen={dayReception.reopenDay}
       onLiftCap={dayReception.liftCap}
       onRestoreCap={dayReception.restoreCap}
+      readOnly={isLimitedStaff}
     />
   );
 

@@ -16,11 +16,14 @@
  * オーバーレイだけで言い換えられる。
  */
 import { supabase } from "@/integrations/supabase/client";
+import { parseStaffAccess, type StaffAccess } from "@/lib/staffAccess";
 
 export interface TenantStaff {
   user_id: string;
   display_name: string;
   role: "owner" | "trainer";
+  /** スタッフの権限（2026-10-28）。インストラクターは limited（src/lib/staffAccess.ts） */
+  access: StaffAccess;
 }
 
 /** 担当者を選べる状態か（1人しか居ないジムでは選ばせる意味が無いので出さない）。 */
@@ -37,23 +40,28 @@ export function canSelectStaff(staff: ReadonlyArray<TenantStaff>): boolean {
  */
 export async function fetchTenantStaff(tenantId: string | null | undefined): Promise<TenantStaff[]> {
   if (!tenantId) return [];
-  const { data, error } = await supabase
-    .from("tenant_members")
-    .select("user_id, role, display_name, joined_at")
-    .eq("tenant_id", tenantId)
-    .in("role", ["owner", "trainer"])
-    .eq("status", "active")
-    .order("joined_at", { ascending: true });
+  // 権限の列（staff_access）が無い環境では、列を外して読み直す（全員 full 扱い＝今まで通り）
+  const query = (cols: string) =>
+    supabase
+      .from("tenant_members")
+      .select(cols)
+      .eq("tenant_id", tenantId)
+      .in("role", ["owner", "trainer"])
+      .eq("status", "active")
+      .order("joined_at", { ascending: true });
+  let { data, error } = await query("user_id, role, display_name, joined_at, staff_access");
+  if (error) ({ data, error } = await query("user_id, role, display_name, joined_at"));
   if (error || !data) return [];
   const seen = new Set<string>();
   const staff: TenantStaff[] = [];
-  for (const row of data as { user_id: string; role: string; display_name: string | null }[]) {
+  for (const row of data as unknown as { user_id: string; role: string; display_name: string | null; staff_access?: unknown }[]) {
     if (!row.user_id || seen.has(row.user_id)) continue;
     seen.add(row.user_id);
     staff.push({
       user_id: row.user_id,
       display_name: row.display_name?.trim() || row.user_id.slice(0, 8),
       role: row.role === "owner" ? "owner" : "trainer",
+      access: row.role === "owner" ? "full" : parseStaffAccess(row.staff_access),
     });
   }
   return staff;

@@ -328,3 +328,58 @@ describe("Edge Function（ソース）", () => {
     }
   });
 });
+
+// ── 出回っている古いアプリとの共存（サーバー側で直す）──────────────────────────
+// 古いアプリは代表を「スタッフ優先」で選ぶ（2026-10-28 より前の src/lib/tenantHelper.ts）。
+// 先生（インストラクター）が参加すると、古いアプリのお客様のチャットと店宛てのメールが先生に行く。
+// アプリは書き換えられないので、受け取るサーバー側でオーナーに戻す。
+describe("古いアプリとの共存（Edge Function・ソース）", () => {
+  const MESSAGE = read("supabase/functions/notify-new-message/index.ts");
+  const EMAIL = read("supabase/functions/send-transactional-email/index.ts");
+
+  it("🔴 チャット: お客様から先生（インストラクター）宛てのメッセージは、代表（オーナー）に知らせる", () => {
+    expect(MESSAGE).toContain('.select("id, sender_id, receiver_id, content, attachment_type, created_at, tenant_id")');
+    expect(MESSAGE).toContain(
+      'if (!(receiver?.role === "trainer" && receiver.staff_access === "limited" && sender?.role === "customer")) {',
+    );
+    expect(MESSAGE).toContain('.neq("staff_access", "limited")');
+    expect(MESSAGE).toContain('(staffRows.find((m) => m.role === "owner") ?? staffRows[0])?.user_id ?? message.receiver_id');
+    expect(MESSAGE).toContain("user_ids: [pushTo],");
+    expect(MESSAGE).toContain("tag: `chat-${message.sender_id}-${pushTo}`,");
+    expect(MESSAGE).not.toContain("user_ids: [message.receiver_id]");
+  });
+
+  it("🔴 店宛てのメール: 代表のキー（末尾が予約 id）だけが対象。担当宛ての写し・ほかの通知は対象外", () => {
+    const m = EMAIL.match(/const REPRESENTATIVE_KEY = \/(.+)\/\n/);
+    expect(m, "REPRESENTATIVE_KEY が見つからない").toBeTruthy();
+    const re = new RegExp(m![1]);
+    const id = "0f8fad5b-d9cb-469f-a165-70867728950e";
+    expect(re.test(`cancel-trainer-${id}`)).toBe(true);
+    expect(re.test(`booking-notify-${id}`)).toBe(true);
+    // 今のアプリ・サーバーが担当（先生）に送る写し
+    expect(re.test(`cancel-trainer-${id}-${id}`)).toBe(false);
+    expect(re.test(`booking-notify-${id}-staff`)).toBe(false);
+    for (const k of [`cancel-customer-${id}`, `booking-confirm-customer-${id}`, `option-change-${id}-30-`, `trial-confirm-${id}`]) {
+      expect(re.test(k), k).toBe(false);
+    }
+  });
+
+  it("送り直しは宛先の解決の直前。宛先がインストラクターのときだけ代表（オーナー優先・インストラクター除く）に", () => {
+    const fix = EMAIL.indexOf("REPRESENTATIVE_KEY.test(explicitIdempotencyKey ?? '')");
+    const resolve = EMAIL.indexOf("// Special: resolve trainer email from DB when placeholder is used");
+    expect(fix).toBeGreaterThan(-1);
+    expect(resolve).toBeGreaterThan(fix);
+    expect(EMAIL).toContain("if (!(row?.role === 'trainer' && row.staff_access === 'limited')) return null");
+    expect(EMAIL).toContain(".neq('staff_access', 'limited')");
+    expect(EMAIL).toContain("return (rows.find((m) => m.role === 'owner') ?? rows[0])?.user_id ?? null");
+    expect(EMAIL).toContain("if (rep) templateData = { ...templateData, trainerUserId: rep }");
+  });
+
+  it("今のアプリは代表のキーを先生に使わない（代表はオーナー・先生には別のキー）", () => {
+    // ここが崩れると、今のアプリの「先生への写し」までオーナーに送り直されてしまう
+    expect(read("src/hooks/useBookings.ts")).toContain(
+      "idempotencyKey: to === trainerId ? `cancel-trainer-${booking.id}` : `cancel-trainer-${booking.id}-${to}`,",
+    );
+    expect(read("supabase/functions/notify-new-booking/index.ts")).toContain("idempotencyKey: `booking-notify-${booking.id}-staff`,");
+  });
+});

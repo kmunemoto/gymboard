@@ -19,12 +19,19 @@
 // タイトルや本文を受け取らない。**実在する行の内容しか通知に載らない**ようにするため。
 // 万一この入り口を叩かれても、DB に無いメッセージの通知は作れない。
 //
+// ── お客様から先生（インストラクター）宛ては、店の代表に知らせる（2026-10-28）──────
+// お客様の宛先（代表）は今のアプリではオーナー（src/lib/tenantHelper.ts）。ところが出回っている
+// 古いアプリは「スタッフ優先」で選ぶので、先生がいると**先生宛て**になる。チャットは共有の受信箱
+// （店のスタッフ全員で読む）なので、お客様からのメッセージは代表（オーナー）に知らせる（`chatPushRecipient`）。
+// 宗本さん「オーナーは全ての通知を受け取る」「先生には、先生が担当している予約だけ通知が届く様にして」。
+// mem/features/instructor-staff.md「古いアプリとの共存」
+//
 // ── LINE は引き継いでいない ──────────────────────────────────────
 // クライアント側には LINE 送信もあったが、`LINE_INTEGRATION_ENABLED = false`
 // （src/lib/featureFlags.ts）なので**実際には何も送っていなかった**。
 // 復活させるときは、クライアントではなくここに足すこと。
 // 理由と再開条件は src/lib/lineNotify.ts の冒頭コメント。
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -60,6 +67,40 @@ function preview(text: string, attachmentType: string | null): string {
   return label + (oneLine.length > room ? `${oneLine.slice(0, room)}…` : oneLine);
 }
 
+/**
+ * プッシュを送る相手。ふつうはメッセージの宛先。
+ * 宛先がインストラクター（先生）で送ったのがお客様なら、店の代表（オーナー優先・インストラクター除く）。
+ * 引けなければ宛先のまま（届かないより、先生に届くほうがまし）。
+ */
+async function chatPushRecipient(
+  supabase: SupabaseClient,
+  message: { tenant_id: string | null; sender_id: string; receiver_id: string },
+): Promise<string> {
+  if (!message.tenant_id) return message.receiver_id;
+  const { data: pair } = await supabase
+    .from("tenant_members")
+    .select("user_id, role, staff_access")
+    .eq("tenant_id", message.tenant_id)
+    .eq("status", "active")
+    .in("user_id", [message.sender_id, message.receiver_id]);
+  const rows = (pair ?? []) as { user_id: string; role: string; staff_access: string | null }[];
+  const receiver = rows.find((r) => r.user_id === message.receiver_id);
+  const sender = rows.find((r) => r.user_id === message.sender_id);
+  if (!(receiver?.role === "trainer" && receiver.staff_access === "limited" && sender?.role === "customer")) {
+    return message.receiver_id;
+  }
+  const { data: staff } = await supabase
+    .from("tenant_members")
+    .select("user_id, role")
+    .eq("tenant_id", message.tenant_id)
+    .eq("status", "active")
+    .in("role", ["owner", "trainer"])
+    .neq("staff_access", "limited")
+    .order("joined_at", { ascending: true });
+  const staffRows = (staff ?? []) as { user_id: string; role: string }[];
+  return (staffRows.find((m) => m.role === "owner") ?? staffRows[0])?.user_id ?? message.receiver_id;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -84,7 +125,7 @@ Deno.serve(async (req) => {
 
     const { data: message, error: msgErr } = await supabase
       .from("messages")
-      .select("id, sender_id, receiver_id, content, attachment_type, created_at")
+      .select("id, sender_id, receiver_id, content, attachment_type, created_at, tenant_id")
       .eq("id", message_id)
       .maybeSingle();
     if (msgErr) throw msgErr;
@@ -108,6 +149,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const senderName = senderProfile?.display_name?.trim() || "メッセージ";
 
+    // 送る相手（お客様から先生宛てなら代表）。上の冒頭コメント参照
+    const pushTo = await chatPushRecipient(supabase, message);
+
     // 先に予約してからプッシュを投げる（同時多重起動レース対策。他の通知系と同じ方式）
     await supabase
       .from("notification_dedupe")
@@ -115,12 +159,12 @@ Deno.serve(async (req) => {
 
     const { error: pushErr } = await supabase.functions.invoke("send-push-notification", {
       body: {
-        user_ids: [message.receiver_id],
+        user_ids: [pushTo],
         title: `${senderName}さんからメッセージ`,
         body: preview(message.content, message.attachment_type ?? null),
         url: "/",
         // 同じ相手からの連投を1つにまとめる（クライアント実装時からの挙動を踏襲）
-        tag: `chat-${message.sender_id}-${message.receiver_id}`,
+        tag: `chat-${message.sender_id}-${pushTo}`,
       },
     });
     if (pushErr) {

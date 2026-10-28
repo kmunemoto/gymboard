@@ -98,6 +98,47 @@ async function loadMemberships(
 }
 
 /**
+ * 店の「代表」宛てのキー（末尾が予約 id だけ）。予約の担当宛ての写しには `-<user_id>` / `-staff` が付く。
+ * `cancel-trainer-<予約id>`（src/hooks/useBookings.ts のキャンセル）・`booking-notify-<予約id>`（新しい予約）
+ */
+const REPRESENTATIVE_KEY = /^(?:cancel-trainer|booking-notify)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+/**
+ * 宛先がインストラクター（先生）なら、ジムの代表（オーナー優先・インストラクター除く）を返す。
+ * それ以外は null（宛先はそのまま）。
+ *
+ * 🔴 出回っている古いアプリは代表を「スタッフ優先」で選ぶので、先生がいると店宛ての連絡
+ *    （予約のキャンセル）が先生に行く。今のアプリとサーバーは代表をオーナーにし、先生には担当の
+ *    予約の分だけ別のキーで送る。代表のキーで宛先が先生なら、古いアプリの送信とみなして代表に送り直す
+ *    （2026-10-28・宗本さん「オーナーは全ての通知を受け取る」。mem/features/instructor-staff.md）
+ */
+async function representativeInsteadOfInstructor(
+  admin: ReturnType<typeof createClient>,
+  tenantId: string,
+  userId: string,
+): Promise<string | null> {
+  const { data: target } = await admin
+    .from('tenant_members')
+    .select('role, staff_access')
+    .eq('tenant_id', tenantId)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle()
+  const row = target as { role: string; staff_access: string | null } | null
+  if (!(row?.role === 'trainer' && row.staff_access === 'limited')) return null
+  const { data: staff } = await admin
+    .from('tenant_members')
+    .select('user_id, role')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active')
+    .in('role', ['owner', 'trainer'])
+    .neq('staff_access', 'limited')
+    .order('joined_at', { ascending: true })
+  const rows = (staff ?? []) as { user_id: string; role: string }[]
+  return (rows.find((m) => m.role === 'owner') ?? rows[0])?.user_id ?? null
+}
+
+/**
  * 認証済みユーザー（＝service_role ではない呼び出し）が、この送信を行ってよいか。
  *
  * 判断の軸は「呼び出し元と宛先が**同じジムに属しているか**」だけ。
@@ -332,6 +373,24 @@ Deno.serve(async (req) => {
   // the caller-provided recipientEmail. This allows notification templates
   // to always send to a fixed address (e.g., site owner from env var).
   let effectiveRecipient = template.to || recipientEmail
+
+  // 古いアプリが代表のつもりで先生（インストラクター）に送った店宛てのメールを、代表に送り直す（2026-10-28）
+  if (
+    effectiveRecipient === '_resolve_trainer_'
+    && typeof templateData.trainerUserId === 'string'
+    && tenantId
+    && REPRESENTATIVE_KEY.test(explicitIdempotencyKey ?? '')
+  ) {
+    try {
+      const rep = await representativeInsteadOfInstructor(
+        createClient(supabaseUrl, supabaseServiceKey), tenantId, templateData.trainerUserId,
+      )
+      if (rep) templateData = { ...templateData, trainerUserId: rep }
+    } catch (e) {
+      // 引けなければ宛先はそのまま（届かないより、先生に届くほうがまし）
+      console.error('representative lookup failed', e)
+    }
+  }
 
   // Special: resolve trainer email from DB when placeholder is used
   if (effectiveRecipient === '_resolve_trainer_' && templateData.trainerUserId) {

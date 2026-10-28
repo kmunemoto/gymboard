@@ -19,13 +19,24 @@
 // タイトルや本文を受け取らない。**実在する行の内容しか通知に載らない**ようにするため。
 // 万一この入り口を叩かれても、DB に無いメッセージの通知は作れない。
 //
+// ── お客様からのメッセージは「代表＋関係するスタッフ」に知らせる（2026-10-28）──────────
+// 宗本さん「お客様→代表の1人+先生、もしくは、お客様→代表の1人。これを考えて使い分けて」
+//   - 代表（オーナー）… いつでも
+//   - ＋先生（代表以外のスタッフ）… そのお客様の予約の担当（30日前から先）か、30日以内にそのお客様へ
+//     メッセージを送った人だけ。トレーニングだけのお客様は代表だけ
+// 行の宛先（receiver_id）では決めない。今のアプリは代表（オーナー）を宛先にするが、出回っている古いアプリは
+// 「スタッフ優先」で選ぶので、先生がいると全員の宛先が先生になる。チャットは共有の受信箱
+// （店のスタッフ全員で読む）なので、行はそのままでよい。判定は ../_shared/staffRouting.ts。
+// mem/features/instructor-staff.md「誰に何が届くか」
+//
 // ── LINE は引き継いでいない ──────────────────────────────────────
 // クライアント側には LINE 送信もあったが、`LINE_INTEGRATION_ENABLED = false`
 // （src/lib/featureFlags.ts）なので**実際には何も送っていなかった**。
 // 復活させるときは、クライアントではなくここに足すこと。
 // 理由と再開条件は src/lib/lineNotify.ts の冒頭コメント。
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
+import { chatRecipients, RELATED_DAYS, representativeOf, type StaffRow } from "../_shared/staffRouting.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,6 +71,58 @@ function preview(text: string, attachmentType: string | null): string {
   return label + (oneLine.length > room ? `${oneLine.slice(0, room)}…` : oneLine);
 }
 
+/**
+ * プッシュを送る相手（../_shared/staffRouting.ts の chatRecipients）。
+ * スタッフが読めなければ宛先のまま（届かないより、届くほうがまし）。
+ */
+async function chatPushRecipients(
+  supabase: SupabaseClient,
+  message: { tenant_id: string | null; sender_id: string; receiver_id: string },
+): Promise<string[]> {
+  if (!message.tenant_id) return [message.receiver_id];
+  const { data: staffData, error: staffErr } = await supabase
+    .from("tenant_members")
+    .select("user_id, role, staff_access")
+    .eq("tenant_id", message.tenant_id)
+    .eq("status", "active")
+    .in("role", ["owner", "trainer"])
+    .order("joined_at", { ascending: true });
+  if (staffErr) return [message.receiver_id];
+  const staff = (staffData ?? []) as StaffRow[];
+  const staffIds = staff.map((s) => s.user_id);
+  // お客様から店宛てでなければ（スタッフ同士・店からお客様へ）、関係を調べるまでもなく宛先のまま
+  if (!staffIds.includes(message.receiver_id) || staffIds.includes(message.sender_id)) return [message.receiver_id];
+
+  const rep = representativeOf(staff);
+  const others = staffIds.filter((id) => id !== rep);
+  const related: string[] = [];
+  if (others.length > 0) {
+    const since = new Date(Date.now() - RELATED_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: bookings }, { data: sent }] = await Promise.all([
+      // そのお客様の予約の担当（30日前から先）
+      supabase
+        .from("bookings")
+        .select("staff_user_id")
+        .eq("tenant_id", message.tenant_id)
+        .eq("user_id", message.sender_id)
+        .eq("status", "予約済み")
+        .gte("booking_date", since)
+        .in("staff_user_id", others),
+      // 30日以内にそのお客様へメッセージを送った人
+      supabase
+        .from("messages")
+        .select("sender_id")
+        .eq("tenant_id", message.tenant_id)
+        .eq("receiver_id", message.sender_id)
+        .gte("created_at", since)
+        .in("sender_id", others),
+    ]);
+    for (const b of (bookings ?? []) as { staff_user_id: string | null }[]) if (b.staff_user_id) related.push(b.staff_user_id);
+    for (const m of (sent ?? []) as { sender_id: string }[]) related.push(m.sender_id);
+  }
+  return chatRecipients({ senderId: message.sender_id, receiverId: message.receiver_id, staff, related });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -84,7 +147,7 @@ Deno.serve(async (req) => {
 
     const { data: message, error: msgErr } = await supabase
       .from("messages")
-      .select("id, sender_id, receiver_id, content, attachment_type, created_at")
+      .select("id, sender_id, receiver_id, content, attachment_type, created_at, tenant_id")
       .eq("id", message_id)
       .maybeSingle();
     if (msgErr) throw msgErr;
@@ -108,6 +171,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const senderName = senderProfile?.display_name?.trim() || "メッセージ";
 
+    // 送る相手（お客様からなら「代表＋関係するスタッフ」）。上の冒頭コメント参照
+    const pushTo = await chatPushRecipients(supabase, message);
+
     // 先に予約してからプッシュを投げる（同時多重起動レース対策。他の通知系と同じ方式）
     await supabase
       .from("notification_dedupe")
@@ -115,7 +181,7 @@ Deno.serve(async (req) => {
 
     const { error: pushErr } = await supabase.functions.invoke("send-push-notification", {
       body: {
-        user_ids: [message.receiver_id],
+        user_ids: pushTo,
         title: `${senderName}さんからメッセージ`,
         body: preview(message.content, message.attachment_type ?? null),
         url: "/",

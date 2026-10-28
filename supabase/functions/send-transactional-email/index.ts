@@ -3,6 +3,7 @@ import { render } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 import { makeEmailHtmlAsciiSafe } from '../_shared/email-encoding.ts'
+import { REPRESENTATIVE_KEY, cancelledBookingIdOf, representativeOf, resendTargets, type StaffRow } from '../_shared/staffRouting.ts'
 
 // この関数は _shared/transactional-email-templates のメールテンプレートを
 // デプロイ時にバンドルする。テンプレートを更新したら、必ず本関数を再デプロイして
@@ -95,6 +96,59 @@ async function loadMemberships(
     out.push({ tenantId: row.tenant_id, isStaff: row.role === 'owner' || row.role === 'trainer' })
   }
   return out
+}
+
+/**
+ * 宛先がインストラクター（先生）なら、ジムの代表（オーナー優先・インストラクター除く）を返す。
+ * それ以外は null（宛先はそのまま）。
+ *
+ * 🔴 出回っている古いアプリは代表を「スタッフ優先」で選ぶので、先生がいると店宛ての連絡
+ *    （予約のキャンセル）が先生に行く。今のアプリとサーバーは代表をオーナーにし、先生には担当の
+ *    予約の分だけ別のキーで送る。代表のキーで宛先が先生なら、古いアプリの送信とみなして送り直す
+ *    （2026-10-28・宗本さん「お客様→代表の1人+先生、もしくは、お客様→代表の1人」。
+ *    送り先の判定は ../_shared/staffRouting.ts の resendTargets。mem/features/instructor-staff.md）
+ */
+async function representativeInsteadOfInstructor(
+  admin: ReturnType<typeof createClient>,
+  tenantId: string,
+  userId: string,
+): Promise<string | null> {
+  const { data: staff } = await admin
+    .from('tenant_members')
+    .select('user_id, role, staff_access')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active')
+    .in('role', ['owner', 'trainer'])
+    .order('joined_at', { ascending: true })
+  const rows = (staff ?? []) as StaffRow[]
+  const target = rows.find((r) => r.user_id === userId)
+  if (!(target?.role === 'trainer' && target.staff_access === 'limited')) return null
+  return representativeOf(rows)
+}
+
+/**
+ * その予約の担当（その時点）。キャンセルで消えた予約は booking_notify_log（消える前の担当を残している）から引く。
+ * 分からなければ undefined。
+ */
+async function bookingStaffOf(
+  admin: ReturnType<typeof createClient>,
+  bookingId: string,
+): Promise<string | null | undefined> {
+  const { data: live } = await admin
+    .from('bookings')
+    .select('staff_user_id')
+    .eq('id', bookingId)
+    .maybeSingle()
+  if (live) return (live as { staff_user_id: string | null }).staff_user_id ?? null
+  const { data: logged, error } = await admin
+    .from('booking_notify_log')
+    .select('staff_user_id')
+    .eq('booking_id', bookingId)
+    .in('event', ['removed', 'forfeited'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (error || !logged || logged.length === 0) return undefined
+  return (logged[0] as { staff_user_id: string | null }).staff_user_id ?? null
 }
 
 /**
@@ -332,6 +386,47 @@ Deno.serve(async (req) => {
   // the caller-provided recipientEmail. This allows notification templates
   // to always send to a fixed address (e.g., site owner from env var).
   let effectiveRecipient = template.to || recipientEmail
+
+  // 古いアプリが代表のつもりで先生（インストラクター）に送った店宛てのメールを振り分け直す（2026-10-28）。
+  // このメールは代表（オーナー）へ。キャンセルが先生の担当の予約なら、先生にも写しを送る
+  // （今のアプリと同じ `cancel-trainer-<予約id>-<user_id>` のキー。代表のキーではないので、ここには戻ってこない）
+  if (
+    effectiveRecipient === '_resolve_trainer_'
+    && typeof templateData.trainerUserId === 'string'
+    && tenantId
+    && explicitIdempotencyKey
+    && REPRESENTATIVE_KEY.test(explicitIdempotencyKey)
+  ) {
+    try {
+      const instructorId: string = templateData.trainerUserId
+      const representativeId = await representativeInsteadOfInstructor(
+        createClient(supabaseUrl, supabaseServiceKey), tenantId, instructorId,
+      )
+      if (representativeId) {
+        const cancelledId = cancelledBookingIdOf(explicitIdempotencyKey)
+        const bookingStaff = cancelledId
+          ? await bookingStaffOf(createClient(supabaseUrl, supabaseServiceKey), cancelledId)
+          : null
+        const { to, copyTo } = resendTargets({ key: explicitIdempotencyKey, instructorId, representativeId, bookingStaff })
+        if (copyTo) {
+          const { error: copyErr } = await createClient(supabaseUrl, supabaseServiceKey).functions.invoke('send-transactional-email', {
+            body: {
+              templateName,
+              recipientEmail: '_resolve_trainer_',
+              tenantId,
+              idempotencyKey: `${explicitIdempotencyKey}-${copyTo}`,
+              templateData: { ...templateData, trainerUserId: copyTo },
+            },
+          })
+          if (copyErr) console.error('instructor copy failed', copyErr)
+        }
+        templateData = { ...templateData, trainerUserId: to }
+      }
+    } catch (e) {
+      // 引けなければ宛先はそのまま（届かないより、先生に届くほうがまし）
+      console.error('representative lookup failed', e)
+    }
+  }
 
   // Special: resolve trainer email from DB when placeholder is used
   if (effectiveRecipient === '_resolve_trainer_' && templateData.trainerUserId) {

@@ -233,6 +233,18 @@ monthly-report-notification・process-email-queue・send-line-message・send-tri
 - デプロイを頼む関数は、Lovable のビルドで型が通る書き方にしておく（`any` に逃げず、Map などは型を明示）
 - push されたら差分を全部読む。動きが変わっていなければそのままでよい（戻すと次の依頼でまた直される）
 
+**Lovable のプロジェクトの決まり（Knowledge）に「頼まれていないコードを変えない」を入れた（2026-10-28・宗本さんの指示）。**
+`mcp__Lovable__get_project_knowledge` / `set_project_knowledge`（project_id はジムボードの Lovable のID）。中身:
+頼まれていないファイルを編集・コミットしない（型エラーの修正を含む。上の9本を名指し）／ビルドや型のエラーは直さずに
+全文を返事で教える／デプロイは依頼に書いた関数だけ／cron・DB の変更は頼まれない限りしない。
+`set_project_knowledge` は**全文を置き換える**ので、足すときは先に get で読んでから。依頼文にも「直さずに教えて」を毎回書く。
+
+**手元で Lovable と同じ型チェックをする**: `npx --yes deno@2.1.4 check <file>`（npm のレジストリは通る）。
+ただし esm.sh はプロキシで通らないので、esm.sh を import している関数は丸ごとは調べられない。
+足した関数だけを抜き出し、`npm:@supabase/supabase-js@2`（＝Lovable と同じ最新の 2.x）で import した
+小さなファイルにして調べる。🔴 `ReturnType<typeof createClient>` 型の引数に**変数**の client を渡すと 2.118 で
+TS2345 になる（`createClient(...)` を直接渡すのは通る）。変数を渡すなら引数の型は `SupabaseClient` にする。
+
 ---
 
 ## 既にある関数を更新したときの確かめ方（2026-10-27）

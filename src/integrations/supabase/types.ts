@@ -430,6 +430,7 @@ export type Database = {
           id: string
           last_error: string | null
           skip_reason: string | null
+          staff_user_id: string | null
           tenant_id: string | null
           user_id: string
         }
@@ -445,6 +446,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           skip_reason?: string | null
+          staff_user_id?: string | null
           tenant_id?: string | null
           user_id: string
         }
@@ -460,6 +462,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           skip_reason?: string | null
+          staff_user_id?: string | null
           tenant_id?: string | null
           user_id?: string
         }

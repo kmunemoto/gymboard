@@ -1,11 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 function redirect(url: string): Response {
   return new Response(null, { status: 302, headers: { Location: url } });
 }
 
 async function consumeOauthState(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   nonce: string,
   provider: string,
 ): Promise<string | null> {

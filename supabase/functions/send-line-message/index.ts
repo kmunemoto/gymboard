@@ -2,7 +2,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
 
 const LINE_API = "https://api.line.me/v2/bot/message/push";
@@ -29,7 +29,7 @@ const MAX_MESSAGE_LEN = 2000;
 
 /** そのユーザーが所属している（active な）テナントIDの集合 */
 async function tenantIdsOf(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   userId: string,
 ): Promise<Set<string>> {
   const { data, error } = await admin
@@ -48,7 +48,7 @@ async function tenantIdsOf(
 
 /** 同じテナントに属しているか。**判定できなければ false（fail-close）** */
 async function sharesTenant(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   a: string,
   b: string,
 ): Promise<boolean> {

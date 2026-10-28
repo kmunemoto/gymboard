@@ -1,9 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useBookingClosedDays, useCloseDay, useUncapDay, useUncappedDays } from "@/hooks/useBookingClosedDays";
 import { closedDayReason, countsTowardDailyLimit, type ClosedDay } from "@/lib/bookingClosedDays";
 import { memberLimitOn } from "@/lib/weeklyPeak";
+import { parseWeekdayLimits } from "@/lib/weekdayLimits";
 
 interface BookingLike {
   date: string;
@@ -33,6 +34,8 @@ export function useDayReception(
   weeklyPeak: { limit: number | null; days: number | null } = { limit: null, days: null },
   /** 体験も含めた1日の合計の上限（tenants.daily_total_limit）。予定表の「n/◯人」に使う */
   dailyTotalLimit: number | null = null,
+  /** 曜日ごとの会員の上限（tenants.daily_booking_limit_weekdays の値そのまま。2026-10-28） */
+  weekdayLimitsRaw: unknown = null,
 ) {
   const { t } = useTranslation();
   const { closedDays, refetch } = useBookingClosedDays(fromKey, toKey);
@@ -109,14 +112,16 @@ export function useDayReception(
 
   const peakLimit = weeklyPeak.limit;
   const peakDays = weeklyPeak.days;
+  const weekdayLimits = useMemo(() => parseWeekdayLimits(weekdayLimitsRaw), [weekdayLimitsRaw]);
   /**
-   * その日の会員の上限（予定表の「n/◯人」）。週の「多い日」を反映する（src/lib/weeklyPeak.ts）。
+   * その日の会員の上限（予定表の「n/◯人」）。曜日ごとの上限と週の「多い日」を反映する
+   * （src/lib/weekdayLimits.ts・src/lib/weeklyPeak.ts）。
    * 🔴 判定の正は DB の `tenant_member_day_limits`。表示だけここで同じ計算をする。
    */
   const dailyLimitOn = useCallback(
     (dateKey: string): number | null =>
-      memberLimitOn(dateKey, { dailyLimit, peakLimit, peakDays }, bookedCountOn, uncappedOn),
-    [dailyLimit, peakLimit, peakDays, bookedCountOn, uncappedOn],
+      memberLimitOn(dateKey, { dailyLimit, peakLimit, peakDays, weekdayLimits }, bookedCountOn, uncappedOn),
+    [dailyLimit, peakLimit, peakDays, weekdayLimits, bookedCountOn, uncappedOn],
   );
 
   /** その日の体験・ドロップインの件数。DB の `tenant_day_trial_count` と同じ（キャンセル済み以外） */

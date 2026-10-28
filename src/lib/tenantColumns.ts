@@ -83,6 +83,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "weekly_peak_limit, weekly_peak_days",
   // ご来店前のお願い（店が書く文）。NULL = 出さない（今まで通り）。
   "pre_visit_note",
+  // 曜日ごとの会員の1日の上限（{"0": 4, ...}）。NULL = 全曜日共通（今まで通り）。
+  "daily_booking_limit_weekdays",
 ];
 
 /**
@@ -184,6 +186,8 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 🔴 列が読めない環境では「増やさない」に倒す（DB の判定も NULL なら今まで通り）。
   weekly_peak_limit: null,
   weekly_peak_days: null,
+  // 🔴 列が読めない環境では「全曜日共通」に倒す（DB の判定も NULL なら今まで通り）。
+  daily_booking_limit_weekdays: null,
   // 🔴 列が読めない環境では「出さない」。上流が文言を代弁しない（cancel_policy_body と同じ方針）。
   pre_visit_note: null,
 };

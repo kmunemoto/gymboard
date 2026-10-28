@@ -499,6 +499,7 @@ const TrainerSchedule = () => {
     tenant?.daily_booking_limit ?? null,
     { limit: tenant?.weekly_peak_limit ?? null, days: tenant?.weekly_peak_days ?? null },
     tenant?.daily_total_limit ?? null,
+    tenant?.daily_booking_limit_weekdays ?? null,
   );
 
   // その日の受付の札（止める／解除／上限を外す／戻す）。週タイムライン・週テーブル・

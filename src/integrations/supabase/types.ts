@@ -2041,6 +2041,7 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           daily_booking_limit: number | null
+          daily_booking_limit_weekdays: Json | null
           daily_summary_enabled: boolean
           daily_total_limit: number | null
           email: string | null
@@ -2118,6 +2119,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           daily_booking_limit?: number | null
+          daily_booking_limit_weekdays?: Json | null
           daily_summary_enabled?: boolean
           daily_total_limit?: number | null
           email?: string | null
@@ -2195,6 +2197,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           daily_booking_limit?: number | null
+          daily_booking_limit_weekdays?: Json | null
           daily_summary_enabled?: boolean
           daily_total_limit?: number | null
           email?: string | null

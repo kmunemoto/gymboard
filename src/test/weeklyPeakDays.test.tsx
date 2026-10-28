@@ -237,8 +237,9 @@ describe("DB: 設定の列", () => {
 });
 
 describe("DB: 上限の計算は tenant_member_day_limits の1か所", () => {
-  const limits = fnBody(SQL, "tenant_member_day_limits");
-  const counts = fnBody(SQL, "tenant_member_day_counts");
+  // 最後の定義を見る（2026-10-28 に曜日ごとの上限で書き直した: 20261028010000_weekday_booking_limits.sql）
+  const limits = latestDefinition("tenant_member_day_limits").body;
+  const counts = latestDefinition("tenant_member_day_counts").body;
 
   it("会員の数え方は tenant_day_booking_count と同じ（キャンセル済み以外・JST）", () => {
     expect(counts).toContain("b.status <> 'キャンセル済み'");
@@ -253,17 +254,18 @@ describe("DB: 上限の計算は tenant_member_day_limits の1か所", () => {
   });
 
   it("🔴 週は月曜始まり（date_trunc('week') は ISO 週＝月曜）", () => {
-    expect(limits).toMatch(/date_trunc\('week', d::timestamp\)::date/);
+    expect(limits).toMatch(/date_trunc\('week', g::timestamp\)::date AS wk/);
+    // 週の区切りに dow（日曜始まり）を使わない。曜日の上限を引くのは isodow（src/test/weekdayBookingLimits.test.tsx）
     expect(limits).not.toMatch(/\bdow\b/i);
   });
 
   it("🔴 その日自身は数えない・上限を外した日は数えない", () => {
-    expect(limits).toContain("p.day <> d::date");
-    expect(limits).toMatch(/c\.n >= t\.peak\s+AND NOT EXISTS \(SELECT 1 FROM uncapped x WHERE x\.day = c\.day\)/);
+    expect(limits).toContain("r.day <> d.day");
+    expect(limits).toMatch(/c\.n > d\.base\s+AND NOT EXISTS \(SELECT 1 FROM uncapped x WHERE x\.day = d\.day\)/);
   });
 
-  it("設定が無い・人数が会員の上限以下なら今まで通り", () => {
-    expect(limits).toContain("WHEN t.peak IS NULL OR t.peak_days IS NULL OR t.peak <= t.lim THEN t.lim");
+  it("設定が無い・人数がその曜日の上限以下なら今まで通り", () => {
+    expect(limits).toContain("WHEN t.peak IS NULL OR t.peak_days IS NULL OR t.peak <= d.base THEN d.base");
   });
 
   it("内部用の関数は外から呼ばせない", () => {

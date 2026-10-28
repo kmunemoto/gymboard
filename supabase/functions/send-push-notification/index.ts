@@ -4,6 +4,7 @@ import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
 // hasRole（user_roles ベース）はここでは使わない。テナント横断のグローバルロールなので
 // 宛先制限の役に立たない。所属は tenant_members で見る（loadTenantMemberships）。
 import { verifyCaller } from "../_shared/auth.ts";
+import { keepAssignedInstructors, parseBookingPushTag } from "../_shared/staffRouting.ts";
 
 // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
 // 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
@@ -308,6 +309,84 @@ function activeTenantIds(
   );
 }
 
+/**
+ * 「店のスタッフ全員」宛ての予約のプッシュから、その予約の担当でないインストラクター（先生）を外す（2026-10-28）。
+ *
+ * 宗本さん「お客様→代表の1人+先生、もしくは、お客様→代表の1人。これを考えて使い分けて」。
+ * 出回っている古いアプリは、キャンセル・日時の変更（ずっと前のアプリは新しい予約も）を、先生を含む
+ * スタッフ全員に送ってくる。今のアプリとサーバーは、先生にはその先生の担当の予約の分だけ足して送る。
+ * どの予約の話かはタグから読み（../_shared/staffRouting.ts の parseBookingPushTag）、担当は:
+ *   - 新しい予約・日時の変更 … bookings.staff_user_id（予約は残っている）
+ *   - キャンセル … booking_notify_log.staff_user_id（予約は消えている。消える前の担当を残している）
+ * 担当が分からないときは外さない（届かないより、届くほうがまし）。オーナー・スタッフ・お客様は外さない。
+ */
+async function dropUnassignedInstructors(
+  admin: SupabaseClient,
+  tag: unknown,
+  userIds: string[],
+): Promise<string[]> {
+  const parsed = parseBookingPushTag(tag);
+  if (!parsed) return userIds;
+  try {
+    const { data: limitedRows, error: limitedErr } = await admin
+      .from("tenant_members")
+      .select("user_id")
+      .in("user_id", userIds)
+      .eq("role", "trainer")
+      .eq("staff_access", "limited")
+      .eq("status", "active");
+    if (limitedErr) return userIds;
+    const instructors = new Set(((limitedRows ?? []) as { user_id: string }[]).map((r) => r.user_id));
+    if (instructors.size === 0) return userIds;
+
+    let assigned: Set<string> | null = null;
+    if (parsed.kind === "booking") {
+      const { data, error } = await admin
+        .from("bookings")
+        .select("staff_user_id")
+        .eq("id", parsed.bookingId)
+        .maybeSingle();
+      if (!error && data) {
+        const s = (data as { staff_user_id: string | null }).staff_user_id;
+        assigned = new Set(s ? [s] : []);
+      }
+    } else if (parsed.kind === "cancel") {
+      const { data, error } = await admin
+        .from("booking_notify_log")
+        .select("staff_user_id")
+        .eq("user_id", parsed.customerId)
+        .eq("booking_date", new Date(parsed.bookingDate).toISOString())
+        .in("event", ["removed", "forfeited"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (!error && data && data.length > 0) {
+        const s = (data[0] as { staff_user_id: string | null }).staff_user_id;
+        assigned = new Set(s ? [s] : []);
+      }
+    } else {
+      // 新しい日付（JST）のその人の予約。作り直した予約は担当を引き継いでいる
+      const start = new Date(`${parsed.day}T00:00:00+09:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+      const { data, error } = await admin
+        .from("bookings")
+        .select("staff_user_id")
+        .eq("user_id", parsed.customerId)
+        .eq("status", "予約済み")
+        .gte("booking_date", start.toISOString())
+        .lt("booking_date", end.toISOString());
+      if (!error && data && data.length > 0) {
+        assigned = new Set(
+          (data as { staff_user_id: string | null }[]).map((r) => r.staff_user_id).filter((s): s is string => !!s),
+        );
+      }
+    }
+    return keepAssignedInstructors(userIds, instructors, assigned);
+  } catch (e) {
+    console.error("dropUnassignedInstructors failed", e);
+    return userIds;
+  }
+}
+
 // ============================================================
 // Main handler
 // ============================================================
@@ -596,6 +675,14 @@ Deno.serve(async (req) => {
       }
     }
 
+
+    // 予約のプッシュから、その予約の担当でない先生（インストラクター）を外す（古いアプリはスタッフ全員に送ってくる）
+    user_ids = await dropUnassignedInstructors(adminClient, tag, user_ids as string[]);
+    if ((user_ids as string[]).length === 0) {
+      return new Response(JSON.stringify({ sent: 0, total: 0, skipped: "no_recipients" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // ---- Load both delivery targets in parallel ----
     const [webRes, nativeRes] = await Promise.all([

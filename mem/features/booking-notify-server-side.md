@@ -33,6 +33,10 @@ bookings AFTER INSERT (notify_booking_created)
       → booking_notify_log.dispatched_at / last_error を更新
 ```
 
+`booking_notify_log.staff_user_id`（2026-10-28〜）: その時点の予約の担当。キャンセルで消えた予約の担当を
+send-push-notification / send-transactional-email が引き、古いアプリのキャンセルの通知を「代表＋先生」か
+「代表だけ」に振り分ける（`mem/features/instructor-staff.md`「古いアプリとの共存」）。
+
 代理予約のプッシュは以前は無かった（店が自分の操作の通知を受ける意味が薄い）。2026-10-28 に
 「先生の担当の予約をオーナーが入れた」「先生が入れた予約をオーナーが知る」ために足した。
 規則はクライアントの `staffChangeRecipients`（`src/lib/staffAccess.ts`）と同じ。

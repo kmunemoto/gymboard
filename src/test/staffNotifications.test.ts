@@ -23,6 +23,10 @@ import { readFileSync } from "node:fs";
 import { notifiableStaffOrder, staffChangeRecipients } from "@/lib/staffAccess";
 import { fetchMyTenantStaffRoster, fetchMyTenantTrainerId } from "@/lib/tenantHelper";
 import { notifyStaffOptionChanged, notifyStaffReassigned } from "@/lib/staffNotify";
+import {
+  REPRESENTATIVE_KEY, RELATED_DAYS, cancelledBookingIdOf, chatRecipients, keepAssignedInstructors,
+  parseBookingPushTag, representativeOf, resendTargets,
+} from "../../supabase/functions/_shared/staffRouting";
 
 // ── モック ─────────────────────────────────────────────────────────────
 const db = {
@@ -329,57 +333,185 @@ describe("Edge Function（ソース）", () => {
   });
 });
 
-// ── 出回っている古いアプリとの共存（サーバー側で直す）──────────────────────────
-// 古いアプリは代表を「スタッフ優先」で選ぶ（2026-10-28 より前の src/lib/tenantHelper.ts）。
-// 先生（インストラクター）が参加すると、古いアプリのお客様のチャットと店宛てのメールが先生に行く。
-// アプリは書き換えられないので、受け取るサーバー側でオーナーに戻す。
-describe("古いアプリとの共存（Edge Function・ソース）", () => {
-  const MESSAGE = read("supabase/functions/notify-new-message/index.ts");
-  const EMAIL = read("supabase/functions/send-transactional-email/index.ts");
+// ── お客様からの通知: 「代表の1人＋先生」か「代表の1人」か（supabase/functions/_shared/staffRouting.ts）──
+// 宗本さん「お客様→代表の1人+先生、もしくは、お客様→代表の1人。これを考えて使い分けて」
+// 出回っている古いアプリは代表を「スタッフ優先」で選び、スタッフ全員に送ってくるので、受け取るサーバー側で振り分ける。
+const ID = (n: number) => `0f8fad5b-d9cb-469f-a165-7086772895${String(n).padStart(2, "0")}`;
+const SHOP = [
+  { user_id: "inst", role: "trainer", staff_access: "limited" },
+  { user_id: "owner", role: "owner", staff_access: "full" },
+];
 
-  it("🔴 チャット: お客様から先生（インストラクター）宛てのメッセージは、代表（オーナー）に知らせる", () => {
-    expect(MESSAGE).toContain('.select("id, sender_id, receiver_id, content, attachment_type, created_at, tenant_id")');
-    expect(MESSAGE).toContain(
-      'if (!(receiver?.role === "trainer" && receiver.staff_access === "limited" && sender?.role === "customer")) {',
-    );
-    expect(MESSAGE).toContain('.neq("staff_access", "limited")');
-    expect(MESSAGE).toContain('(staffRows.find((m) => m.role === "owner") ?? staffRows[0])?.user_id ?? message.receiver_id');
-    expect(MESSAGE).toContain("user_ids: [pushTo],");
-    expect(MESSAGE).toContain("tag: `chat-${message.sender_id}-${pushTo}`,");
-    expect(MESSAGE).not.toContain("user_ids: [message.receiver_id]");
+describe("代表（representativeOf・Edge Function 側）", () => {
+  it("オーナーが先頭。インストラクターは代表にならない。オーナーが読めなければスタッフ", () => {
+    expect(representativeOf(SHOP)).toBe("owner");
+    expect(representativeOf([{ user_id: "staff", role: "trainer", staff_access: "full" }, ...SHOP])).toBe("owner");
+    expect(representativeOf([{ user_id: "staff", role: "trainer" }, { user_id: "inst", role: "trainer", staff_access: "limited" }])).toBe("staff");
+    expect(representativeOf([{ user_id: "inst", role: "trainer", staff_access: "limited" }])).toBeNull();
+    expect(representativeOf([{ user_id: "cust", role: "customer" }])).toBeNull();
+  });
+});
+
+describe("チャット（chatRecipients）", () => {
+  const base = { senderId: "cust", staff: SHOP };
+
+  it("トレーニングだけのお客様 → 代表（オーナー）だけ。行の宛先が先生（古いアプリ）でも先生には送らない", () => {
+    expect(chatRecipients({ ...base, receiverId: "owner", related: [] })).toEqual(["owner"]);
+    expect(chatRecipients({ ...base, receiverId: "inst", related: [] })).toEqual(["owner"]);
   });
 
-  it("🔴 店宛てのメール: 代表のキー（末尾が予約 id）だけが対象。担当宛ての写し・ほかの通知は対象外", () => {
-    const m = EMAIL.match(/const REPRESENTATIVE_KEY = \/(.+)\/\n/);
-    expect(m, "REPRESENTATIVE_KEY が見つからない").toBeTruthy();
-    const re = new RegExp(m![1]);
-    const id = "0f8fad5b-d9cb-469f-a165-70867728950e";
-    expect(re.test(`cancel-trainer-${id}`)).toBe(true);
-    expect(re.test(`booking-notify-${id}`)).toBe(true);
-    // 今のアプリ・サーバーが担当（先生）に送る写し
-    expect(re.test(`cancel-trainer-${id}-${id}`)).toBe(false);
-    expect(re.test(`booking-notify-${id}-staff`)).toBe(false);
-    for (const k of [`cancel-customer-${id}`, `booking-confirm-customer-${id}`, `option-change-${id}-30-`, `trial-confirm-${id}`]) {
-      expect(re.test(k), k).toBe(false);
+  it("🔴 先生のお客様（先生の予約がある・先生とやりとりしている）→ 代表＋先生。行の宛先に関係なく", () => {
+    expect(chatRecipients({ ...base, receiverId: "owner", related: ["inst"] })).toEqual(["owner", "inst"]);
+    expect(chatRecipients({ ...base, receiverId: "inst", related: ["inst", "inst"] })).toEqual(["owner", "inst"]);
+  });
+
+  it("店からお客様へ・スタッフ同士は宛先のまま", () => {
+    expect(chatRecipients({ senderId: "owner", receiverId: "cust", staff: SHOP, related: [] })).toEqual(["cust"]);
+    expect(chatRecipients({ senderId: "inst", receiverId: "cust", staff: SHOP, related: [] })).toEqual(["cust"]);
+    expect(chatRecipients({ senderId: "owner", receiverId: "inst", staff: SHOP, related: [] })).toEqual(["inst"]);
+  });
+
+  it("スタッフでない人は関係者に入れない。代表がいなければ宛先のまま", () => {
+    expect(chatRecipients({ ...base, receiverId: "owner", related: ["cust", "someone"] })).toEqual(["owner"]);
+    expect(chatRecipients({
+      senderId: "cust", receiverId: "inst", staff: [SHOP[0]], related: [],
+    })).toEqual(["inst"]);
+  });
+
+  it("「そのお客様の担当」とみなす期間は30日（予約は30日前から先、メッセージは30日以内）", () => {
+    expect(RELATED_DAYS).toBe(30);
+  });
+});
+
+describe("古いアプリの店宛てメール（REPRESENTATIVE_KEY・resendTargets）", () => {
+  it("代表のキー（末尾が予約 id）だけが対象。先生への写し・ほかの通知は対象外", () => {
+    expect(REPRESENTATIVE_KEY.test(`cancel-trainer-${ID(1)}`)).toBe(true);
+    expect(REPRESENTATIVE_KEY.test(`booking-notify-${ID(1)}`)).toBe(true);
+    for (const k of [
+      `cancel-trainer-${ID(1)}-${ID(2)}`, `booking-notify-${ID(1)}-staff`, `cancel-customer-${ID(1)}`,
+      `booking-confirm-customer-${ID(1)}`, `option-change-${ID(1)}-30-`, `trial-confirm-${ID(1)}`,
+    ]) {
+      expect(REPRESENTATIVE_KEY.test(k), k).toBe(false);
     }
+    expect(cancelledBookingIdOf(`cancel-trainer-${ID(1)}`)).toBe(ID(1));
+    expect(cancelledBookingIdOf(`booking-notify-${ID(1)}`)).toBeNull();
   });
 
-  it("送り直しは宛先の解決の直前。宛先がインストラクターのときだけ代表（オーナー優先・インストラクター除く）に", () => {
-    const fix = EMAIL.indexOf("REPRESENTATIVE_KEY.test(explicitIdempotencyKey ?? '')");
-    const resolve = EMAIL.indexOf("// Special: resolve trainer email from DB when placeholder is used");
-    expect(fix).toBeGreaterThan(-1);
-    expect(resolve).toBeGreaterThan(fix);
-    expect(EMAIL).toContain("if (!(row?.role === 'trainer' && row.staff_access === 'limited')) return null");
-    expect(EMAIL).toContain(".neq('staff_access', 'limited')");
-    expect(EMAIL).toContain("return (rows.find((m) => m.role === 'owner') ?? rows[0])?.user_id ?? null");
-    expect(EMAIL).toContain("if (rep) templateData = { ...templateData, trainerUserId: rep }");
+  it("🔴 キャンセルが先生の担当の予約 → 代表＋先生（先生には今のアプリと同じ形の写し）", () => {
+    expect(resendTargets({ key: `cancel-trainer-${ID(1)}`, instructorId: "inst", representativeId: "owner", bookingStaff: "inst" }))
+      .toEqual({ to: "owner", copyTo: "inst" });
   });
 
-  it("今のアプリは代表のキーを先生に使わない（代表はオーナー・先生には別のキー）", () => {
-    // ここが崩れると、今のアプリの「先生への写し」までオーナーに送り直されてしまう
+  it("キャンセルが先生の担当でない（トレーニング・別のスタッフ）→ 代表だけ", () => {
+    expect(resendTargets({ key: `cancel-trainer-${ID(1)}`, instructorId: "inst", representativeId: "owner", bookingStaff: null }))
+      .toEqual({ to: "owner", copyTo: null });
+    expect(resendTargets({ key: `cancel-trainer-${ID(1)}`, instructorId: "inst", representativeId: "owner", bookingStaff: "staff" }))
+      .toEqual({ to: "owner", copyTo: null });
+  });
+
+  it("担当が分からない → 先生にも送る（届かないより、届くほうがまし）", () => {
+    expect(resendTargets({ key: `cancel-trainer-${ID(1)}`, instructorId: "inst", representativeId: "owner", bookingStaff: undefined }))
+      .toEqual({ to: "owner", copyTo: "inst" });
+  });
+
+  it("新しい予約のメールは代表だけ（先生の担当なら、サーバーが -staff のキーで別に送っている）", () => {
+    expect(resendTargets({ key: `booking-notify-${ID(1)}`, instructorId: "inst", representativeId: "owner", bookingStaff: "inst" }))
+      .toEqual({ to: "owner", copyTo: null });
+    expect(read("supabase/functions/notify-new-booking/index.ts")).toContain("idempotencyKey: `booking-notify-${booking.id}-staff`,");
+  });
+
+  it("今のアプリは代表のキーを先生に使わない（使うと、先生への写しまで送り直しの対象になる）", () => {
     expect(read("src/hooks/useBookings.ts")).toContain(
       "idempotencyKey: to === trainerId ? `cancel-trainer-${booking.id}` : `cancel-trainer-${booking.id}-${to}`,",
     );
-    expect(read("supabase/functions/notify-new-booking/index.ts")).toContain("idempotencyKey: `booking-notify-${booking.id}-staff`,");
+  });
+});
+
+describe("古いアプリのスタッフ全員宛てプッシュ（parseBookingPushTag・keepAssignedInstructors）", () => {
+  it("新しい予約・キャンセル・日時の変更のタグを読む", () => {
+    expect(parseBookingPushTag(`booking-${ID(1)}`)).toEqual({ kind: "booking", bookingId: ID(1) });
+    expect(parseBookingPushTag(`booking-cancel-trainer-${ID(2)}-2026-11-02T01:00:00+00:00`))
+      .toEqual({ kind: "cancel", customerId: ID(2), bookingDate: "2026-11-02T01:00:00+00:00" });
+    expect(parseBookingPushTag(`reschedule-${ID(3)}-2026-11-02`)).toEqual({ kind: "reschedule", customerId: ID(3), day: "2026-11-02" });
+  });
+
+  it("お客様本人宛て・チャット・店側の操作・朝のまとめなどは振り分けない", () => {
+    for (const t of [
+      `booking-cancel-${ID(2)}-2026-11-02T01:00:00+00:00`, `chat-${ID(1)}-${ID(2)}`, `staff-reassign-${ID(1)}`,
+      `staff-option-${ID(1)}`, `daily-summary-${ID(1)}-2026-11-02`, `booking-cancel-trainer-${ID(2)}-not-a-date`,
+      "default", undefined, 42,
+    ]) {
+      expect(parseBookingPushTag(t), String(t)).toBeNull();
+    }
+  });
+
+  it("🔴 タグの形はアプリ・サーバーが付けている形と同じ（ずれると振り分けが黙って止まる）", () => {
+    const hook = read("src/hooks/useBookings.ts");
+    expect(hook).toContain("tag: `booking-cancel-trainer-${booking.user_id}-${booking.booking_date}`,");
+    expect(hook).toContain("tag: `reschedule-${userId}-${newDate}`,");
+    expect(read("supabase/functions/notify-new-booking/index.ts")).toContain("tag: `booking-${booking.id}`,");
+  });
+
+  it("その予約の担当でない先生だけ外す。オーナー・スタッフ・お客様は外さない。担当が分からなければ外さない", () => {
+    const inst = new Set(["inst"]);
+    expect(keepAssignedInstructors(["inst", "owner", "cust"], inst, new Set())).toEqual(["owner", "cust"]);
+    expect(keepAssignedInstructors(["inst", "owner"], inst, new Set(["inst"]))).toEqual(["inst", "owner"]);
+    expect(keepAssignedInstructors(["inst", "owner"], inst, new Set(["staff"]))).toEqual(["owner"]);
+    expect(keepAssignedInstructors(["inst", "owner"], inst, null)).toEqual(["inst", "owner"]);
+  });
+});
+
+describe("お客様からの通知の振り分け（Edge Function のつなぎ込み・ソース）", () => {
+  const MESSAGE = read("supabase/functions/notify-new-message/index.ts");
+  const EMAIL = read("supabase/functions/send-transactional-email/index.ts");
+  const PUSH = read("supabase/functions/send-push-notification/index.ts");
+  const MIGRATION = read("supabase/migrations/20261028040000_booking_notify_log_staff.sql").replace(/--[^\n]*/g, "");
+
+  it("チャット: 関係するスタッフ＝そのお客様の予約の担当（30日前から先）と、30日以内にそのお客様へ送った人", () => {
+    expect(MESSAGE).toContain('import { chatRecipients, RELATED_DAYS, representativeOf, type StaffRow } from "../_shared/staffRouting.ts";');
+    expect(MESSAGE).toContain('.select("id, sender_id, receiver_id, content, attachment_type, created_at, tenant_id")');
+    expect(MESSAGE).toMatch(/\.from\("bookings"\)[\s\S]{0,120}\.eq\("user_id", message\.sender_id\)\s*\.eq\("status", "予約済み"\)\s*\.gte\("booking_date", since\)\s*\.in\("staff_user_id", others\)/);
+    expect(MESSAGE).toMatch(/\.from\("messages"\)[\s\S]{0,120}\.eq\("receiver_id", message\.sender_id\)\s*\.gte\("created_at", since\)\s*\.in\("sender_id", others\)/);
+    expect(MESSAGE).toContain("return chatRecipients({ senderId: message.sender_id, receiverId: message.receiver_id, staff, related });");
+    expect(MESSAGE).toContain("user_ids: pushTo,");
+    expect(MESSAGE).toContain("tag: `chat-${message.sender_id}-${message.receiver_id}`,");
+  });
+
+  it("店宛てのメール: 送り直しは宛先の解決の直前。先生への写しは今のアプリと同じキーの形で", () => {
+    expect(EMAIL).toContain("from '../_shared/staffRouting.ts'");
+    expect(EMAIL).not.toMatch(/const REPRESENTATIVE_KEY =/); // 判定は共有の1か所
+    const fix = EMAIL.indexOf("&& REPRESENTATIVE_KEY.test(explicitIdempotencyKey)");
+    const resolve = EMAIL.indexOf("// Special: resolve trainer email from DB when placeholder is used");
+    expect(fix).toBeGreaterThan(-1);
+    expect(resolve).toBeGreaterThan(fix);
+    expect(EMAIL).toContain("const { to, copyTo } = resendTargets({ key: explicitIdempotencyKey, instructorId, representativeId, bookingStaff })");
+    expect(EMAIL).toContain("idempotencyKey: `${explicitIdempotencyKey}-${copyTo}`,");
+    expect(EMAIL).toContain("templateData = { ...templateData, trainerUserId: to }");
+    // 消えた予約の担当は booking_notify_log から
+    expect(EMAIL).toMatch(/\.from\('booking_notify_log'\)\s*\.select\('staff_user_id'\)\s*\.eq\('booking_id', bookingId\)\s*\.in\('event', \['removed', 'forfeited'\]\)/);
+  });
+
+  it("プッシュ: 届ける直前に、担当でない先生を外す（キャンセルは booking_notify_log、ほかは bookings から担当を引く）", () => {
+    expect(PUSH).toContain('import { keepAssignedInstructors, parseBookingPushTag } from "../_shared/staffRouting.ts";');
+    const drop = PUSH.indexOf("user_ids = await dropUnassignedInstructors(adminClient, tag, user_ids as string[]);");
+    const deliver = PUSH.indexOf("// ---- Load both delivery targets in parallel ----");
+    expect(drop).toBeGreaterThan(-1);
+    expect(deliver).toBeGreaterThan(drop);
+    expect(PUSH).toMatch(/\.from\("booking_notify_log"\)\s*\.select\("staff_user_id"\)\s*\.eq\("user_id", parsed\.customerId\)\s*\.eq\("booking_date", new Date\(parsed\.bookingDate\)\.toISOString\(\)\)/);
+    expect(PUSH).toContain(".eq(\"staff_access\", \"limited\")");
+    expect(PUSH).toContain("return keepAssignedInstructors(userIds, instructors, assigned);");
+  });
+
+  it("🔴 DB: 予約の記録に、その時点の担当を残す（作った・消した・当日キャンセルの3つとも）", () => {
+    expect(MIGRATION).toMatch(/ALTER TABLE public\.booking_notify_log\s+ADD COLUMN IF NOT EXISTS staff_user_id uuid;/);
+    expect(MIGRATION).toContain("CREATE INDEX IF NOT EXISTS idx_booking_notify_log_user_date");
+    expect(MIGRATION).toContain("'created', NEW.booking_date, NEW.booking_type, v_skip, NEW.staff_user_id)");
+    expect(MIGRATION).toContain("'removed', OLD.booking_date, OLD.booking_type, OLD.staff_user_id)");
+    expect(MIGRATION).toContain("'forfeited', NEW.booking_date, NEW.booking_type, NEW.staff_user_id)");
+    // 通知の失敗で予約を巻き添えにしない（今まで通り）
+    expect(MIGRATION.match(/EXCEPTION WHEN OTHERS THEN/g)).toHaveLength(3);
+    for (const fn of ["notify_booking_created", "log_booking_removed", "log_booking_forfeited"]) {
+      expect(MIGRATION, fn).toContain(`REVOKE ALL ON FUNCTION public.${fn}() FROM PUBLIC, anon, authenticated;`);
+    }
   });
 });

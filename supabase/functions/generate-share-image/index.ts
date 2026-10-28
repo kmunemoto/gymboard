@@ -126,7 +126,8 @@ serve(async (req) => {
       },
     });
     const pngData = resvg.render();
-    const pngBuffer = pngData.asPng();
+    // Uint8Array をそのまま渡すと型環境によって BodyInit と合わないためコピーして渡す
+    const pngBuffer = new Uint8Array(pngData.asPng());
 
     return new Response(pngBuffer, {
       headers: {

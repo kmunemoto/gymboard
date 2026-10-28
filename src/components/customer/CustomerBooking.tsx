@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Trash2, CalendarPlus, Info, CalendarClock, X, Phone, MessageCircle, MessageSquare, UserRound, ClipboardList, Sparkles } from "lucide-react";
+import { CalendarDays, Clock, Trash2, CalendarPlus, Info, CalendarClock, X, Phone, MessageCircle, MessageSquare, ClipboardList, Sparkles } from "lucide-react";
 import { openExternalUrl } from "@/lib/nativeBridge";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
@@ -72,6 +72,9 @@ import {
   staffWorksOnWeekday,
 } from "@/lib/staffSchedule";
 import { canSelectStaff } from "@/lib/tenantStaff";
+import { useBookingMenus } from "@/hooks/useBookingMenus";
+import { defaultMenu, menuNameOf, overlapsReservedBlock, selectableMenus } from "@/lib/bookingMenus";
+import BookingStaffMenuPicker from "@/components/booking/BookingStaffMenuPicker";
 import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
 // セッション長・バッファはどちらもジムごとに変更可能（tenants.slot_duration_minutes /
@@ -92,6 +95,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 担当スタッフ。2人以上いるジムでだけ選択UIを出す（一人ジムには無用な一手になる）。
   const { staff } = useTenantStaff();
   const staffSelectable = canSelectStaff(staff);
+  const { menus: allMenus } = useBookingMenus(); // 予約メニュー（src/lib/bookingMenus.ts）。無い店は今まで通り
   // スタッフのシフト。読めなければ空＝「全員シフト未設定」＝営業時間どおり（従来の挙動）。
   const { schedules: staffSchedules } = useStaffSchedules();
   // 予約時のカスタム質問（事前アンケート）。
@@ -174,7 +178,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   // 担当スタッフの指名。null＝指名なし（誰でもよい）。既定は指名なし。
-  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  // 🔴 予約メニューを使っている店では、担当はメニューで決まる（担当のいるメニュー＝その担当を指名したのと同じ）
+  const [pickedStaffId, setPickedStaffId] = useState<string | null>(null);
+  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
+  const menus = selectableMenus(allMenus, staff.map((s) => s.user_id));
+  const activeMenu = menus.find((m) => m.id === selectedMenuId) ?? defaultMenu(menus);
+  const selectedStaffId = menus.length > 0 ? (activeMenu?.staff_user_id ?? null) : pickedStaffId;
   const [cancelTarget, setCancelTarget] = useState<BookingWithTime | null>(null);
   const [cancelling, setCancelling] = useState(false);
   // 同日キャンセルのペナルティが有効な対象を「キャンセルする」で即キャンセルせず、
@@ -387,6 +396,12 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     })),
   );
 
+  // 担当のいるメニューの時間（専用）に重なる枠か。担当のいないメニューの枠からは外す
+  // （「満枠」と見せると、空くことの無い枠にキャンセル待ちが付く。src/lib/bookingMenus.ts）
+  const isReservedForMenu = (date: string, startMin: number): boolean =>
+    !selectedStaffId && overlapsReservedBlock(bookedSlotsOnDate(bookedSlotsByDate, date), startMin,
+      sessionFootprintMinutes(slotMinutes, gridOptionMinutes, bookingBufferMinutes));
+
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean; overLimit: boolean; notAccepting: boolean; dayFull: boolean }[] = [];
     // 🔴 受付終了の日は1枠も出さない。定休日（営業時間が0枠）と同じ見た目になる。
@@ -401,6 +416,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     for (const totalMin of staffBookingSlotMinutes(
       businessHours, totalMinutes, weekday, staffSchedules, selectedStaffId,
     )) {
+      if (isReservedForMenu(dateKey, totalMin)) continue; // 担当のいるメニューの時間（専用）は出さない
       const time = minutesToTime(totalMin);
       const blocked = isSlotBlocked(dateKey, time);
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
@@ -542,7 +558,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     if (effectiveRepeatWeeks > 1) {
       const { booked, skipped } = await createRecurringBookings(
         user.id, dateKey, slot.time, selectedPlan, effectiveRepeatWeeks, false, selectedStaffId, answerSnapshot,
-        optionMinutes, optionSnapshot,
+        optionMinutes, optionSnapshot, false, activeMenu?.id ?? null,
       );
       if (booked.length === 0) {
         // 全週スキップ。全部が同じ理由なら、その理由を出す（回数上限やプラン上限は
@@ -589,7 +605,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         user.id, dateKey, slot.time, selectedPlan, false,
         {
           staffUserId: selectedStaffId, customAnswers: answerSnapshot,
-          optionMinutes, bookingOptions: optionSnapshot,
+          optionMinutes, bookingOptions: optionSnapshot, menuId: activeMenu?.id ?? null,
         },
       );
       if (error) {
@@ -622,6 +638,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       clientName: profile?.display_name || t("common.me"),
       status: "予約済み",
       booking_type: selectedPlan,
+      menuId: activeMenu?.id ?? null,
     };
 
     setLastBooked(newBooking);
@@ -670,6 +687,17 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   };
 
+  // 担当（またはメニュー）を選び直す。その担当が選択中の日に出勤していないなら、日付ごと外す。
+  // 残しておくと「日付は選ばれているのに枠が0件」になり、空きが無いのか担当が休みなのか区別できない。
+  const pickStaff = (staffId: string | null, menuId: string | null) => {
+    setPickedStaffId(staffId);
+    setSelectedMenuId(menuId);
+    setSelectedSlot(null);
+    if (staffId && dateKey && !staffWorksOnWeekday(businessHours, weekdayOfDateKey(dateKey), staffSchedules, staffId)) {
+      setSelectedDate(undefined);
+    }
+  };
+
   // 予約変更モードに入る: 対象を記録し、日付・スロット選択をリセットしてカレンダーへ誘導
   const startReschedule = (b: BookingWithTime) => {
     if (b.outsideHours) { toast.info(t("booking.outsideHoursRescheduleNote")); return; } // 店が営業時間外に入れた予約は店に連絡（変更の巻き戻しで元に戻せないため）
@@ -678,7 +706,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     setSelectedSlot(null);
     // 変更しても担当は引き継がれる（rescheduleBooking が元の担当を渡す）。
     // 空き枠の表示もその担当基準にしないと、実際には取れない枠を「空き」と見せてしまう。
-    setSelectedStaffId(b.staff_user_id ?? null);
+    setPickedStaffId(b.staff_user_id ?? null);
+    // メニューも元の予約のもの（メニューの無い古い予約は、その担当のメニュー。無ければ既定のメニュー）
+    setSelectedMenuId(b.menuId ?? menus.find((m) => m.staff_user_id && m.staff_user_id === b.staff_user_id)?.id ?? null);
     setRepeatWeeks(1);
     setTimeout(() => document.getElementById("calendar-section")?.scrollIntoView({ behavior: "smooth" }), 50);
   };
@@ -903,6 +933,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                             {b.startTime}〜{b.endTime}
                           </p>
                           <div className="flex flex-wrap items-center gap-1 mt-1">
+                            {menuNameOf(allMenus, b.menuId) && <Badge className="text-[10px] px-1.5 py-0 h-4">{menuNameOf(allMenus, b.menuId)}</Badge>}
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
                               {planLabel(b.booking_type)}
                             </Badge>
@@ -950,7 +981,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                         <button
                           type="button"
                           onClick={() => {
-                            window.open(buildGoogleCalendarUrl(b.date, b.startTime, b.endTime, planLabel(b.booking_type), tenant?.gym_name), "_blank");
+                            window.open(buildGoogleCalendarUrl(b.date, b.startTime, b.endTime, menuNameOf(allMenus, b.menuId) ?? planLabel(b.booking_type), tenant?.gym_name), "_blank");
                           }}
                           className="text-muted-foreground hover:text-accent transition-colors p-2"
                           title={t("booking.addToGoogleCalendar")}
@@ -1023,54 +1054,16 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
               </Badge>
             </div>
 
-            {/* 担当の指名。スタッフが2人以上いるジムでだけ出す。
-                選び直すと空き枠の見え方が変わるので、選択中の枠は解除する。 */}
-            {staffSelectable && (
-              <div className="mb-3">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <UserRound className="w-3.5 h-3.5" />
-                  {t("staff.selectLabel")}
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedStaffId(null); setSelectedSlot(null); }}
-                    aria-pressed={selectedStaffId === null}
-                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all min-h-[44px] ${
-                      selectedStaffId === null
-                        ? "bg-accent text-accent-foreground shadow-sm"
-                        : "bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {t("staff.anyone")}
-                  </button>
-                  {staff.map((s) => (
-                    <button
-                      key={s.user_id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedStaffId(s.user_id);
-                        setSelectedSlot(null);
-                        // その担当が選択中の日に出勤していないなら、日付ごと外す。
-                        // 残しておくと「日付は選ばれているのに枠が0件」になり、
-                        // 空きが無いのか担当が休みなのか区別できない。
-                        if (dateKey && !staffWorksOnWeekday(businessHours, weekdayOfDateKey(dateKey), staffSchedules, s.user_id)) {
-                          setSelectedDate(undefined);
-                        }
-                      }}
-                      aria-pressed={selectedStaffId === s.user_id}
-                      className={`px-3 py-2 rounded-lg text-xs font-bold transition-all min-h-[44px] ${
-                        selectedStaffId === s.user_id
-                          ? "bg-accent text-accent-foreground shadow-sm"
-                          : "bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {s.display_name}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5">{t("staff.selectHint")}</p>
-              </div>
+            {/* メニュー（予約メニューを使っている店）または担当の指名（BookingStaffMenuPicker）。
+                選び直すと空き枠の見え方が変わるので、選択中の枠は外す。予約の変更中は出さない
+                （変更は元の予約のメニュー・担当のまま。rescheduleBooking が引き継ぐ） */}
+            {!rescheduleTarget && (
+              <BookingStaffMenuPicker
+                menus={menus} selectedMenuId={activeMenu?.id ?? null}
+                onPickMenu={(m) => pickStaff(m.staff_user_id, m.id)}
+                staff={staff} staffSelectable={staffSelectable} selectedStaffId={selectedStaffId}
+                onPickStaff={(id) => pickStaff(id, null)}
+              />
             )}
 
             <Card>
@@ -1421,7 +1414,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
         date={lastBooked?.date || ""}
         startTime={lastBooked?.startTime || ""}
         endTime={lastBooked?.endTime || ""}
-        planName={lastBooked ? planLabel(lastBooked.booking_type) : ""}
+        planName={lastBooked ? [menuNameOf(allMenus, lastBooked.menuId), planLabel(lastBooked.booking_type)].filter(Boolean).join("・") : ""}
         gymName={tenant?.gym_name}
         optionsLabel={summarizeOptions(lastBooked?.bookingOptions, (m) =>
           t("bookingOptions.pickerPlusMinutes", { count: m }))}

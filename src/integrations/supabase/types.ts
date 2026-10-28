@@ -376,6 +376,47 @@ export type Database = {
           },
         ]
       }
+      booking_menus: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          staff_user_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          staff_user_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          staff_user_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_menus_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_notify_log: {
         Row: {
           actor_user_id: string | null
@@ -638,6 +679,7 @@ export type Database = {
           custom_answers: Json | null
           google_event_id: string | null
           id: string
+          menu_id: string | null
           option_minutes: number
           outside_hours: boolean
           source: string | null
@@ -656,6 +698,7 @@ export type Database = {
           custom_answers?: Json | null
           google_event_id?: string | null
           id?: string
+          menu_id?: string | null
           option_minutes?: number
           outside_hours?: boolean
           source?: string | null
@@ -674,6 +717,7 @@ export type Database = {
           custom_answers?: Json | null
           google_event_id?: string | null
           id?: string
+          menu_id?: string | null
           option_minutes?: number
           outside_hours?: boolean
           source?: string | null
@@ -684,6 +728,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "booking_menus"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2089,6 +2140,7 @@ export type Database = {
           logo_url: string | null
           max_customers: number | null
           max_trainers: number | null
+          menu_staff_hours_exclusive: boolean
           next_cycle_payment_required: boolean
           next_cycle_payment_required_since: string | null
           operating_hours: Json | null
@@ -2167,6 +2219,7 @@ export type Database = {
           logo_url?: string | null
           max_customers?: number | null
           max_trainers?: number | null
+          menu_staff_hours_exclusive?: boolean
           next_cycle_payment_required?: boolean
           next_cycle_payment_required_since?: string | null
           operating_hours?: Json | null
@@ -2245,6 +2298,7 @@ export type Database = {
           logo_url?: string | null
           max_customers?: number | null
           max_trainers?: number | null
+          menu_staff_hours_exclusive?: boolean
           next_cycle_payment_required?: boolean
           next_cycle_payment_required_since?: string | null
           operating_hours?: Json | null
@@ -2768,6 +2822,10 @@ export type Database = {
       member_first_unpaid_cycle_start: {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: string
+      }
+      menu_reserved_overlaps: {
+        Args: { p_minutes: number; p_start: string; p_tenant_id: string }
+        Returns: boolean
       }
       move_to_dlq: {
         Args: {

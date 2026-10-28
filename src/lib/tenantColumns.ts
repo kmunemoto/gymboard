@@ -85,6 +85,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "pre_visit_note",
   // 曜日ごとの会員の1日の上限（{"0": 4, ...}）。NULL = 全曜日共通（今まで通り）。
   "daily_booking_limit_weekdays",
+  // 担当のいる予約メニューの時間を、そのメニュー専用にするか。既定 true（TENANT_DEFAULT_TRUE_COLS 側）。
+  "menu_staff_hours_exclusive",
 ];
 
 /**
@@ -125,6 +127,8 @@ export const TENANT_DEFAULT_TRUE_COLS: readonly string[] = [
   "show_nav_videos",
   "show_nav_notifications",
   "show_nav_trial_followups",
+  // 担当のいる予約メニューの時間は専用（DB の既定も true）。画面は設定カードで見せるだけ（判定は DB）
+  "menu_staff_hours_exclusive",
 ];
 
 /**

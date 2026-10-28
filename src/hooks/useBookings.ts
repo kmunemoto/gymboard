@@ -37,6 +37,8 @@ export interface BookingRow {
   booking_options?: unknown;
   /** 営業時間外に店がイレギュラーで入れた予約（2026-10-17）。列が無い環境では undefined */
   outside_hours?: boolean | null;
+  /** 予約メニュー（2026-10-28・src/lib/bookingMenus.ts）。列が無い環境では undefined */
+  menu_id?: string | null;
 }
 
 // Feature flag: customer-side LINE notifications for booking creation/cancellation.
@@ -87,6 +89,8 @@ export interface BookingWithTime {
   bookingOptions?: BookingOptionSnapshot[];
   /** 営業時間外に店がイレギュラーで入れた予約（src/lib/outsideHours.ts）。1日の上限にはほかの予約と同じく数える */
   outsideHours?: boolean;
+  /** 予約メニュー（src/lib/bookingMenus.ts）。無ければ null */
+  menuId?: string | null;
 }
 
 // tenantDefaultMinutes: ジムごとに変更可能（tenants.slot_duration_minutes）。既定60分（後方互換）。
@@ -125,6 +129,7 @@ function parseBooking(
     optionMinutes,
     bookingOptions: parseOptionSnapshot(row.booking_options),
     outsideHours: row.outside_hours === true,
+    menuId: row.menu_id ?? null,
   };
 }
 
@@ -459,6 +464,8 @@ export const createBooking = async (
     bookingOptions?: BookingOptionSnapshot[] | null;
     /** 営業時間外に店がイレギュラーで入れる（店のスタッフだけが付けられる。DB の guard_booking_outside_hours_flag） */
     outsideHours?: boolean;
+    /** 予約メニュー。担当のいるメニューなら DB がその担当を当てる（apply_booking_menu） */
+    menuId?: string | null;
   } = {},
 ) => {
   const bookingDate = `${date}T${startTime}:00+09:00`;
@@ -488,6 +495,7 @@ export const createBooking = async (
     ...(bookingOptions ? { booking_options: bookingOptions } : {}),
     // 付けるときだけ入れる（列が未適用のDBでも、印の無い予約は従来どおり通る）
     ...(opts.outsideHours ? { outside_hours: true } : {}),
+    ...(opts.menuId ? { menu_id: opts.menuId } : {}), // 選んだときだけ（未適用の DB でも今まで通り予約できる）
   };
   // silent＝予約変更（reschedule）の内部 INSERT。サーバー側の通知トリガー
   // （notify_booking_created）が「新規予約」通知を出さないようマーカーを付ける
@@ -578,6 +586,7 @@ export const createRecurringBookings = async (
   bookingOptions: BookingOptionSnapshot[] | null = null,
   // 営業時間外（店のイレギュラー）の予約として入れる。同じ曜日・同じ時刻なので全回に同じ印
   outsideHours = false,
+  menuId: string | null = null, // 予約メニュー。全回に同じもの
 ): Promise<{ booked: { id: string; date: string }[]; skipped: { date: string; code?: string }[] }> => {
   const booked: { id: string; date: string }[] = [];
   // スキップ理由の code（SQLSTATE）も返す。満枠と回数上限（GB003）では案内が違う
@@ -590,7 +599,7 @@ export const createRecurringBookings = async (
     const d = new Date(y, mo - 1, da + i * 7);
     const dateKey = format(d, "yyyy-MM-dd");
     const { data, error } = await createBooking(userId, dateKey, startTime, bookingType, isProxyBooking, {
-      staffUserId, customAnswers, optionMinutes, bookingOptions, outsideHours,
+      staffUserId, customAnswers, optionMinutes, bookingOptions, outsideHours, menuId,
     });
     if (error || !data) {
       skipped.push({ date: dateKey, code: (error as { code?: string } | null)?.code });
@@ -639,6 +648,7 @@ export const rescheduleBooking = async (
     staffUserId: oldStaffUserId,
     optionMinutes: oldOptionMinutes,
     bookingOptions: oldBookingOptions,
+    menuId: (old as { menu_id?: string | null }).menu_id ?? null, // メニューも引き継ぐ（渡さないと消える）
   };
 
   const newBookingDate = `${newDate}T${newStartTime}:00+09:00`;

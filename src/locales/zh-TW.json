@@ -3034,5 +3034,37 @@
   "staffAccount": {
     "title": "帳戶",
     "ownerOnly": "店鋪設定、公告、影片以及刪除顧客，只有店主可以操作。"
+  },
+  "bookingMenus": {
+    "pickerLabel": "項目",
+    "pickerStaffHint": "由{{name}}負責。只能選擇負責人的時間。",
+    "errorReserved": "該時間專供其他項目。請選擇其他時間。",
+    "errorUnavailable": "此項目目前無法預約。請重新開啟頁面後選擇。",
+    "title": "預約項目",
+    "desc": "顧客預約時選擇的項目（例：訓練・瑜伽・器械皮拉提斯）。開啟兩個以上後，顧客的預約畫面會出現「項目」選擇。次數・費用・時長仍依目前方案。",
+    "namePlaceholder": "項目名稱（例：瑜伽）",
+    "nameAria": "項目名稱",
+    "staffLabel": "負責人",
+    "staffNone": "無負責人",
+    "staffAria": "{{name}}的負責人",
+    "staffHint": "指定負責人的項目，只能在該負責人的班表（教練班表）時間內預約。",
+    "add": "新增",
+    "addedToast": "已新增「{{name}}」",
+    "activeAria": "向顧客顯示{{name}}",
+    "moveUp": "將{{name}}上移",
+    "moveDown": "將{{name}}下移",
+    "deleteAria": "刪除{{name}}",
+    "deleteTitle": "刪除項目",
+    "deleteConfirm": "將刪除「{{name}}」。已用於預約的項目無法刪除（關閉後顧客將無法選擇）。",
+    "deletedToast": "已刪除「{{name}}」",
+    "errorInUse": "已用於預約的項目無法刪除。關閉後顧客將無法選擇。",
+    "errorSave": "儲存失敗",
+    "errorNameTooLong": "項目名稱最多{{max}}個字",
+    "noShiftWarning": "{{name}}尚未設定班表。請在上方的「教練班表」中設定星期和時間（未設定期間，營業時間內隨時可預約，也沒有專用時間）。",
+    "exclusiveTitle": "有負責人的項目時間設為該項目專用",
+    "exclusiveOn": "開啟：負責人排班時間內，不接受無負責人的項目（例：訓練）和體驗預約（店家代為預約仍可）。",
+    "exclusiveOff": "關閉：先到先得。不論哪個項目，先預約的優先。",
+    "exclusiveOnToast": "已將有負責人的項目時間設為專用",
+    "exclusiveOffToast": "已改為先到先得"
   }
 }

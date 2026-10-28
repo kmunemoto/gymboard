@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       .from("bookings")
       // option_minutes: 予約に付けたオプション（例: トレーニング後の30分ストレッチ）。
       // メールとプッシュの時間帯に足す。列が無い環境でも落ちないよう COALESCE で 0 に倒す。
-      .select("id, tenant_id, user_id, booking_date, booking_type, status, created_via, option_minutes, staff_user_id")
+      .select("id, tenant_id, user_id, booking_date, booking_type, status, created_via, option_minutes, staff_user_id, menu_id")
       .eq("id", booking_id)
       .maybeSingle();
     if (bkErr) throw bkErr;
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     }
     const isSelfBooking = actorUserId !== null && actorUserId === booking.user_id;
 
-    const [tenantRes, planRes, profileRes, staffRes] = await Promise.all([
+    const [tenantRes, planRes, profileRes, staffRes, menuRes] = await Promise.all([
       supabase
         .from("tenants")
         .select("gym_name, booking_email_note, slot_duration_minutes")
@@ -160,6 +160,10 @@ Deno.serve(async (req) => {
         .eq("status", "active")
         .neq("staff_access", "limited") // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
         .order("joined_at", { ascending: true }),
+      // 予約メニュー（2026-10-28・src/lib/bookingMenus.ts）。メニューが2つ以上ある店だけ名前を添える
+      booking.menu_id
+        ? supabase.from("booking_menus").select("id, name").eq("tenant_id", booking.tenant_id)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     // 🔴 スタッフ一覧の取得エラーを「スタッフ0人」と混同しない。混同すると、DBの一過性の
@@ -197,7 +201,10 @@ Deno.serve(async (req) => {
     const startTime = hhmm(minutes);
     const endTime = hhmm(minutes + sessionMinutes);
     const bookingTime = `${startTime}〜${endTime}`;
-    const planName = booking.booking_type as string;
+    // 予約メニューの名前（例: ヨガ）。メニューが1つだけの店・読めないときは付けない（今まで通り）
+    const menus = (menuRes.data ?? []) as { id: string; name: string }[];
+    const menuName = menus.length >= 2 ? (menus.find((m) => m.id === booking.menu_id)?.name ?? null) : null;
+    const planName = menuName ? `${menuName}（${booking.booking_type}）` : (booking.booking_type as string);
 
     const errors: string[] = [];
 
@@ -297,7 +304,7 @@ Deno.serve(async (req) => {
             // 予約の担当（インストラクターを含む）にも届ける。担当が無ければ今まで通り
             user_ids: [...new Set([...staffIds, booking.user_id, ...(booking.staff_user_id ? [booking.staff_user_id as string] : [])])],
             title: "新しい予約",
-            body: `${customerName}が${month}月${day}日 ${startTime}〜${endTime}を予約しました`,
+            body: `${customerName}が${month}月${day}日 ${startTime}〜${endTime}${menuName ? `の${menuName}` : ""}を予約しました`,
             url: "/",
             // 旧クライアントの自前プッシュと同じタグ（Web は置き換えで1件に畳まれる）
             tag: `booking-${booking.id}`,

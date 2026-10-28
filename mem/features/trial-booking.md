@@ -131,7 +131,8 @@ Salute御所南のマーケティングサイトの「Book Now」ボタン用に
 - 公開 INSERT 経路は閉鎖済み (migration `20260704140000`): anon/authenticated の
   trial_bookings への INSERT ポリシー・GRANT を削除。予約作成は trial-book
   (service_role) のみ。これにより trial-book の検証を迂回できない。
-- 宛先トレーナーは **tenant_members (trainer→owner, active, joined_at 順)** で解決。
+- 宛先トレーナーは **tenant_members (owner→trainer, active, joined_at 順・インストラクター除く)** で解決
+  （2026-10-28 に trainer 優先から改めた。`mem/features/instructor-staff.md`「通知」）。
   旧 `get_trainer_ids` はテナント横断で他ジムのスタッフに誤通知するため使わない。
 - お客様確認メール (`trial-booking-confirmation`) と前日リマインド
   (`trial-booking-reminder`) は**どちらも多ジム対応済み**（ジム名・住所・連絡先・サイトURLを

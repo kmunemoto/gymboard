@@ -49,6 +49,13 @@ const TrainerBookingMenus = () => {
   const staffName = (id: string) => staff.find((s) => s.user_id === id)?.display_name ?? t("common.unknown");
   const hasShift = (id: string) => schedules.some((s) => s.user_id === id);
   const exclusive = tenant.menu_staff_hours_exclusive !== false;
+  // シフト未設定の知らせは担当ごとに1回（同じ先生が複数のメニューを持つとき、全部の行に出さない）
+  const noShiftWarnAt = new Set(
+    menus
+      .filter((m) => m.is_active && m.staff_user_id && !hasShift(m.staff_user_id))
+      .filter((m, i, arr) => arr.findIndex((x) => x.staff_user_id === m.staff_user_id) === i)
+      .map((m) => m.id),
+  );
   const anyStaffed = menus.some((m) => m.is_active && m.staff_user_id);
 
   /** 書いて、失敗なら知らせる。成功なら読み直す */
@@ -187,7 +194,7 @@ const TrainerBookingMenus = () => {
                     </Button>
                   </div>
                   {/* 担当のシフトが未設定だと、営業時間中いつでも予約でき、専用の時間も持たない */}
-                  {m.is_active && m.staff_user_id && !hasShift(m.staff_user_id) && (
+                  {m.staff_user_id && noShiftWarnAt.has(m.id) && (
                     <p className="text-[11px] text-warning flex items-start gap-1.5" data-testid="booking-menu-no-shift">
                       <CalendarClock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                       {t("bookingMenus.noShiftWarning", { name: staffName(m.staff_user_id) })}

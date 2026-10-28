@@ -746,7 +746,7 @@ async function sendRescheduleToTrainer(
   forfeit = false, // 当日変更で変更前の予約が1回消化扱いになったか
   staffUserId: string | null = null, // 予約の担当。インストラクターでも、自分の担当の予約なら届ける
 ) {
-  // 宛先は自テナントのスタッフ（trainer優先→owner）。get_trainer_ids は全テナント横断のため
+  // 宛先は自テナントのスタッフ（オーナー優先→スタッフ）。get_trainer_ids は全テナント横断のため
   // 使わない（別ジムのトレーナーに通知が飛ぶ/自ジムに届かない）。チャット #141 と同じ対応。
   const [{ data: profile }, trainers] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("user_id", userId).maybeSingle(),
@@ -997,7 +997,7 @@ async function sendCancelLineNotification(
 async function sendCancelEmailNotification(
   booking: {
     id: string; user_id: string; booking_date: string; booking_type: string;
-    tenant_id?: string | null; option_minutes?: number | null;
+    tenant_id?: string | null; option_minutes?: number | null; staff_user_id?: string | null;
   },
   cancelledByTrainer: boolean,
   forfeit: boolean,
@@ -1038,14 +1038,14 @@ async function sendCancelEmailNotification(
   ]);
   const customerName = profile?.display_name || "お客様";
 
-  // Email trainer
-  if (trainerId) {
+  // 店宛ては代表（オーナー）と、予約の担当（インストラクターを含む・代表と同じ人なら1通）（2026-10-28）
+  for (const to of withAssignedStaff(trainerId ? [trainerId] : [], booking.staff_user_id)) {
     supabase.functions.invoke("send-transactional-email", {
       body: {
         templateName: "booking-cancellation",
         recipientEmail: "_resolve_trainer_",
         tenantId: booking.tenant_id ?? null,
-        idempotencyKey: `cancel-trainer-${booking.id}`,
+        idempotencyKey: to === trainerId ? `cancel-trainer-${booking.id}` : `cancel-trainer-${booking.id}-${to}`,
         templateData: {
           customerName,
           bookingDate: formattedDate,
@@ -1055,7 +1055,7 @@ async function sendCancelEmailNotification(
           recipientRole: "trainer",
           cancelledByTrainer,
           forfeit,
-          trainerUserId: trainerId,
+          trainerUserId: to,
         },
       },
     }).then((result) => logEmailInvoke("booking-cancel-trainer", "booking-cancellation", "_resolve_trainer_", result))
@@ -1131,7 +1131,10 @@ async function sendCancelPushNotification(
         body: {
           user_ids: staffTargets,
           title: "予約キャンセル",
-          body: `${customerName}さんが ${md} ${hm} の予約をキャンセルしました${forfeitSuffix}`,
+          // 店が取り消したときは主語を変える（担当の先生には「お客様が取り消した」と区別できるように）
+          body: cancelledByTrainer
+            ? `${customerName}さんの ${md} ${hm} の予約を店がキャンセルしました${forfeitSuffix}`
+            : `${customerName}さんが ${md} ${hm} の予約をキャンセルしました${forfeitSuffix}`,
           url: "/",
           tag: `booking-cancel-trainer-${booking.user_id}-${booking.booking_date}`,
         },

@@ -2184,7 +2184,8 @@
     "instructorSwitchAria": "将{{name}}设为教练",
     "accessLimitedToast": "已将{{name}}设为教练",
     "accessFullToast": "已将{{name}}设为员工",
-    "errorAccess": "权限更改失败"
+    "errorAccess": "权限更改失败",
+    "menusLabel": "负责项目：{{names}}"
   },
   "hooks": {
     "loginInfoNotFound": "未找到登录信息",

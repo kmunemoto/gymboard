@@ -50,6 +50,7 @@ import { canSelectStaff, isStaffConflictError, staffNameMap } from "@/lib/tenant
 import { useBookingMenus } from "@/hooks/useBookingMenus";
 import { defaultMenu, menuNameOf, selectableMenus } from "@/lib/bookingMenus";
 import ProxyStaffMenuSelect from "./ProxyStaffMenuSelect";
+import { notifyStaffReassigned } from "@/lib/staffNotify";
 import DayReceptionToggle from "./DayReceptionToggle";
 import { useDayReception } from "@/hooks/useDayReception";
 import BookingRepeatPicker from "@/components/booking/BookingRepeatPicker";
@@ -308,6 +309,9 @@ const TrainerSchedule = () => {
       return;
     }
     toast.success(t("staff.assignedToast"));
+    // 前と新しい担当（オーナー以外が操作したならオーナーも）に知らせる（src/lib/staffNotify.ts）
+    void notifyStaffReassigned({ bookingId: assignTarget.id, clientName: assignTarget.clientName, date: assignTarget.date,
+      startTime: assignTarget.startTime, fromStaffId: assignTarget.staffUserId, toStaffId: nextStaffId || null });
     setAssignTarget(null);
     void refetch();
   };

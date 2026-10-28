@@ -33,6 +33,7 @@ import { getWebOrigin } from "@/lib/nativeBridge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { useTenantStaff } from "@/hooks/useTenantStaff";
+import { useBookingMenus } from "@/hooks/useBookingMenus";
 import type { TenantStaff } from "@/lib/tenantStaff";
 
 type InviteKind = "staff" | "instructor";
@@ -47,6 +48,9 @@ const TrainerStaffManager = () => {
   const { user } = useAuth();
   const { tenant } = useTenant();
   const { staff, refetch: refetchStaff } = useTenantStaff();
+  // 担当している予約メニュー（同じ先生がヨガとマシンピラティスの両方を持つ、などの組み合わせが一目で分かるように）
+  const { menus } = useBookingMenus();
+  const menusOf = (userId: string) => menus.filter((m) => m.is_active && m.staff_user_id === userId).map((m) => m.name).join("・");
   const [codes, setCodes] = useState<Record<InviteKind, string | null>>({ staff: null, instructor: null });
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
@@ -203,6 +207,9 @@ const TrainerStaffManager = () => {
                     </Button>
                   )}
                 </div>
+                {menusOf(s.user_id) && (
+                  <p className="text-[11px] text-muted-foreground" data-testid="staff-menus">{t("staff.menusLabel", { names: menusOf(s.user_id) })}</p>
+                )}
                 {s.role === "trainer" && s.user_id !== user?.id && codes.instructor && (
                   <label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                     <span>{t("staff.instructorSwitch")}</span>

@@ -318,12 +318,20 @@ describe("設定の「予約メニュー」カード（TrainerBookingMenus）", 
     expect(screen.queryByRole("switch", { name: i18n.t("bookingMenus.exclusiveTitle") })).toBeNull();
   });
 
-  it("担当のシフトが未設定なら知らせる（営業時間中いつでも取れ、専用の時間も無い）", () => {
+  it("担当のシフトが未設定なら知らせる（営業時間中いつでも取れ、専用の時間も無い）。同じ先生には1回だけ", () => {
     view.schedules = [];
     render(<TrainerBookingMenus />);
+    // Yoga・Pilates は同じ先生（宗本さんのジムの形）。知らせは先頭のメニュー（Yoga）の行に1回だけ
     const warnings = screen.getAllByTestId("booking-menu-no-shift");
-    expect(warnings).toHaveLength(2); // Yoga・Pilates（担当のいる2つ）
+    expect(warnings).toHaveLength(1);
     expect(warnings[0]).toHaveTextContent(i18n.t("bookingMenus.noShiftWarning", { name: "Hanako" }));
+    expect(within(screen.getAllByTestId("booking-menu-row")[1]).getByTestId("booking-menu-no-shift")).toBeInTheDocument();
+    // 先頭のメニューをオフにしたら、次のメニュー（Pilates）の行に出る
+    cleanup();
+    view.menus = [TRAINING, { ...YOGA, is_active: false }, PILATES];
+    render(<TrainerBookingMenus />);
+    expect(screen.getAllByTestId("booking-menu-no-shift")).toHaveLength(1);
+    expect(within(screen.getAllByTestId("booking-menu-row")[2]).getByTestId("booking-menu-no-shift")).toBeInTheDocument();
   });
 });
 

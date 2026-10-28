@@ -84,14 +84,55 @@
 
 ## 通知（🔴 ここを間違えるとオーナー宛ての連絡が先生に行く）
 
-店宛ての通知の「代表」は **trainer 優先**（joined_at 順）→ owner。インストラクターを外さないと、
-先生が先頭になり、**オーナーに届いていたメール・お客様のチャットの宛先が先生に移る**。
+宗本さん（2026-10-28）:
 
-- クライアント: `fetchMyTenantStaffIds` が `notifiableStaff` で外す（列の無い環境では列を外して読み直す）
-- Edge Function（6本）: `.neq("staff_access", "limited")`
-  - notify-new-booking / trial-book / drop-in-book / trial-cancel / send-push-notification（体験のプッシュ）/ daily-trainer-summary
-- **自分が担当の予約だけは届ける**: 新しい予約（notify-new-booking のプッシュに `booking.staff_user_id`）、
-  予約の変更・キャンセル（`useBookings` の `withAssignedStaff`）
+> オーナーは全てを把握してるように。先生には、先生が担当している予約だけ通知が届く様にして。
+> オーナーは全ての通知を受け取る。先生に関する通知は先生に届くように。
+
+### 代表はオーナー（2026-10-28 に trainer 優先から改めた）
+
+店宛ての通知の「代表」（店宛てのメール・LINE・お客様のチャットの宛先）は **オーナーが先頭** → スタッフ（joined_at 順）。
+インストラクターは代表にも「店のスタッフ全員」にも入れない。
+
+trainer 優先のままだと、インストラクターを外していても、**あとで先生を「スタッフ」に切り替えた瞬間に
+店宛てのメールとチャットがオーナーから先生に移る**。オーナー優先にしてこの罠を消した。
+（2026-10-28 時点で本番に full のスタッフは0人＝並びを変えても、いま届いている相手は変わらない）
+
+- クライアント: `fetchMyTenantStaffRoster` / `fetchMyTenantStaffIds` / `fetchMyTenantTrainerId`
+  （`notifiableStaffOrder`）。権限の列が無い環境では列を外して読み直す
+- Edge Function: notify-new-booking（owner → trainer の順）・trial-book / drop-in-book / trial-cancel
+  （`find(owner) ?? [0]`）。宛先の読み込みは `.neq("staff_access", "limited")`
+  （この4本と send-push-notification の体験プッシュ・daily-trainer-summary の6本）
+
+### 誰に何が届くか
+
+| できごと | オーナー | 先生（インストラクター） |
+|---|---|---|
+| お客様が予約した | プッシュ＋メール（代表） | 自分が担当ならプッシュ＋メール |
+| 店が代わりに予約した（代理予約） | オーナー以外が入れたらプッシュ。メールは毎回（代表） | 自分が担当ならプッシュ＋メール（自分で入れたときは除く） |
+| お客様が日時を変えた | プッシュ（＋LINE） | 自分が担当ならプッシュ |
+| キャンセル（お客様・店） | プッシュ＋メール（＋LINE） | 自分が担当ならプッシュ＋メール。店が取り消したときは「店が」と書く |
+| 担当の付け替え | オーナー以外が付け替えたらプッシュ | 前か後の担当ならプッシュ |
+| オプションの変更（店） | オーナー以外が変えたらプッシュ | 自分が担当ならプッシュ |
+| 朝の本日の予定 | その日の全部の予約と体験 | 自分が担当の予約だけ（「本日の担当（N件）」・店の分とは別のキー） |
+| 体験・ドロップイン | 代表として受け取る | 届かない（体験はトレーニングだけ） |
+| お客様のチャット | 代表として受け取る | プッシュは届かない（共有受信箱なので読める・返せる） |
+| お知らせ・リマインダー | （お客様宛て） | （お客様宛て） |
+
+- 店側の操作の宛先は `staffChangeRecipients`（`src/lib/staffAccess.ts`）:
+  **予約の担当（前・後）＋（オーナー以外が操作したら）オーナー − 操作した本人**
+  - 🔴 「インストラクターが操作したら」ではなく「オーナー以外が操作したら」。先生をスタッフに切り替えてもオーナーに届く
+  - オーナーが自分で担当のいない予約を動かしたときは誰にも送らない（今まで通り）
+  - 操作した人が読めないときはオーナーに倒す（知らせ漏れより余分な1通のほうが害が小さい）
+- 送っている場所:
+  - 代理予約 … notify-new-booking（サーバー。操作した人は `booking_notify_log.actor_user_id`）
+  - 付け替え・オプション … `src/lib/staffNotify.ts`（クライアント・fire-and-forget。成功したあとに呼ぶ）
+  - キャンセル・日時の変更 … `useBookings`（`withAssignedStaff`）
+  - 朝 … daily-trainer-summary
+- メールの冪等キー: 新しい予約は代表 `booking-notify-<id>`・担当 `booking-notify-<id>-staff`。
+  キャンセルは代表 `cancel-trainer-<id>`（今まで通り）・担当 `cancel-trainer-<id>-<user_id>`
+- 担当へのメールは `_resolve_trainer_` ＋ `trainerUserId`（send-transactional-email は同じジムの現役スタッフなら
+  宛先にできる。インストラクターも含む）
 
 ⚠️ Edge Function は push しても本番に出ない。Lovable にデプロイを頼む（`mem/ops/edge-function-deploy.md`）。
 
@@ -127,6 +168,9 @@ authenticated に表全体の SELECT が付いているため**効いていな�
 予約メニュー（`mem/features/booking-menus.md`）を使い始めると担当の選択は消え、メニューで担当が決まる。
 招待 → 先生のシフト → メニューの担当を先生に、を続けて行う。
 
+**1人の先生が複数のメニューを担当できる**（宗本さんのジムはヨガとマシンピラティスが同じ先生）。
+スタッフ管理の一覧と先生の「アカウント」画面に「担当メニュー: ヨガ・マシンピラティス」が出る。
+
 ## テスト
 
-`src/test/instructorStaff.test.tsx`
+`src/test/instructorStaff.test.tsx`・通知の宛先は `src/test/staffNotifications.test.ts`

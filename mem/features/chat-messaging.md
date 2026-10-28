@@ -17,6 +17,8 @@ ADD TABLE public.messages`）。SELECT RLS は `sender_id`/`receiver_id` が自�
 結果、`messages.receiver_id` が別ジム宛になり、自ジムの受信一覧
 （`receiver_id = 自分` で読む）にも未読カウントにも現れなかった。
 → `tenantHelper.fetchMyTenantTrainerId()`（自テナントの trainer優先→owner）に置換。
+（2026-10-28 から **owner 優先**・インストラクター除く＝お客様のチャットの宛先はオーナー。
+`mem/features/instructor-staff.md`「通知」）
 
 ### 原因2: 解決・送信の失敗が無言で握りつぶされていた
 上記1に加えて、**そもそも送信先解決やINSERTが失敗しても、画面には何も表示されず

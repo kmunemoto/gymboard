@@ -7,8 +7,9 @@
  *    お客さんの削除もできないようにしてほしい。これはオーナーだけができるように」
  *
  * 🔴 壊しやすいもの:
- *   1. 店宛ての通知の「代表」（trainer 優先）がインストラクターに移る
+ *   1. 店宛ての通知の「代表」がインストラクターに移る
  *      → オーナーに届いていたメール・お客様のチャットが先生に行ってしまう
+ *      （代表はオーナーが先頭。2026-10-28 に trainer 優先から改めた・notifiableStaffOrder）
  *   2. 画面だけ隠して DB が通す（隠すのは使い勝手のため。止めているのは DB）
  *   3. 制限を読むために「読む」側まで止める（予約・顧客・記録が見えなくなる）
  *   4. 権限を今まで通りのスタッフが自分で戻せる（オーナーだけが変えられること）
@@ -25,6 +26,7 @@ import {
   LIMITED_HIDDEN_TABS, canOpenTab, isLimitedStaffRole, notifiableStaff, parseStaffAccess, withAssignedStaff,
 } from "@/lib/staffAccess";
 import { fetchTenantStaff, type TenantStaff } from "@/lib/tenantStaff";
+import type { BookingMenu } from "@/lib/bookingMenus";
 import { fetchMyTenantStaffIds } from "@/lib/tenantHelper";
 import TrainerSidebar from "@/components/trainer/TrainerSidebar";
 import StaffAccountSettings from "@/components/trainer/StaffAccountSettings";
@@ -90,6 +92,7 @@ const view = {
   tenant: null as Tenant | null,
   isLimitedStaff: false,
   staff: [] as TenantStaff[],
+  menus: [] as BookingMenu[],
   user: { id: "owner-1", email: "owner@example.com" } as { id: string; email: string },
 };
 
@@ -106,6 +109,9 @@ vi.mock("@/hooks/useTenant", () => ({
 }));
 vi.mock("@/hooks/useTenantStaff", () => ({
   useTenantStaff: () => ({ staff: view.staff, loading: false, refetch: vi.fn() }),
+}));
+vi.mock("@/hooks/useBookingMenus", () => ({
+  useBookingMenus: () => ({ menus: view.menus, loading: false, refetch: vi.fn() }),
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: view.user }) }));
 vi.mock("@/components/DeleteAccountButton", () => ({ default: () => <div data-testid="delete-account" /> }));
@@ -128,6 +134,7 @@ beforeEach(() => {
   view.tenant = makeTenant();
   view.isLimitedStaff = false;
   view.staff = [];
+  view.menus = [];
   view.user = { id: "owner-1", email: "owner@example.com" };
 });
 afterEach(cleanup);
@@ -178,7 +185,7 @@ describe("インストラクターかどうかの判定", () => {
 // ── 通知の宛先・スタッフ一覧 ─────────────────────────────────────────────
 describe("通知の宛先（fetchMyTenantStaffIds）", () => {
   it("🔴 先に参加したインストラクターがいても、代表（先頭）はオーナーのまま", () => {
-    // trainer 優先の並びなので、外さないとインストラクターが先頭＝代表の宛先になる
+    // インストラクターは宛先（ids）に入れない。自分が担当の予約の通知だけ別に届ける
     db.members = [
       { user_id: "inst", role: "trainer", joined_at: "2026-10-28", staff_access: "limited" },
       { user_id: "owner", role: "owner", joined_at: "2025-01-01", staff_access: "full" },
@@ -186,13 +193,13 @@ describe("通知の宛先（fetchMyTenantStaffIds）", () => {
     return expect(fetchMyTenantStaffIds()).resolves.toEqual(["owner"]);
   });
 
-  it("今まで通りのスタッフは今まで通り先頭（trainer 優先）", async () => {
+  it("🔴 代表（先頭）はオーナー。今まで通りのスタッフはその後ろ（2026-10-28 に trainer 優先から改めた）", async () => {
     db.members = [
       { user_id: "staff", role: "trainer", joined_at: "2026-01-01", staff_access: "full" },
       { user_id: "inst", role: "trainer", joined_at: "2026-10-28", staff_access: "limited" },
       { user_id: "owner", role: "owner", joined_at: "2025-01-01", staff_access: "full" },
     ];
-    expect(await fetchMyTenantStaffIds()).toEqual(["staff", "owner"]);
+    expect(await fetchMyTenantStaffIds()).toEqual(["owner", "staff"]);
   });
 
   it("列の無い環境では列を外して読み直す（全員が宛先＝今まで通り）", async () => {
@@ -201,9 +208,9 @@ describe("通知の宛先（fetchMyTenantStaffIds）", () => {
       { user_id: "staff", role: "trainer", joined_at: "2026-01-01" },
       { user_id: "owner", role: "owner", joined_at: "2025-01-01" },
     ];
-    expect(await fetchMyTenantStaffIds()).toEqual(["staff", "owner"]);
-    expect(db.selects).toContain("user_id, role, joined_at, staff_access");
-    expect(db.selects).toContain("user_id, role, joined_at");
+    expect(await fetchMyTenantStaffIds()).toEqual(["owner", "staff"]);
+    expect(db.selects).toContain("user_id, role, joined_at, display_name, staff_access");
+    expect(db.selects).toContain("user_id, role, joined_at, display_name");
   });
 });
 
@@ -255,6 +262,12 @@ describe("メニュー（TrainerSidebar）", () => {
   });
 });
 
+// 予約メニュー（同じ先生がヨガとマシンピラティスの両方を担当する形・宗本さんのジム）
+const MENU_TRAINING: BookingMenu = { id: "m-train", name: "Menu-Training", staff_user_id: null, is_active: true, sort_order: 0 };
+const MENU_YOGA: BookingMenu = { id: "m-yoga", name: "Menu-Yoga", staff_user_id: "inst", is_active: true, sort_order: 1 };
+const MENU_PILATES: BookingMenu = { id: "m-pilates", name: "Menu-Pilates", staff_user_id: "inst", is_active: true, sort_order: 2 };
+const MENU_STRETCH: BookingMenu = { id: "m-stretch", name: "Menu-Stretch", staff_user_id: null, is_active: true, sort_order: 3 };
+
 describe("インストラクターの「アカウント」画面", () => {
   it("ジム名・メール・役割・ログアウト・アカウントの削除だけ", () => {
     view.isLimitedStaff = true;
@@ -269,6 +282,18 @@ describe("インストラクターの「アカウント」画面", () => {
     expect(within(page).getByTestId("delete-account")).toBeInTheDocument();
     fireEvent.click(within(page).getByRole("button", { name: i18n.t("settings.logout") }));
     expect(onSignOut).toHaveBeenCalledTimes(1);
+    // 担当しているメニューが無ければ、その行は出さない
+    expect(within(page).queryByTestId("my-menus")).toBeNull();
+  });
+
+  it("自分が担当している予約メニューを出す（同じ先生が2つのメニューを持つ組み合わせ・オフのものは出さない）", () => {
+    view.isLimitedStaff = true;
+    view.user = { id: "inst", email: "inst@example.com" };
+    view.menus = [MENU_TRAINING, MENU_YOGA, MENU_PILATES, { ...MENU_STRETCH, staff_user_id: "inst", is_active: false }];
+    render(<StaffAccountSettings onSignOut={vi.fn()} />);
+    expect(screen.getByTestId("my-menus")).toHaveTextContent(
+      i18n.t("staff.menusLabel", { names: [MENU_YOGA.name, MENU_PILATES.name].join("・") }),
+    );
   });
 });
 
@@ -315,6 +340,22 @@ describe("スタッフ管理（TrainerStaffManager・オーナー）", () => {
     await screen.findByTestId("staff-invite-staff");
     expect(screen.queryByTestId("staff-invite-instructor")).toBeNull();
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
+  });
+
+  it("スタッフごとに担当している予約メニューを出す（1人が2つのメニューを持つ組み合わせが一目で分かる）", async () => {
+    view.menus = [
+      MENU_TRAINING,
+      { ...MENU_YOGA, staff_user_id: "i-1" },
+      { ...MENU_PILATES, staff_user_id: "i-1" },
+      { ...MENU_STRETCH, staff_user_id: "t-1", is_active: false },
+    ];
+    render(<TrainerStaffManager />);
+    await screen.findByTestId("staff-invite-instructor");
+    // オフのメニュー（Stretch）は数えない＝Taro には出ない。担当のいないメニュー（Training）は誰にも出ない
+    const lines = screen.getAllByTestId("staff-menus");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toHaveTextContent(i18n.t("staff.menusLabel", { names: "Menu-Yoga・Menu-Pilates" }));
+    expect(screen.getByText("Hanako").closest("li")).toContainElement(lines[0]);
   });
 
   it("オーナーでなければ（コードが返らない）何も出さない", async () => {

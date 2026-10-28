@@ -24,11 +24,19 @@
 bookings AFTER INSERT (notify_booking_created)
   → booking_notify_log に記録（actor_user_id = auth.uid()）
   → net.http_post → notify-new-booking（x-cron-secret、body は booking_id/log_id だけ）
-      → 店宛メール（new-booking-notification / _resolve_trainer_）
+      → 店宛メール（new-booking-notification / _resolve_trainer_）。宛先は代表＝オーナー（2026-10-28〜）
+      → 予約の担当（インストラクターを含む）にも同じメール（2026-10-28〜。代表と同じ人・自分で入れた代理予約は除く）
       → お客様宛の受付確認（booking-confirmation / _resolve_user_・gymNote 込み）
-      → プッシュ（自己予約のみ。スタッフ全員＋本人。10分窓で定期予約を1回に畳む）
+      → プッシュ（10分窓で定期予約を1回に畳む）
+          自己予約: スタッフ全員＋本人＋予約の担当
+          代理予約（2026-10-28〜）: 予約の担当＋（オーナー以外が入れたら）オーナー − 入れた本人
       → booking_notify_log.dispatched_at / last_error を更新
 ```
+
+代理予約のプッシュは以前は無かった（店が自分の操作の通知を受ける意味が薄い）。2026-10-28 に
+「先生の担当の予約をオーナーが入れた」「先生が入れた予約をオーナーが知る」ために足した。
+規則はクライアントの `staffChangeRecipients`（`src/lib/staffAccess.ts`）と同じ。
+誰に何が届くかの全体は `mem/features/instructor-staff.md`「通知」。
 
 - **トリガーは EXCEPTION で全部握りつぶす**（通知の失敗が予約を巻き添えにしない）
 - vault の `project_functions_url` / `cron_secret` を使う（メッセージ通知と同じ。

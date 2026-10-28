@@ -254,7 +254,7 @@ async function performCancel(
   }
   if (!updated) return { cancelled: false, alreadyCancelled: true };
 
-  // 3) トレーナーへ通知 (push + LINE)。宛先は trainer 優先、次に owner。
+  // 3) トレーナーへ通知 (push + LINE)。宛先は owner 優先、次に trainer（インストラクターは除く）。
   const { data: staff } = await admin
     .from("tenant_members")
     .select("user_id, role")
@@ -264,7 +264,7 @@ async function performCancel(
     .neq("staff_access", "limited") // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
     .order("joined_at", { ascending: true });
   const staffRows = staff ?? [];
-  const trainerId = (staffRows.find((m: any) => m.role === "trainer") ?? staffRows[0])?.user_id ?? null;
+  const trainerId = (staffRows.find((m: any) => m.role === "owner") ?? staffRows[0])?.user_id ?? null; // 代表はオーナー（2026-10-28・宗本さん「オーナーは全ての通知を受け取る」）
   if (trainerId) {
     await invokeFn("send-push-notification", {
       user_ids: [trainerId],

@@ -90,6 +90,7 @@ const link = `${getWebOrigin()}/join/${code}`;
   `get_trainer_ids()[0]` だとお客様のメッセージが別ジムに飛び、自ジムのオーナーに
   届かなかった。`tenantHelper.fetchMyTenantTrainerId()`（自テナントの trainer優先→owner を
   tenant_members から解決。SELECT RLS「Members can view same tenant members」で読める）に置換。
+  （2026-10-28 から **owner 優先**・インストラクター除く。`mem/features/instructor-staff.md`「通知」）
 - **修正済み（2026-07・続き）**: 予約/キャンセル/リスケの**トレーナー通知**も同様に置換。
   `tenantHelper.fetchMyTenantStaffIds()`（自テナントの trainer→owner 全員、joined_at順・
   先頭が代表）を追加し、以下を移行した:

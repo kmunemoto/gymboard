@@ -1867,6 +1867,7 @@ export type Database = {
           plan_id: string | null
           plan_start_date: string | null
           role: string
+          staff_access: string
           status: string | null
           suspended_from: string | null
           suspended_until: string | null
@@ -1885,6 +1886,7 @@ export type Database = {
           plan_id?: string | null
           plan_start_date?: string | null
           role?: string
+          staff_access?: string
           status?: string | null
           suspended_from?: string | null
           suspended_until?: string | null
@@ -1903,6 +1905,7 @@ export type Database = {
           plan_id?: string | null
           plan_start_date?: string | null
           role?: string
+          staff_access?: string
           status?: string | null
           suspended_from?: string | null
           suspended_until?: string | null
@@ -2019,6 +2022,35 @@ export type Database = {
             foreignKeyName: "tenant_plans_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_staff_invites: {
+        Row: {
+          instructor_code: string | null
+          staff_code: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          instructor_code?: string | null
+          staff_code?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          instructor_code?: string | null
+          staff_code?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_staff_invites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -2578,6 +2610,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: string
       }
+      get_my_instructor_invite_code: { Args: never; Returns: string }
       get_my_staff_invite_code: { Args: never; Returns: string }
       get_my_tenant_id: { Args: never; Returns: string }
       get_my_tenant_invite_code: { Args: never; Returns: string }
@@ -2695,6 +2728,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      is_limited_staff: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_tenant_member: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
@@ -2769,6 +2806,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      regenerate_instructor_invite_code: { Args: never; Returns: string }
       regenerate_staff_invite_code: { Args: never; Returns: string }
       remove_staff_member: { Args: { p_user_id: string }; Returns: undefined }
       resolve_booking_capacity: {

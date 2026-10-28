@@ -104,7 +104,8 @@ const makeComparator = (
 const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
   const { t } = useTranslation();
   const { profiles, loading, setProfiles } = useAllCustomerProfiles();
-  const { plans: tenantPlans } = useTenant();
+  // お客様の削除はオーナー（と今まで通りのスタッフ）だけ。インストラクターには出さない（DB も断る）
+  const { plans: tenantPlans, isLimitedStaff } = useTenant();
   const [search, setSearch] = useState("");
   const [genderTab, setGenderTab] = useState<"all" | "male" | "female">("all");
   const [sortMode, setSortMode] = useState<SortMode>(() => {
@@ -280,13 +281,15 @@ const TrainerClientList = ({ onSelectClient }: TrainerClientListProps) => {
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <div className="flex items-center gap-1">
-              <button
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={(e) => { e.stopPropagation(); setDeleteTarget(c.user_id); }}
-                title={t("clientList.deleteAria")}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {!isLimitedStaff && (
+                <button
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(c.user_id); }}
+                  title={t("clientList.deleteAria")}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
           </div>

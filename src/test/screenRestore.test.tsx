@@ -117,7 +117,8 @@ describe("店のタブとカルテ", () => {
   it("一覧と TrainerView の描き分けがズレていない", () => {
     const view = readFileSync("src/components/trainer/TrainerView.tsx", "utf8");
     for (const tab of TRAINER_TABS) {
-      expect(view, `TrainerView が ${tab} を描いていない`).toContain(`tab === "${tab}"`);
+      // 描き分けは shownTab（インストラクターが開けないタブをホームに倒したもの・2026-10-28）で見る
+      expect(view, `TrainerView が ${tab} を描いていない`).toContain(`shownTab === "${tab}"`);
     }
   });
 });

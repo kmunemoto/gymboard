@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { TENANT_COL_VARIANTS, normalizeTenantRow } from "@/lib/tenantColumns";
+import { isLimitedStaffRole, parseStaffAccess, type StaffAccess } from "@/lib/staffAccess";
 
 // 型の定義は src/lib/tenantTypes.ts に移した。
 //
@@ -41,6 +42,8 @@ export interface TenantMembership {
   tenant: Tenant;
   role: "owner" | "trainer" | "customer";
   plan_id: string | null;
+  /** スタッフの権限（tenant_members.staff_access・2026-10-28）。インストラクターは limited（src/lib/staffAccess.ts） */
+  staff_access: StaffAccess;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,8 +126,23 @@ async function fetchTenant(userId: string): Promise<void> {
       .order("sort_order");
     if (store.userId !== userId) return;
     const all = planRows || [];
+    // スタッフの権限はスタッフ（trainer）だけ読む。列の無い環境・読めないときは今まで通り（full）。
+    // 本体の取得に混ぜないのは、列が無い環境で本体ごと落ちてジムが読めなくなるのを防ぐため
+    let staffAccess: StaffAccess = "full";
+    if ((mem as any).role === "trainer") {
+      const { data: acc, error: accErr } = await supabase
+        .from("tenant_members")
+        .select("staff_access")
+        .eq("tenant_id", tenant.id)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      if (!accErr) staffAccess = parseStaffAccess((acc as { staff_access?: unknown } | null)?.staff_access);
+      if (store.userId !== userId) return;
+    }
     setStore({
-      membership: { tenant, role: (mem as any).role, plan_id: (mem as any).plan_id },
+      membership: { tenant, role: (mem as any).role, plan_id: (mem as any).plan_id, staff_access: staffAccess },
       plans: all.filter((p) => (p as { is_active?: boolean }).is_active !== false),
       allPlans: all,
       loading: false,
@@ -190,6 +208,8 @@ export function useTenant() {
     membership,
     tenant: membership?.tenant ?? null,
     role: membership?.role ?? null,
+    /** インストラクター（制限付きスタッフ）か。店の運営まわりを出さない（src/lib/staffAccess.ts） */
+    isLimitedStaff: isLimitedStaffRole(membership?.role, membership?.staff_access),
     plans: isCurrentUser ? store.plans : [],
     /** 非公開も含む全プラン。お客様自身の契約プランの解決はこちら（TenantStore のコメント参照） */
     allPlans: isCurrentUser ? store.allPlans : [],

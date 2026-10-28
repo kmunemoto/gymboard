@@ -275,7 +275,8 @@ describe("配線: クライアント・エッジ関数", () => {
   it("TrainerClientDetail: 固定スイッチは日付なしでは操作できない", () => {
     const src = readFileSync("src/components/trainer/TrainerClientDetail.tsx", "utf8");
     expect(src).toMatch(/checked=\{cycleStartPinned\}/);
-    expect(src).toMatch(/disabled=\{!cycleStartDate\}/);
+    // インストラクター（制限付きスタッフ）はそもそも操作できない（DB も GB005 で断る・2026-10-28）
+    expect(src).toMatch(/disabled=\{!cycleStartDate(?: \|\| isLimitedStaff)?\}/);
     // 日付を消したら固定も解除（日付なしの固定を残さない）
     expect(src).toMatch(/const clearPin = !newDate && cycleStartPinned;/);
   });

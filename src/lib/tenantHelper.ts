@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { notifiableStaff } from "@/lib/staffAccess";
 
 /**
  * Get the current user's active tenant_id directly (no React hook).
@@ -39,14 +40,20 @@ export async function fetchMyTenantId(): Promise<string | null> {
 export async function fetchMyTenantStaffIds(): Promise<string[]> {
   const tenantId = await fetchMyTenantId();
   if (!tenantId) return [];
-  const { data } = await supabase
-    .from("tenant_members")
-    .select("user_id, role, joined_at")
-    .eq("tenant_id", tenantId)
-    .in("role", ["trainer", "owner"])
-    .eq("status", "active")
-    .order("joined_at", { ascending: true });
-  const rows = (data ?? []) as { user_id: string; role: string }[];
+  // 🔴 インストラクター（staff_access = 'limited'）は外す（2026-10-28）。外さないと
+  //    trainer 優先の並びで先頭になり、店宛ての通知・お客様のチャットの宛先がオーナーから
+  //    インストラクターに移ってしまう。権限の列が無い環境では列を外して読み直す（今まで通り）
+  const query = (cols: string) =>
+    supabase
+      .from("tenant_members")
+      .select(cols)
+      .eq("tenant_id", tenantId)
+      .in("role", ["trainer", "owner"])
+      .eq("status", "active")
+      .order("joined_at", { ascending: true });
+  const first = await query("user_id, role, joined_at, staff_access");
+  const { data } = first.error ? await query("user_id, role, joined_at") : first;
+  const rows = notifiableStaff((data ?? []) as unknown as { user_id: string; role: string; staff_access?: unknown }[]);
   const trainers = rows.filter((m) => m.role === "trainer");
   const owners = rows.filter((m) => m.role === "owner");
   return [...new Set([...trainers, ...owners].map((m) => m.user_id))];

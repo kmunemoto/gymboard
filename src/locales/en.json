@@ -2176,7 +2176,15 @@
     "joinFailed": "Could not join",
     "joinedTitle": "You joined {{name}} as staff",
     "joinedNote": "You can now be assigned to bookings.",
-    "errorStaffOffShift": "That trainer isn't on shift at that time. Please choose another trainer or another day."
+    "errorStaffOffShift": "That trainer isn't on shift at that time. Please choose another trainer or another day.",
+    "roleInstructor": "Instructor",
+    "instructorInviteTitle": "Add an instructor",
+    "instructorInviteDesc": "People who join with this code (or link) can use bookings, customers, messages, and exercises only. They cannot change the gym settings, announcements, videos, or delete customers.",
+    "instructorSwitch": "Instructor (cannot change gym settings)",
+    "instructorSwitchAria": "Make {{name}} an instructor",
+    "accessLimitedToast": "{{name}} is now an instructor",
+    "accessFullToast": "{{name}} is now staff",
+    "errorAccess": "Failed to change permissions"
   },
   "hooks": {
     "loginInfoNotFound": "Login information not found",
@@ -2238,7 +2246,9 @@
     "mNotifications": "Alerts",
     "mGymSettings": "Settings",
     "videos": "Videos",
-    "mVideos": "Videos"
+    "mVideos": "Videos",
+    "account": "Account",
+    "mAccount": "Account"
   },
   "customerView": {
     "purchaseComplete": "Purchase complete!"
@@ -3020,5 +3030,9 @@
     "title": "Awaiting next booking",
     "recent": "Last visit {{date}} · no next booking",
     "new": "New · no booking yet"
+  },
+  "staffAccount": {
+    "title": "Account",
+    "ownerOnly": "Only the owner can change the gym settings, announcements, videos, and delete customers."
   }
 }

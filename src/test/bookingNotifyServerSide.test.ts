@@ -148,6 +148,7 @@ describe("記録簿（booking_notify_log）と付随トリガー", () => {
       "member_payments", "counseling_responses",
       "monthly_reports", "progress_photos", "user_measurements", "meals",
       "notification_settings", "announcements", "migration_user_map", "tenant_plans",
+      "tenant_staff_invites", // 2026-10-28 スタッフ・インストラクターの招待コード
       "tenant_members", "tenants",
     ];
     expect(tables).toEqual(expected);
@@ -200,7 +201,8 @@ describe("Edge Function（notify-new-booking）", () => {
   it("プッシュは自己予約のみ（代理予約は従来もプッシュ無し）・宛先はスタッフ＋本人", () => {
     expect(edgeFn).toMatch(/actorUserId !== null && actorUserId === booking\.user_id/);
     expect(edgeFn).toMatch(/if \(isSelfBooking\)/);
-    expect(edgeFn).toContain("[...new Set([...staffIds, booking.user_id])]");
+    // 2026-10-28〜 予約の担当（インストラクターを含む）にも届ける（src/test/instructorStaff.test.tsx）
+    expect(edgeFn).toContain("[...new Set([...staffIds, booking.user_id, ...(booking.staff_user_id ? [booking.staff_user_id as string] : [])])]");
   });
 
   it("代表スタッフの順序は trainer → owner（クライアントの fetchMyTenantStaffIds と同じ）", () => {

@@ -121,7 +121,8 @@ Deno.serve(async (req) => {
         .select("user_id")
         .eq("tenant_id", t.id)
         .eq("status", "active")
-        .in("role", ["owner", "trainer"]);
+        .in("role", ["owner", "trainer"])
+        .neq("staff_access", "limited"); // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
       const staffIds = (members || []).map((mm: any) => mm.user_id as string);
       if (staffIds.length === 0) {
         skipped++;

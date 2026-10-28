@@ -2176,7 +2176,15 @@
     "joinFailed": "参加できませんでした",
     "joinedTitle": "「{{name}}」にスタッフとして参加しました",
     "joinedNote": "予約の担当として選ばれるようになります。",
-    "errorStaffOffShift": "そのトレーナーはその時間帯のシフトに入っていません。別のトレーナーか別の曜日をお選びください。"
+    "errorStaffOffShift": "そのトレーナーはその時間帯のシフトに入っていません。別のトレーナーか別の曜日をお選びください。",
+    "roleInstructor": "インストラクター",
+    "instructorInviteTitle": "インストラクターを追加",
+    "instructorInviteDesc": "このコード（またはリンク）から参加した人は、予約・顧客・メッセージ・種目だけを使えます。お店の設定・お知らせ・動画・お客様の削除は触れません。",
+    "instructorSwitch": "インストラクター（お店の設定は触れない）",
+    "instructorSwitchAria": "{{name}}をインストラクターにする",
+    "accessLimitedToast": "{{name}}をインストラクターにしました",
+    "accessFullToast": "{{name}}をスタッフにしました",
+    "errorAccess": "権限の変更に失敗しました"
   },
   "hooks": {
     "loginInfoNotFound": "ログイン情報が見つかりません",
@@ -2238,7 +2246,9 @@
     "mNotifications": "通知",
     "mGymSettings": "設定",
     "videos": "動画管理",
-    "mVideos": "動画"
+    "mVideos": "動画",
+    "account": "アカウント",
+    "mAccount": "アカウント"
   },
   "customerView": {
     "purchaseComplete": "購入が完了しました！"
@@ -3020,5 +3030,9 @@
     "title": "次の予約待ち",
     "recent": "最終来店 {{date}}・次の予約なし",
     "new": "新規・まだ予約がありません"
+  },
+  "staffAccount": {
+    "title": "アカウント",
+    "ownerOnly": "お店の設定・お知らせ・動画・お客様の削除は、オーナーだけが変更できます。"
   }
 }

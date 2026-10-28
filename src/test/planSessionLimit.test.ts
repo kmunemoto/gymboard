@@ -375,8 +375,12 @@ describe("🔴 GB004 の判定材料（profiles の契約3列）を本人が書�
     expect(planSql).toMatch(/EXECUTE FUNCTION public\.guard_profile_plan_fields\(\)/);
   });
 
-  it("🔴 対象は本人の自己更新だけ（店側・サービスロールは素通し）", () => {
-    expect(guardProfile).toMatch(/IF v_actor IS NULL OR v_actor IS DISTINCT FROM NEW\.user_id THEN\s*\n\s*RETURN NEW;/);
+  it("🔴 対象は本人の自己更新とインストラクターだけ（店側・サービスロールは素通し）", () => {
+    // サービスロールは素通し
+    expect(guardProfile).toMatch(/IF v_actor IS NULL THEN\s*\n\s*RETURN NEW;/);
+    // 店側（インストラクター以外）が他人の行を触るのは素通し。
+    // インストラクター（staff_access = 'limited'）はお客様本人と同じ扱い（2026-10-28・instructorStaff.test.tsx）
+    expect(guardProfile).toMatch(/IF NOT v_limited THEN\s*\n\s*IF v_actor IS DISTINCT FROM NEW\.user_id THEN\s*\n\s*RETURN NEW;/);
     // 店側の人間が自分自身の行を触るのは許す。
     // ⚠️ 所属は profiles.tenant_id（NULL の会員がいる・本人が書ける）ではなく
     //    tenant_members から引くこと。

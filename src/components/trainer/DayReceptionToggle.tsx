@@ -21,6 +21,8 @@ interface Props {
   /** 上限を戻す（「上限なし」をタップ） */
   onRestoreCap: (dateKey: string) => void;
   compact?: boolean;
+  /** 見せるだけで押させない。インストラクター（制限付きスタッフ）は受付を止められない（DB も断る） */
+  readOnly?: boolean;
 }
 
 /**
@@ -55,10 +57,11 @@ interface Props {
  * ここの分岐の順番も**それに合わせてある**（closed を先に見る）。
  */
 const DayReceptionToggle = ({
-  dateKey, closed, bookedCount, dailyLimit, uncapped, saving,
-  onClose, onReopen, onLiftCap, onRestoreCap, compact,
+  dateKey, closed, bookedCount, dailyLimit, uncapped, saving: busy,
+  onClose, onReopen, onLiftCap, onRestoreCap, compact, readOnly = false,
 }: Props) => {
   const { t } = useTranslation();
+  const saving = busy || readOnly;
   const size = compact ? "text-[10px] px-1.5 py-0.5" : "text-[11px] px-2 py-1";
 
   // 🔴 上限で自動的に閉まっている日。押すと「この日だけ上限なし」になる。

@@ -2176,7 +2176,15 @@
     "joinFailed": "加入失败",
     "joinedTitle": "已作为员工加入“{{name}}”",
     "joinedNote": "今后可以被指定为预约的负责人。",
-    "errorStaffOffShift": "该教练在这个时间段没有排班。请选择其他教练或其他日期。"
+    "errorStaffOffShift": "该教练在这个时间段没有排班。请选择其他教练或其他日期。",
+    "roleInstructor": "教练",
+    "instructorInviteTitle": "添加教练",
+    "instructorInviteDesc": "通过此代码（或链接）加入的人只能使用预约、顾客、消息和动作项目，无法更改店铺设置、公告、视频，也无法删除顾客。",
+    "instructorSwitch": "教练（不能更改店铺设置）",
+    "instructorSwitchAria": "将{{name}}设为教练",
+    "accessLimitedToast": "已将{{name}}设为教练",
+    "accessFullToast": "已将{{name}}设为员工",
+    "errorAccess": "权限更改失败"
   },
   "hooks": {
     "loginInfoNotFound": "未找到登录信息",
@@ -2238,7 +2246,9 @@
     "mNotifications": "通知",
     "mGymSettings": "设置",
     "videos": "视频管理",
-    "mVideos": "视频"
+    "mVideos": "视频",
+    "account": "账户",
+    "mAccount": "账户"
   },
   "customerView": {
     "purchaseComplete": "购买已完成！"
@@ -3020,5 +3030,9 @@
     "title": "等待下次预约",
     "recent": "最近到店 {{date}} · 无下次预约",
     "new": "新客户 · 尚无预约"
+  },
+  "staffAccount": {
+    "title": "账户",
+    "ownerOnly": "店铺设置、公告、视频以及删除顾客，只有店主可以操作。"
   }
 }

@@ -411,7 +411,8 @@ Deno.serve(async (req) => {
         .from("tenant_members")
         .select("user_id, role")
         .eq("tenant_id", trial.tenant_id)
-        .in("role", ["trainer", "owner"]);
+        .in("role", ["trainer", "owner"])
+        .neq("staff_access", "limited"); // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
       user_ids = (members ?? []).map((m: { user_id: string }) => m.user_id);
       if (user_ids.length === 0) {
         return new Response(JSON.stringify({ sent: 0, message: "No trainers" }), {

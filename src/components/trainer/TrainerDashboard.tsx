@@ -68,7 +68,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   const { bookings, loading: bookingsLoading } = useAllBookings();
   const { unreadCount: counselingUnread, responses: counselingResponses, isLoading: counselingLoading } = useCounselingResponses();
   const { profile: trainerProfile } = useProfile();
-  const { plans: tenantPlans, tenant, refetch: refetchTenant } = useTenant();
+  const { plans: tenantPlans, tenant, refetch: refetchTenant, isLimitedStaff } = useTenant();
   const trainerName = trainerProfile?.display_name || t("dashboard.trainerFallback");
   // ジム設定で「フォローが必要な顧客」の表示をオフにできる（既定は表示）。
   const showRetentionAlerts = tenant?.show_retention_alerts !== false;
@@ -76,13 +76,14 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
   const showStatTodaySessions = tenant?.show_stat_today_sessions !== false;
   const showStatActiveClients = tenant?.show_stat_active_clients !== false;
   const showStatMonthSessions = tenant?.show_stat_month_sessions !== false;
-  const showStatMonthRevenue = tenant?.show_stat_month_revenue !== false;
+  // 売上・入金・更新は店の運営なので、インストラクター（制限付きスタッフ）には出さない（src/lib/staffAccess.ts）
+  const showStatMonthRevenue = tenant?.show_stat_month_revenue !== false && !isLimitedStaff;
   // ホーム画面の各セクション。同じくジムごとにON/OFF（既定は全て表示）。
   const showTodaySchedule = tenant?.show_today_schedule !== false;
   const showTrialFollowUpAlert = TRIAL_BOOKING_ENABLED && tenant?.show_trial_followup_alert !== false;
-  const showRenewalAlerts = tenant?.show_renewal_alerts !== false;
+  const showRenewalAlerts = tenant?.show_renewal_alerts !== false && !isLimitedStaff;
   const showCounselingResponses = tenant?.show_counseling_responses !== false;
-  const showRevenueChart = tenant?.show_revenue_chart !== false;
+  const showRevenueChart = tenant?.show_revenue_chart !== false && !isLimitedStaff;
   const showUtilizationHeatmap = tenant?.show_utilization_heatmap !== false;
 
   // 体験フォロー待ち件数（体験CRM）。follow_up_status 列がマイグレーション未適用の環境では
@@ -507,7 +508,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
             オンボーディングを通った新規店は既に答えているのでここには出ない。
             列が読めない環境（migration 未適用）は undefined になり、やはり出ない
             （保存できないのに聞き続けないため）。 */}
-        {tenant?.booking_capacity_confirmed_at === null && (
+        {tenant?.booking_capacity_confirmed_at === null && !isLimitedStaff && (
           <section>
             <Card className="border-primary/30">
               <CardContent className="p-3 sm:p-4">
@@ -641,7 +642,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
              督促の根拠として出しているわけではない（画面の文言も t("member.unrecorded*") 側で統一）。
           記録を1件も付けていないジムには出さない。全員が並ぶだけで意味が無いため。
         */}
-        {hasAnyPaymentRecord && unrecordedThisMonth.length > 0 && (
+        {hasAnyPaymentRecord && unrecordedThisMonth.length > 0 && !isLimitedStaff && (
           <section>
             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Banknote className="w-3.5 h-3.5 text-warning" />

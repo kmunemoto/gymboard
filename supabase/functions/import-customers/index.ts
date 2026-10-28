@@ -25,7 +25,7 @@
 // 一括登録が有料プランの席を大量に消費する操作だから。スタッフにも開くなら、
 // 画面の出し分けとここの両方を同時に変えること（片方だけだと 403 になる）。
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { verifyCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
  *    消せなかったものはログに残す（消せないこと自体で取り込みを失敗にはしない）。
  */
 async function cleanUp(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   userIds: readonly string[],
 ): Promise<void> {
   for (const id of userIds) {

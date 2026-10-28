@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 // OAuth 完了後の遷移先。
 // Edge Function から HTML を返すと、この環境ではブラウザが text/plain 扱いで
@@ -18,7 +18,7 @@ function redirect(path: string): Response {
  * Returns the bound user_id, or null if invalid.
  */
 async function consumeOauthState(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   nonce: string,
   provider: string,
 ): Promise<string | null> {

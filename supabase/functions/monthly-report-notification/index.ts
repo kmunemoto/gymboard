@@ -56,13 +56,14 @@ Deno.serve(async (req) => {
     const periodLabel = `${fmtJa(periodStart)} 〜 ${fmtJa(periodEnd)}`;
 
     // Fetch all customers with LINE linked
-    const { data: customers, error: profErr } = await supabase
+    const { data: customersData, error: profErr } = await supabase
       .from("profiles")
       .select("user_id, display_name, line_user_id, cycle_start_date")
       .not("line_user_id", "is", null);
 
     if (profErr) throw profErr;
-    if (!customers || customers.length === 0) {
+    const customers = (customersData ?? []) as Array<{ user_id: string; display_name: string | null; line_user_id: string | null; cycle_start_date: string | null }>;
+    if (customers.length === 0) {
       return new Response(JSON.stringify({ skipped: true, reason: "no customers with LINE" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

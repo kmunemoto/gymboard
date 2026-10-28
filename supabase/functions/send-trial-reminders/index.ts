@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   // 予約に紐づくジムの情報（名前・住所・連絡先・サイト）をまとめて1回で引き、
   // メール本文にそのジムの情報を差し込む。予約1件ごとに問い合わせない。
   const tenantIds = [...new Set((bookings ?? []).map((b: any) => b.tenant_id).filter(Boolean))]
-  const tenantMap = new Map<string, { gym_name: string | null; address: string | null; email: string | null; website_url: string | null; trial_price_yen: number | null }>()
+  const tenantMap = new Map<string, { gym_name: string | null; address: string | null; email: string | null; website_url: string | null; trial_price_yen: number | null; reminder_email_note: string | null; trial_email_cancel_note: string | null }>()
   if (tenantIds.length > 0) {
     const { data: tenantRows, error: tenantErr } = await supabase
       .from('tenants')

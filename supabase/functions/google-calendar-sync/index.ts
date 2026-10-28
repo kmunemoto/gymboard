@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller, hasRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -21,7 +21,7 @@ function json(body: unknown, status = 200) {
  * - create / delete: 予約行(bookings / trial_bookings)の tenant_id。
  */
 async function resolveTenantId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   action: string,
   booking_id: string | undefined,
   is_trial: boolean | undefined,
@@ -55,7 +55,7 @@ async function resolveTenantId(
  *   連携済みでも予約が同期されない不具合になっていた）
  */
 async function getTenantCalendarToken(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   tenantId: string,
 ): Promise<any | null> {
   const { data: staff } = await supabase

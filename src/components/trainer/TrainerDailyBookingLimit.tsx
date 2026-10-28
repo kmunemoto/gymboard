@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { weeklyPeakEnabled, weeklyPeakSaveValues } from "@/lib/weeklyPeak";
+import { minBaseLimit, parseWeekdayLimits, weekdayLimitsToJson } from "@/lib/weekdayLimits";
+import WeekdayLimitFields from "@/components/trainer/WeekdayLimitFields";
 
 /** 「上限なし」を表す Select の値。空文字は Radix の Select が受け付けないため文字列を使う。 */
 const NO_LIMIT = "__none__";
@@ -29,9 +31,10 @@ const toSelectValue = (n: number | null | undefined): string =>
  * 実店舗の要望（2026-09-01 宗本さん）:「1日に見られる人数に限りがある。
  * 上限に達したら、枠が空いていてもその日の受付を止めたい」。
  *
- * 🔴 上限は毎日おなじ1つの数字。曜日別には持たない（2026-09-01 にそう決めた）。
- *    曜日で変えたい日は、予定表からその日を手で止めれば同じことができる。
- *    設定を増やすより、1つの数字＋ワンタップのほうが運用が軽い。
+ * 曜日ごとにも変えられる（`daily_booking_limit_weekdays`・2026-10-28）。2026-09-01 には
+ * 「毎日おなじ1つの数字。曜日で変えたい日は予定表から手で止める」と決めていたが、
+ * 宗本さん「曜日ごとに上限設定できる様にもして」で改めた。「曜日ごとに変える」を ON にした店だけ。
+ * 「共通」の曜日は上の1日の上限。体験込みの合計（下の数字）は全曜日同じ（確認済み）。
  *
  * 🔴 店側の代理予約には効かない。上限に達した日でも、予定表から手で入れる分は通る。
  *    最終判定は DB（`tenant_day_closed` / GB007）。
@@ -60,6 +63,8 @@ const TrainerDailyBookingLimit = () => {
   const [totalValue, setTotalValue] = useState<string>(NO_LIMIT);
   const [peakDays, setPeakDays] = useState<string>(NO_LIMIT);
   const [peakLimit, setPeakLimit] = useState<string>(NO_LIMIT);
+  const [weekdayOn, setWeekdayOn] = useState(false);
+  const [weekdays, setWeekdays] = useState<(number | null)[]>(() => Array(7).fill(null));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -73,6 +78,12 @@ const TrainerDailyBookingLimit = () => {
   }, [tenant?.daily_total_limit]);
 
   useEffect(() => {
+    const parsed = parseWeekdayLimits(tenant?.daily_booking_limit_weekdays);
+    setWeekdayOn(parsed !== null);
+    setWeekdays(parsed ?? Array(7).fill(null));
+  }, [tenant?.daily_booking_limit_weekdays]);
+
+  useEffect(() => {
     // 🔴 効いていない週の設定（人数が1日の上限以下・1日の上限なし）は「増やさない」として見せる。
     //    古い版の画面で1日の上限だけ上げると残り、そのまま見せると保存のたびに
     //    「人数を選んでください」で止まる（2026-10-26: 1日の上限5・週の設定5人/2日が残っていた）。
@@ -81,14 +92,17 @@ const TrainerDailyBookingLimit = () => {
       dailyLimit: tenant?.daily_booking_limit ?? null,
       peakLimit: tenant?.weekly_peak_limit ?? null,
       peakDays: tenant?.weekly_peak_days ?? null,
+      weekdayLimits: parseWeekdayLimits(tenant?.daily_booking_limit_weekdays),
     });
     setPeakDays(active ? toSelectValue(tenant?.weekly_peak_days) : NO_LIMIT);
     setPeakLimit(active ? toSelectValue(tenant?.weekly_peak_limit) : NO_LIMIT);
-  }, [tenant?.weekly_peak_days, tenant?.weekly_peak_limit, tenant?.daily_booking_limit]);
+  }, [tenant?.weekly_peak_days, tenant?.weekly_peak_limit, tenant?.daily_booking_limit, tenant?.daily_booking_limit_weekdays]);
 
   const memberLimit = value === NO_LIMIT ? null : parseInt(value, 10);
-  // 増やした日の人数は、会員の上限より大きいものだけ
-  const peakLimitOptions = memberLimit === null ? [] : LIMIT_OPTIONS.filter((n) => n > memberLimit);
+  const weekdayLimits = weekdayOn ? weekdays : null;
+  // 増やした日の人数は、いちばん少ない曜日の上限より大きいものだけ（曜日ごとでなければ会員の上限）
+  const minBase = minBaseLimit(memberLimit, weekdayLimits);
+  const peakLimitOptions = minBase === null ? [] : LIMIT_OPTIONS.filter((n) => n > minBase);
 
   const handleSave = async () => {
     if (!tenant) return;
@@ -99,11 +113,16 @@ const TrainerDailyBookingLimit = () => {
       next,
       peakDays === NO_LIMIT ? null : parseInt(peakDays, 10),
       peakLimit === NO_LIMIT ? null : parseInt(peakLimit, 10),
+      weekdayLimits,
     );
     if (peak === "invalid") {
       toast.error(t("closedDays.peakInvalid"));
       return;
     }
+    // 曜日ごと: OFF なら NULL（全曜日共通）。どの曜日も「共通」のままでも NULL。
+    // 使っていない店（OFF のまま・保存済みの値も無い）は列に触らない（今まで通りの書き込み）
+    const weekdayJson = weekdayLimitsToJson(weekdayLimits);
+    const touchWeekdays = weekdayOn || parseWeekdayLimits(tenant.daily_booking_limit_weekdays) !== null;
     setSaving(true);
     const { error } = await supabase
       .from("tenants")
@@ -111,6 +130,7 @@ const TrainerDailyBookingLimit = () => {
         daily_booking_limit: next,
         daily_total_limit: nextTotal,
         ...peak,
+        ...(touchWeekdays ? { daily_booking_limit_weekdays: weekdayJson } : {}),
       } as never)
       .eq("id", tenant.id);
     if (error) {
@@ -148,10 +168,18 @@ const TrainerDailyBookingLimit = () => {
               </SelectContent>
             </Select>
           </div>
+          <WeekdayLimitFields
+            enabled={weekdayOn}
+            onEnabledChange={setWeekdayOn}
+            values={weekdays}
+            onChange={setWeekdays}
+            commonLimit={memberLimit}
+            options={LIMIT_OPTIONS}
+          />
           <div className="space-y-1.5" data-testid="weekly-peak">
             <Label className="text-xs font-bold">{t("closedDays.peakLabel")}</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Select value={peakDays} onValueChange={setPeakDays} disabled={memberLimit === null}>
+              <Select value={peakDays} onValueChange={setPeakDays} disabled={minBase === null}>
                 <SelectTrigger className="h-10" aria-label={t("closedDays.peakDaysAria")}>
                   <SelectValue />
                 </SelectTrigger>
@@ -164,7 +192,7 @@ const TrainerDailyBookingLimit = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={peakLimit} onValueChange={setPeakLimit} disabled={memberLimit === null || peakDays === NO_LIMIT}>
+              <Select value={peakLimit} onValueChange={setPeakLimit} disabled={minBase === null || peakDays === NO_LIMIT}>
                 <SelectTrigger className="h-10" aria-label={t("closedDays.peakLimitAria")}>
                   <SelectValue placeholder={t("closedDays.peakLimitPlaceholder")} />
                 </SelectTrigger>
@@ -179,6 +207,7 @@ const TrainerDailyBookingLimit = () => {
               </Select>
             </div>
             <p className="text-xs text-muted-foreground">{t("closedDays.peakDesc")}</p>
+            {weekdayOn && <p className="text-xs text-muted-foreground">{t("closedDays.peakDescWeekday")}</p>}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold">{t("closedDays.totalLimitLabel")}</Label>

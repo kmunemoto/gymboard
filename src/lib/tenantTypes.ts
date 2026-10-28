@@ -101,12 +101,19 @@ export interface Tenant {
   daily_total_limit?: number | null;
   /**
    * 週（月曜〜日曜）に `weekly_peak_days` 日まで、会員の1日の上限をこの人数に増やす（2026-10-22）。
-   * その週に、この人数まで入った日が `weekly_peak_days` 日になったら、残りの日は daily_booking_limit。
+   * その週に、その曜日の上限を超えて入った日が `weekly_peak_days` 日になったら、残りの日は曜日の上限
+   * （曜日ごとの上限が無ければ daily_booking_limit。数え方は 2026-10-28 に改めた・src/lib/weeklyPeak.ts）。
    * どちらかが null なら増やさない（今まで通り）。判定は DB の `tenant_member_day_limits`。
    */
   weekly_peak_limit?: number | null;
   /** 会員の1日の上限を weekly_peak_limit に増やせる日数（週に）。null=増やさない */
   weekly_peak_days?: number | null;
+  /**
+   * 曜日ごとの会員の1日の上限（2026-10-28）。`{"0": 4, "2": 6}`（0=日曜〜6=土曜）。
+   * キーの無い曜日は daily_booking_limit。null=全曜日共通（今まで通り）。解釈は `src/lib/weekdayLimits.ts`、
+   * 判定は DB の `tenant_member_day_limits`。体験込みの合計（daily_total_limit）は全曜日同じ
+   */
+  daily_booking_limit_weekdays?: Record<string, number> | null;
   /** ジムのLINE連絡先URL。null/空なら「LINEで連絡」ボタンを表示しない */
   line_url: string | null;
   /** Googleの口コミ投稿ページURL。null/空なら口コミ依頼バナーを表示しない */

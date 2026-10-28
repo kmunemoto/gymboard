@@ -298,48 +298,46 @@ describe("インストラクターの「アカウント」画面", () => {
 });
 
 describe("スタッフ管理（TrainerStaffManager・オーナー）", () => {
+  // 「スタッフ」は 2026-10-28 になくした（宗本さん「スタッフいらない」・全部のジム）。
+  // ジム側の人はオーナーとインストラクターだけ（trainer は必ず limited）
   const STAFF: TenantStaff[] = [
     { user_id: "owner-1", display_name: "Owner", role: "owner", access: "full" },
-    { user_id: "t-1", display_name: "Taro", role: "trainer", access: "full" },
+    { user_id: "t-1", display_name: "Taro", role: "trainer", access: "limited" },
     { user_id: "i-1", display_name: "Hanako", role: "trainer", access: "limited" },
   ];
 
   beforeEach(() => {
     view.staff = STAFF;
-    db.rpc.get_my_staff_invite_code = { data: "staffcode1", error: null };
     db.rpc.get_my_instructor_invite_code = { data: "instcode99", error: null };
+    db.rpc.regenerate_instructor_invite_code = { data: "instcode42", error: null };
   });
 
-  it("スタッフ用とは別に、インストラクター用の招待コードを出す", async () => {
+  it("🔴 招待はインストラクター用だけ。スタッフ用のカードも、スタッフ用のコードの読み込みも無い", async () => {
     render(<TrainerStaffManager />);
     const card = await screen.findByTestId("staff-invite-instructor");
     expect(within(card).getByText("instcode99")).toBeInTheDocument();
-    expect(within(screen.getByTestId("staff-invite-staff")).getByText("staffcode1")).toBeInTheDocument();
-    expect(within(card).queryByText("staffcode1")).toBeNull();
+    expect(screen.queryByTestId("staff-invite-staff")).toBeNull();
+    expect(db.rpcCalls).toEqual(["get_my_instructor_invite_code"]);
   });
 
-  it("スタッフごとのスイッチ。オーナーと自分には出さない。切り替えはその人の行だけ", async () => {
+  it("🔴 スタッフ⇄インストラクターの切り替えは無い。役割はオーナーとインストラクターだけ", async () => {
     render(<TrainerStaffManager />);
     await screen.findByTestId("staff-invite-instructor");
-    const switches = screen.getAllByRole("switch");
-    expect(switches).toHaveLength(2);
-    expect(screen.getAllByText(i18n.t("staff.roleInstructor"))).toHaveLength(1);
-
-    fireEvent.click(screen.getByRole("switch", { name: i18n.t("staff.instructorSwitchAria", { name: "Taro" }) }));
-    await waitFor(() => expect(db.updates).toHaveLength(1));
-    expect(db.updates[0]).toEqual({ values: { staff_access: "limited" }, filters: { tenant_id: "t1", user_id: "t-1" } });
-
-    fireEvent.click(screen.getByRole("switch", { name: i18n.t("staff.instructorSwitchAria", { name: "Hanako" }) }));
-    await waitFor(() => expect(db.updates).toHaveLength(2));
-    expect(db.updates[1]).toEqual({ values: { staff_access: "full" }, filters: { tenant_id: "t1", user_id: "i-1" } });
+    expect(screen.queryAllByRole("switch")).toHaveLength(0);
+    expect(screen.getAllByText(i18n.t("staff.roleInstructor"))).toHaveLength(2);
+    expect(screen.getAllByText(i18n.t("staff.roleOwner"))).toHaveLength(1);
+    expect(db.updates).toEqual([]);
   });
 
-  it("インストラクター用の RPC が無い環境では、そのカードとスイッチだけ出さない", async () => {
-    db.rpc.get_my_instructor_invite_code = { data: null, error: { message: "function not found" } };
+  it("インストラクターの招待コードを作り直せる（確かめてから）", async () => {
     render(<TrainerStaffManager />);
-    await screen.findByTestId("staff-invite-staff");
-    expect(screen.queryByTestId("staff-invite-instructor")).toBeNull();
-    expect(screen.queryAllByRole("switch")).toHaveLength(0);
+    await screen.findByTestId("staff-invite-instructor");
+    const regenerateButtons = screen.getAllByRole("button", { name: i18n.t("staff.regenerate") });
+    fireEvent.click(regenerateButtons[0]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("staff.regenerate") }));
+    await waitFor(() => expect(db.rpcCalls).toContain("regenerate_instructor_invite_code"));
+    expect(await screen.findByText("instcode42")).toBeInTheDocument();
   });
 
   it("スタッフごとに担当している予約メニューを出す（1人が2つのメニューを持つ組み合わせが一目で分かる）", async () => {
@@ -358,11 +356,17 @@ describe("スタッフ管理（TrainerStaffManager・オーナー）", () => {
     expect(screen.getByText("Hanako").closest("li")).toContainElement(lines[0]);
   });
 
-  it("オーナーでなければ（コードが返らない）何も出さない", async () => {
-    db.rpc.get_my_staff_invite_code = { data: null, error: null };
-    const { container } = render(<TrainerStaffManager />);
-    await waitFor(() => expect(db.rpcCalls).toHaveLength(2));
+  it("オーナーでなければ（コードが返らない）・RPC が無ければ、何も出さない", async () => {
+    db.rpc.get_my_instructor_invite_code = { data: null, error: null };
+    const { container, unmount } = render(<TrainerStaffManager />);
+    await waitFor(() => expect(db.rpcCalls).toHaveLength(1));
     expect(container.innerHTML).toBe("");
+    unmount();
+    db.rpcCalls = [];
+    db.rpc.get_my_instructor_invite_code = { data: null, error: { message: "function not found" } };
+    const second = render(<TrainerStaffManager />);
+    await waitFor(() => expect(db.rpcCalls).toHaveLength(1));
+    expect(second.container.innerHTML).toBe("");
   });
 });
 
@@ -585,12 +589,15 @@ describe("文言（5言語）", () => {
     const j = JSON.parse(read(`src/locales/${lng}.json`));
     for (const key of ["account", "mAccount"]) expect(j.trainerNav?.[key], key).toBeTruthy();
     for (const key of ["title", "ownerOnly"]) expect(j.staffAccount?.[key], key).toBeTruthy();
-    for (const key of [
-      "roleInstructor", "instructorInviteTitle", "instructorInviteDesc", "instructorSwitch",
-      "instructorSwitchAria", "accessLimitedToast", "accessFullToast", "errorAccess",
-    ]) {
+    for (const key of ["roleInstructor", "instructorInviteTitle", "instructorInviteDesc"]) {
       expect(j.staff?.[key], key).toBeTruthy();
     }
-    expect(j.staff.instructorSwitchAria).toContain("{{name}}");
+    // 「スタッフ」（full）をなくしたので、スタッフ用の招待・切り替えの文言は無い（2026-10-28）
+    for (const key of [
+      "roleStaff", "inviteTitle", "inviteDesc", "instructorSwitch", "instructorSwitchAria",
+      "accessLimitedToast", "accessFullToast", "errorAccess",
+    ]) {
+      expect(j.staff?.[key], key).toBeUndefined();
+    }
   });
 });

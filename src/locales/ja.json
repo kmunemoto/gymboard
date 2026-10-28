@@ -2184,7 +2184,8 @@
     "instructorSwitchAria": "{{name}}をインストラクターにする",
     "accessLimitedToast": "{{name}}をインストラクターにしました",
     "accessFullToast": "{{name}}をスタッフにしました",
-    "errorAccess": "権限の変更に失敗しました"
+    "errorAccess": "権限の変更に失敗しました",
+    "menusLabel": "担当メニュー: {{names}}"
   },
   "hooks": {
     "loginInfoNotFound": "ログイン情報が見つかりません",

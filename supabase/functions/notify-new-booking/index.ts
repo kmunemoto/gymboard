@@ -186,15 +186,19 @@ Deno.serve(async (req) => {
     const sessionMinutes = slotMinutes + optionMinutes;
     const customerName = (profileRes.data?.display_name as string | null)?.trim() || "お客様";
 
-    // 代表スタッフ: trainer（joined_at昇順）→ owner（同）。fetchMyTenantStaffIds と同じ順序。
+    // 代表スタッフ: owner（joined_at昇順）→ trainer（同）。fetchMyTenantStaffIds と同じ順序。
+    // 🔴 2026-10-28 に trainer 優先から改めた（宗本さん「オーナーは全ての通知を受け取る」）。
+    //    店宛てのメールの宛先（代表）はオーナー。インストラクターは staffRes の時点で外している。
     const staffRows = (staffRes.data ?? []) as { user_id: string; role: string }[];
     const staffIds = [
       ...new Set([
-        ...staffRows.filter((m) => m.role === "trainer").map((m) => m.user_id),
         ...staffRows.filter((m) => m.role === "owner").map((m) => m.user_id),
+        ...staffRows.filter((m) => m.role === "trainer").map((m) => m.user_id),
       ]),
     ];
     const trainerId = staffIds[0] ?? null;
+    // 予約の担当（インストラクターを含む）。担当の予約の通知は担当にも届ける（2026-10-28）
+    const assignedStaff = (booking.staff_user_id as string | null) ?? null;
 
     const { month, day, dow, minutes } = jstParts(booking.booking_date as string);
     const formattedDate = `${month}月${day}日（${dow}）`;
@@ -233,6 +237,30 @@ Deno.serve(async (req) => {
       errors.push("trainer email: no_staff");
     }
 
+    // ---- 予約の担当への新規予約メール（2026-10-28）----
+    // 宗本さん「先生には、先生が担当している予約だけ通知が届く様にして」。代表（オーナー）とは別に、
+    // 担当にも同じメールを送る。代表と同じ人・自分で入れた代理予約には送らない。
+    if (assignedStaff && assignedStaff !== trainerId && assignedStaff !== actorUserId) {
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "new-booking-notification",
+          recipientEmail: "_resolve_trainer_",
+          tenantId: booking.tenant_id,
+          idempotencyKey: `booking-notify-${booking.id}-staff`,
+          templateData: {
+            customerName,
+            bookingDate: formattedDate,
+            bookingTime,
+            planName,
+            gymName: gymName ?? undefined,
+            dashboardUrl: PRODUCTION_WEB_ORIGIN,
+            trainerUserId: assignedStaff,
+          },
+        },
+      });
+      if (error) errors.push(`staff email: ${String(error)}`);
+    }
+
     // ---- お客様宛の受付確認メール ----
     {
       const { error } = await supabase.functions.invoke("send-transactional-email", {
@@ -255,12 +283,26 @@ Deno.serve(async (req) => {
       if (error) errors.push(`customer email: ${String(error)}`);
     }
 
-    // ---- プッシュ（スタッフ全員＋お客様本人）----
-    // 自己予約のみ（代理予約は従来もプッシュ無し。店が自分の操作の通知を受ける意味が薄い）。
+    // ---- プッシュ ----
+    // 自己予約 … スタッフ全員＋お客様本人＋予約の担当（インストラクターを含む）
+    // 代理予約（2026-10-28〜）… 予約の担当と、オーナー以外（インストラクター・スタッフ）が入れたなら
+    //   オーナー。入れた本人は除く。宗本さん「オーナーは全ての通知を受け取る」
+    //   「先生に関する通知は先生に届くように」。src/lib/staffAccess.ts の staffChangeRecipients と同じ規則。
+    //   オーナーが自分で入れた担当なし（または自分が担当）の代理予約は、今まで通り鳴らさない
+    //   （自分の操作の通知を受ける意味が薄い）。お客様には代理予約のプッシュは送らない（今まで通り）。
     // 定期予約は1行ごとにこの関数が呼ばれるため、テナント×顧客×開始時刻の
     // 10分窓で1回に畳む（trial_booking の抑止と同じ仕組み）。
-    let pushResult = "skipped:proxy";
+    let pushTargets: string[] = [];
     if (isSelfBooking) {
+      pushTargets = [...new Set([...staffIds, booking.user_id, ...(booking.staff_user_id ? [booking.staff_user_id as string] : [])])];
+    } else if (actorUserId) {
+      const ownerIds = staffRows.filter((m) => m.role === "owner").map((m) => m.user_id);
+      const actorIsOwner = ownerIds.includes(actorUserId);
+      pushTargets = [...new Set([...(assignedStaff ? [assignedStaff] : []), ...(actorIsOwner ? [] : ownerIds)])]
+        .filter((id) => id !== actorUserId);
+    }
+    let pushResult = "skipped:proxy";
+    if (pushTargets.length > 0) {
       pushResult = "sent";
       const pushKey = `booking-push-${booking.tenant_id}-${booking.user_id}-${startTime}`;
       // 🔴 直列化は INSERT の一意制約で行う（select → upsert だと、定期予約で
@@ -301,10 +343,11 @@ Deno.serve(async (req) => {
       } else {
         const { error: pushErr } = await supabase.functions.invoke("send-push-notification", {
           body: {
-            // 予約の担当（インストラクターを含む）にも届ける。担当が無ければ今まで通り
-            user_ids: [...new Set([...staffIds, booking.user_id, ...(booking.staff_user_id ? [booking.staff_user_id as string] : [])])],
-            title: "新しい予約",
-            body: `${customerName}が${month}月${day}日 ${startTime}〜${endTime}${menuName ? `の${menuName}` : ""}を予約しました`,
+            user_ids: pushTargets,
+            title: isSelfBooking ? "新しい予約" : "新しい予約（店が登録）",
+            body: isSelfBooking
+              ? `${customerName}が${month}月${day}日 ${startTime}〜${endTime}${menuName ? `の${menuName}` : ""}を予約しました`
+              : `${customerName}の${month}月${day}日 ${startTime}〜${endTime}${menuName ? `の${menuName}` : ""}の予約が入りました`,
             url: "/",
             // 旧クライアントの自前プッシュと同じタグ（Web は置き換えで1件に畳まれる）
             tag: `booking-${booking.id}`,

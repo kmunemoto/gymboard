@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
+import { useBookingMenus } from "@/hooks/useBookingMenus";
 
 /**
  * インストラクター（制限付きスタッフ）の「アカウント」画面（2026-10-28・src/lib/staffAccess.ts）。
@@ -17,6 +18,9 @@ const StaffAccountSettings = ({ onSignOut }: { onSignOut: () => void }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { tenant } = useTenant();
+  // 自分が担当している予約メニュー（例: ヨガ・マシンピラティス）
+  const { menus } = useBookingMenus();
+  const myMenus = menus.filter((m) => m.is_active && !!user && m.staff_user_id === user.id).map((m) => m.name).join("・");
 
   return (
     <div className="space-y-4 pb-24 md:pb-0 max-w-lg" data-testid="staff-account-settings">
@@ -29,6 +33,7 @@ const StaffAccountSettings = ({ onSignOut }: { onSignOut: () => void }) => {
           <p className="text-sm font-bold break-words">{tenant?.gym_name}</p>
           {user?.email && <p className="text-xs text-muted-foreground break-all">{user.email}</p>}
           <p className="text-xs text-muted-foreground">{t("staff.roleInstructor")}</p>
+          {myMenus && <p className="text-xs text-muted-foreground" data-testid="my-menus">{t("staff.menusLabel", { names: myMenus })}</p>}
         </CardContent>
       </Card>
       <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5">

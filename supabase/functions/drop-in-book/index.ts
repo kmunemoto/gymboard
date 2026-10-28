@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
       .order("joined_at", { ascending: true });
     if (staffErr) console.error("[drop-in-book] staff lookup failed:", staffErr.message);
     const staffRows = staff ?? [];
-    trainerId = (staffRows.find((m) => m.role === "trainer") ?? staffRows[0])?.user_id ?? null;
+    trainerId = (staffRows.find((m) => m.role === "owner") ?? staffRows[0])?.user_id ?? null; // 代表はオーナー（2026-10-28・宗本さん「オーナーは全ての通知を受け取る」）
 
     const notify: Record<string, boolean | string> = {};
     const tasks: Array<Promise<void>> = [];

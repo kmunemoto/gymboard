@@ -15,6 +15,9 @@
  *   - ホームの売上・入金まわり、お客様の削除・退会・プランの変更・入金の記録、
  *     予定表の「受付を止める・上限を外す」を出さない
  *   - 店宛ての通知の宛先（代表・全員）にならない。自分が担当の予約だけ通知する
+ *     （新しい予約・代理予約・日時の変更・キャンセル・担当の付け替え・オプションの変更・朝の本日の予定）
+ *   - オーナーは全部の通知を受け取る（代表はオーナーが先頭・notifiableStaffOrder。
+ *     オーナー以外が予約を動かしたらオーナーに届く・staffChangeRecipients）
  *
  * 🔴 画面で隠すのは使い勝手のため。止めているのは DB（RESTRICTIVE のポリシー・
  *    delete_customer_cascade・guard_profile_plan_fields。
@@ -49,3 +52,49 @@ export const notifiableStaff = <T extends { staff_access?: unknown }>(rows: Read
 /** 通知の宛先に、その予約の担当（インストラクターを含む）を足す */
 export const withAssignedStaff = (ids: ReadonlyArray<string>, staffUserId: string | null | undefined): string[] =>
   [...new Set([...ids, ...(staffUserId ? [staffUserId] : [])])];
+
+/**
+ * 店宛ての通知を送るスタッフの並び（インストラクターを除く）。**オーナーが先頭**。
+ *
+ * 🔴 先頭1人が「代表」＝店宛てのメール・LINE・お客様のチャットの宛先になる。
+ *    2026-10-28 に trainer 優先から改めた（宗本さん「オーナーは全ての通知を受け取る」）。
+ *    trainer 優先のままだと、インストラクターを「スタッフ」に切り替えた瞬間に
+ *    店宛てのメールとチャットがオーナーから先生に移ってしまう。
+ *    Edge Function（notify-new-booking / trial-book / drop-in-book / trial-cancel）も同じ順。
+ */
+export const notifiableStaffOrder = <T extends { user_id: string; role: string; staff_access?: unknown }>(
+  rows: ReadonlyArray<T>,
+): string[] => {
+  const notifiable = notifiableStaff(rows);
+  return [...new Set([
+    ...notifiable.filter((r) => r.role === "owner").map((r) => r.user_id),
+    ...notifiable.filter((r) => r.role === "trainer").map((r) => r.user_id),
+  ])];
+};
+
+/**
+ * 店側の操作（代理予約・担当の付け替え・オプションの変更）を知らせる相手（2026-10-28）。
+ *
+ * 宗本さん:「オーナーは全ての通知を受け取る」「先生には、先生が担当している予約だけ通知が届く様にして」
+ *          「先生に関する通知は先生に届くように」
+ *
+ * - その予約の担当（付け替えなら前と後の両方）… 自分の担当の予約のことなので
+ * - オーナー以外（インストラクター・スタッフ）が操作したら、オーナー … オーナーが全部を把握できるように
+ * - 操作した本人には送らない（自分の操作の通知は要らない）
+ *
+ * 🔴 「インストラクターが操作したら」ではなく「オーナー以外が操作したら」にしてある。
+ *    先生をあとで「スタッフ」に切り替えても、オーナーに届かなくならないように。
+ * オーナーが自分で担当のいない予約を操作したときは、誰にも送らない（今まで通り）。
+ * notify-new-booking（代理予約のプッシュ）も同じ規則。
+ */
+export const staffChangeRecipients = (
+  roster: { owners: ReadonlyArray<string> },
+  actorId: string | null | undefined,
+  assigned: ReadonlyArray<string | null | undefined>,
+): string[] => {
+  const actorIsOwner = !!actorId && roster.owners.includes(actorId);
+  return [...new Set([
+    ...assigned.filter((id): id is string => !!id),
+    ...(actorIsOwner ? [] : roster.owners),
+  ])].filter((id) => id !== actorId);
+};

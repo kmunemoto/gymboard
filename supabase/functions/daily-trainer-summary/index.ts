@@ -4,6 +4,11 @@
 // push-booking-reminder-hourly 等と同じ認証方式）。
 // tenants.daily_summary_enabled = false のジムは対象外。
 // 同日の再送はしない（notification_dedupe で冪等化）。
+//
+// 宛先（2026-10-28）:
+//   - 店のスタッフ（オーナーを含む。インストラクターを除く）… その日の全部の予約と体験
+//   - インストラクター（staff_access = limited）… 自分が担当の予約だけ（宗本さん「先生には、先生が
+//     担当している予約だけ通知が届く様にして」）。予約メニューが2つ以上ある店は、行にメニュー名を添える
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
 
@@ -81,7 +86,7 @@ Deno.serve(async (req) => {
       const [{ data: bookings }, { data: trialBookings }] = await Promise.all([
         supabase
           .from("bookings")
-          .select("booking_date, user_id")
+          .select("booking_date, user_id, staff_user_id, menu_id")
           .eq("tenant_id", t.id)
           .eq("status", "予約済み")
           .gte("booking_date", dayStartUtc.toISOString())
@@ -105,9 +110,21 @@ Deno.serve(async (req) => {
         (profiles || []).forEach((p: any) => { nameMap[p.user_id] = p.display_name || "顧客"; });
       }
 
-      const items: { time: string; label: string }[] = [
-        ...(bookings || []).map((b: any) => ({ time: fmtTime(b.booking_date), label: nameMap[b.user_id] || "顧客" })),
-        ...(trialBookings || []).map((tb: any) => ({ time: fmtTime(tb.booking_date), label: `🆕 ${tb.guest_name || "体験ゲスト"}` })),
+      // 予約メニューの名前（2つ以上ある店だけ添える。src/lib/bookingMenus.ts の menuNameOf と同じ規則）
+      const { data: menuRows } = await supabase.from("booking_menus").select("id, name").eq("tenant_id", t.id);
+      const menuNames = new Map<string, string>(
+        (menuRows ?? []).length >= 2 ? (menuRows ?? []).map((m: { id: string; name: string }) => [m.id, m.name] as [string, string]) : [],
+      );
+      const withMenu = (label: string, menuId: string | null) =>
+        menuId && menuNames.has(menuId) ? `${label}（${menuNames.get(menuId)}）` : label;
+
+      const items: { time: string; label: string; staff: string | null }[] = [
+        ...(bookings || []).map((b: any) => ({
+          time: fmtTime(b.booking_date),
+          label: withMenu(nameMap[b.user_id] || "顧客", (b.menu_id as string | null) ?? null),
+          staff: (b.staff_user_id as string | null) ?? null,
+        })),
+        ...(trialBookings || []).map((tb: any) => ({ time: fmtTime(tb.booking_date), label: `🆕 ${tb.guest_name || "体験ゲスト"}`, staff: null })),
       ].sort((a, b) => a.time.localeCompare(b.time));
 
       if (items.length === 0) {
@@ -153,6 +170,41 @@ Deno.serve(async (req) => {
         results.push({ tenant_id: t.id, recipients: staffIds.length, items: items.length });
       } catch (e) {
         console.error(`daily summary push exception tenant=${t.id}:`, e);
+      }
+
+      // ---- インストラクターには、自分が担当の予約だけ（2026-10-28）----
+      const { data: instructorRows } = await supabase
+        .from("tenant_members")
+        .select("user_id")
+        .eq("tenant_id", t.id)
+        .eq("status", "active")
+        .eq("role", "trainer")
+        .eq("staff_access", "limited");
+      for (const inst of (instructorRows ?? []).map((r: { user_id: string }) => r.user_id)) {
+        const mine = items.filter((i) => i.staff === inst);
+        if (mine.length === 0) continue;
+        const instKey = `daily-summary-${t.id}-${inst}-${dateKey}`;
+        const { data: instSent } = await supabase
+          .from("notification_dedupe")
+          .select("sent_at")
+          .eq("idempotency_key", instKey)
+          .maybeSingle();
+        if (instSent?.sent_at) continue;
+        await supabase
+          .from("notification_dedupe")
+          .upsert({ idempotency_key: instKey, sent_at: new Date().toISOString() });
+        const lines = mine.slice(0, MAX_LINES).map((i) => `${i.time} ${i.label}`);
+        if (mine.length > MAX_LINES) lines.push(`他${mine.length - MAX_LINES}件`);
+        try {
+          const { error: instErr } = await supabase.functions.invoke("send-push-notification", {
+            body: { user_ids: [inst], title: `本日の担当（${mine.length}件）`, body: lines.join("\n"), url: "/", tag: instKey },
+          });
+          if (instErr) console.error(`daily summary push failed instructor tenant=${t.id}:`, instErr);
+          else sent++;
+          results.push({ tenant_id: t.id, recipients: 1, items: mine.length });
+        } catch (e) {
+          console.error(`daily summary push exception instructor tenant=${t.id}:`, e);
+        }
       }
     }
 

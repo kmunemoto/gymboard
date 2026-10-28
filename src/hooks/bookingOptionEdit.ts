@@ -10,6 +10,7 @@ import {
   summarizeOptions,
   type BookingOptionSnapshot,
 } from "@/lib/bookingOptions";
+import { notifyStaffOptionChanged } from "@/lib/staffNotify";
 
 /**
  * 既に入っている予約のオプションを差し替える（**店側専用**）。
@@ -190,4 +191,10 @@ async function notifyCustomer(
       },
     },
   }).catch((e) => console.error("オプション変更のメール送信に失敗:", e));
+
+  // 予約の担当（インストラクターを含む）にも知らせる。先生の時間が延びる・縮むので（2026-10-28・src/lib/staffNotify.ts）
+  void notifyStaffOptionChanged({
+    bookingId: String(row.id), clientName: customerName, bookingDate, bookingTime,
+    assignedStaffId: (row.staff_user_id as string | null) ?? null, summary: removed ? "" : summary,
+  });
 }

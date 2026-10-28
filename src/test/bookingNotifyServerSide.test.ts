@@ -199,18 +199,21 @@ describe("Edge Function（notify-new-booking）", () => {
     expect(edgeFn).toContain('recipientEmail: "_resolve_user_"');
   });
 
-  it("プッシュは自己予約のみ（代理予約は従来もプッシュ無し）・宛先はスタッフ＋本人", () => {
+  it("プッシュ: 自己予約はスタッフ＋本人＋担当。代理予約は担当だけ（入れた本人を除く・お客様には送らない）", () => {
     expect(edgeFn).toMatch(/actorUserId !== null && actorUserId === booking\.user_id/);
     expect(edgeFn).toMatch(/if \(isSelfBooking\)/);
     // 2026-10-28〜 予約の担当（インストラクターを含む）にも届ける（src/test/instructorStaff.test.tsx）
     expect(edgeFn).toContain("[...new Set([...staffIds, booking.user_id, ...(booking.staff_user_id ? [booking.staff_user_id as string] : [])])]");
+    // 代理予約（2026-10-28〜）: 担当と、オーナー以外が入れたならオーナー（src/test/staffNotifications.test.ts）
+    expect(edgeFn).toContain("[...new Set([...(assignedStaff ? [assignedStaff] : []), ...(actorIsOwner ? [] : ownerIds)])]");
+    expect(edgeFn).toContain(".filter((id) => id !== actorUserId)");
   });
 
-  it("代表スタッフの順序は trainer → owner（クライアントの fetchMyTenantStaffIds と同じ）", () => {
+  it("🔴 代表スタッフの順序は owner → trainer（クライアントの fetchMyTenantStaffIds と同じ・2026-10-28 に改めた）", () => {
     const trainerAt = edgeFn.indexOf('m.role === "trainer"');
     const ownerAt = edgeFn.indexOf('m.role === "owner"');
-    expect(trainerAt).toBeGreaterThan(-1);
-    expect(ownerAt).toBeGreaterThan(trainerAt);
+    expect(ownerAt).toBeGreaterThan(-1);
+    expect(trainerAt).toBeGreaterThan(ownerAt);
   });
 
   it("メールのリンク先は brand.ts の PRODUCTION_WEB_ORIGIN と同じ値（Deno は import できず写し）", () => {

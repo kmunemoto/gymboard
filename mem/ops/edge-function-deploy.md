@@ -223,6 +223,16 @@ new-account-notification, trial-booking-reminder, booking-reminder, customer-inv
 
 **返事の「変更していません」は根拠にならない。** 必ず `git fetch origin main` で見る。
 
+**2026-10-28 には、頼んでいない9本の関数の「型エラーの修正」まで push された**（予約メニューの
+notify-new-booking のデプロイを頼んだとき）。`npm:@supabase/supabase-js@2` のように**版を固定していない
+import が 2.118.0 に上がり**、Lovable のビルドが型エラーを出したのを、Lovable が自分で直したもの。
+触られたのは generate-share-image・google-calendar-callback/sync・import-customers・line-login-callback・
+monthly-report-notification・process-email-queue・send-line-message・send-trial-reminders。
+全部読んで、**型の注釈だけで動きは変わっていない**ことを確かめた。Lovable は「余分なデプロイはしていない」と言っていた。
+
+- デプロイを頼む関数は、Lovable のビルドで型が通る書き方にしておく（`any` に逃げず、Map などは型を明示）
+- push されたら差分を全部読む。動きが変わっていなければそのままでよい（戻すと次の依頼でまた直される）
+
 ---
 
 ## 既にある関数を更新したときの確かめ方（2026-10-27）

@@ -2184,7 +2184,8 @@
     "instructorSwitchAria": "Make {{name}} an instructor",
     "accessLimitedToast": "{{name}} is now an instructor",
     "accessFullToast": "{{name}} is now staff",
-    "errorAccess": "Failed to change permissions"
+    "errorAccess": "Failed to change permissions",
+    "menusLabel": "Menus: {{names}}"
   },
   "hooks": {
     "loginInfoNotFound": "Login information not found",

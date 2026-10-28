@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { notifiableStaff } from "@/lib/staffAccess";
+import { notifiableStaffOrder } from "@/lib/staffAccess";
 
 /**
  * Get the current user's active tenant_id directly (no React hook).
@@ -27,22 +27,32 @@ export async function fetchMyTenantId(): Promise<string | null> {
   return (data as any)?.tenant_id ?? null;
 }
 
+/** 店のスタッフの並び（fetchMyTenantStaffRoster）。 */
+export interface MyTenantStaffRoster {
+  /** 店宛ての通知を送るスタッフ（インストラクターを除く）。**オーナーが先頭**（先頭1人が代表） */
+  ids: string[];
+  /** オーナー。オーナー以外が予約を動かしたら知らせる（staffChangeRecipients） */
+  owners: string[];
+  /** 表示名（通知の本文用）。読めなければ空 */
+  names: Record<string, string>;
+}
+
 /**
- * 現在ログイン中のユーザーが所属するテナントの「ジム側スタッフ」全員の user_id を返す。
- * 並び順は trainer（joined_at昇順）→ owner（同）。先頭1件を LINE/メールの代表宛先として
- * 使う箇所があるため、この順序は fetchMyTenantTrainerId の解決結果と一致させている。
+ * 現在ログイン中のユーザーが所属するテナントのスタッフ（オーナー・スタッフ・インストラクター）。
  *
  * get_trainer_ids() は user_roles を全テナント横断で返すため、通知が別ジムのトレーナーに
  * 飛ぶ/自ジムに届かない不具合の原因になっていた（チャット #141・予約系通知）。
  * ここではテナント内で解決する。tenant_members の SELECT RLS
  * 「Members can view same tenant members」により、お客様も自テナントのスタッフ行を読める。
+ *
+ * 🔴 並びは**オーナーが先頭**（2026-10-28 に trainer 優先から改めた・src/lib/staffAccess.ts の
+ *    notifiableStaffOrder）。インストラクター（staff_access = 'limited'）は ids に入れない。
+ *    入れると代表になりうる＝店宛ての通知・お客様のチャットの宛先が先生に移る。
+ *    権限の列が無い環境では列を外して読み直す（全員を今まで通りのスタッフとして扱う）。
  */
-export async function fetchMyTenantStaffIds(): Promise<string[]> {
+export async function fetchMyTenantStaffRoster(): Promise<MyTenantStaffRoster> {
   const tenantId = await fetchMyTenantId();
-  if (!tenantId) return [];
-  // 🔴 インストラクター（staff_access = 'limited'）は外す（2026-10-28）。外さないと
-  //    trainer 優先の並びで先頭になり、店宛ての通知・お客様のチャットの宛先がオーナーから
-  //    インストラクターに移ってしまう。権限の列が無い環境では列を外して読み直す（今まで通り）
+  if (!tenantId) return { ids: [], owners: [], names: {} };
   const query = (cols: string) =>
     supabase
       .from("tenant_members")
@@ -51,17 +61,27 @@ export async function fetchMyTenantStaffIds(): Promise<string[]> {
       .in("role", ["trainer", "owner"])
       .eq("status", "active")
       .order("joined_at", { ascending: true });
-  const first = await query("user_id, role, joined_at, staff_access");
-  const { data } = first.error ? await query("user_id, role, joined_at") : first;
-  const rows = notifiableStaff((data ?? []) as unknown as { user_id: string; role: string; staff_access?: unknown }[]);
-  const trainers = rows.filter((m) => m.role === "trainer");
-  const owners = rows.filter((m) => m.role === "owner");
-  return [...new Set([...trainers, ...owners].map((m) => m.user_id))];
+  const first = await query("user_id, role, joined_at, display_name, staff_access");
+  const { data } = first.error ? await query("user_id, role, joined_at, display_name") : first;
+  const rows = (data ?? []) as unknown as { user_id: string; role: string; display_name?: string | null; staff_access?: unknown }[];
+  return {
+    ids: notifiableStaffOrder(rows),
+    owners: rows.filter((r) => r.role === "owner").map((r) => r.user_id),
+    names: Object.fromEntries(rows.map((r) => [r.user_id, r.display_name?.trim() || ""]).filter(([, n]) => n)),
+  };
 }
 
 /**
- * 自テナントの代表スタッフ1件（trainer 優先、居なければ owner。
- * Salute のような一人ジムはオーナーのみ）。見つからなければ null。
+ * 店宛ての通知を送るスタッフの user_id（インストラクターを除く・オーナーが先頭）。
+ * 先頭1件を LINE/メールの代表宛先として使う箇所があるため、fetchMyTenantTrainerId と同じ並び。
+ */
+export async function fetchMyTenantStaffIds(): Promise<string[]> {
+  return (await fetchMyTenantStaffRoster()).ids;
+}
+
+/**
+ * 自テナントの代表スタッフ1件（**オーナー**。居なければ先頭のスタッフ。インストラクターは除く）。
+ * 店宛てのメール・LINE・お客様のチャットの宛先。見つからなければ null。
  */
 export async function fetchMyTenantTrainerId(): Promise<string | null> {
   const ids = await fetchMyTenantStaffIds();

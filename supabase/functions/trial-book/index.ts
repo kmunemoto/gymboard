@@ -30,7 +30,7 @@
 //     含むため当面 Salute テナント限定 (テナント別住所の差し込み対応までの暫定)
 //   - トレーナー宛 メール (new-booking-notification) / LINE / push
 //   - トレーナーの Google カレンダーへ登録 (連携済みの場合)
-//   - 宛先スタッフは tenant_members (trainer 優先、次に owner) で解決する。
+//   - 宛先スタッフは tenant_members (owner 優先、次に trainer。インストラクターは除く) で解決する。
 //     旧 get_trainer_ids はテナント横断のため使用しない (他ジムへの誤通知防止)。
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -303,7 +303,7 @@ Deno.serve(async (req) => {
       .order("joined_at", { ascending: true });
     if (staffErr) console.error("[trial-book] staff lookup failed:", staffErr.message);
     const staffRows = staff ?? [];
-    trainerId = (staffRows.find((m) => m.role === "trainer") ?? staffRows[0])?.user_id ?? null;
+    trainerId = (staffRows.find((m) => m.role === "owner") ?? staffRows[0])?.user_id ?? null; // 代表はオーナー（2026-10-28・宗本さん「オーナーは全ての通知を受け取る」）
 
     const notify: Record<string, boolean | string> = {};
     const tasks: Array<Promise<void>> = [];

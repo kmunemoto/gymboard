@@ -2516,6 +2516,10 @@ export type Database = {
     }
     Functions: {
       _gen_staff_invite_code: { Args: never; Returns: string }
+      _owner_staff_invite_code: {
+        Args: { p_kind: string; p_regenerate: boolean }
+        Returns: string
+      }
       _workout_max_weight: {
         Args: { _sets: Json; _weight: number }
         Returns: number
@@ -2606,11 +2610,11 @@ export type Database = {
           payment_id: string
         }[]
       }
+      get_my_instructor_invite_code: { Args: never; Returns: string }
       get_my_next_cycle_payment_gate: {
         Args: { p_tenant_id: string }
         Returns: string
       }
-      get_my_instructor_invite_code: { Args: never; Returns: string }
       get_my_staff_invite_code: { Args: never; Returns: string }
       get_my_tenant_id: { Args: never; Returns: string }
       get_my_tenant_invite_code: { Args: never; Returns: string }
@@ -2892,6 +2896,7 @@ export type Database = {
         Returns: undefined
       }
       unsend_message: { Args: { _message_id: string }; Returns: string }
+      weekday_limits_valid: { Args: { p: Json }; Returns: boolean }
     }
     Enums: {
       app_role: "customer" | "trainer"

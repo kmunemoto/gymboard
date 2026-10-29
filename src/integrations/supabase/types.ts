@@ -384,6 +384,7 @@ export type Database = {
           name: string
           sort_order: number
           staff_user_id: string | null
+          starts_on: string | null
           tenant_id: string
           updated_at: string
         }
@@ -394,6 +395,7 @@ export type Database = {
           name: string
           sort_order?: number
           staff_user_id?: string | null
+          starts_on?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -404,6 +406,7 @@ export type Database = {
           name?: string
           sort_order?: number
           staff_user_id?: string | null
+          starts_on?: string | null
           tenant_id?: string
           updated_at?: string
         }

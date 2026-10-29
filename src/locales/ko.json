@@ -3058,6 +3058,12 @@
     "exclusiveOn": "켜기: 담당자의 근무 시간에는 담당이 없는 메뉴(예: 트레이닝)와 체험 예약을 받지 않습니다(매장의 대리 예약은 가능합니다).",
     "exclusiveOff": "끄기: 선착순. 어떤 메뉴든 먼저 들어온 예약이 우선입니다.",
     "exclusiveOnToast": "담당이 있는 메뉴의 시간을 전용으로 했습니다",
-    "exclusiveOffToast": "선착순으로 했습니다"
+    "exclusiveOffToast": "선착순으로 했습니다",
+    "startsOnLabel": "시작일",
+    "startsOnAria": "{{name}} 시작일",
+    "startsOnClear": "해제",
+    "startsOnSetHint": "{{date}} 이전에는 고객이 이 메뉴를 예약할 수 없습니다 (매장에서 대리 예약은 가능합니다). 담당 시간 전용도 {{date}}부터입니다.",
+    "startsOnChip": "{{date}}~",
+    "startsOnNotice": "{{name}}은(는) {{date}}부터 예약할 수 있습니다."
   }
 }

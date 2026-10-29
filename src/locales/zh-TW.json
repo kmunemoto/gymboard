@@ -3058,6 +3058,12 @@
     "exclusiveOn": "開啟：負責人排班時間內，不接受無負責人的項目（例：訓練）和體驗預約（店家代為預約仍可）。",
     "exclusiveOff": "關閉：先到先得。不論哪個項目，先預約的優先。",
     "exclusiveOnToast": "已將有負責人的項目時間設為專用",
-    "exclusiveOffToast": "已改為先到先得"
+    "exclusiveOffToast": "已改為先到先得",
+    "startsOnLabel": "開始日期",
+    "startsOnAria": "{{name}}的開始日期",
+    "startsOnClear": "清除",
+    "startsOnSetHint": "{{date}}之前，顧客無法預約此項目（店家仍可代為預約）。負責人的專用時段也從{{date}}開始。",
+    "startsOnChip": "{{date}}起",
+    "startsOnNotice": "{{name}}自{{date}}起可預約。"
   }
 }

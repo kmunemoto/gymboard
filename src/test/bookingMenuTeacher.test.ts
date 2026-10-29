@@ -13,6 +13,9 @@
  *   4. メニューがオンなのに止める
  *   5. 新しいコードで断り、古いアプリに「アプリが古い」と出る（このガードは古いアプリのためのもの）
  *   6. 予約メニューを当てるトリガーより先に動く（bookingMenus.test.tsx が名前順で見張っている）
+ *
+ * 関数は 20261029020000_booking_menu_starts_on.sql で作り直した（「オンのメニュー」を「その日に予約できる
+ * メニュー」に）。関数の検査は**最後の定義**に対して行う（CREATE OR REPLACE は最後の定義しか残らない）。
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
@@ -22,11 +25,15 @@ const read = (path: string) => readFileSync(path, "utf8");
 const stripSql = (src: string) => src.split("\n").map((l) => l.replace(/--.*$/, "")).join("\n");
 const MIGRATION = "20261029010000_guard_booking_menu_teacher.sql";
 const SQL = stripSql(read(`supabase/migrations/${MIGRATION}`));
+/** 関数を最後に定義したマイグレーション */
+const LATEST = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort()
+  .filter((f) => stripSql(read(`supabase/migrations/${f}`)).includes("CREATE OR REPLACE FUNCTION public.guard_booking_menu_teacher(")).pop()!;
 
 const fnBody = () => {
-  const start = SQL.indexOf("CREATE OR REPLACE FUNCTION public.guard_booking_menu_teacher(");
+  const latest = stripSql(read(`supabase/migrations/${LATEST}`));
+  const start = latest.indexOf("CREATE OR REPLACE FUNCTION public.guard_booking_menu_teacher(");
   expect(start).toBeGreaterThan(-1);
-  return SQL.slice(start, SQL.indexOf("$function$;", start));
+  return latest.slice(start, latest.indexOf("$function$;", start));
 };
 
 describe("断る条件", () => {
@@ -49,8 +56,10 @@ describe("断る条件", () => {
     expect(fn).toContain("AND tm.role = 'trainer' AND tm.staff_access = 'limited'");
     // メニューを持たないインストラクター（メニューを使っていない店）は止めない
     expect(fn).toMatch(/AND EXISTS \(\s+SELECT 1 FROM public\.booking_menus m\s+WHERE m\.tenant_id = NEW\.tenant_id AND m\.staff_user_id = NEW\.staff_user_id\s+\)/);
-    // メニューがオンなら止めない
-    expect(fn).toMatch(/AND NOT EXISTS \(\s+SELECT 1 FROM public\.booking_menus m\s+WHERE m\.tenant_id = NEW\.tenant_id AND m\.staff_user_id = NEW\.staff_user_id AND m\.is_active\s+\)/);
+    // その日に予約できるメニュー（オン、かつ開始日を過ぎている）があれば止めない
+    expect(fn).toMatch(
+      /AND NOT EXISTS \(\s+SELECT 1 FROM public\.booking_menus m\s+WHERE m\.tenant_id = NEW\.tenant_id AND m\.staff_user_id = NEW\.staff_user_id AND m\.is_active\s+AND \(m\.starts_on IS NULL OR m\.starts_on <= \(NEW\.booking_date AT TIME ZONE 'Asia\/Tokyo'\)::date\)\s+\)/,
+    );
   });
 });
 
@@ -65,13 +74,15 @@ describe("古いアプリへの案内", () => {
 describe("トリガー", () => {
   it("bookings の BEFORE INSERT。関数は直接呼べない", () => {
     expect(SQL).toMatch(/CREATE TRIGGER trg_guard_booking_menu_teacher\s+BEFORE INSERT ON public\.bookings\s+FOR EACH ROW EXECUTE FUNCTION public\.guard_booking_menu_teacher\(\);/);
-    expect(SQL).toContain("SECURITY DEFINER");
-    expect(SQL).toContain("REVOKE ALL ON FUNCTION public.guard_booking_menu_teacher() FROM PUBLIC, anon, authenticated;");
+    expect(fnBody()).toContain("SECURITY DEFINER");
+    const latest = stripSql(read(`supabase/migrations/${LATEST}`));
+    expect(latest.indexOf("REVOKE ALL ON FUNCTION public.guard_booking_menu_teacher() FROM PUBLIC, anon, authenticated;"))
+      .toBeGreaterThan(latest.indexOf("CREATE OR REPLACE FUNCTION public.guard_booking_menu_teacher("));
   });
 
-  it("🔴 後のマイグレーションが戻していない（最後の定義はこのマイグレーション）", () => {
+  it("🔴 トリガーを消す・作り直すマイグレーションが後に無い", () => {
     const files = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
-    const last = files.filter((f) => stripSql(read(`supabase/migrations/${f}`)).includes("FUNCTION public.guard_booking_menu_teacher(")).pop();
-    expect(last).toBe(MIGRATION);
+    const touching = files.filter((f) => /TRIGGER (IF EXISTS )?trg_guard_booking_menu_teacher/.test(stripSql(read(`supabase/migrations/${f}`))));
+    expect(touching).toEqual([MIGRATION]);
   });
 });

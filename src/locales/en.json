@@ -3058,6 +3058,12 @@
     "exclusiveOn": "On: during the assigned staff's shift, menus without staff (e.g. Training) and trial bookings are not accepted (bookings made by the gym are still allowed).",
     "exclusiveOff": "Off: first come, first served. Whichever booking comes first gets the time.",
     "exclusiveOnToast": "Staff hours are now reserved for their menus",
-    "exclusiveOffToast": "Switched to first come, first served"
+    "exclusiveOffToast": "Switched to first come, first served",
+    "startsOnLabel": "Starts",
+    "startsOnAria": "Start date for {{name}}",
+    "startsOnClear": "Clear",
+    "startsOnSetHint": "Customers can't book this menu before {{date}} (the gym can still book on their behalf). The staff member's reserved hours also start on {{date}}.",
+    "startsOnChip": "from {{date}}",
+    "startsOnNotice": "{{name}} can be booked from {{date}}."
   }
 }

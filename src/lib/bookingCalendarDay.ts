@@ -55,6 +55,11 @@ export interface CalendarDayRules {
    * null＝止めるものが無い。読めなかったときも null にすること（安全側）。
    */
   nextCyclePaymentGate: string | null;
+  /**
+   * 選んでいるメニューの開始日（`booking_menus.starts_on`・yyyy-MM-dd）。これより前は選べない。
+   * null / 省略＝すぐ予約できる（今まで通り）。最終判定は DB（GB012）。
+   */
+  menuStartsOn?: string | null;
 }
 
 /**
@@ -64,11 +69,14 @@ export interface CalendarDayRules {
  * 真偽だけでなく**最初に当たった理由**を返す。順番は下の 🔴 のとおり上から。
  */
 export type DayUnselectableReason =
-  | "past" | "closed" | "hardClosed" | "limitReached" | "full" | "paymentGate" | "staffOff" | "beyondWindow";
+  | "past" | "menuNotStarted" | "closed" | "hardClosed" | "limitReached" | "full" | "paymentGate" | "staffOff"
+  | "beyondWindow";
 
 export const dayUnselectableReason = (dateKey: string, r: CalendarDayRules): DayUnselectableReason | null => {
   // 過去日。当日は塞がない（上の 🔴 参照）
   if (!!dateKey && dateKey < r.today) return "past";
+  // 選んでいるメニューの開始日より前（例: 11/25 から始まるマシンピラティス。2026-10-29）
+  if (!!dateKey && !!r.menuStartsOn && dateKey < r.menuStartsOn) return "menuNotStarted";
   // 定休日。toDate があっても、その間の定休日は個別に塞ぐ必要がある
   if (isClosedDate(r.businessHours, dateKey)) return "closed";
   // 店が「その日はもう受けない」とした日、または1日の上限に達した日。

@@ -3058,6 +3058,12 @@
     "exclusiveOn": "オン: 担当のシフトの時間は、担当のいないメニュー（例: トレーニング）や体験の予約を受け付けません（店からの代理予約は入れられます）。",
     "exclusiveOff": "オフ: 先着順。どのメニューでも、先に入った予約が優先されます。",
     "exclusiveOnToast": "担当のいるメニューの時間を専用にしました",
-    "exclusiveOffToast": "先着順にしました"
+    "exclusiveOffToast": "先着順にしました",
+    "startsOnLabel": "開始日",
+    "startsOnAria": "{{name}}の開始日",
+    "startsOnClear": "解除",
+    "startsOnSetHint": "{{date}}より前は、お客様はこのメニューを予約できません（店からの代理予約は入れられます）。担当の時間の専用も{{date}}からです。",
+    "startsOnChip": "{{date}}〜",
+    "startsOnNotice": "{{name}}は{{date}}から予約できます。"
   }
 }

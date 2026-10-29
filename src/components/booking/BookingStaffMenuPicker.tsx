@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { LayoutList, UserRound } from "lucide-react";
-import type { BookingMenu } from "@/lib/bookingMenus";
+import { CalendarClock, LayoutList, UserRound } from "lucide-react";
+import { menuStartLabel, upcomingMenuStart, type BookingMenu } from "@/lib/bookingMenus";
+import { getJSTToday } from "@/lib/timezone";
 import type { TenantStaff } from "@/lib/tenantStaff";
 
 /**
@@ -9,6 +10,8 @@ import type { TenantStaff } from "@/lib/tenantStaff";
  * - 予約メニューを使っている店（`booking_menus` がある）… メニューを選ぶ（2つ以上あるときだけ出す）。
  *   担当はメニューで決まるので、担当の選択は出さない（src/lib/bookingMenus.ts）
  * - 使っていない店 … 今まで通り、スタッフが2人以上いれば担当を選ぶ
+ * - まだ始まっていないメニュー（開始日が今日より後）は、名前に「11/25〜」を添え、選んだら開始日を案内する
+ *   （開始日より前の日付はカレンダーで選べない。src/lib/bookingCalendarDay.ts）
  *
  * どちらも、選び直すと空き枠の見え方が変わるので、呼び出し側が選択中の枠を外す。
  */
@@ -41,6 +44,8 @@ const BookingStaffMenuPicker = ({
     const staffName = selected?.staff_user_id
       ? staff.find((s) => s.user_id === selected.staff_user_id)?.display_name ?? null
       : null;
+    const today = getJSTToday();
+    const selectedStart = upcomingMenuStart(selected, today);
     return (
       <div className="mb-3" data-testid="booking-menu-picker">
         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -48,18 +53,32 @@ const BookingStaffMenuPicker = ({
           {t("bookingMenus.pickerLabel")}
         </label>
         <div className="flex flex-wrap gap-1.5">
-          {menus.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => onPickMenu(m)}
-              aria-pressed={selectedMenuId === m.id}
-              className={chipClass(selectedMenuId === m.id)}
-            >
-              {m.name}
-            </button>
-          ))}
+          {menus.map((m) => {
+            const start = upcomingMenuStart(m, today);
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => onPickMenu(m)}
+                aria-pressed={selectedMenuId === m.id}
+                className={chipClass(selectedMenuId === m.id)}
+              >
+                {m.name}
+                {start && (
+                  <span className="ml-1 text-[10px] font-semibold opacity-80">
+                    {t("bookingMenus.startsOnChip", { date: menuStartLabel(start) })}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+        {selected && selectedStart && (
+          <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1" data-testid="booking-menu-starts-on">
+            <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+            {t("bookingMenus.startsOnNotice", { name: selected.name, date: menuStartLabel(selectedStart) })}
+          </p>
+        )}
         {staffName && (
           <p className="text-[11px] text-muted-foreground mt-1.5">{t("bookingMenus.pickerStaffHint", { name: staffName })}</p>
         )}

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTranslation } from "react-i18next";
@@ -27,6 +28,9 @@ const TrainerNotificationSettings = () => {
 
   const { profile, loading: profileLoading, refetch } = useProfile();
   const { user } = useAuth();
+  // インストラクター（制限付き）には店の Google カレンダー連携を出さない（2026-10-28）。
+  // 店の予定の同期先は店の連携で、つなぐと全員の予約が自分のカレンダーに入りうる（google-calendar-sync はオーナーの連携だけ使う）
+  const { isLimitedStaff } = useTenant();
 
   const isLineLinked = !!profile?.line_user_id;
 
@@ -200,7 +204,7 @@ const TrainerNotificationSettings = () => {
 
       <div className="space-y-4 max-w-lg">
         {/* Googleカレンダー連携セクション。表示可否は featureFlags.ts で一元管理。 */}
-        {GOOGLE_CALENDAR_TRAINER_ENABLED && (
+        {GOOGLE_CALENDAR_TRAINER_ENABLED && !isLimitedStaff && (
           <Card>
             <CardContent className="p-5">
               <div className="flex items-start gap-4">

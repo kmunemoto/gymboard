@@ -24,11 +24,15 @@ export function useBookingMenus() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from("booking_menus")
-      .select("id, name, staff_user_id, is_active, sort_order")
-      .eq("tenant_id", tenantId)
-      .order("sort_order", { ascending: true });
+    // 開始日の列（starts_on・2026-10-29）が無い環境では、列を外して読み直す（全部「すぐ」＝今まで通り）
+    const query = (cols: string) =>
+      supabase
+        .from("booking_menus")
+        .select(cols)
+        .eq("tenant_id", tenantId)
+        .order("sort_order", { ascending: true });
+    let { data, error } = await query("id, name, staff_user_id, is_active, sort_order, starts_on");
+    if (error) ({ data, error } = await query("id, name, staff_user_id, is_active, sort_order"));
     setMenus(error ? [] : parseMenus(data));
     setLoading(false);
   }, [tenantId]);

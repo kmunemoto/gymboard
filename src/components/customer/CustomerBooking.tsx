@@ -73,7 +73,7 @@ import {
 } from "@/lib/staffSchedule";
 import { canSelectStaff } from "@/lib/tenantStaff";
 import { useBookingMenus } from "@/hooks/useBookingMenus";
-import { defaultMenu, menuNameOf, overlapsReservedBlock, selectableMenus } from "@/lib/bookingMenus";
+import { defaultMenu, isMenuOpenOn, menuNameOf, overlapsReservedBlock, selectableMenus } from "@/lib/bookingMenus";
 import BookingStaffMenuPicker from "@/components/booking/BookingStaffMenuPicker";
 import { BRAND_FALLBACK_GYM_NAME } from "@/lib/brand";
 
@@ -381,7 +381,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const calendarDayRules = {
     today: getJSTToday(), businessHours, closedDays, hasOwnBookingOn, isDayFull,
     staffSchedules, staffUserId: selectedStaffId, bookingWindowDays,
-    nextCyclePaymentGate,
+    nextCyclePaymentGate, menuStartsOn: activeMenu?.starts_on ?? null,
   };
 
   // 日付の下の「残N」「満」（店が ON のときだけ）。数え方と、枠一覧と食い違わない理由は src/lib/dayRemainingSlots.ts
@@ -410,6 +410,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     //    ⚠️ 当日が上限で埋まっている場合（selectedDayViewOnly）はここで止めない。
     //       枠は出すが、下で全部「押せない」に倒す。
     if (selectedDayClosed) return slots;
+    // 選んでいるメニューの開始日より前は1枠も出さない（カレンダーでも選べない。最終判定は DB の GB012）
+    if (!isMenuOpenOn(activeMenu, dateKey)) return slots;
     // 曜日別の営業時間・定休日、さらに指名した担当のシフトまで反映する。
     // 指名なし／シフト未設定なら、結果は店の営業時間そのもの（従来どおり）。
     const weekday = weekdayOfDateKey(dateKey);
@@ -687,13 +689,16 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   };
 
-  // 担当（またはメニュー）を選び直す。その担当が選択中の日に出勤していないなら、日付ごと外す。
-  // 残しておくと「日付は選ばれているのに枠が0件」になり、空きが無いのか担当が休みなのか区別できない。
+  // 担当（またはメニュー）を選び直す。その担当が選択中の日に出勤していない、またはメニューの開始日より前なら、
+  // 日付ごと外す。残しておくと「日付は選ばれているのに枠が0件」になり、空きが無いのか担当が休みなのか区別できない。
   const pickStaff = (staffId: string | null, menuId: string | null) => {
     setPickedStaffId(staffId);
     setSelectedMenuId(menuId);
     setSelectedSlot(null);
     if (staffId && dateKey && !staffWorksOnWeekday(businessHours, weekdayOfDateKey(dateKey), staffSchedules, staffId)) {
+      setSelectedDate(undefined);
+    }
+    if (dateKey && !isMenuOpenOn(menus.find((m) => m.id === menuId), dateKey)) {
       setSelectedDate(undefined);
     }
   };

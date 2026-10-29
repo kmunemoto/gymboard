@@ -20,6 +20,14 @@
  *   - 公開の体験ページ・古いアプリでは普通のブロック（体験は入れない）
  * 最終判定は DB（`apply_booking_menu` の GB011）。
  * `supabase/migrations/20261028030000_booking_menus.sql`
+ *
+ * ## 開始日（starts_on・2026-10-29）
+ *
+ * 宗本さん「今すぐ（オンに）だが、11/25 以降からマシンピラティスの予約は可能」。
+ * メニューはオンのまま出し、開始日より前の日付だけ選べなくする（カレンダーは `menuStartsOn`）。
+ * DB も開始日より前は、そのメニューを選んだ予約（GB012）・その先生の指名（GB002）を断り、
+ * 担当のシフトの時間を専用にしない（トレーニングの枠を始まる前から塞がない）。
+ * `supabase/migrations/20261029020000_booking_menu_starts_on.sql`
  */
 import { footprintOverlaps } from "@/lib/bookingOptions";
 import { parseTimeToMinutes } from "@/lib/businessHours";
@@ -32,7 +40,11 @@ export interface BookingMenu {
   /** お客様に出すか */
   is_active: boolean;
   sort_order: number;
+  /** この日から予約できる（yyyy-MM-dd・JST）。null はすぐ */
+  starts_on?: string | null;
 }
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** DB の行を読む。壊れた行は捨てる。並びは sort_order（同じなら読んだ順） */
 export const parseMenus = (rows: unknown): BookingMenu[] =>
@@ -44,6 +56,8 @@ export const parseMenus = (rows: unknown): BookingMenu[] =>
       staff_user_id: typeof r.staff_user_id === "string" ? r.staff_user_id : null,
       is_active: r.is_active !== false,
       sort_order: typeof r.sort_order === "number" ? r.sort_order : 0,
+      // 読めない値は「すぐ」に倒す（選べない日を勝手に作らない。最終判定は DB）
+      starts_on: typeof r.starts_on === "string" && DATE_KEY.test(r.starts_on) ? r.starts_on : null,
     }))
     .filter((m) => m.name !== "")
     .map((m, i) => ({ m, i }))
@@ -65,6 +79,20 @@ export const selectableMenus = (
  */
 export const defaultMenu = (menus: ReadonlyArray<BookingMenu>): BookingMenu | null =>
   menus.find((m) => !m.staff_user_id) ?? menus[0] ?? null;
+
+/** そのメニューを、その日（yyyy-MM-dd）に予約できるか（開始日より前なら false） */
+export const isMenuOpenOn = (menu: Pick<BookingMenu, "starts_on"> | null | undefined, dateKey: string): boolean =>
+  !menu?.starts_on || dateKey >= menu.starts_on;
+
+/** まだ始まっていないメニューの開始日（今日より後なら返す）。お客様の画面に「11/25〜」と出す */
+export const upcomingMenuStart = (menu: Pick<BookingMenu, "starts_on"> | null | undefined, today: string): string | null =>
+  menu?.starts_on && menu.starts_on > today ? menu.starts_on : null;
+
+/** yyyy-MM-dd を「11/25」の形にする */
+export const menuStartLabel = (dateKey: string): string => {
+  const [, month, day] = dateKey.split("-");
+  return `${Number(month)}/${Number(day)}`;
+};
 
 /**
  * 予約に添えるメニューの名前。メニューが2つ以上ある店だけ（1つなら全部同じ名前なので出さない）。

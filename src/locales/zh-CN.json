@@ -3058,6 +3058,12 @@
     "exclusiveOn": "开启：负责人排班时间内，不接受无负责人的项目（例：训练）和体验预约（店铺代为预约仍可）。",
     "exclusiveOff": "关闭：先到先得。无论哪个项目，先预约的优先。",
     "exclusiveOnToast": "已将有负责人的项目时间设为专用",
-    "exclusiveOffToast": "已改为先到先得"
+    "exclusiveOffToast": "已改为先到先得",
+    "startsOnLabel": "开始日期",
+    "startsOnAria": "{{name}}的开始日期",
+    "startsOnClear": "清除",
+    "startsOnSetHint": "{{date}}之前，顾客无法预约此项目（店铺仍可代为预约）。负责人的专用时段也从{{date}}开始。",
+    "startsOnChip": "{{date}}起",
+    "startsOnNotice": "{{name}}自{{date}}起可预约。"
   }
 }

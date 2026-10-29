@@ -15,7 +15,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import type { BookingMenu } from "@/lib/bookingMenus";
+import { menuStartLabel, type BookingMenu } from "@/lib/bookingMenus";
 
 /**
  * 予約メニュー（`booking_menus`・2026-10-28）を編集する。仕組みは src/lib/bookingMenus.ts と
@@ -26,6 +26,8 @@ import type { BookingMenu } from "@/lib/bookingMenus";
  * - メニューが2つ以上オンになると、お客様の予約画面に「メニュー」の選択が出る（1つだけなら今まで通り）
  * - 担当を決めたメニューは、その人のシフト（スタッフ別のシフト）の時間だけ予約できる
  * - 担当を決めたメニューの時間を「専用」にするか「先着順」にするか（tenants.menu_staff_hours_exclusive）
+ * - 開始日（starts_on・2026-10-29）: その日より前は、お客様がそのメニューを予約できない。専用の時間も
+ *   その日から（「今オンにして、11/25 から予約できる」ため）。空欄はすぐ
  *
  * 保存は1操作ずつすぐ書く（行が少なく、並べ替え・オン/オフを押したそばから効くほうが分かりやすい）。
  * 🔴 予約に使われたメニューは消せない（DB の外部キー）。やめるときはオフにする。
@@ -92,7 +94,7 @@ const TrainerBookingMenus = () => {
     }
   };
 
-  const update = (m: BookingMenu, patch: Partial<Pick<BookingMenu, "name" | "staff_user_id" | "is_active">>) =>
+  const update = (m: BookingMenu, patch: Partial<Pick<BookingMenu, "name" | "staff_user_id" | "is_active" | "starts_on">>) =>
     write(supabase.from("booking_menus").update(patch).eq("id", m.id));
 
   const rename = (m: BookingMenu, value: string) => {
@@ -103,6 +105,13 @@ const TrainerBookingMenus = () => {
       return;
     }
     void update(m, { name: trimmed });
+  };
+
+  /** 開始日。日付欄は入力の途中でも変わるので、欄を離れたときに保存する（空欄＝すぐ） */
+  const setStartsOn = (m: BookingMenu, value: string) => {
+    const next = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+    if (next === (m.starts_on ?? null)) return;
+    void update(m, { starts_on: next });
   };
 
   /** 並べ替え。並び順を 0,1,2… に振り直す（同じ番号が並んでいると入れ替わらないため） */
@@ -193,6 +202,30 @@ const TrainerBookingMenus = () => {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground shrink-0">{t("bookingMenus.startsOnLabel")}</span>
+                    <Input
+                      key={`${m.id}-${m.starts_on ?? ""}`}
+                      type="date"
+                      defaultValue={m.starts_on ?? ""}
+                      disabled={busy}
+                      onBlur={(e) => setStartsOn(m, e.target.value)}
+                      aria-label={t("bookingMenus.startsOnAria", { name: m.name })}
+                      className="h-9 w-40"
+                      data-testid="booking-menu-starts-on-input"
+                    />
+                    {m.starts_on && (
+                      <Button type="button" variant="ghost" size="sm" className="h-9 shrink-0" disabled={busy}
+                        onClick={() => void update(m, { starts_on: null })}>
+                        {t("bookingMenus.startsOnClear")}
+                      </Button>
+                    )}
+                  </div>
+                  {m.starts_on && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {t("bookingMenus.startsOnSetHint", { date: menuStartLabel(m.starts_on) })}
+                    </p>
+                  )}
                   {/* 担当のシフトが未設定だと、営業時間中いつでも予約でき、専用の時間も持たない */}
                   {m.staff_user_id && noShiftWarnAt.has(m.id) && (
                     <p className="text-[11px] text-warning flex items-start gap-1.5" data-testid="booking-menu-no-shift">

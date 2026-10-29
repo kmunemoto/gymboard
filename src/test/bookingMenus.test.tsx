@@ -209,9 +209,11 @@ describe("お客様の予約画面のメニュー・担当の選択（BookingSta
     expect(onPickMenu).toHaveBeenCalledWith(YOGA);
   });
 
-  it("担当のいるメニューを選んでいれば、担当の名前を添える", () => {
+  it("🔴 担当のいるメニューを選んでも、先生の名前は出さない（宗本さん「トレーニングかマシンピラティスを選べるようにだけ」）", () => {
     render(<BookingStaffMenuPicker {...base} menus={[TRAINING, YOGA]} selectedMenuId="m-yoga" />);
-    expect(screen.getByText(i18n.t("bookingMenus.pickerStaffHint", { name: "Hanako" }))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: YOGA.name })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByText(/Hanako/)).toBeNull();
+    expect(screen.getByTestId("booking-menu-picker").textContent).not.toContain("Hanako");
   });
 
   it("メニューが1つだけなら何も出さない（選ぶものが無い）", () => {

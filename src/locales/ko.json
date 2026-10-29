@@ -3030,7 +3030,6 @@
   },
   "bookingMenus": {
     "pickerLabel": "메뉴",
-    "pickerStaffHint": "{{name}}님이 담당합니다. 담당자의 시간만 선택할 수 있습니다.",
     "errorReserved": "그 시간은 다른 메뉴 전용입니다. 다른 시간을 선택해 주세요.",
     "errorUnavailable": "이 메뉴는 지금 예약할 수 없습니다. 화면을 다시 열고 선택해 주세요.",
     "title": "예약 메뉴",

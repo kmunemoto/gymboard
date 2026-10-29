@@ -128,6 +128,11 @@ main にマージしたが、**iOS の最後のビルドは前日 8/8 23:11 の 
 - 自分でやる: 本番DBの調査、本番への SQL 適用、適用後の検証、publish 後の動作確認
 - 手順書を渡す: ストア提出、Xcode / Android Studio、Apple・Firebase の管理画面、
   実機での決済・通知の確認、Stripe ダッシュボード
+- **Web の Publish も自分で押してよい**（2026-10-29、宗本さん「自分でpublish押していいよ」）。
+  `mcp__Lovable__deploy_project`（project_id は下のジムボードの Lovable ID。`name` は渡さない＝URL を変えない）。
+  押す前に `get_project` の `latest_commit_sha` が main の先頭と同じか確かめる（Lovable の同期待ち）。
+  ⚠️ 返り値は `pending` まで。公開サイト（`*.lovable.app`・本番ドメイン）はコンテナから開けない（プロキシが 403）ので、
+  画面の確認はできない。DB に跡が残る変更なら、`pg_stat_statements` の問い合わせの形で新しい画面が動いたかを見る
 
 接続の詰まりどころ:
 - **Lovable Cloud のプロジェクトは Supabase コネクタから見えない**ことがある

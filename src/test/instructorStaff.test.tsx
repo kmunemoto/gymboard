@@ -444,6 +444,13 @@ describe("画面のつなぎ込み（ソース）", () => {
     expect(read("src/components/trainer/TrainerSchedule.tsx")).toContain("readOnly={isLimitedStaff}");
   });
 
+  it("🔴 通知設定: 店の Google カレンダー連携はインストラクターに出さない（店の同期はオーナーの連携だけ）", () => {
+    // つなげると、店の予定の同期先に先生のカレンダーが選ばれ、お客様全員の予約が入りうる（2026-10-28）
+    const src = read("src/components/trainer/TrainerNotificationSettings.tsx");
+    expect(src).toContain("const { isLimitedStaff } = useTenant();");
+    expect(src).toContain("{GOOGLE_CALENDAR_TRAINER_ENABLED && !isLimitedStaff && (");
+  });
+
   it("useTenant は自分のジムの行の権限を読む（別のジムの行を拾わない）", () => {
     const src = read("src/hooks/useTenant.ts");
     expect(src).toContain("isLimitedStaff: isLimitedStaffRole(membership?.role, membership?.staff_access)");
@@ -573,6 +580,7 @@ describe("DB（20261028020000_instructor_staff.sql）", () => {
 describe("Edge Function（店宛ての通知）", () => {
   it.each([
     "notify-new-booking", "trial-book", "drop-in-book", "trial-cancel", "send-push-notification", "daily-trainer-summary",
+    "google-calendar-sync", // 店の予定の同期先（Google カレンダー）にインストラクターの連携を使わない
   ])("%s はインストラクターを店宛ての宛先から外す", (name) => {
     expect(read(`supabase/functions/${name}/index.ts`)).toContain('.neq("staff_access", "limited")');
   });

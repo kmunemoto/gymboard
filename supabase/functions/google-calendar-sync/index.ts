@@ -58,12 +58,15 @@ async function getTenantCalendarToken(
   supabase: SupabaseClient,
   tenantId: string,
 ): Promise<any | null> {
+  // インストラクター（staff_access = limited）の連携は店の予定に使わない（2026-10-28）。
+  // 使うと、先生がつないだ自分のカレンダーにお客様全員の予約が入りうる（どの行を拾うかは順不同）。
   const { data: staff } = await supabase
     .from("tenant_members")
     .select("user_id")
     .eq("tenant_id", tenantId)
     .eq("status", "active")
-    .in("role", ["owner", "trainer"]);
+    .in("role", ["owner", "trainer"])
+    .neq("staff_access", "limited");
   const staffIds = (staff || []).map((s: any) => s.user_id);
   if (staffIds.length === 0) return null;
 

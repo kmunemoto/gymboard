@@ -41,8 +41,12 @@ export const isLimitedStaffRole = (
   access: StaffAccess | null | undefined,
 ): boolean => role === "trainer" && access === "limited";
 
-/** インストラクターに出さないタブ。設定タブは出すが、中身を「アカウント」だけにする */
-export const LIMITED_HIDDEN_TABS: readonly TrainerTab[] = ["announcements", "videos"];
+/**
+ * インストラクターに出さないタブ。設定タブは出すが、中身を「アカウント」だけにする。
+ * 種目管理（ジム共通の種目・部位）も出さない（2026-10-29 宗本さん「先生は設定欄を表示させない、触れない様に」）。
+ * 記録の入力中の「新しい種目を追加」は先生の仕事なので残す（DB も追加だけは通す）
+ */
+export const LIMITED_HIDDEN_TABS: readonly TrainerTab[] = ["announcements", "videos", "exercises"];
 
 /** そのタブを開けるか */
 export const canOpenTab = (tab: TrainerTab, limited: boolean): boolean => !limited || !LIMITED_HIDDEN_TABS.includes(tab);

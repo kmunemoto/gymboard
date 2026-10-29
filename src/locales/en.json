@@ -3030,7 +3030,6 @@
   },
   "bookingMenus": {
     "pickerLabel": "Menu",
-    "pickerStaffHint": "{{name}} will take this session. Only {{name}}'s hours can be selected.",
     "errorReserved": "That time is reserved for another menu. Please choose a different time.",
     "errorUnavailable": "This menu can't be booked right now. Please reopen the screen and choose again.",
     "title": "Booking menus",

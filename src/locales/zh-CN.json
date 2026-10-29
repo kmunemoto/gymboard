@@ -3030,7 +3030,6 @@
   },
   "bookingMenus": {
     "pickerLabel": "项目",
-    "pickerStaffHint": "由{{name}}负责。只能选择负责人的时间。",
     "errorReserved": "该时间专供其他项目。请选择其他时间。",
     "errorUnavailable": "该项目目前无法预约。请重新打开页面后选择。",
     "title": "预约项目",

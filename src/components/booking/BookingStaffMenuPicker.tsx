@@ -8,7 +8,9 @@ import type { TenantStaff } from "@/lib/tenantStaff";
  * お客様の予約画面の「メニュー」または「担当」の選択（2026-10-28 に CustomerBooking から切り出し）。
  *
  * - 予約メニューを使っている店（`booking_menus` がある）… メニューを選ぶ（2つ以上あるときだけ出す）。
- *   担当はメニューで決まるので、担当の選択は出さない（src/lib/bookingMenus.ts）
+ *   担当はメニューで決まるので、担当の選択は出さない（src/lib/bookingMenus.ts）。
+ *   🔴 担当（先生）の名前も出さない。宗本さん「先生の名前は出さなくていい。トレーニングかマシンピラティスを
+ *   選べるようにだけして」（2026-10-29）
  * - 使っていない店 … 今まで通り、スタッフが2人以上いれば担当を選ぶ
  * - まだ始まっていないメニュー（開始日が今日より後）は、名前に「11/25〜」を添え、選んだら開始日を案内する
  *   （開始日より前の日付はカレンダーで選べない。src/lib/bookingCalendarDay.ts）
@@ -41,9 +43,6 @@ const BookingStaffMenuPicker = ({
     // メニューが1つだけなら選ぶものが無い（そのメニューで予約する）
     if (menus.length < 2) return null;
     const selected = menus.find((m) => m.id === selectedMenuId) ?? null;
-    const staffName = selected?.staff_user_id
-      ? staff.find((s) => s.user_id === selected.staff_user_id)?.display_name ?? null
-      : null;
     const today = getJSTToday();
     const selectedStart = upcomingMenuStart(selected, today);
     return (
@@ -78,9 +77,6 @@ const BookingStaffMenuPicker = ({
             <CalendarClock className="w-3.5 h-3.5 shrink-0" />
             {t("bookingMenus.startsOnNotice", { name: selected.name, date: menuStartLabel(selectedStart) })}
           </p>
-        )}
-        {staffName && (
-          <p className="text-[11px] text-muted-foreground mt-1.5">{t("bookingMenus.pickerStaffHint", { name: staffName })}</p>
         )}
       </div>
     );

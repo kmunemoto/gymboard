@@ -3030,7 +3030,6 @@
   },
   "bookingMenus": {
     "pickerLabel": "項目",
-    "pickerStaffHint": "由{{name}}負責。只能選擇負責人的時間。",
     "errorReserved": "該時間專供其他項目。請選擇其他時間。",
     "errorUnavailable": "此項目目前無法預約。請重新開啟頁面後選擇。",
     "title": "預約項目",

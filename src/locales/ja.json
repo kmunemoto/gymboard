@@ -3030,7 +3030,6 @@
   },
   "bookingMenus": {
     "pickerLabel": "メニュー",
-    "pickerStaffHint": "{{name}}が担当します。担当の時間だけ選べます。",
     "errorReserved": "その時間は別のメニュー専用です。別の時間をお選びください。",
     "errorUnavailable": "このメニューは今は予約できません。画面を開き直してお選びください。",
     "title": "予約メニュー",

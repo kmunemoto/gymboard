@@ -157,16 +157,19 @@ describe("インストラクターかどうかの判定", () => {
     expect(isLimitedStaffRole(null, null)).toBe(false);
   });
 
-  it("開けないのはお知らせ・動画だけ。ホーム・顧客・予約・設定（アカウント）は開ける", () => {
-    expect([...LIMITED_HIDDEN_TABS].sort()).toEqual(["announcements", "videos"]);
-    for (const tab of ["dashboard", "clients", "schedule", "messages", "exercises", "gym-settings"] as const) {
+  it("開けないのはお知らせ・動画・種目管理。ホーム・顧客・予約・メッセージ・設定（アカウント）は開ける", () => {
+    // 種目管理（ジム共通の種目・部位）は 2026-10-29 に足した（宗本さん「先生は設定欄を表示させない、触れない様に」）
+    expect([...LIMITED_HIDDEN_TABS].sort()).toEqual(["announcements", "exercises", "videos"]);
+    for (const tab of ["dashboard", "clients", "schedule", "messages", "gym-settings"] as const) {
       expect(canOpenTab(tab, true), tab).toBe(true);
     }
     expect(canOpenTab("announcements", true)).toBe(false);
     expect(canOpenTab("videos", true)).toBe(false);
+    expect(canOpenTab("exercises", true)).toBe(false);
     // オーナー・今まで通りのスタッフは全部開ける
     expect(canOpenTab("announcements", false)).toBe(true);
     expect(canOpenTab("videos", false)).toBe(true);
+    expect(canOpenTab("exercises", false)).toBe(true);
   });
 
   it("店宛ての通知からインストラクターを外す。担当の予約だけは届ける", () => {
@@ -244,7 +247,7 @@ describe("メニュー（TrainerSidebar）", () => {
     view.isLimitedStaff = true;
     render(<TrainerSidebar activeTab="announcements" onTabChange={vi.fn()} />);
     const labels = visibleTabLabels();
-    for (const key of ["announcements", "mAnnouncements", "videos", "mVideos", "gymSettings", "mGymSettings"]) {
+    for (const key of ["announcements", "mAnnouncements", "videos", "mVideos", "gymSettings", "mGymSettings", "exercises", "mExercises"]) {
       expect(labels, key).not.toContain(i18n.t(`trainerNav.${key}`));
     }
     for (const key of ["dashboard", "clients", "schedule", "account", "mAccount"]) {
@@ -255,7 +258,7 @@ describe("メニュー（TrainerSidebar）", () => {
   it("オーナー・今まで通りのスタッフは今まで通り", () => {
     render(<TrainerSidebar activeTab="dashboard" onTabChange={vi.fn()} />);
     const labels = visibleTabLabels();
-    for (const key of ["announcements", "videos", "gymSettings", "mGymSettings"]) {
+    for (const key of ["announcements", "videos", "gymSettings", "mGymSettings", "exercises", "mExercises"]) {
       expect(labels, key).toContain(i18n.t(`trainerNav.${key}`));
     }
     expect(labels).not.toContain(i18n.t("trainerNav.account"));

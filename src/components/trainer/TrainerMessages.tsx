@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import { useMessages, useUnreadBySender } from "@/hooks/useMessages";
 import { useAttachmentPicker } from "@/hooks/useAttachmentPicker";
 import { useMessageTemplates } from "@/hooks/useMessageTemplates";
@@ -70,6 +71,8 @@ interface TrainerMessagesProps {
 const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  // インストラクターは定型文を使えるが、管理（追加・編集・削除）はできない（ジム共通・2026-10-29）
+  const { isLimitedStaff } = useTenant();
   const [customers, setCustomers] = useState<CustomerInfo[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(initialCustomerId);
   const [newMsg, setNewMsg] = useState("");
@@ -548,7 +551,7 @@ const TrainerMessages = ({ initialCustomerId = null }: TrainerMessagesProps) => 
               <MessageTemplateChips
                 templates={templateStore.templates}
                 onPick={(tpl) => applyTemplate(tpl.body)}
-                onManage={() => setTemplateDialogOpen(true)}
+                onManage={isLimitedStaff ? undefined : () => setTemplateDialogOpen(true)}
               />
               {attachment.picked && (
                 <AttachmentPreview

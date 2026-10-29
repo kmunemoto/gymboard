@@ -5,7 +5,11 @@ import type { MessageTemplate } from "@/hooks/useMessageTemplates";
 interface MessageTemplateChipsProps {
   templates: MessageTemplate[];
   onPick: (template: MessageTemplate) => void;
-  onManage: () => void;
+  /**
+   * 定型文の管理を開く。渡さなければ歯車を出さない（インストラクター。定型文はジム共通なので
+   * オーナーが管理する。DB もインストラクターの書き込みを止めている・2026-10-29）
+   */
+  onManage?: () => void;
 }
 
 /**
@@ -16,6 +20,9 @@ interface MessageTemplateChipsProps {
  */
 const MessageTemplateChips = ({ templates, onPick, onManage }: MessageTemplateChipsProps) => {
   const { t } = useTranslation();
+
+  // 使える定型文が無く、管理もできないなら何も出さない（空の行で入力欄を押し上げない）
+  if (templates.length === 0 && !onManage) return null;
 
   return (
     <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-0.5">
@@ -30,14 +37,16 @@ const MessageTemplateChips = ({ templates, onPick, onManage }: MessageTemplateCh
           {tpl.title}
         </button>
       ))}
-      <button
-        type="button"
-        onClick={onManage}
-        aria-label={t("messageTemplates.manageTitle")}
-        className="shrink-0 w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
-      >
-        <Settings2 className="w-3.5 h-3.5" />
-      </button>
+      {onManage && (
+        <button
+          type="button"
+          onClick={onManage}
+          aria-label={t("messageTemplates.manageTitle")}
+          className="shrink-0 w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 };

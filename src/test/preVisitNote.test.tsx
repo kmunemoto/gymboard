@@ -7,7 +7,7 @@
  *
  * 🔴 壊しやすいもの:
  *   1. 設定していない店にも出る（上流の例文が他のジムのお客様に出る）
- *   2. 画面のどれかに出し忘れる（予約完了・ホームの次回の予約・体験予約の完了）
+ *   2. 画面のどれかに出し忘れる（予約完了・ホームの次回の予約）／🔴 体験予約の完了に出す（2026-10-30 に外した）
  *   3. 長さの上限が DB の CHECK とズレる（画面で書けるのに保存できない）
  *   4. 体験予約ページ（未ログイン）に届かない／get_tenant_public の GRANT を貼り直し忘れる
  */
@@ -76,7 +76,7 @@ describe("お客様に見える部品", () => {
   });
 });
 
-describe("🔴 3つの画面に出す（予約完了・ホームの次回の予約・体験予約の完了）", () => {
+describe("🔴 会員の2つの画面に出す（予約完了・ホームの次回の予約）。体験予約には出さない", () => {
   const read = (p: string) => readFileSync(p, "utf8");
 
   it("予約完了の画面", () => {
@@ -87,10 +87,12 @@ describe("🔴 3つの画面に出す（予約完了・ホームの次回の予�
     expect(read("src/components/customer/CustomerHome.tsx")).toContain("<PreVisitNote compact note={tenant.pre_visit_note} />");
   });
 
-  it("体験予約の完了画面（未ログイン。get_tenant_public から受け取る）", () => {
+  it("🔴 体験予約の完了画面には出さない（2026-10-30 宗本さん「体験には出さないでください」）", () => {
     const trial = read("src/pages/TrialBooking.tsx");
-    expect(trial).toContain("<PreVisitNote note={tenant?.pre_visit_note} />");
-    expect(trial).toContain("pre_visit_note?: string | null;");
+    expect(trial).not.toContain("<PreVisitNote");
+    expect(trial).not.toContain("pre_visit_note");
+    // ドロップイン（未ログインの1回利用）にも出していない
+    expect(read("src/pages/DropInBooking.tsx")).not.toContain("PreVisitNote");
   });
 
   it("設定は予約のルール（来店の目安時刻の隣）", () => {

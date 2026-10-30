@@ -31,7 +31,6 @@ import { TRIAL_BOOKING_ENABLED } from "@/lib/featureFlags";
 import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
 import { usePublicPageTheme } from "@/hooks/usePublicPageTheme";
 import ArrivalNotice from "@/components/booking/ArrivalNotice";
-import PreVisitNote from "@/components/booking/PreVisitNote";
 import { useTrialFullDays } from "@/hooks/useTrialFullDays";
 
 interface TrialSlotBooking {
@@ -81,7 +80,6 @@ interface PublicTenant {
    */
   arrival_lead_minutes?: number | null;
   /** ご来店前のお願い（get_tenant_public。2026-10-27） */
-  pre_visit_note?: string | null;
 }
 
 // テナント指定なしの場合の既定テナント。既存リンク互換のためのレガシーシムで、
@@ -487,7 +485,7 @@ const TrialBooking = () => {
               <p className="text-xs text-muted-foreground mt-2">{t("trialBooking.completedSubtitle")}</p>
             </div>
             <ArrivalNotice startTime={completedInfo.rawStartTime} lead={tenant?.arrival_lead_minutes} />
-            <PreVisitNote note={tenant?.pre_visit_note} />
+            {/* 「ご来店前のお願い」は体験には出さない（2026-10-30 宗本さん・src/lib/preVisitNote.ts） */}
             <a
               href={calendarUrl}
               target="_blank"

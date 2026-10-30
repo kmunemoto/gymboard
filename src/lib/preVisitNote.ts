@@ -7,8 +7,8 @@
  * `booking_email_note` / `reminder_email_note` が既にある）。
  *
  * - 店が自由に書く文（`tenants.pre_visit_note`）。食事に限らない
- * - 出す場所は「ご来店は 13:55 以降に」（src/lib/arrivalGuide.ts）と同じ3か所:
- *   予約完了画面・ホームの次回の予約・体験予約の完了画面（src/components/booking/PreVisitNote.tsx）
+ * - 出す場所は会員の2か所: 予約完了画面・ホームの次回の予約（src/components/booking/PreVisitNote.tsx）。
+ *   🔴 体験予約の完了画面には出さない（2026-10-30 宗本さん「体験には出さないでください」）
  * - 🔴 既定は NULL＝何も出さない。上流が文言を代弁しない（例文は設定画面のボタンで入れるだけ）
  */
 

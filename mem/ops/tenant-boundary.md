@@ -1570,13 +1570,26 @@ send-transactional-email の service_role 経路（宛先の解決）は未対�
 予約の作成（予約の行ができてから呼ぶ）・キャンセル（行を消す前に呼ぶ）・オプションの変更（消してから作る）・
 予約変更の巻き戻し（calendarResync）は、どれも予約行が在るうちに呼んでいて、渡している値も行の値と同じ。
 
+### 2回目: 通知とログ（同じ日）
+
+| 指摘 | 直したこと |
+|---|---|
+| send-push-notification-2（medium） | 通知の url の判定を `_shared/safeUrl.ts` にまとめ、空白・制御文字・バックスラッシュを拒否し、解決した先の origin を比べる。開く側（`src/lib/safePath.ts`・`public/sw.js`）も同じ判定にした。`"/\evil.example"`・`"/<タブ>/evil.example"` は「/ で始まり // で始まらない」を通るのに、開くと外部サイトに解決されていた |
+| send-push-notification-3（medium） | 体験予約の通知（purpose = trial_booking）は service_role だけ（以前は未ログインで、同じ ID で何度でも・url も指定できた）。正規の呼び出し元は trial-book・drop-in-book で、どちらも service_role |
+| send-push-notification-4（medium） | キャンセル待ちの認可で、本人が書き換えられる profiles.tenant_id を根拠にしない（本番で該当者0人を確認してから外した） |
+| send-push-notification-5（medium） | 先生の担当の判定は、先生のジムの予約・記録だけで行う。外れたときも理由を応答に出さない |
+| auth-email-hook-1/2・送信メールのログ | ログイン用のリンク（token_hash 入り）をログに出さない。メールアドレスは `_shared/logSafety.ts` の maskEmail で伏せ字（send-transactional-email に見落としが2か所あり、テストが見つけた） |
+
+見張り: `src/test/pushUrlSafety.test.ts`（攻撃の形14通りを、送る側・アプリ・Service Worker の3か所で実際に動かして確かめる）・
+`src/test/logSafety.test.ts`（console の呼び出しを全部拾って、伏せ字にしていない宛先・トークン入りの URL が無いか見る）
+
 ### 残り
 
 - **OAuth の state をブラウザに結びつける**（google-calendar-callback-1 の残り）。今は「同意リンクを踏ませると、
   その人の Google のトークンが攻撃者の行に保存される」までは起きうる（読めないので、攻撃者のジムの予約が
   その人のカレンダーに書かれる程度）。連携の完了をログイン中の本人が確かめる形にするには画面の変更が要る
 - send-transactional-email の service_role 経路で、宛先の解決（_resolve_user_）をそのジムの人に限る
-- 点検ワークフローの medium / low の残り（push の URL・体験予約のメール中継・ドロップインの枠埋め・LINE の state・
-  Stripe の sandbox・認証メールのログ など）
+- 点検ワークフローの medium / low の残り（体験予約のメール中継・ドロップインの枠埋め・LINE の state・
+  Stripe の sandbox と Pro のコンプ判定（宗本さんに確認が要る）・通知の回数制限 など）
 
 見張り: `src/test/googleCalendarSyncAuthz.test.ts`

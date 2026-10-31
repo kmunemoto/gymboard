@@ -55,6 +55,7 @@ function generateToken(): string {
 // 「トレーナーだから信用する」は認可の根拠にならない。所属は tenant_members で見る。
 // 同じ形の穴を send-push-notification でも塞いだ（PR #246）。
 import { verifyCaller } from '../_shared/auth.ts'
+import { maskEmail } from '../_shared/logSafety.ts'
 
 /** クライアント（お客様・ジムのスタッフの両方）が呼べるテンプレート。 */
 // 残り5種（trial-booking-confirmation / drop-in-booking-confirmation /
@@ -490,7 +491,7 @@ Deno.serve(async (req) => {
   const mustDeliver = MUST_DELIVER_TEMPLATES.has(templateName)
   console.log('Preparing transactional email', {
     templateName,
-    effectiveRecipient,
+    recipient: maskEmail(effectiveRecipient),
     mustDeliver,
   })
 
@@ -506,7 +507,7 @@ Deno.serve(async (req) => {
   if (suppressionError) {
     console.error('Suppression check failed — refusing to send', {
       error: suppressionError,
-      effectiveRecipient,
+      recipient: maskEmail(effectiveRecipient),
     })
     return new Response(
       JSON.stringify({ error: 'Failed to verify suppression status' }),
@@ -528,7 +529,7 @@ Deno.serve(async (req) => {
       template_data: templateData,
     })
 
-    console.log('Email suppressed', { effectiveRecipient, templateName })
+    console.log('Email suppressed', { recipient: maskEmail(effectiveRecipient), templateName })
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
       {
@@ -555,7 +556,7 @@ Deno.serve(async (req) => {
   if (tokenLookupError) {
     console.error('Token lookup failed', {
       error: tokenLookupError,
-      email: normalizedEmail,
+      recipient: maskEmail(normalizedEmail),
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
@@ -622,7 +623,7 @@ Deno.serve(async (req) => {
     if (reReadError || !storedToken) {
       console.error('Failed to read back unsubscribe token after upsert', {
         error: reReadError,
-        email: normalizedEmail,
+        recipient: maskEmail(normalizedEmail),
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
@@ -646,7 +647,7 @@ Deno.serve(async (req) => {
     // Token exists but is already used — email should have been caught by suppression check above.
     // This is a safety fallback; log and skip sending.
     console.warn('Unsubscribe token already used but email not suppressed', {
-      email: normalizedEmail,
+      recipient: maskEmail(normalizedEmail),
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
@@ -807,7 +808,7 @@ Deno.serve(async (req) => {
     console.error('Failed to enqueue email', {
       error: enqueueError,
       templateName,
-      effectiveRecipient,
+      recipient: maskEmail(effectiveRecipient),
     })
 
     // 冪等キーの予約を取り消す（残すと、この予約の再試行が永久に duplicate 扱いになる）
@@ -844,7 +845,7 @@ Deno.serve(async (req) => {
 
   console.log('Transactional email enqueued', {
     templateName,
-    effectiveRecipient,
+    recipient: maskEmail(effectiveRecipient),
     mustDeliver,
     hasUnsubscribeToken: Boolean(unsubscribeToken),
   })

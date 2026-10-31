@@ -121,18 +121,26 @@ describe("日付の下に何を出すか", () => {
   });
 
   it("選べない理由は、今までの「選べるか」と1対1（足しても判定は変わらない）", () => {
-    const base: CalendarDayRules = {
-      today: "2026-10-06", businessHours: { start: "10:00", end: "22:30", days: { 5: null } } as never,
-      closedDays: [], hasOwnBookingOn: () => false, isDayFull: (d) => d === "2026-10-14",
-      staffSchedules: null, staffUserId: null, bookingWindowDays: 30, nextCyclePaymentGate: null,
-    };
-    expect(dayUnselectableReason("2026-10-05", base)).toBe("past");
-    expect(dayUnselectableReason("2026-10-09", base)).toBe("closed"); // 金曜＝定休日
-    expect(dayUnselectableReason("2026-10-14", base)).toBe("full");
-    expect(dayUnselectableReason("2026-10-15", base)).toBeNull();
-    expect(dayUnselectableReason("2026-12-01", base)).toBe("beyondWindow");
-    for (const d of ["2026-10-05", "2026-10-09", "2026-10-14", "2026-10-15", "2026-12-01"]) {
-      expect(isDayUnselectable(d, base), d).toBe(dayUnselectableReason(d, base) !== null);
+    // 🔴 時計を today に合わせる。予約できる範囲（30日）は本物の現在時刻から数えるため、
+    //    固定しないと日本時間 2026-11-01 から「12/1 は範囲内」になって落ちた（2026-10-31 の CI）。
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-06T03:00:00Z")); // 日本時間 10/6 の昼
+    try {
+      const base: CalendarDayRules = {
+        today: "2026-10-06", businessHours: { start: "10:00", end: "22:30", days: { 5: null } } as never,
+        closedDays: [], hasOwnBookingOn: () => false, isDayFull: (d) => d === "2026-10-14",
+        staffSchedules: null, staffUserId: null, bookingWindowDays: 30, nextCyclePaymentGate: null,
+      };
+      expect(dayUnselectableReason("2026-10-05", base)).toBe("past");
+      expect(dayUnselectableReason("2026-10-09", base)).toBe("closed"); // 金曜＝定休日
+      expect(dayUnselectableReason("2026-10-14", base)).toBe("full");
+      expect(dayUnselectableReason("2026-10-15", base)).toBeNull();
+      expect(dayUnselectableReason("2026-12-01", base)).toBe("beyondWindow");
+      for (const d of ["2026-10-05", "2026-10-09", "2026-10-14", "2026-10-15", "2026-12-01"]) {
+        expect(isDayUnselectable(d, base), d).toBe(dayUnselectableReason(d, base) !== null);
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

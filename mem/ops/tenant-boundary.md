@@ -1583,6 +1583,17 @@ send-transactional-email の service_role 経路（宛先の解決）は未対�
 見張り: `src/test/pushUrlSafety.test.ts`（攻撃の形14通りを、送る側・アプリ・Service Worker の3か所で実際に動かして確かめる）・
 `src/test/logSafety.test.ts`（console の呼び出しを全部拾って、伏せ字にしていない宛先・トークン入りの URL が無いか見る）
 
+### 本番への反映（2026-10-31・済み）
+
+| PR | 反映 | 新しいコードが動いていることの確かめ方（どれも何も送らない） |
+|---|---|---|
+| #472 | google-calendar-sync・notify-new-booking・notify-new-message を Lovable でデプロイ | notify-new-message: 所属外の宛先の古いメッセージに**先に送信済みの印（notification_dedupe）を付けてから** x-cron-secret で叩く。旧コードは `already_sent`、新コードは `party_not_member`（確認後に印は消した） |
+| #473 | send-push-notification・send-transactional-email・auth-email-hook をデプロイ。Web を Publish（sw.js・safePath） | 未ログインで `purpose = trial_booking`（存在しない ID）→ 旧 404・新 403。url に `"/\evil.example"` → 新は 400 `Invalid url`（旧は認証まで進む） |
+
+🔴 デプロイ済みの関数を差し替えたときは「404 でない」では足りない（旧コードでも 404 でない）。
+**旧コードと新コードで返事が変わる呼び方**を、デプロイの前に1回叩いて基準を取ってから使う。
+service_role / cron 用の関数は、送信済みの印を先に付けておけば、旧コードでも実際には何も送らない。
+
 ### 残り
 
 - **OAuth の state をブラウザに結びつける**（google-calendar-callback-1 の残り）。今は「同意リンクを踏ませると、

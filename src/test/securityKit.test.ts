@@ -25,6 +25,7 @@ const DISTRIBUTED_FILES = [
   "supabase/migrations/20260803140000_global_trainer_write_scope.sql",
   "supabase/migrations/20260805000000_email_queue_revoke_roles.sql",
   "supabase/migrations/20261031040000_staff_checks_tenant_scoped.sql",
+  "supabase/migrations/20261031050000_customer_join_requires_invite_code.sql",
   "supabase/functions/send-push-notification/index.ts",
   "supabase/functions/send-transactional-email/index.ts",
   "supabase/functions/send-line-message/index.ts",

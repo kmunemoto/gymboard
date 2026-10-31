@@ -1927,6 +1927,24 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_join_tickets: {
+        Row: {
+          created_at: string
+          invite_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          invite_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          invite_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tenant_members: {
         Row: {
           cycle_start_date: string | null
@@ -2652,14 +2670,6 @@ export type Database = {
         Returns: number
       }
       ensure_starter_items: { Args: { p_user_id: string }; Returns: undefined }
-      equip_item: {
-        Args: { p_item_id: string; p_user_id: string }
-        Returns: Json
-      }
-      equip_item_unchecked: {
-        Args: { p_item_id: string; p_user_id: string }
-        Returns: Json
-      }
       get_app_release: {
         Args: { p_platform: string }
         Returns: {
@@ -2826,6 +2836,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_tenant_join_ticket: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
       has_tenant_role: {
         Args: { _roles: string[]; _tenant_id: string; _user_id: string }
         Returns: boolean
@@ -2834,15 +2848,12 @@ export type Database = {
         Args: { _rows: Json; _tenant_id: string }
         Returns: number
       }
-      initialize_starter_equipment: { Args: never; Returns: Json }
-      initialize_starter_equipment_for_user: {
-        Args: { p_user_id: string }
-        Returns: Json
-      }
       is_limited_staff: {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_staff_of_user: { Args: { p_user_id: string }; Returns: boolean }
+      is_staff_somewhere: { Args: never; Returns: boolean }
       is_tenant_member: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean

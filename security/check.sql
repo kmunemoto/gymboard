@@ -576,6 +576,43 @@ ORDER BY p.proname;
 
 
 -- ----------------------------------------------------------------------------
+-- 検査11: 招待コードを知らない人が、お客様として好きなジムに入れないか（★穴12 / 2026-10-31）
+-- ----------------------------------------------------------------------------
+-- tenant_members の INSERT ポリシーが「自分の行で role = 'customer'」を通すだけだと、
+-- ジムの id さえ分かれば（体験予約ページの URL などに出ている）、ログインした人が API で
+-- 好きなジムにお客様として入れる（招待コードを見ていない）。入るとお客様向けの情報が読め、予約もできる。
+-- 穴11（検査10）が開いていれば、そこから印を付けてジムの全員のデータまで届く。
+--
+-- ★ が出たら開いている。直し方は supabase/migrations/20261031050000_customer_join_requires_invite_code.sql
+-- （コードの確認が当たったら本人に参加券を出し、画面からの直接の参加は券が無ければ断る。画面の手順は変えない）
+-- ⚠️ 確かめるなら、どのジムにも属していない人を演じて自分を customer で入れてみるのが確実（最後に RAISE で戻すこと）。
+
+SELECT
+  p.policyname,
+  p.with_check,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+        FROM pg_trigger t
+        JOIN pg_proc f ON f.oid = t.tgfoid
+       WHERE t.tgrelid = 'public.tenant_members'::regclass
+         AND NOT t.tgisinternal
+         AND t.tgenabled <> 'D'
+         AND (t.tgtype & 2) = 2
+         AND (t.tgtype & 4) = 4
+         AND f.prosrc ~* '(join_ticket|invite_code)'
+    ) THEN 'OK: 参加の門番（招待コードの確認）がある'
+    ELSE '★要対応: 招待コード無しで、お客様として好きなジムに入れる'
+  END AS verdict
+FROM pg_policies p
+WHERE p.schemaname = 'public'
+  AND p.tablename = 'tenant_members'
+  AND p.permissive = 'PERMISSIVE'
+  AND p.cmd IN ('INSERT', 'ALL')
+  AND coalesce(p.with_check, p.qual, '') ~ 'customer';
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

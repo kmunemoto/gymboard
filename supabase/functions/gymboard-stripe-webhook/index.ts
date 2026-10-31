@@ -58,33 +58,53 @@ function getAdmin() {
 }
 
 /**
- * コンプ（運営が無償で無制限にしているテナント。max_customers IS NULL）は
- * Stripe のイベントで**一切書き換えない**。
+ * 運営が付ける課金の印（tenant_billing_flags。anon・authenticated は読めない・書けない。
+ * supabase/migrations/20261031090000_billing_flags_and_tenant_billing_guard.sql）。
  *
- * 2026-08-21 に実際に起きた: 運営自身のジム（Salute御所南・コンプ）に課金テストの
- * サブスクが紐づいたまま Stripe 側で削除され、customer.subscription.deleted が
- * コンプ状態を free（上限5名）へ上書き。顧客37名のジムが「上限超過」で
- * 新規予約・記録を作れなくなった。
+ * - is_comp: コンプ（運営が無償で無制限にしているジム）。Stripe のイベントで**一切書き換えない**。
+ *   2026-08-21 に実際に起きた: 運営自身のジム（Salute御所南・コンプ）に課金テストの
+ *   サブスクが紐づいたまま Stripe 側で削除され、customer.subscription.deleted が
+ *   コンプ状態を free（上限5名）へ上書き。顧客37名のジムが「上限超過」で
+ *   新規予約・記録を作れなくなった。
+ *   🔴 以前は max_customers IS NULL をコンプとみなしていた。Pro（上限なし）も NULL なので、
+ *   Pro になったジムは以後のイベント（解約・プラン変更）を全部無視され、解約しても Pro のまま
+ *   残った（2026-10-31 の点検）。コンプは印だけで見分ける。
+ *   コンプのジムを本当に課金へ移すときは、先に運営が印を外してから checkout する（checkout は印があると断る）。
+ * - stripe_sandbox_allowed: テスト決済を受け付けるテスト用のジム。テストモードのイベント
+ *   （livemode = false）は、この印のあるジムにしか反映しない。以前はどのジムのオーナーでも、
+ *   テスト用のカード番号（お金が動かない）で Pro にできた（2026-10-31 の点検）。
  *
- * コンプのテナントを本当に課金へ移すときは、先に運営が max_customers に値を入れて
- * コンプを解除してから checkout する（この順序は意図的な運用）。
+ * 🔴 印が読めなかったら例外にする（500 → Stripe が後で送り直す）。読めないまま進むと、
+ *    コンプのジムを落としてしまう（2026-08-21 と同じ事故）。
  */
-async function isCompTenant(tenantId: string): Promise<boolean> {
-  const { data } = await getAdmin()
-    .from("tenants")
-    .select("max_customers")
-    .eq("id", tenantId)
+async function billingFlags(tenantId: string): Promise<{ comp: boolean; sandboxAllowed: boolean }> {
+  const { data, error } = await getAdmin()
+    .from("tenant_billing_flags")
+    .select("is_comp, stripe_sandbox_allowed")
+    .eq("tenant_id", tenantId)
     .maybeSingle();
-  return !!data && (data as { max_customers: number | null }).max_customers === null;
+  if (error) throw new Error(`tenant_billing_flags read failed: ${error.message}`);
+  const row = data as { is_comp: boolean; stripe_sandbox_allowed: boolean } | null;
+  return { comp: row?.is_comp === true, sandboxAllowed: row?.stripe_sandbox_allowed === true };
+}
+
+/** このイベントをこのジムに反映しない理由（ログ用）。反映してよいなら null。 */
+async function skipReason(tenantId: string, livemode: boolean): Promise<string | null> {
+  const flags = await billingFlags(tenantId);
+  if (flags.comp) return "comp tenant";
+  if (!livemode && !flags.sandboxAllowed) return "test-mode event for a tenant that is not a test tenant";
+  return null;
 }
 
 async function applySubscriptionToTenant(
   tenantId: string,
   subscription: any,
   env: StripeEnv,
+  livemode: boolean,
 ) {
-  if (await isCompTenant(tenantId)) {
-    console.log("skip subscription event for comp tenant", tenantId);
+  const skip = await skipReason(tenantId, livemode);
+  if (skip) {
+    console.log("skip subscription event:", skip, tenantId);
     return;
   }
   const admin = getAdmin();
@@ -141,7 +161,7 @@ async function resolveTenantId(subscription: any): Promise<string | null> {
   return (data as any)?.id ?? null;
 }
 
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   const rawEnv = new URL(req.url).searchParams.get("env");
@@ -154,6 +174,9 @@ Deno.serve(async (req) => {
   try {
     const type = event.type as string;
     const obj = event.data?.object;
+    // 本番のイベントか（署名を確かめたあとの値なので信じてよい）。テストモードは false。
+    // 値が無い・壊れているときは本番扱いにしない（テスト用のジムにしか反映しない側へ倒す）。
+    const livemode = event.livemode === true;
 
     if (type === "checkout.session.completed") {
       const tenantId = obj?.metadata?.tenant_id as string | undefined;
@@ -162,22 +185,29 @@ Deno.serve(async (req) => {
         console.error("checkout.session.completed missing tenant_id/subscription", obj?.id);
         return new Response(JSON.stringify({ received: true }), { status: 200 });
       }
+      // 反映しないジムなら、Stripe へ問い合わせる前に止める
+      const skip = await skipReason(tenantId, livemode);
+      if (skip) {
+        console.log("skip checkout.session.completed:", skip, tenantId);
+        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      }
       const stripe = createStripeClient(env);
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      await applySubscriptionToTenant(tenantId, subscription, env);
+      await applySubscriptionToTenant(tenantId, subscription, env, livemode);
     } else if (type === "customer.subscription.updated" || type === "customer.subscription.created") {
       const tenantId = await resolveTenantId(obj);
       if (!tenantId) {
         console.error("subscription.updated: tenant not found", obj?.id);
         return new Response(JSON.stringify({ received: true }), { status: 200 });
       }
-      await applySubscriptionToTenant(tenantId, obj, env);
+      await applySubscriptionToTenant(tenantId, obj, env, livemode);
     } else if (type === "customer.subscription.deleted") {
       const tenantId = await resolveTenantId(obj);
       if (!tenantId) return new Response(JSON.stringify({ received: true }), { status: 200 });
-      // コンプ（max_customers IS NULL）は落とさない（isCompTenant のコメント参照）
-      if (await isCompTenant(tenantId)) {
-        console.log("skip subscription.deleted for comp tenant", tenantId);
+      // コンプは落とさない・テストのイベントはテスト用のジムだけ（billingFlags のコメント参照）
+      const skip = await skipReason(tenantId, livemode);
+      if (skip) {
+        console.log("skip subscription.deleted:", skip, tenantId);
         return new Response(JSON.stringify({ received: true }), { status: 200 });
       }
       await getAdmin().from("tenants").update({
@@ -199,6 +229,12 @@ Deno.serve(async (req) => {
           .eq("stripe_subscription_id", subscriptionId)
           .maybeSingle();
         if ((data as any)?.id) {
+          // 支払いの失敗も同じ。コンプ・テストのイベントで本番のジムを past_due にしない
+          const skip = await skipReason((data as any).id, livemode);
+          if (skip) {
+            console.log("skip invoice.payment_failed:", skip, (data as any).id);
+            return new Response(JSON.stringify({ received: true }), { status: 200 });
+          }
           await admin.from("tenants")
             .update({ subscription_status: "past_due" })
             .eq("id", (data as any).id);
@@ -216,4 +252,14 @@ Deno.serve(async (req) => {
     console.error("gymboard-stripe-webhook error:", e);
     return new Response("Webhook error", { status: 500 });
   }
+}
+
+// どの版が動いているかを外から確かめるための印（署名の無い呼び出しの 400 にも付く。中身は日付だけ）。
+// Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
+const BUILD = "2026-10-31-billing-flags";
+
+Deno.serve(async (req) => {
+  const res = await handle(req);
+  res.headers.set("x-gymboard-build", BUILD);
+  return res;
 });

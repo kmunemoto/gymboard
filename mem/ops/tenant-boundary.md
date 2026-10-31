@@ -1601,6 +1601,62 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
   その人のカレンダーに書かれる程度）。連携の完了をログイン中の本人が確かめる形にするには画面の変更が要る
 - send-transactional-email の service_role 経路で、宛先の解決（_resolve_user_）をそのジムの人に限る
 - 点検ワークフローの medium / low の残り（体験予約のメール中継・ドロップインの枠埋め・LINE の state・
-  Stripe の sandbox と Pro のコンプ判定（宗本さんに確認が要る）・通知の回数制限 など）
+  通知の回数制限 など）。Stripe の sandbox と Pro のコンプ判定は下の穴14 で直した
+- **オーナーの引き継ぎ（transfer_gym_ownership）が tenants.owner_user_id を変えない**。引き継いだあと、
+  元オーナー（インストラクターになる）がジムの設定を更新でき、招待コードも読める。新オーナーは更新できない。
+  本番で引き継ぎは0件（owner_user_id の食い違いは、中身の無い重複のジム1件だけ。2026-10-31 に数えた）
+
+---
+
+## 穴14: オーナーが自分のジムのプラン・上限を API で書き換えられた（2026-10-31）
+
+Stripe の2件（テスト決済・Pro のコンプ判定。宗本さんが「テスト用のジムだけ」「コンプは御所南だけ」と判断）を
+直す途中で見つけた。**個人情報ではなく課金の穴**だが、同じマイグレーションで塞いだ。
+
+### 何が起きていたか
+
+本番で `has_column_privilege('authenticated', 'public.tenants', <列>, 'UPDATE')` が**全列 true** だった。
+`20260530080359` の `REVOKE UPDATE (stripe_customer_id, stripe_subscription_id) ... FROM authenticated` も、
+`20260804010000` の `REVOKE SELECT (staff_invite_code)` も**効いていない**（テーブル単位の権限が残っていると、
+列単位の REVOKE は何もしない。穴6 と同じ形）。UPDATE のポリシーは `owner_user_id = auth.uid()` だけなので:
+
+- オーナーは API で `gymboard_plan = 'premium'`・`max_customers = NULL`（上限なし）・`trial_ends_at` の延長ができた
+- 直接の INSERT（ポリシー "Authenticated users can create tenant"）でも、同じ値でジムを開けた
+  （`create_gym_with_owner` は値を固定しているが、INSERT の道が残っていた）
+
+ついでに確かめたこと:
+- `staff_invite_code` は列ごと使っていない（2026-10-28 に `tenant_staff_invites` へ移り、常に NULL）。
+  インストラクターの招待コード（`tenant_staff_invites`）は anon・authenticated とも読めない → 問題なし
+- お客様は自分のジムの tenants 行を全列読める（`invite_code`・`stripe_customer_id` を含む）。値を知っても
+  悪用できないので現状のまま（列の許可リストにすると、列を足すたびに画面が黙って落ちる）
+
+### 直し方（`20261031090000_billing_flags_and_tenant_billing_guard.sql`）
+
+- BEFORE INSERT OR UPDATE のトリガー `guard_tenant_billing_columns`（**SECURITY INVOKER**。`current_user` が
+  authenticated / anon のときだけ）。UPDATE は守る列（プラン・期間・上限2つ・お試し期間・状態・契約の状態・
+  期間の終わり・Stripe の ID 2つ・オーナー）が**変わる**なら拒む。INSERT は拒まずに `create_gym_with_owner` と
+  同じ値へ上書き（古いアプリは開設のときにこれらの列を送っていた）
+- 印は運営だけの表 `tenant_billing_flags`（`is_comp`・`stripe_sandbox_allowed`）。webhook と checkout は印を
+  service_role で読み、読めなければ進めない。詳しくは `mem/features/gymboard-saas-plans.md` の「運営の印」
+- `delete_my_gym` は本番の定義を写して、印の表の消し込みを1行足した
+
+### 本番への適用（2026-10-31・3段構え）
+
+1. 素振り（DO ブロックの最後で RAISE して全部戻す）: md5 照合 → 適用 → 御所南に is_comp → 下の確かめ、が全部期待どおり
+2. 適用: 同じブロックで、確かめの結果が素振りと1文字でも違えば全部戻す形にして流した（通った）
+3. 確かめ（オーナー・お客様・未ログイン・service_role を演じた。書いたものは全部戻した）:
+
+| 演じた人 | やったこと | 結果 |
+|---|---|---|
+| 御所南のオーナー | 設定の保存（gym_name・booking_window_days を同じ値で） | 1行（今まで通り） |
+| 〃 | プラン・上限・状態を同じ値で丸ごと保存 | 1行（落ちない） |
+| 〃 | max_customers・trial_ends_at・gymboard_plan・owner_user_id を変える | 4つとも拒否 |
+| 〃 | 印の表を読む・書く | どちらも permission denied |
+| 〃 | premium・上限なし・active・10年後まで、で直接 INSERT | free・5名・trial・60日・契約なし に上書きされた |
+| お客様 | 印の表を読む／ジムの上限を NULL に | permission denied／0行 |
+| 未ログイン | 印の表を読む | permission denied |
+| service_role | 別のジムの max_trainers を変える・御所南の印を読む | 1行・is_comp = true |
+
+`security/check.sql` の検査13 は7列とも「OK: 門番のトリガーが変更を拒む」。印は1行（御所南・is_comp）。
 
 見張り: `src/test/googleCalendarSyncAuthz.test.ts`

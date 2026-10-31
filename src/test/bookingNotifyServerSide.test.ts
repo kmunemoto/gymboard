@@ -150,6 +150,7 @@ describe("記録簿（booking_notify_log）と付随トリガー", () => {
       "monthly_reports", "progress_photos", "user_measurements", "meals",
       "notification_settings", "announcements", "migration_user_map", "tenant_plans",
       "tenant_staff_invites", // 2026-10-28 スタッフ・インストラクターの招待コード
+      "tenant_billing_flags", // 2026-10-31 運営が付ける課金の印（コンプ・テスト決済）
       "tenant_members", "tenants",
     ];
     expect(tables).toEqual(expected);

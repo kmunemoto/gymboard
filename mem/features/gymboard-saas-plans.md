@@ -57,18 +57,53 @@
 
 ### ⚠️ マージだけでは Stripe Webhook は再デプロイされない
 
-`.github/workflows/deploy-functions.yml` の `paths` フィルタは
-google-calendar / line-login / send-push の5関数と `supabase/config.toml` だけで、
-`gymboard-stripe-webhook` も `supabase/functions/_shared/**` も**入っていない**。
 再デプロイしないと古いバンドルが動き続け、Standard の課金イベントのたびに
 `max_customers` が 50 に**書き戻される**（画面は30名まで、DBは50名）。
 
-Lovable の Publish、または:
+🔴 2026-10-31 時点: Edge Function は **push でも Publish でも本番に出ない**。Lovable のエージェントに
+「デプロイして（編集は不要）」と頼むのが唯一の経路（`.github/workflows/deploy-functions.yml` は削除済み）。
+手順と、デプロイされたかの確かめ方は `mem/ops/edge-function-deploy.md`。
+`gymboard-stripe-webhook` と `gymboard-create-checkout` は応答に `x-gymboard-build` ヘッダを付けているので、
+署名の無い呼び出しでも「どの版が動いているか」が分かる（2026-10-31 から）。
+
+## 運営の印: コンプとテスト用のジム（`tenant_billing_flags`・2026-10-31）
+
+宗本さんの判断（2026-10-31）で、ジムごとの次の2つは**運営だけが触れる別の表**に置いた
+（`20261031090000_billing_flags_and_tenant_billing_guard.sql`。anon・authenticated は読めない・書けない）。
+
+| 列 | 意味 | 付いているジム（2026-10-31） |
+|---|---|---|
+| `is_comp` | コンプ（運営が無償で無制限）。Stripe のイベントで**一切書き換えない**。checkout も断る | 御所南だけ |
+| `stripe_sandbox_allowed` | テスト決済（Stripe のテストモード）を受け付ける。**印の無いジムはテスト決済を使えず、テストのイベントも反映しない** | まだ無し（どのジムをテスト用にするか宗本さんに確認中） |
+
+🔴 以前はコンプを `max_customers IS NULL` で見分けていた。**Pro も上限なし（NULL）なので、Pro になったジムが
+解約しても Pro のまま残った。** 上限なし＝コンプではない。コンプは印だけで見分ける。
+（`src/lib/subscriptionStatus.ts` の延滞バナーはまだ `max_customers == null` を「対象外」にしている。表示だけで、
+サーバー側に延滞で止める仕組みは今は無い。）
+
+印を付ける・外す（本番の SQL。ジムの ID は**リポジトリに書かない**）:
+```sql
+-- テスト用のジムにする
+INSERT INTO public.tenant_billing_flags (tenant_id, stripe_sandbox_allowed, note)
+VALUES ('<テスト用のジムの tenant_id>', true, 'テスト決済用（<日付> 宗本さん）')
+ON CONFLICT (tenant_id) DO UPDATE SET stripe_sandbox_allowed = true, note = EXCLUDED.note, updated_at = now();
+
+-- コンプを外して課金へ移す（先に外してから checkout。順序は意図どおり）
+UPDATE public.tenant_billing_flags SET is_comp = false, updated_at = now() WHERE tenant_id = '<tenant_id>';
 ```
-supabase functions deploy gymboard-stripe-webhook --project-ref rrbfwitprzuevzytykrq
-```
-（リポジトリ直下で実行すること。`supabase/config.toml` の
-`[functions.gymboard-stripe-webhook] verify_jwt = false` を拾えないと Stripe が 401 になる）
+
+### オーナーは自分のジムの課金・契約の列を書き換えられない（同じマイグレーション）
+
+`tenants` の UPDATE のポリシーは「自分がオーナーの行」しか見ていない。以前の
+`REVOKE UPDATE (stripe_customer_id, stripe_subscription_id)` は**効いていなかった**（テーブル単位の権限が残っていると
+列単位の REVOKE は何もしない）。2026-10-31 まで、オーナーは API を直接叩いて `gymboard_plan`・`max_customers`
+（NULL で上限なし）・`trial_ends_at` を書き換えられた。
+
+今は BEFORE INSERT OR UPDATE のトリガー（`guard_tenant_billing_columns`）が、画面から（authenticated / anon）の
+**プラン・上限・お試し期間・契約の状態・Stripe の ID・オーナー**の変更を拒む（同じ値なら通す）。画面からの直接の INSERT は、
+`create_gym_with_owner` と同じ値（trial・60日・free・5名）に上書きする。webhook（service_role）・SECURITY DEFINER の関数・
+運営の SQL は対象外。**画面の保存でこれらの列を書くと「プラン・契約の状態は、この画面からは変えられません」で落ちる**
+（`src/test/stripeBillingFlags.test.ts` が走査で見張っている）。
 
 ## LP（料金表）は別の Lovable プロジェクトにある
 

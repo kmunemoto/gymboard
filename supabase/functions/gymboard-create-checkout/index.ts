@@ -7,9 +7,14 @@ import {
   isValidEnvironment,
 } from "../_shared/gymboard-plans.ts";
 
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+// Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
+const BUILD = "2026-10-31-billing-flags";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-gymboard-build": BUILD,
 };
 
 function bad(msg: string, status = 400) {
@@ -86,6 +91,26 @@ Deno.serve(async (req) => {
       .eq("id", tenant_id)
       .maybeSingle();
     if (tenantErr || !tenant) return bad("Tenant not found", 404);
+
+    // 運営が付ける課金の印（tenant_billing_flags。画面からは読めない・書けない）。2026-10-31 の点検:
+    //   - テスト決済（sandbox）は、運営が指定したテスト用のジムだけ。以前はどのジムのオーナーでも、
+    //     テスト用のカード番号（お金が動かない）で Pro にできた（本番以外のホストでは画面が自動で sandbox を選ぶ）
+    //   - コンプ（運営が無償で無制限にしているジム）は購入させない。払っても webhook が反映しないため
+    //     （本当に課金へ移すときは、先に運営が印を外す）
+    // 🔴 印が読めないときは進めない（テスト決済を誰にでも開けてしまうため）
+    const { data: flags, error: flagsErr } = await admin
+      .from("tenant_billing_flags")
+      .select("is_comp, stripe_sandbox_allowed")
+      .eq("tenant_id", tenant_id)
+      .maybeSingle();
+    if (flagsErr) throw flagsErr;
+    const billingFlags = flags as { is_comp: boolean; stripe_sandbox_allowed: boolean } | null;
+    if (environment === "sandbox" && billingFlags?.stripe_sandbox_allowed !== true) {
+      return bad("このジムではテスト決済は使えません", 403);
+    }
+    if (billingFlags?.is_comp === true) {
+      return bad("このジムは運営の設定で無償になっています。プランの購入はできません", 409);
+    }
 
     const stripe = createStripeClient(environment);
 

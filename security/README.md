@@ -77,6 +77,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | **10** | **お客様が trainer の印を付けると、同じジムの全員のデータが読めないか**（★穴11。検査2・3 では見つからない） |
 | 11 | 招待コードを知らない人が、お客様として好きなジムに入れないか（★穴12） |
 | 12 | 予約・チャットの相手が、そのジムの人に限られているか（★穴13） |
+| 13 | オーナーが自分のジムのプラン・上限を API で書き換えられないか（★穴14。列単位の REVOKE は効いていないことがある） |
 
 **検査2 が本命です。** 検査1 はジムボードで見つかったテーブルを名指しで見るだけですが、
 検査2 は**そのアプリで独自に増えたテーブル**も見つけます。
@@ -109,6 +110,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 11 | **印の判定を「そのジムのスタッフか」に差し替える** | `supabase/migrations/20261031040000_staff_checks_tenant_scoped.sql` |
 | 12 | 招待コードの確認で参加券を出し、券の無い参加を断る | `supabase/migrations/20261031050000_customer_join_requires_invite_code.sql` |
 | 13 | 予約・チャットの相手をそのジムの人に限る | `supabase/migrations/20261031060000_booking_user_must_be_member.sql`・`supabase/migrations/20261031070000_message_receiver_must_be_member.sql` |
+| 14 | ジムの課金・契約の列を画面から書き換えさせない（と、運営だけの課金の印） | `supabase/migrations/20261031090000_billing_flags_and_tenant_billing_guard.sql` |
 
 SQL は `to_regclass` / `to_regprocedure` ガードが入っているので、
 対象が無い環境でも止まりません。
@@ -434,6 +436,29 @@ RESTRICTIVE のテナント絞りがあれば安全としていました。と�
 BEFORE INSERT / UPDATE OF のトリガーで確かめます（チャットはさらに「お客様からはスタッフにだけ」）。
 門番の関数は **SECURITY INVOKER**（`current_user = 'authenticated'` で画面からを見分ける）。
 **流す前に、自分の本番で「所属していない人の行」が最近作られていないかを数えてください**（ジムボードは直近90日で0件でした）。
+
+---
+
+## 穴14: オーナーが自分のジムのプラン・上限を API で書き換えられます（2026-10-31 追加）
+
+`tenants` の UPDATE のポリシーが「自分がオーナーの行」しか見ていないと、オーナーは API を直接叩いて
+プラン（`gymboard_plan = 'premium'`）・上限（`max_customers = NULL` で上限なし）・お試し期間（`trial_ends_at`）を書き換えられます。
+直接の INSERT（`owner_user_id = auth.uid()` だけを見るポリシー）でも、同じ値でジムを開けます。
+
+🔴 **`REVOKE UPDATE (列) ON tenants FROM authenticated` では守れていません。** テーブル単位の UPDATE 権限が残っていると、
+列単位の REVOKE は何もしません（穴6 と同じ形）。ジムボードもこの REVOKE を書いていて、本番では全列を UPDATE できました。
+
+診断は `security/check.sql` の**検査13**。直し方は `supabase/migrations/20261031090000_billing_flags_and_tenant_billing_guard.sql`:
+BEFORE INSERT OR UPDATE のトリガー（**SECURITY INVOKER**。`current_user` が authenticated / anon のときだけ）で、
+
+- UPDATE: 守る列が**変わる**なら拒む（同じ値なら通す。画面の保存が丸ごと送ってきても落ちない）
+- INSERT: 拒まずに、ジムを開く RPC と同じ値へ上書き（古いアプリは開設のときにこれらの列を送っていたため）
+
+列 GRANT の許可リストにしなかったのは、設定の列を足すたびに画面の保存が黙って落ちるからです。
+**流す前に、自分の画面がこれらの列を tenants に書いていないか確かめてください**（ジムボードは `src/test/stripeBillingFlags.test.ts` が走査で見張っています）。
+
+同じマイグレーションで、コンプ（無償で無制限）とテスト決済を許すジムの**印**を、運営だけが触れる別の表（`tenant_billing_flags`）に置いています。
+コンプを `max_customers IS NULL` で見分けていると、上限なしの有料プラン（Pro）も当てはまり、解約しても Pro のまま残ります。
 
 ---
 

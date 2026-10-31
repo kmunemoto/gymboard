@@ -49,6 +49,17 @@ webhook に **コンプガード**を追加（`isCompTenant`: max_customers IS N
 - `invoice.payment_failed` は stripe_subscription_id の一致で引くので、
   sub_id を NULL にした時点で届かない（ガード不要）
 
+### 🔴 2026-10-31 追記: コンプの見分け方を「印」に変えた
+
+「コンプ = max_customers IS NULL」は**Pro（上限なし）も当てはまる**。Pro になったジムは以後のイベント
+（解約・プラン変更）を全部無視され、解約しても Pro のまま残る形だった（セキュリティ点検で見つかった。
+Stripe で Pro を契約しているジムは0件で、実害は無し）。
+
+今は運営だけが触れる表 `tenant_billing_flags.is_comp` で見分ける（御所南だけに付けた）。webhook は
+プラン適用・deleted・payment_failed の全部で印を先に見る。印が読めなければ 500 にして Stripe に送り直させる
+（読めないまま進むと、この事故と同じことが起きる）。見張りは同じ `src/test/stripeWebhookCompGuard.test.ts`。
+詳しくは `mem/features/gymboard-saas-plans.md` の「運営の印」。
+
 ## 学び
 
 - **「プラン状態を書くのは webhook だけ」という前提のテーブルに、webhook が知らない

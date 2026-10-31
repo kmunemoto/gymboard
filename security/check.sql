@@ -651,6 +651,50 @@ FROM (VALUES
 
 
 -- ----------------------------------------------------------------------------
+-- 検査13: ジムの課金・契約の列を、画面から書き換えられないか（★穴14 / 2026-10-31）
+-- ----------------------------------------------------------------------------
+-- tenants の UPDATE のポリシーが「自分がオーナーの行」しか見ていないと、オーナーは API を直接叩いて
+-- プラン（gymboard_plan）・上限（max_customers = NULL で上限なし）・お試し期間（trial_ends_at）を書き換えられる。
+-- 🔴 列単位の REVOKE UPDATE (...) は、テーブル単位の UPDATE 権限が残っていると**何もしない**（穴6 と同じ形）。
+--    下の column_grant_open が true なら、列の REVOKE では守れていない（門番のトリガーが要る）。
+--
+-- ★ が出たら開いている。直し方は
+--   supabase/migrations/20261031090000_billing_flags_and_tenant_billing_guard.sql
+-- （BEFORE INSERT OR UPDATE の門番。SECURITY INVOKER で current_user が authenticated / anon のときだけ見る）。
+-- ⚠️ 列名が違うアプリは VALUES を自分の列に合わせること（無い列の行は出ない）。確かめるなら、
+--    自分のジムのオーナーを演じて UPDATE tenants SET max_customers = NULL を試すのが確実（最後に RAISE で戻すこと）。
+
+SELECT
+  c.col,
+  has_column_privilege('authenticated', 'public.tenants', c.col, 'UPDATE') AS column_grant_open,
+  CASE
+    WHEN NOT has_column_privilege('authenticated', 'public.tenants', c.col, 'UPDATE')
+      THEN 'OK: 列の権限で閉じている'
+    WHEN EXISTS (
+      SELECT 1
+        FROM pg_trigger t
+        JOIN pg_proc f ON f.oid = t.tgfoid
+       WHERE t.tgrelid = 'public.tenants'::regclass
+         AND NOT t.tgisinternal
+         AND t.tgenabled <> 'D'
+         AND (t.tgtype & 2) = 2     -- BEFORE
+         AND (t.tgtype & 16) = 16   -- UPDATE
+         AND NOT f.prosecdef
+         AND f.prosrc ~* ('NEW\.' || c.col || '\s+IS\s+DISTINCT\s+FROM\s+OLD\.' || c.col)
+    ) THEN 'OK: 門番のトリガーが変更を拒む'
+    ELSE '★要対応: オーナーが API で書き換えられる（プラン・上限・お試し期間）'
+  END AS verdict
+FROM (VALUES
+  ('gymboard_plan'), ('max_customers'), ('max_trainers'), ('trial_ends_at'),
+  ('status'), ('subscription_status'), ('stripe_subscription_id')
+) AS c(col)
+WHERE EXISTS (
+  SELECT 1 FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = 'tenants' AND column_name = c.col
+);
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

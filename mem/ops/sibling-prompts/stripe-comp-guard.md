@@ -1,5 +1,10 @@
 # 兄弟アプリ向けプロンプト: Stripe webhook のコンプ保護（2026-08-22）
 
+> ⚠️ **2026-10-31 追記（ジムボード）**: 下の「コンプ = `max_customers IS NULL`」は、上限なしの有料プラン（Pro）も
+> 当てはまるので、Pro になった店が解約しても Pro のまま残る。ジムボードは運営だけが触れる表の印
+> （`tenant_billing_flags.is_comp`）に変えた（`supabase/migrations/20261031090000_billing_flags_and_tenant_billing_guard.sql`・
+> `security/README.md` の穴14）。このプロンプトを使うなら、コンプの判定は印に置き換えること。
+
 ジムボードで 2026-08-21 に実際に起きた事故（`mem/incidents/2026-08-21-salute-plan-downgrade.md`）
 の再発防止。**運営自身の店（コンプ）を持つアプリは全部同じ穴がある。**
 下の水平線から先を、そのアプリのセッションに丸ごと貼る。

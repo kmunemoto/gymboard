@@ -2,6 +2,7 @@ import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js@0.1.2'
 import { WebhookError, verifyWebhookRequest } from 'npm:@lovable.dev/webhooks-js@0.0.2'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { makeEmailHtmlAsciiSafe } from '../_shared/email-encoding.ts'
+import { maskEmail } from '../_shared/logSafety.ts'
 // ⚠️ 認証メールは6種別すべて素の文字列で組み立てる。React・ストリーミング描画は通さない。
 //    種別ごとに逃がすと必ず取りこぼす（2026-06 recovery → 2026-08 signup で再発）。
 //    理由は auth-plain.ts の冒頭。
@@ -204,8 +205,11 @@ async function handleWebhook(req: Request): Promise<Response> {
   // payload.type is the hook event type ("auth")
   const emailType = payload.data.action_type
   // デプロイ確認用の目印。View logs にこの文字列が出れば最新コードが本番で動いている。
-  console.log('[auth-email-hook build=2026-06-27-ascii-safe-recovery] Received auth event', { emailType, email: payload.data.email, run_id })
-  console.log('payload.data keys:', Object.keys(payload.data), 'url:', (payload.data as any).url)
+  // 🔴 payload.data.url（確認用のリンク）は token_hash 入りなので**ログに出さない**（2026-10-31・auth-email-hook-1）。
+  //    ログを読める人が有効期限内に開けば、その人としてログインし、パスワードを変えられた。
+  //    メールアドレスも伏せ字にする（auth-email-hook-2）。
+  console.log('[auth-email-hook build=2026-10-31-no-secrets-in-logs] Received auth event', { emailType, recipient: maskEmail(payload.data.email), run_id })
+  console.log('payload.data keys:', Object.keys(payload.data), 'hasUrl:', !!(payload.data as any).url)
 
 
   if (!isAuthEmailType(emailType)) {
@@ -333,7 +337,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     })
   }
 
-  console.log('Auth email enqueued', { emailType, email: payload.data.email, run_id })
+  console.log('Auth email enqueued', { emailType, recipient: maskEmail(payload.data.email), run_id })
 
   return new Response(
     JSON.stringify({ success: true, queued: true }),

@@ -145,9 +145,22 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
+// 自分のアプリの中のパスだけ開く（2026-10-31・send-push-notification-2）。
+// "//evil.example"・"/\evil.example"・タブや改行入りは "/" 始まりでも別オリジンに解決されるので、"/" に倒す。
+// 判定は src/lib/safePath.ts の isSafeInAppPath と同じ（sw.js は import できないので写し）。
+function safeNotificationPath(raw) {
+  if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//')) return '/';
+  if (/[\u0000-\u0020\u007f\\]/.test(raw)) return '/';
+  try {
+    return new URL(raw, self.location.origin).origin === self.location.origin ? raw : '/';
+  } catch (e) {
+    return '/';
+  }
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  const url = safeNotificationPath(event.notification.data?.url);
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

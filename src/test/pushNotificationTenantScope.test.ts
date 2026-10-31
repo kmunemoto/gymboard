@@ -93,8 +93,14 @@ describe("send-push-notification: 宛先はテナントで絞る", () => {
 
   it("waitlist 経路もテナント所属を確認している", () => {
     expect(code).toMatch(
-      /let allowed = activeTenantIds\(memberships, caller\.userId\)\.has\(tenant_id\);/,
+      /const allowed = activeTenantIds\(memberships, caller\.userId\)\.has\(tenant_id\);/,
     );
+  });
+
+  it("🔴 waitlist 経路は本人が書き換えられる profiles.tenant_id を根拠にしない（2026-10-31）", () => {
+    // 以前は「tenant_members に行が無い顧客のための従来経路」として profiles.tenant_id でも許していたので、
+    // 自分の profiles.tenant_id を他のジムにするだけで、そのジムの待機者へ「空きが出ました」を送れた。
+    expect(code).not.toMatch(/\.from\("profiles"\)/);
   });
 
   it("宛先の件数に上限がある", () => {
@@ -106,7 +112,10 @@ describe("send-push-notification: 宛先はテナントで絞る", () => {
     // "//evil.example" も "/" 始まりだが、ブラウザは**別オリジン**に解決する。
     // 通知を開いた先が外部サイトになる（AuthCallback で sanitizeAuthNext が
     // 塞いだのと同じ形の穴）。2026-08-03、ピラボードが先に直していた。
-    expect(code).toMatch(/u\.startsWith\("\/"\) && !u\.startsWith\("\/\/"\)/);
+    // 2026-10-31: "/\evil.example"・タブ入りも同じ穴だったので、判定を _shared/safeUrl.ts にまとめた
+    // （中身の判定は src/test/pushUrlSafety.test.ts が攻撃の形で確かめる）。
+    expect(code).toContain('return isAllowedPushUrl(u, "https://app.kyoto-salute.com", ALLOWED_URL_HOSTS);');
+    expect(code).toMatch(/if \(!isAllowedUrl\(url\)\) \{/);
   });
 
   it("service_role 以外は userId を必ず持つことを確認している", () => {
@@ -126,10 +135,8 @@ describe("通知を開く側もプロトコル相対URLを弾く", () => {
   const NAV = "src/lib/pushNotifications.ts";
   const navSource = readFileSync(NAV, "utf8");
 
-  it("navigateFromData が // を弾いている", () => {
-    expect(navSource).toMatch(
-      /url\.startsWith\("\/"\)\s*&&\s*!url\.startsWith\("\/\/"\)/,
-    );
+  it("navigateFromData が // を弾いている（判定は isSafeInAppPath にまとめた）", () => {
+    expect(navSource).toContain("if (isSafeInAppPath(url)) window.location.assign(url);");
   });
 
   it("素の startsWith(\"/\") だけの遷移が残っていない", () => {
@@ -139,7 +146,8 @@ describe("通知を開く側もプロトコル相対URLを弾く", () => {
       .split("\n")
       .filter((line) => !line.trim().startsWith("//"))
       .filter((line) => /location\.(assign|href)/.test(line))
-      .filter((line) => !/!\w+\.startsWith\("\/\/"\)/.test(line));
+      .filter((line) => !/!\w+\.startsWith\("\/\/"\)/.test(line))
+      .filter((line) => !/isSafeInAppPath\(/.test(line));
     expect(
       offenders.map((l) => l.trim().slice(0, 90)),
       "遷移の直前に // ガードが無い行があります",

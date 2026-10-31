@@ -6,6 +6,7 @@ import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
 import { verifyCaller } from "../_shared/auth.ts";
 import { keepAssignedInstructors, parseBookingPushTag } from "../_shared/staffRouting.ts";
 import { trialBookingLabel } from "../_shared/trialRules.ts";
+import { isAllowedPushUrl } from "../_shared/safeUrl.ts";
 
 // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
 // 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
@@ -14,19 +15,12 @@ const ALLOWED_URL_HOSTS = new Set([
   "gymboard.lovable.app",
 ]);
 
-function isAllowedUrl(u: string | undefined): boolean {
-  if (!u) return true;
-  // "//evil.example" も "/" 始まりだが、ブラウザはプロトコル相対URLとして
-  // **別オリジン**に解決する。ここを許すと、プッシュを開いた先が外部サイトになる
+function isAllowedUrl(u: unknown): boolean {
+  // "//evil.example"（プロトコル相対）・"/\evil.example"・タブや改行入りは、"/" 始まりでも
+  // ブラウザが**別オリジン**に解決する。通知を開いた先が外部サイトになる
   // （`sanitizeAuthNext` で認証コールバックに対して塞いだのと同じ形の穴）。
-  // 2026-08-03、ピラボードが先に直していたのを見て上流にも取り込んだ。
-  if (u.startsWith("/") && !u.startsWith("//")) return true;
-  try {
-    const parsed = new URL(u);
-    return ALLOWED_URL_HOSTS.has(parsed.host);
-  } catch {
-    return false;
-  }
+  // 2026-08-03 に "//" を、2026-10-31 に "\"・空白・制御文字を塞いだ（send-push-notification-2）。
+  return isAllowedPushUrl(u, "https://app.kyoto-salute.com", ALLOWED_URL_HOSTS);
 }
 
 // ============================================================
@@ -331,14 +325,19 @@ async function dropUnassignedInstructors(
   try {
     const { data: limitedRows, error: limitedErr } = await admin
       .from("tenant_members")
-      .select("user_id")
+      .select("user_id, tenant_id")
       .in("user_id", userIds)
       .eq("role", "trainer")
       .eq("staff_access", "limited")
       .eq("status", "active");
     if (limitedErr) return userIds;
-    const instructors = new Set(((limitedRows ?? []) as { user_id: string }[]).map((r) => r.user_id));
+    const rows = (limitedRows ?? []) as { user_id: string; tenant_id: string }[];
+    const instructors = new Set(rows.map((r) => r.user_id));
     if (instructors.size === 0) return userIds;
+    // 🔴 予約・記録はインストラクターのジムの分だけ見る（2026-10-31・send-push-notification-5）。
+    //    以前は tenant_id で絞らずに引いていたので、tag に他のジムの人の ID を入れると、応答の違いから
+    //    その人の予約の有無を調べられた。
+    const instructorTenants = [...new Set(rows.map((r) => r.tenant_id))];
 
     let assigned: Set<string> | null = null;
     if (parsed.kind === "booking") {
@@ -346,6 +345,7 @@ async function dropUnassignedInstructors(
         .from("bookings")
         .select("staff_user_id")
         .eq("id", parsed.bookingId)
+        .in("tenant_id", instructorTenants)
         .maybeSingle();
       if (!error && data) {
         const s = (data as { staff_user_id: string | null }).staff_user_id;
@@ -357,6 +357,7 @@ async function dropUnassignedInstructors(
         .select("staff_user_id")
         .eq("user_id", parsed.customerId)
         .eq("booking_date", new Date(parsed.bookingDate).toISOString())
+        .in("tenant_id", instructorTenants)
         .in("event", ["removed", "forfeited"])
         .order("created_at", { ascending: false })
         .limit(1);
@@ -371,6 +372,7 @@ async function dropUnassignedInstructors(
       const { data, error } = await admin
         .from("bookings")
         .select("staff_user_id")
+        .in("tenant_id", instructorTenants)
         .eq("user_id", parsed.customerId)
         .eq("status", "予約済み")
         .gte("booking_date", start.toISOString())
@@ -401,8 +403,8 @@ Deno.serve(async (req) => {
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
 
     const payloadJson = await req.json().catch(() => ({}));
-    const { purpose, trial_booking_id, url } = payloadJson;
-    let { title, body, tag, user_ids } = payloadJson;
+    const { purpose, trial_booking_id } = payloadJson;
+    let { title, body, tag, user_ids, url } = payloadJson;
 
     if (!isAllowedUrl(url)) {
       return new Response(JSON.stringify({ error: "Invalid url" }), {
@@ -432,8 +434,18 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // ---- Anonymous-allowed path: notify trainers of a new trial booking.
+    // ---- 新しい体験予約をスタッフへ（trial-book・drop-in-book が service_role で呼ぶ）
     if (purpose === "trial_booking") {
+      // 🔴 以前は未ログインでも呼べた（2026-10-31・send-push-notification-3）。体験予約の ID は予約した本人
+      //    （匿名）に返しているので、同じ ID で「新しい体験予約」をスタッフ全員へ何度でも送れ、タップ先の url も
+      //    指定できた。正規の呼び出し元は service_role だけなので、それ以外は断る。url も受け取らない。
+      const trialCaller = await verifyCaller(req);
+      if (!trialCaller?.isServiceRole) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      url = undefined;
       if (!trial_booking_id || typeof trial_booking_id !== "string") {
         return new Response(JSON.stringify({ error: "trial_booking_id required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -555,17 +567,11 @@ Deno.serve(async (req) => {
           });
         }
         const memberships = await loadTenantMemberships(adminClient, [caller.userId]);
-        let allowed = activeTenantIds(memberships, caller.userId).has(tenant_id);
-        if (!allowed) {
-          // tenant_members に行が無い顧客のための従来経路（挙動を変えないため残す）
-          const { data: prof } = await adminClient
-            .from("profiles")
-            .select("tenant_id")
-            .eq("user_id", caller.userId)
-            .maybeSingle();
-          const profTenantId = (prof as { tenant_id: string | null } | null)?.tenant_id;
-          allowed = !!profTenantId && profTenantId === tenant_id;
-        }
+        // 🔴 profiles.tenant_id は本人が書き換えられるので根拠にしない（2026-10-31・send-push-notification-4）。
+        //    以前は「tenant_members に行が無い顧客のための従来経路」として profiles.tenant_id でも許していたため、
+        //    誰でも自分の profiles.tenant_id を他のジムにして、そのジムの待機者へ「空きが出ました」を送れた。
+        //    本番で、profiles にジムがあるのに有効な所属が無い人は0人（2026-10-31 確認）。
+        const allowed = activeTenantIds(memberships, caller.userId).has(tenant_id);
         if (!allowed) {
           return new Response(JSON.stringify({ error: "Forbidden" }), {
             status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -703,7 +709,8 @@ Deno.serve(async (req) => {
     // 予約のプッシュから、その予約の担当でない先生（インストラクター）を外す（古いアプリはスタッフ全員に送ってくる）
     user_ids = await dropUnassignedInstructors(adminClient, tag, user_ids as string[]);
     if ((user_ids as string[]).length === 0) {
-      return new Response(JSON.stringify({ sent: 0, total: 0, skipped: "no_recipients" }), {
+      // 外れた理由を応答に出さない（送った場合と見分けにくくする。send-push-notification-5）
+      return new Response(JSON.stringify({ sent: 0, total: 0 }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

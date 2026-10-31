@@ -5,6 +5,7 @@
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isSafeInAppPath } from "@/lib/safePath";
 
 export type NotificationPermission = "default" | "granted" | "denied";
 
@@ -116,7 +117,9 @@ function navigateFromData(data: Record<string, unknown> | undefined): void {
   //
   // 同じ形の穴は `sanitizeAuthNext`（nativeBridge.ts）が認証コールバックに対して
   // 既に塞いでいる。2026-08-03、ゴルフボード（フォーク）がこちらの取り残しを見つけた。
-  if (url && url.startsWith("/") && !url.startsWith("//")) window.location.assign(url);
+  // 2026-10-31: "/\evil.example" やタブ入りも別オリジンに解決されるので、判定を isSafeInAppPath にまとめた
+  // （!url.startsWith("//") だけでは足りない）。
+  if (isSafeInAppPath(url)) window.location.assign(url);
 }
 
 // 同一ユーザーに対してリスナーを二重登録しないためのガード。

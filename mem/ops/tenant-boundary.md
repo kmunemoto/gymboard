@@ -1292,3 +1292,54 @@ NULL を渡す                    22023
 - **`COALESCE(引数, auth.uid())` は照合ではない。**「引数優先」と読む。
 - グローバルな `has_role(uid,'trainer')` は**テナントを見ない**。
   マルチテナントでは必ずテナント込みで判定する。
+
+---
+
+## 穴10: お客様が同じジムの他のお客様のメンバー情報を読めた（2026-10-31）
+
+宗本さん「このアプリもセキュリティを強化したい。個人情報が抜かれるのを恐れてます」で点検して見つけた。
+
+### 見つけ方（本番でお客様を演じて、全テーブルを数えた）
+
+お客様1人を演じ（`request.jwt.claims` ＋ `role = authenticated`）、public の全テーブルについて
+「自分以外の user_id / customer_id / client_id の行」「別のジムの行」を `EXECUTE format(...)` で数えた。
+
+```
+tenant_members          他の人の行 = 51（他のお客様49人＋スタッフ2人）  ← 穴
+staff_schedules         他の人の行 = 2（先生のシフト。予約画面に要る＝正しい）
+booking_frequency_limits 他の人の行 = 1（ジム全体の設定で user_id は NULL＝個人の情報ではない）
+別のジムの行              すべての表で 0
+```
+
+別のジムのオーナー（グローバルな trainer ロールあり）を演じても、宗本さんのジムの行は全テーブルで 0。
+**テナントの境界は効いている。お客様どうしの話だった。**
+
+### 何が読めたか
+
+ポリシー `"Members can view same tenant members"`（`is_tenant_member(tenant_id, auth.uid())` だけ）が、
+そのジムのメンバーなら誰にでも全行を見せていた。tenant_members には
+名前・プラン・残り回数・更新日・休会の期間・退会日・**退会の理由**まで入っている。
+画面には出していないが、ログインしたお客様なら公開キー＋自分のログインで API から読める。
+
+### 直し方（`20261031020000_tenant_members_customer_privacy.sql`）
+
+```
+スタッフ（オーナー・トレーナー・インストラクター） … 同じジムの全員の行（今まで通り）
+お客様                                         … 同じジムのスタッフの行だけ（担当の名前に要る）
+                                                  ＋ 自分の行（別のポリシー "Users can view own membership"）
+```
+
+- お客様の画面が読んでいるのは「自分の行」と「スタッフの行（role IN owner/trainer）」だけだった
+  （useAllCustomerProfiles 等の全員を読む処理はトレーナーの画面だけ）
+- この表を読む SECURITY INVOKER の関数は無い。Edge Function は service_role で読むので影響しない
+
+### 本番で確かめたこと（2026-10-31・3段構え）
+
+```
+1. 検査8（security/check.sql）で穴を確認 → 1件（"Members can view same tenant members"）
+2. 適用（BEGIN/COMMIT）
+3. 演じて読む: お客様 = 3行（自分1＋スタッフ2・他のお客様 0）／ オーナー = 52行 ／ インストラクター = 52行
+              ／ 未ログイン = 0行 ／ 検査8 = 0件
+```
+
+見張り: `src/test/tenantMembersPrivacy.test.ts`・`security/check.sql` の検査8

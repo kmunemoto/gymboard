@@ -55,6 +55,8 @@ const App = () => (
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/trial" element={<TrialBooking />} />
               <Route path="/trial/:tenantId" element={<TrialBooking />} />
+              {/* メニューの体験（例: マシンピラティス専用の体験予約ページ・src/lib/menuTrial.ts） */}
+              <Route path="/trial/:tenantId/menu/:menuId" element={<TrialBooking />} />
               <Route path="/drop-in" element={<DropInBooking />} />
               <Route path="/drop-in/:tenantId" element={<DropInBooking />} />
               <Route path="/trial-cancel/:token" element={<TrialCancel />} />

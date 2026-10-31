@@ -1898,6 +1898,17 @@
     "priceLabel": "요금",
     "taxIncluded": "(부가세 포함)"
   },
+  "menuTrial": {
+    "headerTitle": "{{name}} 체험",
+    "headerSub": "{{name}} (총 {{count}}분)",
+    "completedSubtitle": "{{name}} 체험",
+    "calendarTitle": "[{{name}} 체험] {{gym}}",
+    "calendarDescription": "{{name}} 체험.\n당일에는 편한 복장으로 와 주세요.\n궁금한 점이 있으시면 편하게 문의해 주세요.",
+    "icsDescription": "{{name}} 체험 (총 {{count}}분)\\n편한 복장으로 와 주세요.",
+    "startsOnNotice": "{{name}}은(는) {{date}}부터 예약할 수 있습니다",
+    "unavailableTitle": "이 페이지에서는 체험 예약을 받고 있지 않습니다",
+    "unavailableBody": "번거로우시겠지만 체육관에 직접 문의해 주세요."
+  },
   "trialCancel": {
     "loading": "예약 내용을 확인하고 있습니다...",
     "confirmTitle": "예약을 취소하시겠습니까?",
@@ -3063,6 +3074,32 @@
     "startsOnClear": "해제",
     "startsOnSetHint": "{{date}} 이전에는 고객이 이 메뉴를 예약할 수 없습니다 (매장에서 대리 예약은 가능합니다). 담당 시간 전용도 {{date}}부터입니다.",
     "startsOnChip": "{{date}}~",
-    "startsOnNotice": "{{name}}은(는) {{date}}부터 예약할 수 있습니다."
+    "startsOnNotice": "{{name}}은(는) {{date}}부터 예약할 수 있습니다.",
+    "trialRowLabel": "체험 예약 페이지",
+    "trialStateOn": "접수 중",
+    "trialStateOff": "중지됨",
+    "trialOpenSettings": "설정",
+    "trialDialogTitle": "{{name}} 체험 예약 페이지",
+    "trialDialogDesc": "{{name}} 시간(담당자의 근무 시간)의 빈 시간만 보여 주는 체험 예약 페이지입니다. 링크를 고객에게 보내 주세요.",
+    "trialEnabledLabel": "체험 예약 받기",
+    "trialEnabledOnHint": "링크에서 예약할 수 있습니다. 예약이 들어오면 오너와 담당자에게 알림이 갑니다.",
+    "trialEnabledOffHint": "꺼져 있는 동안에는 링크를 열어도 접수하지 않는다고 표시됩니다.",
+    "trialOnToast": "{{name}} 체험 예약 접수를 시작했습니다",
+    "trialOffToast": "{{name}} 체험 예약 접수를 중지했습니다",
+    "trialLinkLabel": "페이지 링크",
+    "trialCopyLink": "링크 복사",
+    "trialOpenLink": "열어서 확인",
+    "trialCopied": "링크를 복사했습니다",
+    "trialCopyFailed": "복사하지 못했습니다. 링크를 길게 눌러 복사해 주세요",
+    "trialPriceLabel": "요금(세금 포함, 엔)",
+    "trialPricePlaceholder": "예: 3000",
+    "trialPriceHint": "체험 예약 페이지와 확인 메일에 표시됩니다. 비워 두면 요금을 표시하지 않습니다(0을 넣으면 「¥0」으로 표시).",
+    "trialPriceInvalid": "0 이상의 정수를 입력해 주세요",
+    "trialInfoTitleLabel": "안내 제목",
+    "trialInfoBodyLabel": "안내문",
+    "trialInfoHint": "체험 예약 페이지 위쪽에 표시됩니다. 비워 두면 안내를 표시하지 않습니다(트레이닝 체험 안내문은 사용하지 않습니다).",
+    "trialSave": "저장",
+    "trialSaved": "체험 예약 페이지 설정을 저장했습니다",
+    "trialSaveFailed": "저장하지 못했습니다"
   }
 }

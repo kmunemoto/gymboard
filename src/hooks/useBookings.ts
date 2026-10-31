@@ -253,6 +253,8 @@ export const useAllBookings = () => {
         // === "trial-guest" で判定するため、この表示値変更はロジックに影響しない）。
         booking_type: "体験予約",
         customAnswers: parseAnswerSnapshot((t as { custom_answers?: unknown }).custom_answers),
+        menuId: t.menu_id ?? null, // メニューの体験（例: マシンピラティス）は予定表に「マシンピラティス・体験予約」
+        staff_user_id: t.staff_user_id ?? null, // その担当（先生）の予定になる（src/lib/menuTrial.ts）
       });
     });
 

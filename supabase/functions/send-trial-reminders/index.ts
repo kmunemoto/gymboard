@@ -86,6 +86,20 @@ Deno.serve(async (req) => {
     }
   }
 
+  // メニューの体験（例: マシンピラティス）は、メニューの名前と料金で書く（2026-10-31・trial-book と同じ）
+  const menuIds = [...new Set((bookings ?? []).map((b: any) => b.menu_id).filter(Boolean))]
+  const menuMap = new Map<string, { name: string; trial_price_yen: number | null }>()
+  if (menuIds.length > 0) {
+    const { data: menuRows, error: menuErr } = await supabase
+      .from('booking_menus')
+      .select('id, name, trial_price_yen')
+      .in('id', menuIds)
+    if (menuErr) console.error('Failed to fetch menus for reminder:', menuErr)
+    for (const row of menuRows ?? []) {
+      menuMap.set((row as any).id, row as any)
+    }
+  }
+
   let sentCount = 0
   const dowChars = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -97,6 +111,7 @@ Deno.serve(async (req) => {
     }
 
     const tenant = tenantMap.get(booking.tenant_id as string)
+    const menu = booking.menu_id ? menuMap.get(booking.menu_id as string) ?? null : null
 
     const bd = new Date(booking.booking_date)
     const jstBd = new Date(bd.getTime() + jstOffset)
@@ -117,8 +132,10 @@ Deno.serve(async (req) => {
           gymAddress: (tenant?.address ?? '').trim(),
           gymContactEmail: (tenant?.email ?? '').trim(),
           gymWebsiteUrl: (tenant?.website_url ?? '').trim(),
-          // 金額はジムごとの設定。未設定なら料金行は出ない。
-          trialPriceYen: tenant?.trial_price_yen ?? null,
+          // 金額はジムごとの設定。未設定なら料金行は出ない。メニューの体験はメニューの料金
+          trialPriceYen: booking.menu_id ? (menu?.trial_price_yen ?? null) : (tenant?.trial_price_yen ?? null),
+          // メニューの体験はメニューの名前で呼ぶ（「マシンピラティスの体験」）。null はトレーニングの体験
+          menuName: menu?.name ?? null,
           // 設備案内（手ぶらOK）は Salute の設備なのでこのジムだけ。呼称・料金とは無関係。
           showAmenities: booking.tenant_id === SALUTE_TENANT_ID,
           // リマインドに足す、店からのご案内。空/未設定ならブロックごと出さない。

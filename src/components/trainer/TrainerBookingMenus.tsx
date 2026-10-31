@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { menuStartLabel, type BookingMenu } from "@/lib/bookingMenus";
+import TrainerMenuTrialSettings from "./TrainerMenuTrialSettings";
 
 /**
  * 予約メニュー（`booking_menus`・2026-10-28）を編集する。仕組みは src/lib/bookingMenus.ts と
@@ -28,6 +29,8 @@ import { menuStartLabel, type BookingMenu } from "@/lib/bookingMenus";
  * - 担当を決めたメニューの時間を「専用」にするか「先着順」にするか（tenants.menu_staff_hours_exclusive）
  * - 開始日（starts_on・2026-10-29）: その日より前は、お客様がそのメニューを予約できない。専用の時間も
  *   その日から（「今オンにして、11/25 から予約できる」ため）。空欄はすぐ
+ * - 体験予約ページ（2026-10-31・担当のいるメニューだけ）: そのメニューの時間の枠だけを出す体験予約のページ。
+ *   オン/オフ・リンク・料金・案内文は TrainerMenuTrialSettings
  *
  * 保存は1操作ずつすぐ書く（行が少なく、並べ替え・オン/オフを押したそばから効くほうが分かりやすい）。
  * 🔴 予約に使われたメニューは消せない（DB の外部キー）。やめるときはオフにする。
@@ -233,6 +236,7 @@ const TrainerBookingMenus = () => {
                       {t("bookingMenus.noShiftWarning", { name: staffName(m.staff_user_id) })}
                     </p>
                   )}
+                  {m.staff_user_id && <TrainerMenuTrialSettings menu={m} tenantId={tenant.id} />}
                 </li>
               ))}
             </ul>

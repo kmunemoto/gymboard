@@ -1898,6 +1898,17 @@
     "priceLabel": "料金",
     "taxIncluded": "（税込）"
   },
+  "menuTrial": {
+    "headerTitle": "{{name}}の体験",
+    "headerSub": "{{name}}（計{{count}}分）",
+    "completedSubtitle": "{{name}}の体験",
+    "calendarTitle": "【{{name}}の体験】{{gym}}",
+    "calendarDescription": "{{name}}の体験。\n当日は動きやすい服装でお越しください。\nご不明な点がございましたらお気軽にお問い合わせください。",
+    "icsDescription": "{{name}}の体験（計{{count}}分）\\n動きやすい服装でお越しください。",
+    "startsOnNotice": "{{name}}は{{date}}からご予約いただけます",
+    "unavailableTitle": "このページの体験予約は受け付けていません",
+    "unavailableBody": "お手数ですが、ジムへ直接お問い合わせください。"
+  },
   "trialCancel": {
     "loading": "予約内容を確認しています...",
     "confirmTitle": "予約をキャンセルしますか？",
@@ -3063,6 +3074,32 @@
     "startsOnClear": "解除",
     "startsOnSetHint": "{{date}}より前は、お客様はこのメニューを予約できません（店からの代理予約は入れられます）。担当の時間の専用も{{date}}からです。",
     "startsOnChip": "{{date}}〜",
-    "startsOnNotice": "{{name}}は{{date}}から予約できます。"
+    "startsOnNotice": "{{name}}は{{date}}から予約できます。",
+    "trialRowLabel": "体験予約ページ",
+    "trialStateOn": "受付中",
+    "trialStateOff": "停止中",
+    "trialOpenSettings": "設定",
+    "trialDialogTitle": "{{name}}の体験予約ページ",
+    "trialDialogDesc": "{{name}}の時間（担当のシフト）の空き枠だけを出す、体験予約のページです。リンクをお客様に送ってください。",
+    "trialEnabledLabel": "体験予約を受け付ける",
+    "trialEnabledOnHint": "リンクから予約できます。予約が入ると、オーナーと担当に通知が届きます。",
+    "trialEnabledOffHint": "オフの間は、リンクを開いても「受け付けていません」と出ます。",
+    "trialOnToast": "{{name}}の体験予約の受付を始めました",
+    "trialOffToast": "{{name}}の体験予約の受付を止めました",
+    "trialLinkLabel": "ページのリンク",
+    "trialCopyLink": "リンクをコピー",
+    "trialOpenLink": "開いて確認",
+    "trialCopied": "リンクをコピーしました",
+    "trialCopyFailed": "コピーできませんでした。リンクを長押ししてコピーしてください",
+    "trialPriceLabel": "料金（税込・円）",
+    "trialPricePlaceholder": "例: 3000",
+    "trialPriceHint": "体験予約ページと確認メールに出します。空欄にすると料金を出しません（0 を入れると「¥0」と出します）。",
+    "trialPriceInvalid": "0 以上の整数を入力してください",
+    "trialInfoTitleLabel": "案内の見出し",
+    "trialInfoBodyLabel": "案内文",
+    "trialInfoHint": "体験予約ページの上に出します。空欄なら案内を出しません（トレーニングの体験の案内文は使いません）。",
+    "trialSave": "保存",
+    "trialSaved": "体験予約ページの設定を保存しました",
+    "trialSaveFailed": "保存に失敗しました"
   }
 }

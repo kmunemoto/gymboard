@@ -169,14 +169,22 @@ describe("権限・最後の定義", () => {
     }
   });
 
-  it.each(["menu_reserved_overlaps", "get_tenant_booked_slots", "apply_booking_menu", "guard_booking_menu_teacher"])(
+  const lastFile = (name: string) =>
+    readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort()
+      .filter((f) => stripSql(read(`supabase/migrations/${f}`)).includes(`CREATE OR REPLACE FUNCTION public.${name}(`)).pop();
+
+  it.each(["menu_reserved_overlaps", "apply_booking_menu", "guard_booking_menu_teacher"])(
     "🔴 %s の最後の定義はこのマイグレーション（後のマイグレーションが開始日を落としていない）",
     (name) => {
-      const files = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
-      const last = files.filter((f) => stripSql(read(`supabase/migrations/${f}`)).includes(`CREATE OR REPLACE FUNCTION public.${name}(`)).pop();
-      expect(last).toBe(MIGRATION);
+      expect(lastFile(name)).toBe(MIGRATION);
     },
   );
+
+  it("🔴 get_tenant_booked_slots は後で作り直した（20261031010000・体験の担当を返す）。最後の定義も開始日を見ている", () => {
+    const last = lastFile("get_tenant_booked_slots")!;
+    expect(last >= MIGRATION).toBe(true);
+    expect(norm(fnDef(read(`supabase/migrations/${last}`), "get_tenant_booked_slots"))).toContain(norm(MENU_STARTED_ON_DAY));
+  });
 });
 
 // ── 判定（src/lib/bookingMenus.ts・src/lib/bookingCalendarDay.ts）─────────────

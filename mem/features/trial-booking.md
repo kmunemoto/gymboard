@@ -7,6 +7,8 @@
 
 - `/trial/:tenantId` — tenantId は URL パスの UUID。そのジムのロゴ・ジム名・空き枠を表示。
 - `/trial` (tenantId なし) — `DEFAULT_TENANT_ID`（Salute御所南）を既定にする。
+- `/trial/:tenantId/menu/:menuId` — 担当のいるメニュー（例: マシンピラティス）専用の体験予約（2026-10-31）。
+  先生のシフトの枠だけを出し、予約は先生の担当になる。`mem/features/menu-trial.md`
 - **`app.kyoto-salute.com/trial` はこのリポジトリの配信**（Salute のカスタムドメイン）。
   以前のメモは「別リポジトリ(kyoto-salute)」としていたが、本リポジトリで
   `trialBooking.headerTitle` を「体験予約」に変更したところ同ドメインにも反映された
@@ -42,8 +44,11 @@
 - **予約作成**: エッジ関数 `trial-book` (verify_jwt=false)。
   POST `{ tenant_id, guest_name, guest_contact, booking_date }`。
   - 検証: テナント実在(active/trial)、メール形式、**前日まで**（予約日JST0:00を過ぎたら締切。
-    会員予約と統一。旧: 24時間前まで）〜**10日先まで**（旧: 1ヶ月先まで。当日キャンセル対策で短縮）、
-    10:00〜21:00開始・15分刻み
+    会員予約と統一。旧: 24時間前まで）〜**10日先まで**（旧: 1ヶ月先まで。当日キャンセル対策で短縮。
+    店が「何日先まで」を決めていればその日数・2026-10-31〜）、
+    開始時刻は公開ページの枠と同じ（営業時間の中・15分刻み・1枠が閉店までに収まる。
+    2026-10-31 までは 10:00〜21:00 開始の直書きで、22:30 閉店の店の 21:15・21:30 を断っていた。
+    `supabase/functions/_shared/trialRules.ts`）
   - 連続予約ガード: 同一メール 24時間 3件まで
   - 重複: BEFORE INSERT `check_booking_overlap` トリガー (テナント内で判定)
   - status は DB デフォルト `'予約済み'` → `send-trial-reminders` の前日リマインド対象になる

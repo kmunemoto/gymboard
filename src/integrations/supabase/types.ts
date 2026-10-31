@@ -386,6 +386,10 @@ export type Database = {
           staff_user_id: string | null
           starts_on: string | null
           tenant_id: string
+          trial_enabled: boolean
+          trial_info_body: string | null
+          trial_info_title: string | null
+          trial_price_yen: number | null
           updated_at: string
         }
         Insert: {
@@ -397,6 +401,10 @@ export type Database = {
           staff_user_id?: string | null
           starts_on?: string | null
           tenant_id: string
+          trial_enabled?: boolean
+          trial_info_body?: string | null
+          trial_info_title?: string | null
+          trial_price_yen?: number | null
           updated_at?: string
         }
         Update: {
@@ -408,6 +416,10 @@ export type Database = {
           staff_user_id?: string | null
           starts_on?: string | null
           tenant_id?: string
+          trial_enabled?: boolean
+          trial_info_body?: string | null
+          trial_info_title?: string | null
+          trial_price_yen?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2369,7 +2381,9 @@ export type Database = {
           guest_contact: string
           guest_name: string
           id: string
+          menu_id: string | null
           source: string | null
+          staff_user_id: string | null
           status: string
           tenant_id: string
           trial_fee_status: string | null
@@ -2389,7 +2403,9 @@ export type Database = {
           guest_contact: string
           guest_name: string
           id?: string
+          menu_id?: string | null
           source?: string | null
+          staff_user_id?: string | null
           status?: string
           tenant_id: string
           trial_fee_status?: string | null
@@ -2409,12 +2425,21 @@ export type Database = {
           guest_contact?: string
           guest_name?: string
           id?: string
+          menu_id?: string | null
           source?: string | null
+          staff_user_id?: string | null
           status?: string
           tenant_id?: string
           trial_fee_status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "trial_bookings_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "booking_menus"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trial_bookings_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2670,6 +2695,28 @@ export type Database = {
           payment_id: string
         }[]
       }
+      get_menu_trial_public: {
+        Args: { p_menu_id: string }
+        Returns: {
+          menu_id: string
+          name: string
+          shifts: Json
+          starts_on: string
+          tenant_id: string
+          trial_info_body: string
+          trial_info_title: string
+          trial_price_yen: number
+        }[]
+      }
+      get_menu_trial_slots: {
+        Args: { from_date: string; p_menu_id: string; to_date: string }
+        Returns: {
+          booking_date: string
+          end_booking_date: string
+          is_menu_staff: boolean
+          status: string
+        }[]
+      }
       get_my_instructor_invite_code: { Args: never; Returns: string }
       get_my_next_cycle_payment_gate: {
         Args: { p_tenant_id: string }
@@ -2831,6 +2878,10 @@ export type Database = {
       }
       menu_reserved_overlaps: {
         Args: { p_minutes: number; p_start: string; p_tenant_id: string }
+        Returns: boolean
+      }
+      menu_trial_open: {
+        Args: { p_menu_id: string }
         Returns: boolean
       }
       move_to_dlq: {

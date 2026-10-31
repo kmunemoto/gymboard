@@ -5,6 +5,7 @@ import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
 // 宛先制限の役に立たない。所属は tenant_members で見る（loadTenantMemberships）。
 import { verifyCaller } from "../_shared/auth.ts";
 import { keepAssignedInstructors, parseBookingPushTag } from "../_shared/staffRouting.ts";
+import { trialBookingLabel } from "../_shared/trialRules.ts";
 
 // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
 // 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
@@ -438,9 +439,10 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // "*" で読む: メニューの体験の列（menu_id・staff_user_id）がまだ無い DB でも今まで通り送れるように
       const { data: trial } = await adminClient
         .from("trial_bookings")
-        .select("id, tenant_id, guest_name, booking_date, booking_kind")
+        .select("*")
         .eq("id", trial_booking_id)
         .maybeSingle();
       if (!trial) {
@@ -480,10 +482,20 @@ Deno.serve(async (req) => {
       const when = fmt.format(dt);
       const safeName = String(trial.guest_name ?? "ゲスト").slice(0, 40);
       const isDropIn = trial.booking_kind === "drop_in";
-      title = isDropIn ? "新しいドロップイン予約（¥8,000）" : "新しい体験予約";
+      // メニューの体験（例: マシンピラティス）はメニューの名前で呼び、担当の先生にも送る（2026-10-31）
+      const menuId = (trial as { menu_id?: string | null }).menu_id ?? null;
+      const trialStaffId = (trial as { staff_user_id?: string | null }).staff_user_id ?? null;
+      let menuName: string | null = null;
+      if (menuId) {
+        const { data: menuRow } = await adminClient
+          .from("booking_menus").select("name").eq("id", menuId).maybeSingle();
+        menuName = (menuRow as { name?: string } | null)?.name ?? null;
+      }
+      const label = trialBookingLabel(menuName);
+      title = isDropIn ? "新しいドロップイン予約（¥8,000）" : `新しい${label}`;
       body = isDropIn
         ? `${safeName}様 ${when} にドロップイン予約(¥8,000)が入りました`
-        : `${safeName}様 ${when} に体験予約が入りました`;
+        : `${safeName}様 ${when} に${label}が入りました`;
       tag = idempotencyKey;
 
       const { data: members } = await adminClient
@@ -493,6 +505,18 @@ Deno.serve(async (req) => {
         .in("role", ["trainer", "owner"])
         .neq("staff_access", "limited"); // インストラクター（staff_access = limited）は店宛ての通知の宛先にしない（2026-10-28・src/lib/staffAccess.ts）
       user_ids = (members ?? []).map((m: { user_id: string }) => m.user_id);
+      // メニューの体験の担当（インストラクターでも）。ジムの現役のスタッフのときだけ
+      if (trialStaffId && !user_ids.includes(trialStaffId)) {
+        const { data: staffRow } = await adminClient
+          .from("tenant_members")
+          .select("user_id")
+          .eq("tenant_id", trial.tenant_id)
+          .eq("user_id", trialStaffId)
+          .eq("status", "active")
+          .in("role", ["trainer", "owner"])
+          .maybeSingle();
+        if (staffRow) user_ids.push(trialStaffId);
+      }
       if (user_ids.length === 0) {
         return new Response(JSON.stringify({ sent: 0, message: "No trainers" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

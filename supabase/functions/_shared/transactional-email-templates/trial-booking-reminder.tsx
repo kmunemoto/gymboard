@@ -3,6 +3,7 @@ import {
   Body, Container, Head, Heading, Html, Text, Hr, Section, Link, Button,
 } from 'npm:@react-email/components@0.0.22'
 import { trialPriceLine } from '../trial-pricing.ts'
+import { trialContentValue, trialName as trialNameOf } from '../trialRules.ts'
 import type { TemplateEntry } from './registry.ts'
 import { GymNoteSection, splitNoteLines } from './gym-note.tsx'
 
@@ -81,6 +82,8 @@ interface Props {
    * 🔴 設定されていれば**この文章だけ**を出す。null/空なら従来の固定文の分岐。
    */
   cancelNote?: string | null
+  /** メニューの体験のメニューの名前（例: マシンピラティス）。null/未指定はトレーニングの体験（従来どおり） */
+  menuName?: string | null
 }
 
 const TrialBookingReminderEmail = ({
@@ -96,11 +99,13 @@ const TrialBookingReminderEmail = ({
   showAmenities = false,
   gymNote = null,
   cancelNote = null,
+  menuName = null,
 }: Props) => {
   const addressLines = splitAddressLines(gymAddress)
   // 呼称は全ジム共通。**料金を含めないこと**（金額はジムごとに違う）。
-  const trialName = '体験トレーニング'
-  const contentValue = '体験トレーニング（カウンセリング＋トレーニング 計60分）'
+  // メニューの体験（例: マシンピラティス）はメニューの名前で呼ぶ（2026-10-31・../trialRules.ts）
+  const trialName = trialNameOf(menuName)
+  const contentValue = trialContentValue(menuName)
   const priceLine = trialPriceLine(trialPriceYen)
   return (
     <Html lang="ja" dir="ltr">
@@ -197,7 +202,7 @@ const TrialBookingReminderEmail = ({
 export const template = {
   component: TrialBookingReminderEmail,
   subject: (data: Record<string, any>) =>
-    '【明日のご予約】体験トレーニングのリマインド',
+    `【明日のご予約】${trialNameOf(data?.menuName as string | null | undefined)}のリマインド`,
   displayName: '体験予約 前日リマインド',
   previewData: {
     gymNote: 'お飲み物はこちらでご用意しています。',

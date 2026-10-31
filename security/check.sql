@@ -613,6 +613,44 @@ WHERE p.schemaname = 'public'
 
 
 -- ----------------------------------------------------------------------------
+-- 検査12: 予約・チャットの相手が、そのジムの人に限られているか（★穴13 / 2026-10-31）
+-- ----------------------------------------------------------------------------
+-- ジムは誰でも開ける。自分のジムの予約（bookings.user_id）やチャット（messages.receiver_id）に、
+-- **他のジムの人の user_id** を入れられると、service_role で動く通知（予約確認のメール・チャットのプッシュ）が
+-- その人の氏名・メールアドレス・端末へ届く。メールの送信記録（email_send_log）からは氏名とアドレスも抜ける。
+-- 他のジムのオーナーの user_id は公開の情報（ロゴのファイル名・空き枠の担当）から取れる。
+--
+-- ★ が出たら開いている。直し方は
+--   supabase/migrations/20261031060000_booking_user_must_be_member.sql（予約）
+--   supabase/migrations/20261031070000_message_receiver_must_be_member.sql（チャット。お客様からはスタッフにだけ）
+-- 門番の関数は SECURITY INVOKER にすること（current_user = 'authenticated' で画面からを見分ける）。
+-- ⚠️ 自分のアプリで関数名を変えたなら、下の正規表現も合わせること。確かめるなら、自分のジムのオーナーを演じて
+--    他のジムの人の user_id で予約・メッセージを入れてみるのが確実（最後に RAISE で戻すこと）。
+
+SELECT
+  x.tbl,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+        FROM pg_trigger t
+        JOIN pg_proc f ON f.oid = t.tgfoid
+       WHERE t.tgrelid = x.tbl::regclass
+         AND NOT t.tgisinternal
+         AND t.tgenabled <> 'D'
+         AND (t.tgtype & 2) = 2
+         AND (t.tgtype & 4) = 4
+         AND NOT f.prosecdef
+         AND f.prosrc ~* x.pattern
+    ) THEN 'OK: 相手がそのジムの人かを確かめる門番がある'
+    ELSE '★要対応: 他のジムの人を相手にした行を作れる（通知で氏名・アドレス・端末に届く）'
+  END AS verdict
+FROM (VALUES
+  ('public.bookings', 'is_tenant_member_any_status\s*\(\s*NEW\.tenant_id\s*,\s*NEW\.user_id'),
+  ('public.messages', 'is_tenant_member_any_status\s*\(\s*NEW\.tenant_id\s*,\s*NEW\.receiver_id')
+) AS x(tbl, pattern);
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

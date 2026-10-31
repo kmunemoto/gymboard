@@ -1927,6 +1927,38 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_billing_flags: {
+        Row: {
+          is_comp: boolean
+          note: string | null
+          stripe_sandbox_allowed: boolean
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          is_comp?: boolean
+          note?: string | null
+          stripe_sandbox_allowed?: boolean
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          is_comp?: boolean
+          note?: string | null
+          stripe_sandbox_allowed?: boolean
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_billing_flags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_join_tickets: {
         Row: {
           created_at: string

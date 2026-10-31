@@ -2880,10 +2880,7 @@ export type Database = {
         Args: { p_minutes: number; p_start: string; p_tenant_id: string }
         Returns: boolean
       }
-      menu_trial_open: {
-        Args: { p_menu_id: string }
-        Returns: boolean
-      }
+      menu_trial_open: { Args: { p_menu_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string

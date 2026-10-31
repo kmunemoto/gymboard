@@ -119,6 +119,22 @@ Deno.serve(async (req) => {
       return json({ skipped: reason });
     }
 
+    // 🔴 予約の人がそのジムに所属しているかを、氏名を読む前・送る前に確かめる（2026-10-31・穴13）。
+    // 以前は確かめておらず、自分で開いたジムに他のジムの人の予約を作ると、その人の氏名とアドレスへ
+    // 「予約確認」が送られ、送信記録から氏名とアドレスが抜けた。DB 側（trg_guard_booking_user_is_member）でも
+    // 止めているが、service_role で動くここが最後の関門なので二重に見る（在籍の状態は問わない）。
+    const { data: member, error: memberErr } = await supabase
+      .from("tenant_members")
+      .select("id")
+      .eq("tenant_id", booking.tenant_id)
+      .eq("user_id", booking.user_id)
+      .limit(1);
+    if (memberErr) throw memberErr;
+    if (!member || member.length === 0) {
+      await patchLog({ skip_reason: "user_not_member" });
+      return json({ skipped: "user_not_member" });
+    }
+
     // 誰の操作か（自己予約か代理予約か）は booking_notify_log の actor_user_id で判別する。
     // bookings の列からは区別できない（トリガーが INSERT 時の auth.uid() を採っている）。
     let actorUserId: string | null = null;

@@ -1550,9 +1550,33 @@ Edge Function の監査の指摘（notify-new-booking-1・notify-new-message-1�
 3. 演じて読む … 同じ結果。試しの行は残っていない。検査12 = 2行とも OK
 ```
 
-### 残り（Edge Function 側）
+### 残り（Edge Function 側）→ 下の「Edge Function の直し」で対応
 
-notify-new-booking / send-transactional-email / notify-new-message でも、送る前に相手の所属を確かめる（多層防御）。
-Google カレンダーの直しとまとめて、Lovable にデプロイを頼む。
+notify-new-booking / notify-new-message でも、送る前に相手の所属を確かめる（多層防御）。
+send-transactional-email の service_role 経路（宛先の解決）は未対応。
 
 見張り: `src/test/bookingUserMembership.test.ts`・`security/check.sql` の検査12
+
+## Edge Function の直し（2026-10-31・点検ワークフローの指摘）
+
+| 指摘 | 直したこと |
+|---|---|
+| google-calendar-sync-1（high） | 印（hasRole(trainer)）で認可を素通りしていた → **その予約のジムの有効なスタッフ**か**お客様本人の予約（体験は除く）**だけ。sync_all は呼んだ人がスタッフのジムだけ |
+| google-calendar-sync-2（medium） | 予定の中身・消す予定の ID をリクエストから取っていた → **予約行から**作る・消す（ID はエンコード）。1予約につき予定は1件。service_role の呼び出し元（trial-book・drop-in-book）だけは表示用のラベルを渡せる |
+| google-calendar-callback-1（high） | 本人がトークンを API で読めた → `20261031080000_calendar_tokens_column_grants.sql` で access_token・refresh_token の列を画面から読めない・書けないようにした（id など連携の有無を見る列と、解除の DELETE は残す）。本番適用済み |
+| notify-new-booking / notify-new-message | 送る前に相手（予約の人／送り主と宛先）の所属を確かめる（穴13 の DB の門番に重ねる） |
+
+🔴 google-calendar-sync の作成・削除は、クライアントから見て挙動が変わらないことを確かめてある:
+予約の作成（予約の行ができてから呼ぶ）・キャンセル（行を消す前に呼ぶ）・オプションの変更（消してから作る）・
+予約変更の巻き戻し（calendarResync）は、どれも予約行が在るうちに呼んでいて、渡している値も行の値と同じ。
+
+### 残り
+
+- **OAuth の state をブラウザに結びつける**（google-calendar-callback-1 の残り）。今は「同意リンクを踏ませると、
+  その人の Google のトークンが攻撃者の行に保存される」までは起きうる（読めないので、攻撃者のジムの予約が
+  その人のカレンダーに書かれる程度）。連携の完了をログイン中の本人が確かめる形にするには画面の変更が要る
+- send-transactional-email の service_role 経路で、宛先の解決（_resolve_user_）をそのジムの人に限る
+- 点検ワークフローの medium / low の残り（push の URL・体験予約のメール中継・ドロップインの枠埋め・LINE の state・
+  Stripe の sandbox・認証メールのログ など）
+
+見張り: `src/test/googleCalendarSyncAuthz.test.ts`

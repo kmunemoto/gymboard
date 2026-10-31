@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { isDayUnselectable, type CalendarDayRules } from "@/lib/bookingCalendarDay";
 
@@ -58,7 +58,18 @@ describe("店の都合", () => {
   });
 
   it("予約できる範囲より先は選べない", () => {
-    expect(isDayUnselectable("2026-12-25", base({ bookingWindowDays: 30 }))).toBe(true);
+    // 🔴 時計を TODAY に合わせる。範囲（30日）は本物の現在時刻から数えるため、固定しないと
+    //    日本時間 2026-11-25 から「12/25 は範囲内」になって落ちる（2026-10-31 に同じ形の別のテストが CI で落ちた）。
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T03:00:00Z")); // 日本時間 9/22 の昼
+    try {
+      expect(isDayUnselectable("2026-12-25", base({ bookingWindowDays: 30 }))).toBe(true);
+      // ちょうど30日後までは選べる（範囲の端を確かめて、固定が効いていることも見る）
+      expect(isDayUnselectable("2026-10-22", base({ bookingWindowDays: 30 }))).toBe(false);
+      expect(isDayUnselectable("2026-10-23", base({ bookingWindowDays: 30 }))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

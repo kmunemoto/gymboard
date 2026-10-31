@@ -9,8 +9,8 @@ import { readFileSync, readdirSync } from "node:fs";
 
 export const MIGRATIONS_DIR = "supabase/migrations";
 
-/** テナントで絞っていると認めるヘルパー（いずれも呼び出し元のテナントを見る） */
-export const TENANT_SCOPED = /get_my_tenant_id|is_tenant_member|has_tenant_role|shares_tenant_with_me/;
+/** テナントで絞っていると認めるヘルパー（いずれも呼び出し元のテナントを見る。is_staff_of_user は 2026-10-31 穴11） */
+export const TENANT_SCOPED = /get_my_tenant_id|is_tenant_member|has_tenant_role|shares_tenant_with_me|is_staff_of_user/;
 
 /** 「自分の行だけ」と認める形。ここに無い書き方をしたら、それは横断アクセスとして扱う */
 export const OWN_ROW = /auth\.uid\(\)\s*=\s*\w*_?(?:user_)?id\b|\b\w*_?(?:user_)?id\s*=\s*auth\.uid\(\)/;
@@ -47,6 +47,17 @@ export function effectivePolicies(): { policies: Policy[]; loopCovered: Set<stri
       if (!/AS RESTRICTIVE/i.test(body) || !TENANT_SCOPED.test(body)) continue;
       for (const arr of body.matchAll(/ARRAY\s*\[([^\]]+)\]/g)) {
         for (const t of arr[1].matchAll(/'(\w+)'/g)) loopCovered.add(t[1]);
+      }
+    }
+
+    // DROP TABLE（`DROP TABLE IF EXISTS a, b, c;` のまとめ書きも）。表ごと消えたポリシーは残さない。
+    // ここが無いと、2026-09-05 に表ごと落としたゲーム機能の48本が「まだ有効」に見えていた
+    // （本番には1本も無い。20261031040000 の点検で本番と突き合わせて気づいた）。
+    for (const m of sql.matchAll(/DROP TABLE\s+(?:IF EXISTS\s+)?([^;]+);/gi)) {
+      for (const raw of m[1].replace(/\s+(?:CASCADE|RESTRICT)\s*$/i, "").split(",")) {
+        const table = raw.trim().replace(/^public\./i, "").replace(/"/g, "");
+        for (const key of [...map.keys()]) if (key.startsWith(`${table}::`)) map.delete(key);
+        loopCovered.delete(table);
       }
     }
 

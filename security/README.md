@@ -66,7 +66,7 @@ $ git rev-list --left-right --count origin/main...claude/new-session-ius5r0
 `security/check.sql` の中身を、Supabase の SQL エディタか
 Lovable の `query_database` にそのまま貼って実行してください。**何も変更しません。**
 
-4つの検査が入っています。
+主な検査は次のとおりです（全部はファイルのコメントを見てください）。
 
 | 検査 | 何を見るか |
 |---|---|
@@ -74,6 +74,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 1 | 既知の3つの穴が塞がっているか（名指し） |
 | 2 | **trainer ロールだけで書けるポリシーの洗い出し**（テーブルを列挙せず全走査） |
 | 3 | RESTRICTIVE なテナント絞りが付いているテーブル一覧（検査2 の結果と突き合わせる） |
+| **10** | **お客様が trainer の印を付けると、同じジムの全員のデータが読めないか**（★穴11。検査2・3 では見つからない） |
 
 **検査2 が本命です。** 検査1 はジムボードで見つかったテーブルを名指しで見るだけですが、
 検査2 は**そのアプリで独自に増えたテーブル**も見つけます。
@@ -103,6 +104,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 5 | LINE送信の宛先をテナントで絞る | `supabase/functions/send-line-message/index.ts` |
 | 6 | **メールキューRPCから anon を剥がす** | `supabase/migrations/20260805000000_email_queue_revoke_roles.sql` |
 | 7 | **DB内の関数が他プロジェクトを叩くのを止める** | 実DBで直す（下記。リポジトリには無い） |
+| 11 | **印の判定を「そのジムのスタッフか」に差し替える** | `supabase/migrations/20261031040000_staff_checks_tenant_scoped.sql` |
 
 SQL は `to_regclass` / `to_regprocedure` ガードが入っているので、
 対象が無い環境でも止まりません。
@@ -347,6 +349,47 @@ where not t.tgisinternal and p.proname = 'notify_trainer_new_signup';
 
 **相談ボードは検査を足した直後に2本目を見つけました。**
 **直したら、検査6・7をもう一度流して0件になったことを確認してください。**
+
+---
+
+## 穴11: お客様が trainer の印を付けると、同じジムの全員のデータが読めます（2026-10-31 追加）
+
+**検査2・3 が全部 OK でも開いています。** 検査2 は「別のジムから書けるか」を見て、
+RESTRICTIVE のテナント絞りがあれば安全としていました。ところが、
+
+```
+お客様 A（ジム X のお客様） → signup-trainer を自分で呼ぶ → trainer の印が付く
+  → PERMISSIVE の has_role(auth.uid(), 'trainer') が真
+  → RESTRICTIVE の tenant_id = get_my_tenant_id() も真（A の get_my_tenant_id() は X）
+  → ジム X の全員のプロフィール・予約・チャット・食事の写真が読める（読み取りを含む）
+```
+
+ジムボードの本番でお客様を演じたところ、他人のプロフィール 43・予約 655・メッセージ 171・
+食事の写真 14 が読めました（ROLLBACK 済み。印を持つお客様は本番に0人でした）。
+招待コード無しで入った部外者でも同じでした。お客様の予約の削除・変更の制限（トリガー）も
+`has_role(trainer)` で素通りにしていたので、自分の過去の予約を消して消化数を減らせました。
+
+### 診断と修正
+
+`security/check.sql` の**検査10**（ポリシー）と**検査10-b**（関数）。★★ が出たら、
+印の判定を次に差し替えます（ほかの条件は変えない）。
+
+| 表 | 差し替え先 |
+|---|---|
+| `tenant_id` がある | `public.has_tenant_role(tenant_id, auth.uid(), ARRAY['owner', 'trainer'])` |
+| 人ごと（profiles・weight_journey など） | `public.is_staff_of_user(user_id)`（同じマイグレーションで作る関数） |
+| 写真の置き場 | `has_tenant_role(get_my_tenant_id(), …) AND shares_tenant_with_me(フォルダ)` |
+
+実物は `supabase/migrations/20261031040000_staff_checks_tenant_scoped.sql`。
+**残してよいのは2つだけ**です: ジムを開く前のロゴのアップロード（avatars の tenant-logos）と、
+ジムを開く関数（create_gym_with_owner）。どちらもまだジムが無いので印で見るしかありません。
+
+### 流す前に必ず
+
+- 自分のアプリの実物のポリシー名で書くこと（検査0）。ジムボードは本番の92本と名前を突き合わせてから書きました
+- 流したら、オーナー・インストラクター・お客様を演じて、各表の件数が**変わらない**こと、
+  お客様＋印が**自分の分だけ**になることを数えてください（ジムボードは1回の処理で前後を数え、
+  1件でも変われば自動で巻き戻すようにして流しました）
 
 ---
 

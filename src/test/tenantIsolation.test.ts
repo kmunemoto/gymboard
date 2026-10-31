@@ -59,10 +59,8 @@ const CUSTOMER_DATA_TABLES = [
   "tenant_muscle_groups",
   "tenant_plans",
   "trial_bookings",
-  "user_avatars",
   "user_measurements",
   "weight_journey",
-  "weight_journey_milestones",
   "workouts",
 ];
 
@@ -128,10 +126,13 @@ describe("テナント分離（他ジムの顧客データに触れられない�
   });
 
   it("PERMISSIVE が緩いテーブルは、必ず RESTRICTIVE で守られている", () => {
-    // これらは "OR has_role(...)"（ジムを問わないトレーナー権限）や "USING (true)" を
-    // 持つが、RESTRICTIVE のテナント絞りが AND されるため安全。
+    // これらは "USING (true)" 等の緩い PERMISSIVE を持つが、RESTRICTIVE のテナント絞りが
+    // AND されるため、別のジムからは読めない。
     // ループの配列から1つ抜けただけで無防備になるので、名指しで確認する。
-    for (const t of ["weight_journey", "weight_journey_milestones", "user_avatars", "bookings", "workouts"]) {
+    // ⚠️ RESTRICTIVE が守るのは「別のジム」だけ。同じジムのお客様が「スタッフの印」を
+    //    持ち出す話は防げない（2026-10-31 穴11。globalTrainerRole.test.ts）。
+    // user_avatars・weight_journey_milestones は 2026-09-05 に表ごと削除したので外した。
+    for (const t of ["weight_journey", "bookings", "workouts"]) {
       expect(hasRestrictiveTenantScope(t), `${t} のテナント絞りが消えている`).toBe(true);
     }
   });

@@ -154,6 +154,22 @@ Deno.serve(async (req) => {
     // 送信直後に取り消された等。通知する相手も内容も無いので黙って終わる。
     if (!message) return json({ skipped: "message_not_found" });
 
+    // 🔴 宛先と送り主がそのジムに所属しているかを、送る前に確かめる（2026-10-31・穴13）。
+    // 以前は確かめておらず、自分のジムの行で他のジムの人を宛先にすると、その人の端末へ service_role で
+    // プッシュが中継された。DB 側（trg_guard_message_receiver_is_member）でも止めているが、
+    // ここが最後の関門なので二重に見る（在籍の状態は問わない）。
+    if (!message.tenant_id) return json({ skipped: "no_tenant" });
+    const { data: parties, error: partiesErr } = await supabase
+      .from("tenant_members")
+      .select("user_id")
+      .eq("tenant_id", message.tenant_id)
+      .in("user_id", [message.sender_id, message.receiver_id]);
+    if (partiesErr) throw partiesErr;
+    const partyIds = new Set(((parties ?? []) as { user_id: string }[]).map((p) => p.user_id));
+    if (!partyIds.has(message.sender_id) || !partyIds.has(message.receiver_id)) {
+      return json({ skipped: "party_not_member" });
+    }
+
     // 冪等キーはメッセージ1件につき1つ。トリガーの再実行や再試行で二重に鳴らさない。
     const idempotencyKey = `new-message:${message.id}`;
     const { data: already } = await supabase

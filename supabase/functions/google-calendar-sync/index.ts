@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { verifyCaller, hasRole } from "../_shared/auth.ts";
+import { verifyCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,6 +48,60 @@ async function resolveTenantId(
   return (data as any)?.tenant_id ?? null;
 }
 
+/** 予約行（予定の中身・消す予定の ID は、呼び出し元ではなくここから取る） */
+interface BookingRow {
+  id: string;
+  tenant_id: string | null;
+  user_id: string | null;
+  booking_date: string;
+  booking_type: string | null;
+  option_minutes: number;
+  google_event_id: string | null;
+  guest_name: string | null;
+}
+
+async function loadBooking(
+  supabase: SupabaseClient,
+  bookingId: string,
+  isTrial: boolean,
+): Promise<BookingRow | null> {
+  // 列を名指ししない（未適用の列があっても落とさない。ほかの関数と同じ作法）
+  const { data } = await supabase
+    .from(isTrial ? "trial_bookings" : "bookings")
+    .select("*")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    id: String(row.id),
+    tenant_id: (row.tenant_id as string | null) ?? null,
+    user_id: isTrial ? null : ((row.user_id as string | null) ?? null),
+    booking_date: String(row.booking_date),
+    booking_type: (row.booking_type as string | null) ?? null,
+    option_minutes: isTrial ? 0 : Math.max(0, Number(row.option_minutes ?? 0) || 0),
+    google_event_id: (row.google_event_id as string | null) ?? null,
+    guest_name: isTrial ? ((row.guest_name as string | null) ?? null) : null,
+  };
+}
+
+/** その予約のジムで、有効なスタッフ（オーナー・トレーナー）か。印（hasRole）は使わない */
+async function isActiveStaffOf(
+  supabase: SupabaseClient,
+  tenantId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("tenant_members")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .in("role", ["owner", "trainer"])
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
 /**
  * テナントの「Googleカレンダー連携済みのジム側ユーザー(owner/trainer)」のトークンを返す。
  * マルチテナントのため、予約が属するテナントのジム担当者を対象にする。
@@ -88,7 +142,10 @@ Deno.serve(async (req) => {
     const caller = await verifyCaller(req);
     if (!caller) return json({ error: "Unauthorized" }, 401);
 
-    const { action, booking_id, booking_date, booking_type, client_name, google_event_id, is_trial, option_minutes } = await req.json();
+    const body = await req.json();
+    const { action, booking_date, booking_type, client_name, option_minutes } = body ?? {};
+    const is_trial = body?.is_trial === true;
+    const booking_id: string | undefined = typeof body?.booking_id === "string" ? body.booking_id : undefined;
     if (!action || !ALLOWED_ACTIONS.has(action)) {
       console.warn("google-calendar-sync: invalid action", action);
       return json({ error: "Invalid action" }, 400);
@@ -101,31 +158,36 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // ---- AUTHZ ----
-    // Trainers / service role: full access (existing behavior).
-    // Customers: only "create" or "delete" for a booking they own (non-trial).
-    if (!caller.isServiceRole) {
-      const isTrainer = caller.userId ? await hasRole(caller.userId, "trainer") : false;
-      if (!isTrainer) {
-        if (action === "sync_all" || is_trial) {
-          return json({ error: "Forbidden" }, 403);
-        }
-        if (!booking_id || typeof booking_id !== "string") {
-          return json({ error: "booking_id required" }, 400);
-        }
-        const { data: bk } = await supabase
-          .from("bookings")
-          .select("id, user_id")
-          .eq("id", booking_id)
-          .maybeSingle();
-        if (!bk || bk.user_id !== caller.userId) {
+    // ---- AUTHZ（2026-10-31・穴11 の続き）----
+    // 🔴 印（hasRole(trainer)）は使わない。誰でも取れるうえジムに結びついていないので、
+    //    以前は印を付けるだけで他のジムのオーナーのカレンダーに予定を作れた（google-calendar-sync-1）。
+    //   - service_role（trial-book・drop-in-book・trial-cancel）… 今まで通り
+    //   - その予約のジムの有効なスタッフ … その予約の作成・削除
+    //   - お客様 … 自分の予約（体験は除く）の作成・削除だけ
+    //   - sync_all … 呼んだ人が有効なスタッフのジムだけ
+    let booking: BookingRow | null = null;
+    let tenantId: string | null;
+    if (action === "sync_all") {
+      tenantId = await resolveTenantId(supabase, action, undefined, false, caller.userId);
+      if (!caller.isServiceRole && !tenantId) {
+        return json({ error: "Forbidden" }, 403);
+      }
+    } else {
+      if (!booking_id) {
+        return json({ error: "booking_id required" }, 400);
+      }
+      booking = await loadBooking(supabase, booking_id, is_trial);
+      tenantId = booking?.tenant_id ?? null;
+      if (!caller.isServiceRole) {
+        const isStaff = !!tenantId && !!caller.userId && await isActiveStaffOf(supabase, tenantId, caller.userId);
+        const isOwnBooking = !is_trial && !!booking && booking.user_id === caller.userId;
+        if (!isStaff && !isOwnBooking) {
           return json({ error: "Forbidden" }, 403);
         }
       }
     }
 
     // ---- テナント & その連携済みカレンダー(トークン)を解決 ----
-    const tenantId = await resolveTenantId(supabase, action, booking_id, is_trial, caller.userId);
     console.log(`[gcal-sync] action=${action} caller=${caller.userId ?? "service"} tenant=${tenantId ?? "null"}`);
     if (!tenantId) {
       return json({ skipped: true, reason: "no tenant" });
@@ -185,17 +247,48 @@ Deno.serve(async (req) => {
     const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
 
     if (action === "create") {
-      const startDt = new Date(booking_date);
+      if (!booking) {
+        return json({ skipped: true, reason: "booking not found" });
+      }
+      // 1予約につき予定は1件。今のカレンダーに実在するなら作らない（同じ予約で何度呼ばれても増えない）
+      if (booking.google_event_id) {
+        const checkRes = await fetch(`${baseUrl}/${encodeURIComponent(booking.google_event_id)}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (checkRes.ok) {
+          return json({ success: true, event_id: booking.google_event_id, already_present: true });
+        }
+      }
+
+      // 🔴 予定の中身は予約行から作る（google-calendar-sync-2）。以前はリクエストの日時・文面をそのまま使っていたので、
+      //    お客様が自分の予約1件で、店のカレンダーに任意の文面・日時の予定を何件でも作れた。
+      //    service_role の呼び出し元（trial-book・drop-in-book）だけは、表示用のラベル（🆕/🌏 付きの名前など）を渡せる。
+      const trusted = caller.isServiceRole;
+      let displayName: string;
+      if (trusted && typeof client_name === "string" && client_name) {
+        displayName = client_name;
+      } else if (is_trial) {
+        displayName = booking.guest_name || "体験ゲスト";
+      } else {
+        const { data: prof } = await supabase
+          .from("profiles").select("display_name").eq("user_id", booking.user_id ?? "").maybeSingle();
+        displayName = (prof as { display_name?: string | null } | null)?.display_name || "顧客";
+      }
+      const eventType = trusted && typeof booking_type === "string" && booking_type ? booking_type : booking.booking_type;
+      const eventDate = trusted && typeof booking_date === "string" && booking_date ? booking_date : booking.booking_date;
+
+      const startDt = new Date(eventDate);
       // オプション（トレーニング後のストレッチ等）ぶんも予定の長さに入れる。ここを足さないと
       // トレーナー自身の Google カレンダーだけ60分のままになり、ジムボードの予定表と食い違う。
-      // 呼び出し側が option_minutes を渡さない場合は 0（＝従来どおり）。
-      const createOptionMinutes = Math.max(0, Number(option_minutes ?? 0) || 0);
+      const createOptionMinutes = trusted && option_minutes != null
+        ? Math.max(0, Number(option_minutes) || 0)
+        : booking.option_minutes;
       const endDt = new Date(startDt.getTime()
-        + (resolveSessionMinutes(is_trial ? null : booking_type) + createOptionMinutes) * 60 * 1000);
+        + (resolveSessionMinutes(is_trial ? null : booking.booking_type) + createOptionMinutes) * 60 * 1000);
 
       const event = {
-        summary: `🏋️ ${client_name || "顧客"} - ${booking_type || "トレーニング"}`,
-        description: `プラン: ${booking_type}\nお客様: ${client_name}\n\nジムボード`,
+        summary: `🏋️ ${displayName} - ${eventType || "トレーニング"}`,
+        description: `プラン: ${eventType}\nお客様: ${displayName}\n\nジムボード`,
         start: { dateTime: startDt.toISOString(), timeZone: "Asia/Tokyo" },
         end: { dateTime: endDt.toISOString(), timeZone: "Asia/Tokyo" },
         reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 60 }] },
@@ -213,18 +306,21 @@ Deno.serve(async (req) => {
         return json({ error: "Failed to create event", detail: created }, 500);
       }
 
-      if (booking_id && created.id) {
+      if (created.id) {
         const table = is_trial ? "trial_bookings" : "bookings";
-        await supabase.from(table).update({ google_event_id: created.id }).eq("id", booking_id);
+        await supabase.from(table).update({ google_event_id: created.id }).eq("id", booking.id);
       }
 
       return json({ success: true, event_id: created.id });
     } else if (action === "delete") {
-      if (!google_event_id) {
+      // 🔴 消す予定は予約行の google_event_id だけ（リクエストの ID は使わない）。
+      //    以前はリクエストの ID をエンコードせずに URL へ連結していたので、他の予定や別のパスを指せた。
+      const eventId = booking?.google_event_id ?? null;
+      if (!booking || !eventId) {
         return json({ skipped: true, reason: "no event id" });
       }
 
-      const deleteRes = await fetch(`${baseUrl}/${google_event_id}`, {
+      const deleteRes = await fetch(`${baseUrl}/${encodeURIComponent(eventId)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -235,9 +331,9 @@ Deno.serve(async (req) => {
         return json({ error: "Failed to delete event", detail: errText }, 200);
       }
 
-      if (booking_id) {
+      {
         const table = is_trial ? "trial_bookings" : "bookings";
-        await supabase.from(table).update({ google_event_id: null }).eq("id", booking_id);
+        await supabase.from(table).update({ google_event_id: null }).eq("id", booking.id);
       }
 
       return json({ success: true, already_gone: deleteRes.status === 410 || deleteRes.status === 404 });

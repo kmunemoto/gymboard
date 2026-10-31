@@ -123,6 +123,8 @@ ORDER BY sort_order;
 --
 -- ⚠️ 安全側に倒してある（見逃すより多めに出す）。
 --    出た行は1件ずつ目で確認すること。qual / with_check を読めば判断できる。
+-- ⚠️ これは「別のジムから書けるか」の検査。**同じジムのお客様が印を付ける話（読み取りを含む）は
+--    検査10**（RESTRICTIVE のテナント絞りでは防げない。2026-10-31 穴11）。
 --
 -- 0行なら OK。
 
@@ -156,7 +158,8 @@ ORDER BY tablename, cmd, policyname;
 -- 検査3: RESTRICTIVE なテナント絞りが付いているテーブルの一覧
 -- ----------------------------------------------------------------------------
 -- 検査2 で出た行のうち、テーブル自体に RESTRICTIVE のテナント絞りが
--- あるものは AND で潰れるので安全。ここに載っていれば見逃してよい。
+-- あるものは AND で潰れるので、**別のジムからは**安全。ここに載っていれば検査2 は見逃してよい。
+-- ⚠️ 同じジムのお客様が印を付けた場合は防げない（検査10）。
 --
 -- 検査2 の結果と突き合わせて使う。
 
@@ -513,6 +516,63 @@ WHERE b.public
   AND (0 = ANY (p.polroles) OR 'anon'::regrole::oid = ANY (p.polroles))
   AND pg_get_expr(p.polqual, p.polrelid) ~ ('bucket_id = ''' || b.id || '''')
   AND pg_get_expr(p.polqual, p.polrelid) !~ '(auth\.uid\(\)|get_my_tenant_id)';
+
+
+-- ----------------------------------------------------------------------------
+-- 検査10: お客様が「trainer の印」を付けると、同じジムの全員のデータが読めないか（★穴11 / 2026-10-31）
+-- ----------------------------------------------------------------------------
+-- **検査2・3 が 0件・OK でも、これは別に見ること。**
+-- 検査2・3 は「別のジムから書けるか」の検査で、RESTRICTIVE のテナント絞りがあれば安全としている。
+-- ところが**同じジムのお客様**には、その絞りが効かない（お客様の get_my_tenant_id() は自分のジムなので通る）。
+-- trainer の印は signup-trainer で誰でも取れるので、お客様が自分に付けるだけで
+-- PERMISSIVE の `has_role(auth.uid(), 'trainer')` が真になり、**読み取りも含めて**そのジムの全員の
+-- プロフィール・予約・チャット・食事の写真に届く。
+-- ジムボードでは本番でお客様を演じて、他人のプロフィール 43・予約 655・メッセージ 171 が読めた。
+--
+-- 出た行（★★）は1件ずつ、印の判定を「そのジムのスタッフか」に差し替える:
+--   tenant_id がある表 … public.has_tenant_role(tenant_id, auth.uid(), ARRAY['owner', 'trainer'])
+--   人ごとの表         … public.is_staff_of_user(user_id)（その人がいるジムで自分がスタッフか）
+-- 直し方の実物は supabase/migrations/20261031040000_staff_checks_tenant_scoped.sql
+--
+-- avatars の tenant-logos へのアップロード（"Authenticated avatar uploads scoped to user folder"）だけは
+-- 残してよい。ジムを開く前（オンボーディング）に呼ぶので、まだどのジムのスタッフでもないため。
+-- 置ける名前が `tenant-logos/<自分の user_id>-…` に限られていることは確かめること。
+
+SELECT
+  p.schemaname,
+  p.tablename,
+  p.policyname,
+  p.cmd,
+  CASE
+    WHEN p.schemaname = 'storage' AND p.policyname = 'Authenticated avatar uploads scoped to user folder'
+      THEN 'OK: 開設前のロゴ（名前が tenant-logos/<自分の user_id>- に限られていれば）'
+    ELSE '★★要対応: 印を付けたお客様が通る'
+  END AS verdict
+FROM pg_policies p
+WHERE p.schemaname IN ('public', 'storage')
+  AND p.permissive = 'PERMISSIVE'
+  AND (coalesce(p.qual, '') || ' ' || coalesce(p.with_check, '')) LIKE '%has_role(auth.uid(), ''trainer''%'
+ORDER BY p.schemaname, p.tablename, p.policyname;
+
+-- 検査10-b: 関数の中で「印」を素通りの根拠にしていないか
+-- SECURITY DEFINER の関数が `IF has_role(auth.uid(), 'trainer') THEN RETURN ...` のように
+-- 「スタッフなら制限なし」にしていると、印を付けたお客様も制限なしになる
+-- （ジムボードでは、お客様の予約の削除・変更の制限のトリガー2本と、招待コードを返す関数がそうだった）。
+-- ジムを開く関数（create_gym_with_owner）だけは残してよい（まだジムが無いので印で見るしかない）。
+
+SELECT
+  p.proname,
+  pg_get_function_identity_arguments(p.oid) AS args,
+  CASE
+    WHEN p.proname = 'create_gym_with_owner' THEN 'OK: ジムを開く関数'
+    ELSE '★要確認: 印で素通りさせていないか（has_tenant_role に差し替える）'
+  END AS verdict
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.prosecdef
+  AND p.prosrc ~* 'has_role\s*\(.{0,60}trainer'
+ORDER BY p.proname;
 
 
 -- ----------------------------------------------------------------------------

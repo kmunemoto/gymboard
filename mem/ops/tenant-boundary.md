@@ -31,6 +31,12 @@
 | RLS の書き込みポリシー | 必ず `tenant_id = get_my_tenant_id()` か `auth.uid() = user_id` と **AND** する |
 | Edge Function | `hasRole` を宛先・対象の検証に使わない。`tenant_members` を直接引く |
 
+🔴 **2026-10-31 追記（穴11）: 上の表では足りなかった。読み取りも含めて、PERMISSIVE で印を見ない。**
+`tenant_id = get_my_tenant_id()` で守れるのは「別のジムから」だけで、**同じジムのお客様**が
+印を付けると絞りごと通ってしまう。印の代わりに「そのジムのスタッフか」を見る:
+`has_tenant_role(tenant_id, auth.uid(), ARRAY['owner', 'trainer'])`／`is_staff_of_user(user_id)`。
+例外はジムを開く前の2つだけ（ロゴのアップロード・create_gym_with_owner）。下の「穴11」。
+
 見張り: `src/test/globalTrainerRole.test.ts` / `src/test/pushNotificationTenantScope.test.ts`
 
 ## 兄弟アプリへの配布
@@ -1373,3 +1379,82 @@ avatars・gym-assets は公開の置き場で、`bucket_id = '...'` だけの SE
 本番で演じて確認: 未ログインの一覧 0件 ／ オーナーは自分のロゴを一覧できる（ロゴの削除が動く）。
 
 見張り: `src/test/memberPaymentRpcAndBucketListing.test.ts`・`security/check.sql` の検査9
+
+## 穴11: お客様が「trainer の印」を付けると、同じジムの全員のデータが読めた（2026-10-31）
+
+同じ点検の続き。Edge Function の監査（ワークフロー）で「signup-trainer は誰でも呼べる」が改めて出て、
+**お客様が自分に印を付けたらどうなるか**を本番で演じて分かった。**この点検で一番重い穴。**
+
+### 何が起きていたか
+
+92本のポリシー（public 82・storage 10）が `has_role(auth.uid(), 'trainer')` だけでスタッフと見なしていた。
+「別のジムから」は RESTRICTIVE（`tenant_id = get_my_tenant_id()` / `shares_tenant_with_me`）が防いでいたが、
+**同じジムのお客様**の get_my_tenant_id() は自分のジムなので、絞りごと通る。上の「結論」の表は
+「書き込みに AND を足せば安全」としていて、**読み取りと、同じジムの中の話が抜けていた**。
+
+本番で演じた結果（ROLLBACK 済み。印を持つお客様は本番に0人＝実害なし）:
+
+```
+お客様＋印          他人のプロフィール 43・予約 655・メッセージ 171・食事の写真 14・体組成 159
+招待コード無しで入った部外者＋印   プロフィール 44・予約 671・メッセージ 171（同じ）
+お客様＋印の書き込み  自分の過去の予約を消せた・未来の予約を直接キャンセルにできた（トリガーも印で素通り）
+別のジムのオーナー    user_roles を全ジム分 85行読めた（この表だけ RESTRICTIVE が無かった）
+```
+
+### 直し方（`20261031040000_staff_checks_tenant_scoped.sql`）
+
+**印の判定だけを差し替え、ほかの条件は1文字も変えない。** 名前・コマンド・対象は本番の実物と突き合わせた。
+
+| 表 | 差し替え先 |
+|---|---|
+| tenant_id がある21表 | `has_tenant_role(tenant_id, auth.uid(), ARRAY['owner', 'trainer'])`（message_reactions は `m.tenant_id`） |
+| 人ごとの5表（profiles・weight_journey・skeletal_diagnoses・announcement_reads・user_roles） | `is_staff_of_user(user_id)`（新設） |
+| google_calendar_tokens（自分の行だけ） | `auth.uid() = user_id AND is_staff_somewhere()`（新設） |
+| 写真の置き場（meal/progress/posture） | `has_tenant_role(get_my_tenant_id(), …) AND shares_tenant_with_me(フォルダ)`（後半は今まで通り） |
+| gym-assets | `has_tenant_role(get_my_tenant_id(), …)` |
+| トリガー2本（予約の削除・変更の制限） | `has_tenant_role(OLD.tenant_id, …)` |
+| get_my_tenant_invite_code | `has_tenant_role(t.id, …)` |
+
+残したのは2つだけ（まだジムが無いので印で見るしかない）:
+avatars の tenant-logos へのアップロード（名前は `tenant-logos/<自分の user_id>-` に限られている）と create_gym_with_owner。
+ついでに、2026-09-05 に表ごと消したゲーム機能（装備）の関数4本の残り（印で判定・1本は未ログインで呼べた）を消した。
+
+#### 🔴 is_staff_of_user は「相手の在籍の状態」を見ない
+
+最初は相手も `status = 'active'` に絞ったが、**顧客の詳細画面が壊れる**ので外した。
+TrainerClientDetail は `user_roles` が読めるかでチャット欄を開く（isRegistered）。退会したお客様の
+ロールが読めないと、チャット履歴があるのに「未登録」と出る。profiles など4表は RESTRICTIVE
+（shares_tenant_with_me＝在籍中だけ）が別にかかるので、相手を絞らなくても見える範囲は今まで通り。
+写真の置き場は RESTRICTIVE が無いので、今まで通り shares_tenant_with_me を残した。
+
+### 本番への適用（2026-10-31・3段構え）
+
+```
+1. 試運転（DO ブロックの最後に RAISE で全部戻す）: 前後の件数を4人分（オーナー・インストラクター・お客様・
+   別のジムのオーナー）＋攻撃役2人で数えた
+2. 適用: 1回の DO ブロックで「md5 がリポジトリのファイルと一致 → 前を数える → 流す → 後を数える」。
+   オーナー・インストラクター・お客様のどれかで1件でも変われば RAISE で自動的に巻き戻す形にした
+   （user_roles だけは減るのが正しいので比べない）。→ 通った
+3. 演じて読む（RAISE で戻す）:
+   オーナー  … プロフィール 44・予約 671・メッセージ 171・記録 2452（前と同じ）／ user_roles 85 → 48（他のジムの分が消えた）
+   お客様＋印 … 自分の分だけ（プロフィール 1・予約 58）／ 過去の予約の削除 → 「過去の予約は削除できません。」
+   部外者＋印 … 0（お客様向けの公開分だけ。お知らせ 3 等）
+   退会したお客様のロール … 8人中、ロールがある2人はオーナーから読める（残り6人は元々ロールが無い）
+   検査10 ＝ 例外の1行だけ ／ 検査10-b ＝ create_gym_with_owner だけ
+```
+
+### 残っていること
+
+**招待コード無しで、お客様として任意のジムに入れる**（tenant_members の自己 INSERT が招待コードを見ていない）。
+今回の修正で「入れても印でスタッフにはなれない」ので、届くのはお客様向けの公開分（お知らせ・種目名・スタッフの名前）まで。
+古いアプリの JoinGym が直接 INSERT しているので、互換を見てから別の PR で塞ぐ。
+
+### 教訓
+
+- **RESTRICTIVE のテナント絞りは「別のジム」しか守らない。** 同じジムの中の昇格（お客様→スタッフ）は防げない。
+  検査2・3／globalTrainerRole.test.ts はこの前提で書かれていたので、検査10 と穴11 の describe を足した
+- テストのポリシー解析（`src/test/helpers/rlsPolicies.ts`）が `DROP TABLE` を知らず、消した表の48本を
+  「まだ有効」と見ていた。本番の92本とリポジトリの有効なポリシーを**名前で突き合わせて**気づいた（今は一致）
+- `DROP POLICY IF EXISTS` は表が無いと落ちる（security/README.md の罠3）。消えた表のポリシーを消そうとしないこと
+
+見張り: `src/test/globalTrainerRole.test.ts`（穴11 の describe）・`security/check.sql` の検査10・10-b

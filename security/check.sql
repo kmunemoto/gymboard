@@ -491,6 +491,31 @@ WHERE p.polrelid = 'public.tenant_members'::regclass
 
 
 -- ----------------------------------------------------------------------------
+-- 検査9: 公開の置き場（バケット）を、誰でも一覧できないか（2026-10-31）
+-- ----------------------------------------------------------------------------
+-- 公開の置き場のファイルは URL で読める（RLS を通らない）。SELECT のポリシーが効くのは
+-- 「一覧」と「ログインしての読み出し」だけなので、URL で表示しているだけなら誰にも一覧させなくてよい。
+-- 誰でも一覧できると、ファイル名に入っている user_id・ジムの id を拾われる
+-- （ジムボードでは avatars にオーナーの user_id 入りのロゴ、gym-assets にジムの id のフォルダが並んでいた）。
+--
+-- 0行なら OK。直し方は supabase/migrations/20261031030000_close_member_payment_rpc_and_bucket_listing.sql
+-- ⚠️ upload(..., { upsert: true }) は SELECT も要る。本人（owner = auth.uid()）には残すこと。
+
+SELECT
+  b.id AS bucket,
+  p.polname,
+  pg_get_expr(p.polqual, p.polrelid) AS qual,
+  '★要対応: 誰でもこの置き場の一覧が取れる' AS verdict
+FROM storage.buckets b
+JOIN pg_policy p ON p.polrelid = 'storage.objects'::regclass
+WHERE b.public
+  AND p.polcmd IN ('r', '*')
+  AND (0 = ANY (p.polroles) OR 'anon'::regrole::oid = ANY (p.polroles))
+  AND pg_get_expr(p.polqual, p.polrelid) ~ ('bucket_id = ''' || b.id || '''')
+  AND pg_get_expr(p.polqual, p.polrelid) !~ '(auth\.uid\(\)|get_my_tenant_id)';
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

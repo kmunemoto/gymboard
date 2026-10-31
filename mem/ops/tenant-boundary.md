@@ -1343,3 +1343,33 @@ booking_frequency_limits 他の人の行 = 1（ジム全体の設定で user_id 
 ```
 
 見張り: `src/test/tenantMembersPrivacy.test.ts`・`security/check.sql` の検査8
+
+## 2026-10-31 の点検の続き（穴10 のあと）
+
+### 書き込み: お客様は他の人の行を書き換え・削除できない（確認のみ）
+
+お客様を演じて、user_id / tenant_id を持つ全テーブルで「自分以外の行（設定の表は全行）」に
+値を変えない UPDATE と DELETE を試した（最後に RAISE で全部戻す）。**どの表も0行**（RLS で弾かれる）。
+
+### 外から呼べた関数: member_first_unpaid_cycle_start（閉じた）
+
+`security/check.sql` 検査5-b の ★★。会員の「入金がまだのサイクルの始まり」を返す関数を、
+**未ログインでも他人の user_id を渡して呼べた**（誰が未払いかを調べられる）。
+呼んでいるのは SECURITY DEFINER の2本だけ（get_my_next_cycle_payment_gate・guard_booking_next_cycle_payment）で、
+RLS でも使っていないので、外からの EXECUTE を外した（`20261031030000_close_member_payment_rpc_and_bucket_listing.sql`）。
+お客様の予約画面の支払いの判定（get_my_next_cycle_payment_gate）は今まで通り動くことを演じて確かめた。
+
+ほかの 5-b の行は公開が仕様のもの（体験予約ページ・アプリの更新の案内・招待コード）。
+`get_my_staff_invite_code` / `regenerate_staff_invite_code` は本体（`_owner_staff_invite_code`）が
+「スタッフ」の招待を終了済みとして NULL / 例外を返すので安全。
+
+### 公開の置き場の一覧（閉じた・検査9）
+
+avatars・gym-assets は公開の置き場で、`bucket_id = '...'` だけの SELECT ポリシーが付いていた。
+公開の置き場のファイルは URL で読める（RLS を通らない）ので、このポリシーが効くのは**一覧**だけ。
+未ログインで avatars 6件・gym-assets 4件の一覧が取れ、ファイル名にオーナーの user_id・ジムの id が入っていた。
+本人（avatars）と、そのジムのスタッフの自分のジムのフォルダ（gym-assets）だけに絞った。
+⚠️ `upload(..., { upsert: true })` は SELECT も要るので、本人には残すこと。
+本番で演じて確認: 未ログインの一覧 0件 ／ オーナーは自分のロゴを一覧できる（ロゴの削除が動く）。
+
+見張り: `src/test/memberPaymentRpcAndBucketListing.test.ts`・`security/check.sql` の検査9

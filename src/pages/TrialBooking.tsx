@@ -32,6 +32,8 @@ import { hasTrialPrice, formatYen } from "@/lib/trialPricing";
 import { usePublicPageTheme } from "@/hooks/usePublicPageTheme";
 import ArrivalNotice from "@/components/booking/ArrivalNotice";
 import { useTrialFullDays } from "@/hooks/useTrialFullDays";
+import { useMenuTrial } from "@/hooks/useMenuTrial";
+import { isBeforeMenuStart, menuStartLabel, menuTrialSlotMinutes, menuTrialWindowEndKey } from "@/lib/menuTrial";
 
 interface TrialSlotBooking {
   date: string;
@@ -39,6 +41,8 @@ interface TrialSlotBooking {
   endTime: string;
   /** ブロック枠（休憩・臨時休業）か。ブロックは同時受入数に関係なく店全体を塞ぐ。 */
   isBlock: boolean;
+  /** メニューの体験のページだけ: そのメニューの担当（先生）の予約か（担当は同時に2人を見られない） */
+  isMenuStaff?: boolean;
 }
 
 interface PublicTenant {
@@ -89,7 +93,11 @@ const DEFAULT_TENANT_ID = LEGACY_DEFAULT_TENANT_ID;
 
 const TrialBooking = () => {
   const { t } = useTranslation();
-  const { tenantId } = useParams<{ tenantId?: string }>();
+  const { tenantId, menuId } = useParams<{ tenantId?: string; menuId?: string }>();
+  // メニューの体験（例: マシンピラティス専用のページ /trial/:tenantId/menu/:menuId・2026-10-31）。
+  // そのメニューの担当のシフトの枠だけを出す（src/lib/menuTrial.ts）。menuId が無ければ今まで通り
+  const menuTrial = useMenuTrial(TRIAL_BOOKING_ENABLED ? menuId : undefined, tenantId); // フラグ OFF では RPC も呼ばない
+  const menu = menuTrial.menu;
   // 予約キャンセル画面の「日程を変更する」から遷移した場合、氏名・メールを
   // ?name=&email= で引き継いで入力の手間を省く（未指定なら通常どおり空欄）。
   const [searchParams] = useSearchParams();
@@ -158,23 +166,25 @@ const TrialBooking = () => {
   // ⚠️ 料金はジムごとに違う。**呼称に料金を含めないこと**（「無料体験」に戻さない）。
   //    金額は tenants.trial_price_yen を出す。
   const headerTitle = t("trialBooking.headerTitle");
+  // メニューの体験のページは、メニューの名前で呼ぶ（「マシンピラティスの体験」。ジムで分けているのではない）
+  const pageTitle = menu ? t("menuTrial.headerTitle", { name: menu.name }) : headerTitle;
 
   // 「体験も含めた1日の上限（合計）」に達した日（2026-10-14）。手で止めた日・会員の上限の日は含まない
   const trialFullDays = useTrialFullDays(TRIAL_BOOKING_ENABLED, effectiveTenantId);
 
   // テナント限定の埋まり枠を60日分まとめて1回で取得する (get_tenant_booked_slots)
+  // メニューの体験は get_menu_trial_slots（専用の時間＝担当つきのブロックを含めない。先生の時間に入るので）
   const fetchExistingSlots = useCallback(async () => {
     if (!TRIAL_BOOKING_ENABLED || !effectiveTenantId) return;
     const today = getJSTNow();
     const end = new Date(today);
     end.setDate(today.getDate() + 59);
-    const { data } = await supabase.rpc("get_tenant_booked_slots" as any, {
-      p_tenant_id: effectiveTenantId,
-      from_date: format(today, "yyyy-MM-dd"),
-      to_date: format(end, "yyyy-MM-dd"),
-    });
+    const range = { from_date: format(today, "yyyy-MM-dd"), to_date: format(end, "yyyy-MM-dd") };
+    const { data } = menuId
+      ? await supabase.rpc("get_menu_trial_slots", { p_menu_id: menuId, ...range })
+      : await supabase.rpc("get_tenant_booked_slots" as any, { p_tenant_id: effectiveTenantId, ...range });
     const slots: TrialSlotBooking[] = [];
-    (data as { booking_date: string; end_booking_date: string; status: string }[] | null)?.forEach((r) => {
+    (data as { booking_date: string; end_booking_date: string; status: string; is_menu_staff?: boolean }[] | null)?.forEach((r) => {
       if (r.status === "キャンセル済み") return;
       const dt = toJSTDate(r.booking_date);
       const endDt = toJSTDate(r.end_booking_date);
@@ -183,10 +193,11 @@ const TrialBooking = () => {
         startTime: `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
         endTime: `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`,
         isBlock: r.status === "ブロック済み",
+        isMenuStaff: r.is_menu_staff === true,
       });
     });
     setExistingBookings(slots);
-  }, [effectiveTenantId]);
+  }, [effectiveTenantId, menuId]);
 
   useEffect(() => {
     fetchExistingSlots();
@@ -230,7 +241,8 @@ const TrialBooking = () => {
   //    `=== true` で見る。列が未適用のときは undefined になるので、
   //    従来どおりブロックが効く側へ倒れる（TrialBooking の他の設定と同じ作法）。
   //    ⚠️ ジム設定の「受付しない時間帯」とは別物。あちらは体験に元々効いていない。
-  const ignoreBlocks = tenant?.trial_ignores_blocked_slots === true;
+  //    🔴 メニューの体験には効かせない（先生のお休みを時間ブロックで塞ぐため。DB の check_booking_overlap も同じ）
+  const ignoreBlocks = !menuId && tenant?.trial_ignores_blocked_slots === true;
 
   const isSlotBlocked = (date: string, time: string): boolean => {
     const timeToMin = (s: string) => {
@@ -254,6 +266,8 @@ const TrialBooking = () => {
     });
     // ブロック枠は空きベッド数に関係なく店全体を塞ぐ。それ以外は同時受入数で判定。
     if (overlapping.some((b) => b.isBlock)) return true;
+    // メニューの体験: 担当（先生）がその時間に別の予約を持っていれば取れない（DB の GB001 と同じ）
+    if (overlapping.some((b) => b.isMenuStaff)) return true;
     // 同時受入数は時間帯で変わりうる。帯が無ければ店の既定値（会員側と同じ規則）。
     return overlapping.length >= resolveSlotCapacity(
       capacityWindows, weekdayOfDateKey(date), newMin, bookingCapacity,
@@ -273,7 +287,11 @@ const TrialBooking = () => {
     // 日付選択後に日付が変わった場合の保険として枠側でも判定する。
     // 営業時間から作る（以前は 600→1260＝10:00-21:00 が直書きされていて、
     // ジムが何時まで営業していても 21:00 で止まっていた）。
-    for (const totalMin of bookingSlotMinutes(tenant?.operating_hours, sessionMinutes, weekdayOfDateKey(dateKey))) {
+    // メニューの体験は担当のシフト ∩ 営業時間だけ（src/lib/menuTrial.ts）
+    const starts = menu
+      ? menuTrialSlotMinutes(tenant?.operating_hours, sessionMinutes, dateKey, menu.shifts)
+      : bookingSlotMinutes(tenant?.operating_hours, sessionMinutes, weekdayOfDateKey(dateKey));
+    for (const totalMin of starts) {
       const time = minutesToTime(totalMin);
       // hours_before は枠の開始時刻が基準なので、枠ごとに判定する
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
@@ -343,6 +361,7 @@ const TrialBooking = () => {
           guest_contact: guestEmail.trim(),
           booking_date: bookingDate,
           custom_answers: buildAnswerSnapshot(questions, answers),
+          ...(menu ? { menu_id: menu.menuId } : {}),
         },
       });
       const result = data as { ok?: boolean; error?: string; code?: string } | null;
@@ -352,6 +371,7 @@ const TrialBooking = () => {
         if (result?.code === "slot_taken") {
           setSelectedSlot(null);
           fetchExistingSlots();
+          if (menu) void menuTrial.reload(); // 先生のシフトが変わったのかもしれない
         }
         setSubmitting(false);
         return;
@@ -411,6 +431,36 @@ const TrialBooking = () => {
     );
   }
 
+  // メニューの体験のページ: 読み込みの間はトレーニングの体験の枠・案内を出さない。受け付けていなければその旨だけ
+  if (menuTrial.status === "loading") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <DumbbellLoader className="w-8 h-8" />
+      </div>
+    );
+  }
+  if (menuTrial.status === "unavailable") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center space-y-3" data-testid="menu-trial-unavailable">
+            <h1 className="text-lg font-bold">{t("menuTrial.unavailableTitle")}</h1>
+            <p className="text-sm text-muted-foreground">{t("menuTrial.unavailableBody")}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 案内カード・料金。メニューの体験はメニューの設定（空なら出さない。トレーニングの体験の文章・料金は使わない）
+  const infoTitle = menu ? menu.infoTitle : tenant?.trial_info_title?.trim() || t("trialBooking.infoTitle");
+  const infoBody = menu ? menu.infoBody : tenant?.trial_info_body?.trim() || t("trialBooking.infoBody");
+  const priceYen = menu ? menu.priceYen : tenant?.trial_price_yen;
+  // 完了画面・カレンダーに入れる呼び方
+  const calendarTitle = menu
+    ? t("menuTrial.calendarTitle", { gym: gymName, name: menu.name })
+    : t("trialBooking.calendarTitleTrial", { gym: gymName });
+
   if (completed && completedInfo) {
     const calendarUrl = (() => {
       const dateClean = completedInfo.rawDate.replace(/-/g, "");
@@ -418,10 +468,10 @@ const TrialBooking = () => {
       const endClean = completedInfo.rawEndTime.replace(":", "") + "00";
       const params = new URLSearchParams({
         action: "TEMPLATE",
-        text: t("trialBooking.calendarTitleTrial", { gym: gymName }),
+        text: calendarTitle,
         dates: `${dateClean}T${startClean}/${dateClean}T${endClean}`,
         ctz: "Asia/Tokyo",
-        details: t("trialBooking.calendarDescription"),
+        details: menu ? t("menuTrial.calendarDescription", { name: menu.name }) : t("trialBooking.calendarDescription"),
         location: gymName,
       });
       return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -451,9 +501,9 @@ const TrialBooking = () => {
         `DTSTAMP:${dtstamp}`,
         `DTSTART;TZID=Asia/Tokyo:${dateClean}T${startClean}`,
         `DTEND;TZID=Asia/Tokyo:${dateClean}T${endClean}`,
-        `SUMMARY:${t("trialBooking.icsSummary", { gym: gymName })}`,
+        `SUMMARY:${menu ? calendarTitle : t("trialBooking.icsSummary", { gym: gymName })}`,
         `LOCATION:${t("trialBooking.icsLocation")}`,
-        `DESCRIPTION:${t("trialBooking.icsDescription", { count: sessionMinutes })}`,
+        `DESCRIPTION:${menu ? t("menuTrial.icsDescription", { name: menu.name, count: sessionMinutes }) : t("trialBooking.icsDescription", { count: sessionMinutes })}`,
         "END:VEVENT",
         "END:VCALENDAR",
       ].join("\r\n");
@@ -482,7 +532,9 @@ const TrialBooking = () => {
             <div className="bg-accent/10 rounded-xl p-4 space-y-1">
               <p className="text-sm font-bold">{completedInfo.date}</p>
               <p className="text-sm">{completedInfo.time}{t("trialBooking.completedMinutes", { count: sessionMinutes })}</p>
-              <p className="text-xs text-muted-foreground mt-2">{t("trialBooking.completedSubtitle")}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {menu ? t("menuTrial.completedSubtitle", { name: menu.name }) : t("trialBooking.completedSubtitle")}
+              </p>
             </div>
             <ArrivalNotice startTime={completedInfo.rawStartTime} lead={tenant?.arrival_lead_minutes} />
             {/* 「ご来店前のお願い」は体験には出さない（2026-10-30 宗本さん・src/lib/preVisitNote.ts） */}
@@ -560,29 +612,35 @@ const TrialBooking = () => {
               <GymLogo size="lg" />
             )}
           </div>
-          <h1 className="text-xl font-bold">{headerTitle}</h1>
-          <p className="text-sm opacity-80">{t("trialBooking.headerSub", { count: sessionMinutes })}</p>
+          <h1 className="text-xl font-bold">{pageTitle}</h1>
+          <p className="text-sm opacity-80">
+            {menu
+              ? t("menuTrial.headerSub", { name: menu.name, count: sessionMinutes })
+              : t("trialBooking.headerSub", { count: sessionMinutes })}
+          </p>
         </div>
       </div>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-5">
-        <Card className="border-l-4 border-l-accent bg-accent/5">
-          <CardContent className="p-4 flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-            <div>
-              {/* ジムごとに設定された案内文があれば優先。未設定なら既定文言。
-                  説明文は改行を保持して表示する（whitespace-pre-line）。 */}
-              <p className="font-bold text-sm">{tenant?.trial_info_title?.trim() || t("trialBooking.infoTitle")}</p>
-              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{tenant?.trial_info_body?.trim() || t("trialBooking.infoBody")}</p>
-            </div>
-          </CardContent>
-        </Card>
+        {(infoTitle || infoBody) && (
+          <Card className="border-l-4 border-l-accent bg-accent/5">
+            <CardContent className="p-4 flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+              <div>
+                {/* ジムごとに設定された案内文があれば優先。未設定なら既定文言（メニューの体験は出さない）。
+                    説明文は改行を保持して表示する（whitespace-pre-line）。 */}
+                {infoTitle && <p className="font-bold text-sm">{infoTitle}</p>}
+                {infoBody && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{infoBody}</p>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 体験の料金。ジムが設定したときだけ出す。
             hasTrialPrice を通すのは **0 と未設定を区別する**ため（`!price` だと 0 が落ちる）。
             「当日入会で無料」のような条件は金額欄では表現しきれないので、
             上の案内カード（trial_info_body・ジムが編集できる）に書いてもらう。 */}
-        {hasTrialPrice(tenant?.trial_price_yen) && (
+        {hasTrialPrice(priceYen) && (
           <Card>
             <CardContent className="p-4 flex items-center justify-between gap-3">
               <span className="text-sm font-medium flex items-center gap-1.5">
@@ -590,7 +648,7 @@ const TrialBooking = () => {
                 {t("trialBooking.priceLabel")}
               </span>
               <span className="text-base font-bold tabular-nums">
-                {formatYen(tenant.trial_price_yen)}
+                {formatYen(priceYen)}
                 <span className="text-xs font-normal text-muted-foreground ml-0.5">
                   {t("trialBooking.taxIncluded")}
                 </span>
@@ -645,6 +703,11 @@ const TrialBooking = () => {
             {t("trialBooking.step2")}
           </h2>
           <p className="text-xs text-muted-foreground/70 mb-2">{t("trialBooking.step2Note")}</p>
+          {menu?.startsOn && menu.startsOn > getJSTToday() && (
+            <p className="text-xs font-semibold text-accent mb-2" data-testid="menu-trial-starts-on">
+              {t("menuTrial.startsOnNotice", { name: menu.name, date: menuStartLabel(menu.startsOn) })}
+            </p>
+          )}
 
           <Card>
             <CardContent className="p-3 flex justify-center">
@@ -667,6 +730,12 @@ const TrialBooking = () => {
                   if (isClosedDate(tenant?.operating_hours, yyyyMMdd)) return true;
                   // 体験も含めた1日の上限（合計）に達した日。手で止めた日・会員の上限の日は弾かない
                   if (trialFullDays.isFull(yyyyMMdd)) return true;
+                  // メニューの体験: 開始日より前・担当の出勤日でない日は選べない。何日先までは開始日から数える
+                  if (menu) {
+                    if (isBeforeMenuStart(menu, yyyyMMdd)) return true;
+                    if (menuTrialSlotMinutes(tenant?.operating_hours, sessionMinutes, yyyyMMdd, menu.shifts).length === 0) return true;
+                    return yyyyMMdd > menuTrialWindowEndKey(menu.startsOn, tenant?.booking_window_days ?? null);
+                  }
                   // 何日先まで受けるか。店が未設定なら従来どおり10日先まで。
                   return isBeyondBookingWindow(
                     yyyyMMdd, tenant?.booking_window_days ?? null, { days: LEGACY_GUEST_WINDOW_DAYS },

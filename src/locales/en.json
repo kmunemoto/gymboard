@@ -1898,6 +1898,17 @@
     "priceLabel": "Price",
     "taxIncluded": " (incl. tax)"
   },
+  "menuTrial": {
+    "headerTitle": "{{name}} trial",
+    "headerSub": "{{name}} ({{count}} min in total)",
+    "completedSubtitle": "{{name}} trial",
+    "calendarTitle": "[{{name}} trial] {{gym}}",
+    "calendarDescription": "{{name}} trial.\nPlease wear comfortable clothes on the day.\nIf you have any questions, feel free to contact us.",
+    "icsDescription": "{{name}} trial ({{count}} min in total)\\nPlease wear comfortable clothes.",
+    "startsOnNotice": "{{name}} can be booked from {{date}}",
+    "unavailableTitle": "Trial bookings are not open on this page",
+    "unavailableBody": "Please contact the gym directly."
+  },
   "trialCancel": {
     "loading": "Checking your booking...",
     "confirmTitle": "Cancel your booking?",
@@ -3063,6 +3074,32 @@
     "startsOnClear": "Clear",
     "startsOnSetHint": "Customers can't book this menu before {{date}} (the gym can still book on their behalf). The staff member's reserved hours also start on {{date}}.",
     "startsOnChip": "from {{date}}",
-    "startsOnNotice": "{{name}} can be booked from {{date}}."
+    "startsOnNotice": "{{name}} can be booked from {{date}}.",
+    "trialRowLabel": "Trial booking page",
+    "trialStateOn": "Open",
+    "trialStateOff": "Closed",
+    "trialOpenSettings": "Settings",
+    "trialDialogTitle": "{{name}} trial booking page",
+    "trialDialogDesc": "A trial booking page that shows only the open slots in {{name}} hours (the instructor's shifts). Send the link to prospective customers.",
+    "trialEnabledLabel": "Accept trial bookings",
+    "trialEnabledOnHint": "Customers can book from the link. The owner and the instructor are notified of each booking.",
+    "trialEnabledOffHint": "While off, the link shows that bookings are not open.",
+    "trialOnToast": "Started accepting {{name}} trial bookings",
+    "trialOffToast": "Stopped accepting {{name}} trial bookings",
+    "trialLinkLabel": "Page link",
+    "trialCopyLink": "Copy link",
+    "trialOpenLink": "Open to check",
+    "trialCopied": "Link copied",
+    "trialCopyFailed": "Could not copy. Press and hold the link to copy it",
+    "trialPriceLabel": "Price (tax incl., JPY)",
+    "trialPricePlaceholder": "e.g. 3000",
+    "trialPriceHint": "Shown on the trial booking page and in the confirmation email. Leave blank to hide the price (0 shows \"¥0\").",
+    "trialPriceInvalid": "Enter a whole number of 0 or more",
+    "trialInfoTitleLabel": "Info heading",
+    "trialInfoBodyLabel": "Info text",
+    "trialInfoHint": "Shown at the top of the trial booking page. Leave blank to show nothing (the training trial text is not used).",
+    "trialSave": "Save",
+    "trialSaved": "Saved the trial booking page settings",
+    "trialSaveFailed": "Could not save"
   }
 }

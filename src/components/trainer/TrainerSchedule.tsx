@@ -50,7 +50,7 @@ import { canSelectStaff, isStaffConflictError, staffNameMap } from "@/lib/tenant
 import { useBookingMenus } from "@/hooks/useBookingMenus";
 import { defaultMenu, menuNameOf, selectableMenus } from "@/lib/bookingMenus";
 import ProxyStaffMenuSelect from "./ProxyStaffMenuSelect";
-import { notifyStaffReassigned } from "@/lib/staffNotify";
+import { notifyStaffReassigned, notifyTrialCancelled } from "@/lib/staffNotify";
 import DayReceptionToggle from "./DayReceptionToggle";
 import { useDayReception } from "@/hooks/useDayReception";
 import BookingRepeatPicker from "@/components/booking/BookingRepeatPicker";
@@ -375,7 +375,7 @@ const TrainerSchedule = () => {
       // Fetch google_event_id before cancelling (to delete the linked calendar event)
       const { data: trialData } = await supabase
         .from("trial_bookings")
-        .select("google_event_id")
+        .select("*") // 列を名指ししない（担当の列が無い DB でもカレンダーの削除を止めない）
         .eq("id", target.id)
         .maybeSingle();
 
@@ -402,6 +402,9 @@ const TrainerSchedule = () => {
         .update({ status: "キャンセル済み" })
         .eq("id", target.id);
       error = res.error;
+      // 担当の先生（メニューの体験）と、オーナー以外が取り消したならオーナーに知らせる（src/lib/staffNotify.ts）
+      if (!res.error) void notifyTrialCancelled({ trialId: target.id, guestName: trialData?.guest_name ?? "", date: booking.date,
+        startTime: booking.startTime, endTime: booking.endTime, staffId: trialData?.staff_user_id ?? null, label: typeLabel(booking) });
     } else {
       const res = await cancelBooking(target.id, true, { forfeit });
       error = res.error;

@@ -7,8 +7,10 @@
 // あったため、この関数に一本化する。直 INSERT 経路 (anon の INSERT 権限) は
 // migration 20260704140000 で閉鎖済み。
 //
-// POST { tenant_id, guest_name, guest_contact, booking_date }
+// POST { tenant_id, guest_name, guest_contact, booking_date, menu_id? }
 //   - booking_date: ISO 文字列 (例 "2026-07-10T11:00:00+09:00")
+//   - menu_id: メニューの体験（例: マシンピラティス専用の体験予約ページ /trial/:tenantId/menu/:menuId）。
+//     そのメニューの担当（先生）の予約になり、担当のシフトの時間だけ受ける（2026-10-31）
 //
 // 業務上の拒否 (満枠・回数制限・入力不備) は HTTP 200 + { ok:false, error, code } で返す
 // (フロントが supabase.functions.invoke でエラーメッセージをそのまま表示できるように)。
@@ -18,9 +20,12 @@
 //   - テナント実在 + status が active/trial であること
 //   - 前日まで (会員予約と統一。予約日JSTの0:00を過ぎたら不可＝当日予約は不可。
 //     送信中の境界ズレは小さな猶予で許容。旧: 24時間前まで)
-//   - 10日先まで (サーバー側は12日で判定。先すぎる日程は当日キャンセルが増えやすいため
-//     短縮した — 旧: 1ヶ月先まで)
-//   - 営業枠 10:00〜21:00 開始・15分刻み (公開ページの枠グリッドと同一)
+//   - 10日先まで (ジムが「何日先まで」を決めていればその日数。サーバー側は +2日で判定。先すぎる日程は
+//     当日キャンセルが増えやすいため短縮した — 旧: 1ヶ月先まで)。メニューの開始日がまだ先なら、
+//     開始日の前日から数える（開始日から10日分を前もって受ける）
+//   - 開始時刻は公開ページの枠と同じ: 営業時間（メニューの体験は担当のシフト）の中・開店から15分刻み・
+//     1枠が閉店までに収まる（../_shared/trialRules.ts。2026-10-31 までは 10:00〜21:00 開始の直書きで、
+//     22:30 閉店の店の 21:15・21:30 の枠を断っていた）
 //   - 同一メールアドレスの予約は 24時間で3件まで (キャンセル済みは数えない)
 //   - テナント全体で 1時間に20件まで (メール差し替えによる回数制限回避への防御)
 //   - 時間帯の重複は BEFORE INSERT の check_booking_overlap トリガーが最終防衛
@@ -34,6 +39,10 @@
 //     旧 get_trainer_ids はテナント横断のため使用しない (他ジムへの誤通知防止)。
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  LEGACY_GUEST_WINDOW_DAYS, isListedStart, jstDateKey, normalizeWindowDays, resolveDayBusinessMinutes,
+  shiftDayMinutes, trialBookingLabel, trialMaxAheadMs, trialWindowAnchorMs, type OperatingHours, type ShiftRow,
+} from "../_shared/trialRules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,9 +59,6 @@ const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|
 // 締切は会員予約と同じ「前日まで」＝予約日(JST)の0:00を過ぎたら不可。
 // 送信中の日付境界ズレ(深夜の駆け込み)を許容する小さな猶予を持たせる。
 const DEADLINE_GRACE_MS = 10 * 60 * 1000;
-const MAX_AHEAD_MS = 12 * 24 * 60 * 60 * 1000; // ページ上は10日先まで、+2日のバッファ
-const SLOT_MIN_START = 600; // 10:00 (JST 分)
-const SLOT_MAX_START = 1260; // 21:00 (JST 分)
 const RATE_LIMIT_PER_CONTACT_24H = 3;
 const RATE_LIMIT_PER_TENANT_1H = 20;
 const CANCELLED = "キャンセル済み";
@@ -87,6 +93,7 @@ type Payload = {
   guest_contact?: unknown;
   booking_date?: unknown;
   custom_answers?: unknown;
+  menu_id?: unknown;
 };
 
 /**
@@ -138,8 +145,10 @@ Deno.serve(async (req) => {
     const guestContact = String(body.guest_contact ?? "").trim();
     const bookingDateRaw = String(body.booking_date ?? "").trim();
     const customAnswers = sanitizeCustomAnswers(body.custom_answers);
+    const menuId = String(body.menu_id ?? "").trim();
 
     if (!UUID_RE.test(tenantId)) return reject("validation", "ジムの指定が正しくありません。");
+    if (menuId && !UUID_RE.test(menuId)) return reject("validation", "メニューの指定が正しくありません。");
     if (!guestName || guestName.length > 100) return reject("validation", "お名前を入力してください。");
     if (!EMAIL_RE.test(guestContact) || guestContact.length > 255) {
       return reject("validation", "正しいメールアドレスを入力してください。");
@@ -159,13 +168,9 @@ Deno.serve(async (req) => {
     if (Date.now() >= jstDayStartMs + DEADLINE_GRACE_MS) {
       return reject("too_soon", "体験のご予約は前日までにお願いいたします。別の日をお選びください。");
     }
-    const lead = bookingInstant.getTime() - Date.now();
-    if (lead > MAX_AHEAD_MS) {
-      return reject("too_far", "ご予約は10日先まで承っています。別の日時をお選びください。");
-    }
-    // JST の開始時刻が営業枠グリッド (10:00〜21:00, 15分刻み) 上にあること
+    // JST の開始時刻（分）。枠に乗っているかはジムの営業時間（メニューの体験は担当のシフト）を読んでから見る
     const startMin = jst.getUTCHours() * 60 + jst.getUTCMinutes();
-    if (startMin < SLOT_MIN_START || startMin > SLOT_MAX_START || startMin % 15 !== 0 || jst.getUTCSeconds() !== 0) {
+    if (jst.getUTCSeconds() !== 0 || jst.getUTCMilliseconds() !== 0) {
       return reject("validation", "選択できない時間帯です。表示された空き枠からお選びください。");
     }
 
@@ -178,7 +183,7 @@ Deno.serve(async (req) => {
     // (ジムごとに正しい情報を載せる。旧実装は Salute 固定だったため他ジムには送っていなかった)。
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen, booking_email_note, trial_email_cancel_note")
+      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen, booking_email_note, trial_email_cancel_note, operating_hours, booking_window_days")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -198,6 +203,57 @@ Deno.serve(async (req) => {
     // 「キャンセル・変更」欄の文章。設定されていればこの文章だけが出る（固定文もリンクも出ない）。
     // 空/未設定・列がまだ無い環境では null → テンプレートは従来の固定文（安全側）。
     const cancelNote = ((tenant.trial_email_cancel_note as string | null | undefined) ?? "").trim() || null;
+    const sessionMinutes = (tenant.slot_duration_minutes as number | null) ?? 60;
+
+    // ===== メニューの体験（担当・開始日・シフト）=====
+    // DB（apply_trial_menu）も同じことを見る。ここで先に見るのは、お客様に分かる言葉で断るため。
+    let menu: { id: string; name: string; staff_user_id: string; starts_on: string | null; trial_price_yen: number | null } | null = null;
+    let shifts: ShiftRow[] = [];
+    if (menuId) {
+      const { data: m, error: mErr } = await admin
+        .from("booking_menus")
+        .select("id, tenant_id, name, staff_user_id, is_active, starts_on, trial_enabled, trial_price_yen")
+        .eq("id", menuId)
+        .maybeSingle();
+      if (mErr) return fail("menu_lookup", mErr.message);
+      if (!m || m.tenant_id !== tenantId || !m.is_active || m.trial_enabled !== true || !m.staff_user_id) {
+        return reject("menu_unavailable", "このメニューの体験予約は受け付けていません。");
+      }
+      menu = {
+        id: m.id as string,
+        name: m.name as string,
+        staff_user_id: m.staff_user_id as string,
+        starts_on: (m.starts_on as string | null) ?? null,
+        trial_price_yen: (m.trial_price_yen as number | null) ?? null,
+      };
+      const { data: rows, error: sErr } = await admin
+        .from("staff_schedules")
+        .select("weekday, start_time, end_time")
+        .eq("tenant_id", tenantId)
+        .eq("user_id", menu.staff_user_id);
+      if (sErr) return fail("shift_lookup", sErr.message);
+      shifts = (rows ?? []) as ShiftRow[];
+      if (menu.starts_on && jstDateKey(bookingInstant.getTime()) < menu.starts_on) {
+        const [, mo, d] = menu.starts_on.split("-").map(Number);
+        return reject("too_soon", `${menu.name}の体験は${mo}/${d}からご予約いただけます。別の日をお選びください。`);
+      }
+    }
+
+    // ===== 何日先まで =====
+    // ジムが決めた日数（未設定は10日）。メニューの開始日がまだ先なら、開始日の前日から数える。
+    const windowDays = normalizeWindowDays(tenant.booking_window_days) ?? LEGACY_GUEST_WINDOW_DAYS;
+    const anchorMs = trialWindowAnchorMs(Date.now(), menu?.starts_on);
+    if (bookingInstant.getTime() - anchorMs > trialMaxAheadMs(windowDays)) {
+      return reject("too_far", `ご予約は${windowDays}日先まで承っています。別の日時をお選びください。`);
+    }
+
+    // ===== 開始時刻（公開ページに並ぶ枠と同じ）=====
+    const hours = (tenant.operating_hours as OperatingHours | null) ?? null;
+    const weekday = jst.getUTCDay();
+    const day = menu ? shiftDayMinutes(hours, weekday, shifts) : resolveDayBusinessMinutes(hours, weekday);
+    if (!isListedStart(day, startMin, sessionMinutes)) {
+      return reject("validation", "選択できない時間帯です。表示された空き枠からお選びください。");
+    }
 
     // ===== 連続予約ガード =====
     // (1) 同一メール 24時間で3件まで (ジム側でキャンセルして取り直すケースは数えない)
@@ -234,6 +290,8 @@ Deno.serve(async (req) => {
         guest_contact: guestContact,
         booking_date: bookingDateRaw,
         ...(customAnswers ? { custom_answers: customAnswers } : {}),
+        // 担当（staff_user_id）は DB の apply_trial_menu がメニューから入れる（ここからは送らない）
+        ...(menu ? { menu_id: menu.id } : {}),
         // booking_type / status は DB デフォルト ('初回無料体験' / '予約済み')。
         // '予約済み' で入れることで send-trial-reminders の前日リマインドも対象になる。
       })
@@ -242,7 +300,13 @@ Deno.serve(async (req) => {
 
     if (insErr) {
       const msg = insErr.message ?? "";
-      if (msg.includes("この時間帯") || /overlap/i.test(msg)) {
+      const code = (insErr as { code?: string }).code ?? "";
+      if (code === "GB012") {
+        return reject("menu_unavailable", "このメニューの体験予約は受け付けていません。");
+      }
+      // GB001 = 担当（先生）がその時間に別の予約を持っている。GB002 = 担当のシフトが変わった。
+      // どちらも「その枠はもう取れない」なので満枠と同じく枠を取り直してもらう（slot_taken）
+      if (code === "GB001" || code === "GB002" || msg.includes("この時間帯") || /overlap/i.test(msg)) {
         return reject("slot_taken", "この時間帯はすでに予約が入っています。別の時間をお選びください。");
       }
       return fail("insert", msg);
@@ -260,8 +324,9 @@ Deno.serve(async (req) => {
     const dowChars = ["日", "月", "火", "水", "木", "金", "土"];
     const dateStr = `${jst.getUTCMonth() + 1}月${jst.getUTCDate()}日（${dowChars[jst.getUTCDay()]}）`;
     const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-    const sessionMinutes = (tenant.slot_duration_minutes as number | null) ?? 60;
     const timeStr = `${fmt(startMin)}〜${fmt(startMin + sessionMinutes)}`;
+    // 店宛ての通知のラベル。メニューの体験は「マシンピラティスの体験予約」
+    const bookingLabel = trialBookingLabel(menu?.name);
 
     // ===== 通知 (失敗しても予約自体は成立。結果を notify に記録) =====
     const serviceHeaders = {
@@ -323,8 +388,10 @@ Deno.serve(async (req) => {
           gymAddress,
           gymContactEmail,
           gymWebsiteUrl,
-          // 呼称は全ジム共通「体験トレーニング」。金額だけジムごとに出す。
-          trialPriceYen,
+          // 呼称は全ジム共通「体験トレーニング」。メニューの体験はメニューの名前で呼ぶ（「マシンピラティスの体験」）。
+          menuName: menu?.name ?? null,
+          // 金額はジムごとの設定。メニューの体験はメニューの料金（トレーニングの体験の料金は使わない）
+          trialPriceYen: menu ? menu.trial_price_yen : trialPriceYen,
           gymNote,
           cancelNote,
           // cancelUrl は渡さない。テンプレートは cancelNote（店の設定した文章）があればそれだけを、
@@ -346,7 +413,7 @@ Deno.serve(async (req) => {
             customerName: `${guestName}（体験予約）`,
             bookingDate: dateStr,
             bookingTime: timeStr,
-            planName: "体験予約",
+            planName: bookingLabel,
             gymName,
             // 本番Webドメインに統一（2026-07）。通常予約(bookingNotification=getWebOrigin)と
             // 経路で遷移先が食い違わないよう揃える。
@@ -360,7 +427,7 @@ Deno.serve(async (req) => {
       tasks.push(
         invokeFn("send-line-message", {
           user_id: trainerId,
-          message: `【${gymName}】新規の体験予約が入りました。\n\n・お名前：${guestName} 様\n・日時：${dateStr} ${timeStr}\n\nアプリの予約管理画面から詳細を確認してください。`,
+          message: `【${gymName}】新規の${bookingLabel}が入りました。\n\n・お名前：${guestName} 様\n・日時：${dateStr} ${timeStr}\n\nアプリの予約管理画面から詳細を確認してください。`,
         }).then((ok) => { notify.trainer_line = ok; }),
       );
     } else {
@@ -368,7 +435,30 @@ Deno.serve(async (req) => {
       notify.trainer_line = "skipped_no_trainer";
     }
 
-    // 4) トレーナー宛 push (宛先はテナント内のスタッフを push 側が解決する)
+    // 2') メニューの体験は担当（先生）にもメール（代表と同じ人なら送らない）。
+    //     宗本さん「先生には担当のマシンピラティスの予約に関する通知だけ」（mem/features/instructor-staff.md）。
+    //     キーは代表と別（-staff）。代表のキー（trial-notify-…）を先生に使わない
+    if (menu && menu.staff_user_id !== trainerId) {
+      tasks.push(
+        invokeFn("send-transactional-email", {
+          templateName: "new-booking-notification",
+          tenantId,
+          recipientEmail: "_resolve_trainer_",
+          idempotencyKey: `trial-notify-${notifyKey}-staff`,
+          templateData: {
+            customerName: `${guestName}（体験予約）`,
+            bookingDate: dateStr,
+            bookingTime: timeStr,
+            planName: bookingLabel,
+            gymName,
+            dashboardUrl: "https://app.kyoto-salute.com",
+            trainerUserId: menu.staff_user_id,
+          },
+        }).then((ok) => { notify.staff_email = ok; }),
+      );
+    }
+
+    // 4) トレーナー宛 push (宛先はテナント内のスタッフを push 側が解決する。メニューの体験は担当の先生にも)
     tasks.push(
       invokeFn("send-push-notification", {
         purpose: "trial_booking",
@@ -383,7 +473,7 @@ Deno.serve(async (req) => {
         booking_id: trialBookingId,
         booking_date: bookingDateRaw,
         // カレンダー表示ラベル（DBの booking_type 値は据え置き、is_trial で識別）
-        booking_type: "体験予約",
+        booking_type: bookingLabel,
         client_name: `🆕 ${guestName}`,
         is_trial: true,
       }).then((ok) => { notify.google_calendar = ok; }),

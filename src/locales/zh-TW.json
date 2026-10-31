@@ -1898,6 +1898,17 @@
     "priceLabel": "費用",
     "taxIncluded": "（含稅）"
   },
+  "menuTrial": {
+    "headerTitle": "{{name}}體驗",
+    "headerSub": "{{name}}（共{{count}}分鐘）",
+    "completedSubtitle": "{{name}}體驗",
+    "calendarTitle": "【{{name}}體驗】{{gym}}",
+    "calendarDescription": "{{name}}體驗。\n當天請穿著便於運動的服裝前來。\n如有任何疑問，歡迎隨時詢問。",
+    "icsDescription": "{{name}}體驗（共{{count}}分鐘）\\n請穿著便於運動的服裝前來。",
+    "startsOnNotice": "{{name}}自{{date}}起可預約",
+    "unavailableTitle": "此頁面暫不接受體驗預約",
+    "unavailableBody": "請直接聯絡健身房。"
+  },
   "trialCancel": {
     "loading": "正在確認您的預約...",
     "confirmTitle": "要取消預約嗎？",
@@ -3063,6 +3074,32 @@
     "startsOnClear": "清除",
     "startsOnSetHint": "{{date}}之前，顧客無法預約此項目（店家仍可代為預約）。負責人的專用時段也從{{date}}開始。",
     "startsOnChip": "{{date}}起",
-    "startsOnNotice": "{{name}}自{{date}}起可預約。"
+    "startsOnNotice": "{{name}}自{{date}}起可預約。",
+    "trialRowLabel": "體驗預約頁面",
+    "trialStateOn": "受理中",
+    "trialStateOff": "已停止",
+    "trialOpenSettings": "設定",
+    "trialDialogTitle": "{{name}}體驗預約頁面",
+    "trialDialogDesc": "只顯示{{name}}時間（負責人的排班）中空檔時段的體驗預約頁面。請把連結傳給客人。",
+    "trialEnabledLabel": "接受體驗預約",
+    "trialEnabledOnHint": "可透過連結預約。有新預約時，會通知店主和負責人。",
+    "trialEnabledOffHint": "關閉期間，打開連結也會顯示暫不受理。",
+    "trialOnToast": "已開始受理{{name}}體驗預約",
+    "trialOffToast": "已停止受理{{name}}體驗預約",
+    "trialLinkLabel": "頁面連結",
+    "trialCopyLink": "複製連結",
+    "trialOpenLink": "打開確認",
+    "trialCopied": "已複製連結",
+    "trialCopyFailed": "無法複製。請長按連結進行複製",
+    "trialPriceLabel": "費用（含稅・日圓）",
+    "trialPricePlaceholder": "例：3000",
+    "trialPriceHint": "顯示在體驗預約頁面和確認信中。留空則不顯示費用（填 0 則顯示「¥0」）。",
+    "trialPriceInvalid": "請輸入 0 以上的整數",
+    "trialInfoTitleLabel": "說明標題",
+    "trialInfoBodyLabel": "說明文字",
+    "trialInfoHint": "顯示在體驗預約頁面上方。留空則不顯示說明（不使用訓練體驗的說明文字）。",
+    "trialSave": "儲存",
+    "trialSaved": "已儲存體驗預約頁面的設定",
+    "trialSaveFailed": "儲存失敗"
   }
 }

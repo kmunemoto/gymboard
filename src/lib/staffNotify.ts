@@ -18,7 +18,7 @@
 import { ja } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { formatJST } from "@/lib/timezone";
-import { fetchMyTenantStaffRoster } from "@/lib/tenantHelper";
+import { fetchMyTenantId, fetchMyTenantStaffRoster } from "@/lib/tenantHelper";
 import { staffChangeRecipients } from "@/lib/staffAccess";
 
 const currentUserId = async (): Promise<string | null> =>
@@ -89,5 +89,57 @@ export async function notifyStaffOptionChanged(params: {
     );
   } catch (e) {
     console.error("オプションの変更の通知に失敗:", e);
+  }
+}
+
+/**
+ * 店が体験予約を取り消したとき（2026-10-31）。体験の担当（メニューの体験の先生）と、オーナー以外が
+ * 取り消したならオーナーに、プッシュとメールで知らせる（会員の予約のキャンセルと同じ。宛先は staffChangeRecipients）。
+ * トレーニングの体験（担当なし）をオーナーが取り消したときは誰にも送らない（今まで通り）。
+ * メールのキーは代表のキー（cancel-trainer-<予約id>）と別の形にする（送り直しの対象にしない。staffRouting.ts）。
+ * @param date JST の yyyy-MM-dd
+ * @param startTime / endTime "HH:MM"
+ * @param label 予定表のラベル（「マシンピラティス・体験予約」）
+ */
+export async function notifyTrialCancelled(params: {
+  trialId: string;
+  guestName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  staffId: string | null;
+  label: string;
+}): Promise<void> {
+  const { trialId, guestName, date, startTime, endTime, staffId, label } = params;
+  try {
+    const [roster, actor, tenantId] = await Promise.all([fetchMyTenantStaffRoster(), currentUserId(), fetchMyTenantId()]);
+    const to = staffChangeRecipients(roster, actor, [staffId]);
+    if (to.length === 0) return;
+    const at = `${date}T${startTime}:00+09:00`;
+    const name = guestName || "ゲスト";
+    await push(to, "体験予約の取り消し", `${name}様 ${formatJST(at, "M月d日 HH:mm", { locale: ja })} の${label}を店が取り消しました`, `trial-cancel-${trialId}`);
+    for (const userId of to) {
+      supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "booking-cancellation",
+          recipientEmail: "_resolve_trainer_",
+          tenantId,
+          idempotencyKey: `trial-cancel-${trialId}-${userId}`,
+          templateData: {
+            customerName: name,
+            bookingDate: formatJST(at, "M月d日（E）", { locale: ja }),
+            bookingTime: `${startTime}〜${endTime}`,
+            planName: label,
+            recipientRole: "trainer",
+            cancelledByTrainer: true,
+            isTrial: true,
+            forfeit: false,
+            trainerUserId: userId,
+          },
+        },
+      }).catch((e) => console.error("体験予約の取り消しのメールに失敗:", e));
+    }
+  } catch (e) {
+    console.error("体験予約の取り消しの通知に失敗:", e);
   }
 }

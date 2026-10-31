@@ -2858,6 +2858,10 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_tenant_member_any_status: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_tenant_over_limit: { Args: { p_tenant_id: string }; Returns: boolean }
       join_tenant_as_staff_with_invite_code: {
         Args: { p_code: string; p_display_name: string }

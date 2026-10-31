@@ -1506,3 +1506,53 @@ TrainerClientDetail は `user_roles` が読めるかでチャット欄を開く�
 ```
 
 見張り: `src/test/customerJoinInviteCode.test.ts`・`security/check.sql` の検査11
+
+## 穴13: 自分のジムの予約・チャットに、他のジムの人を入れられた（2026-10-31）
+
+Edge Function の監査の指摘（notify-new-booking-1・notify-new-message-1）。穴11・12 を塞いだあとも残っていた。
+**ジムは誰でも開ける**ので、「スタッフなら自分のジムの行を作れる」は誰にでもできる。問題は行の中の**相手**だった。
+
+### 何が起きていたか
+
+```
+予約   … bookings.user_id に他のジムの人を入れる
+         → notify-new-booking（service_role）がその人の氏名を読み、send-transactional-email がその人のアドレスへ「予約確認」
+         → email_send_log に宛先アドレスと氏名が残り、攻撃者のジムのスタッフ（＝本人）が通知履歴で読める
+         → user_id の一覧を「アドレス＋氏名」に変換できる。差出人名・案内文は攻撃者の設定＝正規ドメインのなりすまし
+チャット … messages.receiver_id に他のジムの人を入れる → notify-new-message（service_role）がプッシュを中継
+         同じジムのお客様どうしでも送れた（画面には無い使い方）
+```
+
+他のジムのオーナーの user_id は、ロゴのファイル名（`tenant-logos/<user_id>-…`。get_tenant_public が未ログインに返す）や
+空き枠の担当（get_tenant_booked_slots の staff_user_id）から取れる。本番で演じて確認（ROLLBACK 済み）:
+自分で開いたジムのオーナーが、Salute のお客様の予約・メッセージを自分のジムに作れた。
+
+### 直し方
+
+| 表 | 門番（BEFORE INSERT / UPDATE OF の相手の列） |
+|---|---|
+| bookings | `user_id` がそのジムに所属（在籍の状態は問わない）… `20261031060000_booking_user_must_be_member.sql` |
+| messages | `receiver_id` がそのジムに所属。送り主がスタッフでなければ宛先はスタッフ … `20261031070000_message_receiver_must_be_member.sql` |
+
+- どちらも `current_user = 'authenticated'`（画面から）のときだけ見る。予約・メッセージを作る DB 関数は無く、
+  Edge Function（service_role）は対象外。🔴 門番は SECURITY INVOKER
+- 「在籍の状態は問わない」にしたのは、退会したお客様へのスタッフからの連絡や、過去の予約の扱いを止めないため
+- 本番のデータ: 予約 959件中、所属していない人の予約は古い4件（直近90日 0）。メッセージ 223件中、所属外の宛先・
+  お客様からスタッフ以外への送信は古い8件（直近90日 0）。既存の行は触らない（UPDATE OF の列を変えたときだけ見る）
+
+### 本番への適用（2026-10-31・3段構え）
+
+```
+1. 試運転（RAISE で戻す）… 適用前は攻撃が通る → 適用後は「このジムに所属していない方の予約は作れません」
+   「このジムに所属していない方には送れません」「メッセージはジムのスタッフにだけ送れます」で断られる。
+   代理予約・状態の更新・お客様本人の予約・お客様→オーナー・オーナー→お客様（退会した人も）・既読は今まで通り
+2. 適用 … md5 がファイルと一致してから流し、同じ処理の中で「攻撃は断られる・正規は通る」を演じ、違えば自動で巻き戻す
+3. 演じて読む … 同じ結果。試しの行は残っていない。検査12 = 2行とも OK
+```
+
+### 残り（Edge Function 側）
+
+notify-new-booking / send-transactional-email / notify-new-message でも、送る前に相手の所属を確かめる（多層防御）。
+Google カレンダーの直しとまとめて、Lovable にデプロイを頼む。
+
+見張り: `src/test/bookingUserMembership.test.ts`・`security/check.sql` の検査12

@@ -52,6 +52,8 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "staff-1" } }) }));
+// 画像の置き場のフォルダに使う（2026-11-01）。本物の useTenant は偽の DB に無い問い合わせをして、effect の中で投げる
+vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ tenant: { id: "tenant-1" }, isLimitedStaff: false }) }));
 const PROFILES = [
   { user_id: "u-a", display_name: "会員A", name_kana: "かいいんえー" },
   { user_id: "u-b", display_name: "会員B", name_kana: "かいいんびー" },

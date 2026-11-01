@@ -1396,7 +1396,17 @@
     "deleteFailed": "削除に失敗しました",
     "deletedToast": "削除しました",
     "editAria": "編集",
-    "deleteAria": "削除"
+    "deleteAria": "削除",
+    "fieldImages": "画像",
+    "imagesHint": "{{max}}枚まで。このお知らせが届くお客様だけが見られます。",
+    "addImage": "画像を追加",
+    "removeImage": "{{n}}枚目の画像を外す",
+    "imageAlt": "{{n}}枚目の画像",
+    "imageUploadingShort": "アップロード中",
+    "imageUploading": "画像をアップロードしています。終わってから保存してください",
+    "imageUploadFailed": "画像をアップロードできませんでした。別の画像でお試しください",
+    "imageTooMany": "画像は{{max}}枚までです",
+    "imagesBadge": "画像{{count}}枚"
   },
   "help": {
     "title": "使い方ガイド",
@@ -2233,7 +2243,11 @@
     "title": "お知らせ",
     "markAllRead": "すべて既読にする",
     "allReadToast": "全てのお知らせを既読にしました",
-    "empty": "お知らせはありません"
+    "empty": "お知らせはありません",
+    "imageAlt": "お知らせの画像（{{n}}枚目）",
+    "openImage": "{{n}}枚目の画像を大きく表示",
+    "imageViewer": "お知らせの画像",
+    "hasImages": "画像あり"
   },
   "trainerNav": {
     "menu": "メニュー",

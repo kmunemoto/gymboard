@@ -1396,7 +1396,17 @@
     "deleteFailed": "删除失败",
     "deletedToast": "已删除",
     "editAria": "编辑",
-    "deleteAria": "删除"
+    "deleteAria": "删除",
+    "fieldImages": "图片",
+    "imagesHint": "最多 {{max}} 张。只有收到此公告的顾客才能查看。",
+    "addImage": "添加图片",
+    "removeImage": "移除第 {{n}} 张图片",
+    "imageAlt": "第 {{n}} 张图片",
+    "imageUploadingShort": "上传中",
+    "imageUploading": "图片正在上传，请在上传完成后保存。",
+    "imageUploadFailed": "无法上传图片，请换一张试试。",
+    "imageTooMany": "图片最多 {{max}} 张。",
+    "imagesBadge": "图片 {{count}} 张"
   },
   "help": {
     "title": "使用指南",
@@ -2233,7 +2243,11 @@
     "title": "公告",
     "markAllRead": "全部标为已读",
     "allReadToast": "已将所有公告标为已读",
-    "empty": "暂无公告"
+    "empty": "暂无公告",
+    "imageAlt": "公告图片（第 {{n}} 张）",
+    "openImage": "放大查看第 {{n}} 张图片",
+    "imageViewer": "公告图片",
+    "hasImages": "含图片"
   },
   "trainerNav": {
     "menu": "菜单",

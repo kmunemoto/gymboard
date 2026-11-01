@@ -733,6 +733,44 @@ WHERE f.proname = 'guard_profile_plan_fields';
 
 
 -- ----------------------------------------------------------------------------
+-- 検査15: お客様が予約の印を偽ったり、自分の予約の日時を API で動かしたりできないか（★穴22 / 2026-11-01）
+-- ----------------------------------------------------------------------------
+-- 満枠・ブロック枠・休みの日・メニュー・限定オプションの検査には「source = 'salute_sync'（昔の同期の印）なら素通し」が
+-- 入っている。画面からこの印を付けられると全部すり抜ける。また、満枠の検査（check_booking_overlap）は INSERT のときだけ
+-- 動くので、お客様が自分の予約を UPDATE できると、日時を満枠の時間へ動かせる。
+--
+-- ★ が出たら開いている。直し方は
+--   supabase/migrations/20261101050000_booking_customer_update_guard.sql
+-- ⚠️ 20260625100000 は流さないこと（問診の部分が古い形に戻る）。確かめるなら、お客様を演じて自分の予約に
+--    UPDATE bookings SET booking_date = booking_date + interval '1 hour' を試すのが確実（最後に RAISE で戻すこと）。
+
+SELECT
+  '予約の作成で source=salute_sync を付けられない' AS rule,
+  CASE WHEN EXISTS (
+    SELECT 1 FROM pg_policies
+     WHERE schemaname = 'public' AND tablename = 'bookings'
+       AND permissive = 'RESTRICTIVE' AND cmd IN ('INSERT', 'ALL')
+       AND with_check ~* 'salute_sync'
+  ) THEN 'OK' ELSE '★要対応: 画面から source=salute_sync で満枠などの検査を飛ばせる' END AS verdict
+WHERE EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bookings' AND column_name = 'source')
+UNION ALL
+SELECT
+  'お客様は予約の日時を UPDATE で変えられない',
+  CASE WHEN EXISTS (
+    SELECT 1 FROM pg_trigger t JOIN pg_proc f ON f.oid = t.tgfoid
+     WHERE t.tgrelid = 'public.bookings'::regclass AND NOT t.tgisinternal AND t.tgenabled <> 'D'
+       AND (t.tgtype & 2) = 2 AND (t.tgtype & 16) = 16          -- BEFORE UPDATE
+       AND f.prosrc ~* 'NEW\.booking_date\s+IS\s+DISTINCT\s+FROM\s+OLD\.booking_date'
+       AND f.prosrc ~* 'RAISE\s+EXCEPTION'
+  ) OR EXISTS (
+    SELECT 1 FROM pg_trigger t JOIN pg_proc f ON f.oid = t.tgfoid
+     WHERE t.tgrelid = 'public.bookings'::regclass AND NOT t.tgisinternal AND t.tgenabled <> 'D'
+       AND (t.tgtype & 16) = 16 AND f.proname = 'check_booking_overlap'
+  ) THEN 'OK（中身はお客様を演じて確かめること）' ELSE '★要対応: お客様が自分の予約を満枠の時間へ動かせる' END
+WHERE to_regclass('public.bookings') IS NOT NULL;
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

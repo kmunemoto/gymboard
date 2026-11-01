@@ -1,9 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { isSafeOwnStoragePath } from "../_shared/storagePath.ts";
+
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+// Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
+const BUILD = "2026-10-31-storage-path";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "x-gymboard-build": BUILD,
 };
 
 async function callAI(apiKey: string, messages: unknown[], model = "google/gemini-2.5-flash") {
@@ -49,9 +55,11 @@ serve(async (req) => {
     }
     const userId = userData.user.id;
 
-    const { mealId, imageUrl, mealTypeHint, quantityNote } = await req.json();
-    if (!mealId || !imageUrl) {
-      return new Response(JSON.stringify({ error: "mealId and imageUrl required" }), {
+    // 🔴 imageUrl（リクエストの値）は使わない。写真は食事の行（meals.image_url）から読む（下の 🔴 参照）。
+    //    古いアプリも新しいアプリも、送ってくる imageUrl は meals.image_url と同じ値なので、動きは変わらない。
+    const { mealId, mealTypeHint, quantityNote } = await req.json();
+    if (!mealId) {
+      return new Response(JSON.stringify({ error: "mealId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -60,7 +68,7 @@ serve(async (req) => {
 
     // ---- OWNERSHIP CHECK ----
     const { data: mealRow, error: mealErr } = await supabase
-      .from("meals").select("id, user_id").eq("id", mealId).maybeSingle();
+      .from("meals").select("id, user_id, image_url").eq("id", mealId).maybeSingle();
     if (mealErr || !mealRow) {
       return new Response(JSON.stringify({ error: "Meal not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -75,9 +83,21 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Resolve storage path to signed URL
+    // 写真の場所は食事の行から読む（リクエストの値は信じない）。
+    // 🔴 2026-10-31 の点検: 以前はリクエストの imageUrl をそのまま service_role の createSignedUrl に渡していた。
+    //    storage-js はパスを文字列でつなぐだけなので、`../../../bucket/<バケット>/empty` を渡すと
+    //    「バケットを空にする」API に service_role で届き、全部のジムの写真・チャットの添付を消せた
+    //    （`../../../../../functions/v1/<名前>` なら service_role 専用の関数も起動できた）。
+    //    行の image_url も本人が書けるので、行の値も isSafeOwnStoragePath で確かめてから使う。
+    const imageUrl = typeof mealRow.image_url === "string" ? mealRow.image_url : "";
     let resolvedImageUrl = imageUrl;
     if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
+      // 本人のフォルダの中の普通のファイル名だけ（..・%・\・?・# を含むものは通さない）
+      if (!isSafeOwnStoragePath(imageUrl, userId)) {
+        return new Response(JSON.stringify({ error: "Invalid image path" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const { data: signedData, error: signError } = await supabase.storage
         .from("meal-photos").createSignedUrl(imageUrl, 600);
       if (signError || !signedData?.signedUrl) {

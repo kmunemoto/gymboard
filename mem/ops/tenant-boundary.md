@@ -1608,6 +1608,25 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴15（critical）: analyze-meal の写真のパスで、全部のジムの写真を消せた（2026-10-31・点検の拡大で発見）
+
+食事の写真を AI に読ませる `analyze-meal` は、リクエストの `imageUrl` をそのまま **service_role** の
+`storage.from("meal-photos").createSignedUrl(imageUrl)` に渡していた。storage-js（Edge Function が使う 2.7.1）は
+`${url}/object/sign/meal-photos/${path}` と文字列をつなぐだけで、fetch が URL を読むときに「..」が畳まれる。
+
+- `../../../bucket/<バケット>/empty` → **「バケットを空にする」API に service_role で届く**。ログインした誰でも
+  （ジムは誰でも開けるので、実質だれでも）6回の呼び出しで、全部のジムの体の写真・姿勢の写真・チャットの添付・
+  アイコン・ロゴを消せた。**Storage のファイルは DB のバックアップに無く、戻せない**
+- `../../../../../functions/v1/<名前>` → service_role 専用の関数を起動できた（本文は固定なので、迷惑な通知どまり）
+- `%2e%2e`・バックスラッシュ・タブ入りも URL の解析で同じところへ化ける（`src/test/analyzeMealStoragePath.test.ts` で実際に確かめている）
+
+直し方: 写真の場所は**食事の行（meals.image_url）から読み**、リクエストの値は使わない。行の値も本人が書けるので、
+`_shared/storagePath.ts` の `isSafeOwnStoragePath`（`<user_id>/` で始まる・空の段/`.`/`..` が無い・`%` `\` `?` `#` 制御文字が無い）
+を通してから署名する。アプリは前から行と同じ値を送っていたので、動きは変わらない（本番の行: パス14件はすべて本人のフォルダ、
+古い35件は http の URL で、署名を通らない）。Storage を service_role で触る関数は analyze-meal だけ（テストが一覧を固定）。
+
+---
+
 ## 穴14: オーナーが自分のジムのプラン・上限を API で書き換えられた（2026-10-31）
 
 Stripe の2件（テスト決済・Pro のコンプ判定。宗本さんが「テスト用のジムだけ」「コンプは御所南だけ」と判断）を

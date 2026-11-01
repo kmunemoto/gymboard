@@ -1608,6 +1608,24 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴19（medium）: 未ログインで他人のメッセージを取り消せた・外したインストラクターが同じリンクで戻れた（2026-11-01・点検の拡大で発見）
+
+- **unsend_message**: 送り主を `sender_id <> auth.uid()` で見ていた。anon キーだけで呼ぶと auth.uid() が NULL → 比較も NULL で
+  IF が通らず、他人のメッセージ（24時間以内）の本文・添付が消えた（anon が実行できた）。
+  → `auth.uid() IS NULL OR sender_id IS DISTINCT FROM auth.uid()` にし、anon から外した。🔴 **auth.uid() を `<>`／`!=` で比べない**
+  （`src/test/unsendAndStaffRemoval.test.ts` が、本番にある〔後で DROP されていない〕全部の関数を走査して禁止している）。
+- **remove_staff_member**: 在籍の行を消すだけで、インストラクターの招待コードは変わらなかった → 外された人（別のアカウントでも）が
+  同じ /join-staff/<コード> でまた入り、お客様全員の情報が見えた。→ 外すときにコードを作り直す。画面の確認文に
+  「インストラクターの招待リンクも新しくなります」を足した（5言語）。
+- 定義はどちらも本番の pg_get_functiondef から写して1か所だけ変えた（`20261101030000_unsend_and_staff_removal_fixes.sql`）。
+  本番（3段構え）: anon は実行できない／オーナーでも未ログインでも他人のメッセージは not_sender／インストラクターを外すと
+  コードが変わる、を確かめた（外したのは戻した。適用後に在籍とコードが元のままなのも確かめた）。
+
+#479（招待）の本番反映: invite-customer・send-transactional-email・resend-email の 401 に `x-gymboard-build`
+（invite-claimed／log-redact／no-invite-resend）が付くこと、Web の Publish は `index-BdTCKwU9.js` → `index-BjVBA-qd.js` で確かめた。
+
+---
+
 ## 穴18（high）: 招待で、本人が使っているお客様のアカウントを乗っ取れた・招待リンクが送信履歴に残っていた（2026-11-01・点検の拡大で発見）
 
 CSV で取り込んだお客様への招待（invite-customer）まわりの3つ。

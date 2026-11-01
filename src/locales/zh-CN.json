@@ -2167,7 +2167,7 @@
     "roleOwner": "店主",
     "removeAria": "将 {{name}} 移出本店",
     "removeTitle": "移出教练",
-    "removeConfirm": "将 {{name}} 从本店移除。其负责的预约会变回“未指定”，预约本身不会被删除。",
+    "removeConfirm": "将 {{name}} 从本店移除。其负责的预约会变回“未指定”，预约本身不会被删除。为防止被移除的人用同一链接重新加入，讲师邀请链接也会更新。",
     "removedToast": "已将 {{name}} 移出",
     "errorRemove": "移出教练失败",
     "joinPageTitle": "{{brandEn}}",

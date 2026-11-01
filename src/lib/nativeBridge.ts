@@ -4,10 +4,18 @@ import { Browser } from '@capacitor/browser';
 // （兄弟アプリはそちらだけ差し替える。mem/ops/vertical-fork.md）。
 import { NATIVE_APP_SCHEME, PRODUCTION_WEB_ORIGIN } from '@/lib/brand';
 import { isSafeInAppPath } from "@/lib/safePath";
+import { isSafeHttpUrl } from "@/lib/linkify";
 
 export const isNative = () => Capacitor.isNativePlatform();
 
 export async function openExternalUrl(url: string) {
+  // 🔴 http(s) 以外は開かない（2026-11-01・点検の拡大 tenant-contact-url-1）。ジムの「LINEで連絡」「Google口コミ」の URL は
+  //    オーナーが API で入れられ、javascript: を入れると、押したお客様の画面でスクリプトが動いてセッションを盗めた
+  //    （DB にも CHECK を足した: 20261101090000。ここは古い行・今後の別の画面の守り）。
+  if (!isSafeHttpUrl(url)) {
+    console.warn("[nativeBridge] http(s) 以外の URL は開きません");
+    return;
+  }
   if (isNative()) {
     try {
       await Browser.open({ url });

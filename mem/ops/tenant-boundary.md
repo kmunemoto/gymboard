@@ -1606,6 +1606,22 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴28（low ×2）: ジムの連絡先リンクに javascript: を入れられた・自分の LINE ID を書き換えて公式 LINE から誰にでも送れた（2026-11-01・点検の拡大で発見）
+
+- **連絡先リンク**（tenant-contact-url-1）: 「LINEで連絡」「Google口コミ」の URL（tenants.line_url・google_review_url）は画面でしか http(s) を
+  確かめていなかった。オーナーが API で `javascript:…` を入れると、ボタンを押したお客様の画面でスクリプトが動き、セッションを盗めた
+  （そのお客様が通う他のジムの情報にも届く）。→ tenants の line_url・google_review_url・website_url に CHECK（NULL・空・http(s)）、
+  画面は openExternalUrl の入口で http(s) 以外を開かない（Web は Publish・ネイティブは次のビルド）。本番の既存の行は全部収まっていた。
+- **LINE ID**（line-link-1）: 自分の profiles.line_user_id を任意の LINE ID に書き換えてから send-line-message を「自分宛て」で呼ぶと、
+  公式アカウントから好きな LINE ユーザーに任意の文面を送れた（穴25 の直しの抜け道）。スタッフはお客様の LINE ID も書き換えられた。
+  → 画面から（authenticated / anon）は NULL にする（解除）ことしかできない門番（SECURITY INVOKER）。値を入れるのは line-login-callback だけ。
+
+`20261101090000_contact_urls_and_line_id_guard.sql`。本番（2026-11-01・3段構え）: 適用前は「オーナーが javascript: を入れられる・お客様も
+オーナーも LINE ID を書き換えられる」（穴が実在）、適用後は 23514／42501 で拒否、https の URL・連携の解除・サーバー側（service_role）の
+連携は通る（7通りを期待値と突き合わせて適用）。制約は3つとも VALIDATE 済み、試した値は残っていない。
+
+---
+
 ## 穴27（medium）: AI 連携（OAuth）の同意画面で、偽の「ジムボード」アプリにオーナーのトークンを渡させられた（2026-11-01・点検の拡大で発見）
 
 Lovable の AI 連携（MCP。supabase/functions/mcp は @lovable.dev/mcp-js が src/lib/mcp から生成）のため、Supabase Auth の OAuth サーバーが

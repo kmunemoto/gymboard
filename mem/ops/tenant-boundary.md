@@ -1608,6 +1608,33 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴20（medium）: お客様が、店宛ての正規の通知メールを偽れた・送信履歴の載り先を選べた（2026-11-01・点検の拡大で発見）
+
+send-transactional-email（画面からも呼べるメール送信）の2つ。
+
+1. **偽の「新しい予約が入りました」**（send-transactional-email-link-1）: 画面から送れるテンプレートに new-booking-notification が入っていて、
+   ボタンの飛び先（dashboardUrl）と差出人名（gymName）を画面の値のまま使っていた → お客様が自分のジムのオーナー宛てに、
+   「ジムボード運営 <noreply@notify.kyoto-salute.com>」から、偽のログイン画面へのボタン付きの通知を送れた（SPF/DKIM も通る。
+   配信停止も効かない必須のメール）。オーナーのパスワードを取られると、そのジムの全お客様の情報に届く。
+   → 新規予約と受付確認（booking-confirmation）は画面から呼べなくした。どちらも予約の INSERT のトリガー → notify-new-booking
+   （service_role）が DB の内容から送っている。本番の過去30日で、確認メール192通・店宛216通がすべてサーバー発、画面発（duplicate の行）は0通。
+   残りの2種（キャンセル・オプションの変更）は、差出人名と本文のジム名・お店からのご案内を DB の値に、`…Url` を本番のオリジンにする
+   （`_shared/emailClientGuard.ts` の serverDecidedTemplateData。🔴 先生への写しの送り直しより**前**に置く）。
+2. **履歴の載り先**（send-transactional-email-tenant-1）: 画面が渡した tenantId をそのまま使っていた → お客様が自分で作ったジムの ID を入れ、
+   使用済みの冪等キー（booking-confirm-customer-…）で自分のジムのオーナー宛てに送ると、送らずに宛先（オーナーのログイン用アドレス）だけが
+   残る duplicate の行が自分のジムの履歴に書かれ、オーナーとして読めた。→ この送信を正当化するジム（呼び出し元と宛先が一緒に在籍している
+   ジム）の中からしか選ばない（pickVerifiedTenant。無ければ候補が1つのときだけ、それ以外は NULL）。templateData の user_id から
+   引き当てるのは service_role だけ。冪等キーの予約（先勝ち）も service_role だけ。
+
+古いアプリ: キャンセルの通知は booking.tenant_id（共通のジム）を送ってくるので、載り先も見た目も変わらない。店が体験予約を取り消したときの
+メールは、差出人が「ジムボード」からジム名になる（もともと gymName を送っていなかった）。
+見張り: `src/test/emailClientGuard.test.ts`（6通りに壊して全部落ちることを確かめた）。
+
+⚠️ 残り（low）: お名前・プラン名などの本文の文字は今も画面の値（URL らしい文字をメールソフトがリンクにすることはありうる）。
+ボタン・差出人・ジム名はもう偽れない。根本はキャンセルの通知もサーバーへ移すこと（予約の削除のトリガーから送る）。
+
+---
+
 ## 穴19（medium）: 未ログインで他人のメッセージを取り消せた・外したインストラクターが同じリンクで戻れた（2026-11-01・点検の拡大で発見）
 
 - **unsend_message**: 送り主を `sender_id <> auth.uid()` で見ていた。anon キーだけで呼ぶと auth.uid() が NULL → 比較も NULL で
@@ -1623,6 +1650,7 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 #479（招待）の本番反映: invite-customer・send-transactional-email・resend-email の 401 に `x-gymboard-build`
 （invite-claimed／log-redact／no-invite-resend）が付くこと、Web の Publish は `index-BdTCKwU9.js` → `index-BjVBA-qd.js` で確かめた。
+#480（この穴）の本番反映: マイグレーションはマージ前に適用済み。Web の Publish（確認文）は `index-BjVBA-qd.js` → `index-Ca_YmhyC.js` で確かめた。
 
 ---
 

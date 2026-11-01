@@ -81,50 +81,54 @@ describe("send-transactional-email: 認可の中身", () => {
     expect(code).toMatch(/await\s+authorizeClientCall\(/);
   });
 
-  it("クライアントから呼べるテンプレートは予約系の4種だけ", () => {
+  it("クライアントから呼べるテンプレートは、キャンセルとオプションの変更の2種だけ", () => {
     const m = code.match(/CLIENT_ALLOWED_TEMPLATES = new Set\(\[([\s\S]*?)\]\)/);
     expect(m, "CLIENT_ALLOWED_TEMPLATES が見つからない").toBeTruthy();
     const listed = [...m![1].matchAll(/'([a-z0-9-]+)'/g)].map((x) => x[1]).sort();
     // 🔴 足すときは「宛先が自由入力にならないか」を必ず確かめること。
     //    booking-option-changed は `_resolve_user_` 経路で、下の (2) の判定により
     //    「自分がスタッフをしているジムの在籍者」にしか届かない（2026-09-03 に追加）。
+    // 🔴 booking-confirmation と new-booking-notification は 2026-11-01 に外した（サーバーの
+    //    notify-new-booking だけが送る。画面から送れると、ボタンの飛び先と差出人名を偽った店宛ての
+    //    「新しい予約が入りました」を送れた。emailClientGuard.test.ts）。
     expect(listed).toEqual([
       "booking-cancellation",
-      "booking-confirmation",
       "booking-option-changed",
-      "new-booking-notification",
     ]);
-    // 許可リストを**通り抜けられない**こと（false を返して終わり）。
-    expect(code).toMatch(/if\s*\(!CLIENT_ALLOWED_TEMPLATES\.has\([\s\S]{0,40}\)\)\s*return false/);
+    // 許可リストを**通り抜けられない**こと（null を返して終わり）。
+    expect(code).toMatch(/if\s*\(!CLIENT_ALLOWED_TEMPLATES\.has\([\s\S]{0,40}\)\)\s*return null/);
   });
 
   it("どのジムにも属していない呼び出し元は何も送れない", () => {
     // 「トレーナーとして登録しただけ」の相手がここで止まる。
-    expect(code).toMatch(/mine\.length === 0[\s\S]{0,60}return false/);
+    expect(code).toMatch(/mine\.length === 0[\s\S]{0,60}return null/);
   });
 
   it("_resolve_trainer_ の宛先は「自分と同じジムの現役スタッフ」に限る", () => {
+    // 返すのは「宛先がスタッフをしているジム ∩ 呼び出し元の在籍ジム」（空なら null＝送らせない）
     expect(code).toMatch(
-      /_resolve_trainer_[\s\S]*?theirs\.some\(\(m\) => m\.isStaff && myTenants\.has\(m\.tenantId\)\)/,
+      /_resolve_trainer_[\s\S]*?uniqueTenantsOrNull\(theirs\.filter\(\(m\) => m\.isStaff && myTenants\.has\(m\.tenantId\)\)/,
     );
   });
 
   it("_resolve_user_ は自分自身か、自分がスタッフをしているジムの在籍者だけ", () => {
     const block = code.slice(code.indexOf("_resolve_user_"));
-    expect(block).toMatch(/target === caller\.userId[\s\S]{0,40}return true/);
-    expect(block).toMatch(/myStaffTenants\.size === 0[\s\S]{0,40}return false/);
-    expect(block).toMatch(/theirs\.some\(\(m\) => myStaffTenants\.has\(m\.tenantId\)\)/);
+    expect(block).toMatch(/target === caller\.userId\) return uniqueTenantsOrNull\(\[\.\.\.myTenants\]\)/);
+    expect(block).toMatch(/myStaffTenants\.size === 0[\s\S]{0,40}return null/);
+    expect(block).toMatch(/uniqueTenantsOrNull\(theirs\.filter\(\(m\) => myStaffTenants\.has\(m\.tenantId\)\)/);
   });
 
   it("生のメールアドレス指定は自分宛だけ", () => {
     // ここを緩めると、SPF/DKIM を通した正規ドメインから任意の宛先へ送れる
     // ＝フィッシングの踏み台になる。
     expect(code).toMatch(/recipientEmail\.toLowerCase\(\) === callerEmail\.toLowerCase\(\)/);
+    expect(code).toContain("return toSelf ? uniqueTenantsOrNull([...myTenants]) : null");
   });
 
   it("所属が引けなかったときは送らない（fail-close）", () => {
     // 握りつぶして通すと、DB が一時的に落ちている間だけ誰でも送れる関数になる。
-    expect(code).toMatch(/catch\s*\([\s\S]{0,10}\)\s*\{[\s\S]{0,160}ok = false/);
+    expect(code).toMatch(/catch\s*\([\s\S]{0,10}\)\s*\{[\s\S]{0,160}clientTenants = null/);
+    expect(code).toMatch(/if \(!clientTenants\) \{[\s\S]{0,400}status: 403/);
     expect(code).toMatch(/if\s*\(error\)\s*throw error/);
   });
 
@@ -154,15 +158,16 @@ describe("実際に飛んでいる5本が、この規則で通ること", () => 
     { file: "bookingOptionEdit.ts", src: optEdit, template: "booking-option-changed", recipient: "_resolve_user_", key: "resolveUserId" },
   ];
 
-  it("使っているテンプレートは許可リストのどれか", () => {
-    const allowed = new Set([
-      "booking-confirmation", "booking-cancellation",
-      "new-booking-notification", "booking-option-changed",
-    ]);
+  it("使っているテンプレート: 画面発は許可リストのどれか・サーバー発（notify-new-booking）は service_role", () => {
+    // 新規予約・受付確認はサーバー（notify-new-booking・service_role）だけが送る（2026-11-01 に画面からは外した）。
+    const clientAllowed = new Set(["booking-cancellation", "booking-option-changed"]);
     for (const inv of invocations) {
-      expect(allowed.has(inv.template), `${inv.file}: ${inv.template}`).toBe(true);
       expect(inv.src).toMatch(new RegExp(`templateName:\\s*"${inv.template}"`));
+      if (inv.file === "notify-new-booking/index.ts") continue;
+      expect(clientAllowed.has(inv.template), `${inv.file}: ${inv.template}`).toBe(true);
     }
+    // notify-new-booking は service_role か cron の合言葉でしか動かない（画面からは呼べない）
+    expect(notif).toMatch(/if \(!caller\?\.isServiceRole && !cronAuthorized\)/);
   });
 
   it("スタッフ宛は必ず trainerUserId を添えて _resolve_trainer_ で送る", () => {

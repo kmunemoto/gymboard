@@ -280,9 +280,9 @@ describe("send-transactional-email の重複排除と拒否の記録", () => {
 
   it("🔴 認可 403・宛先解決の失敗・テンプレート404 は email_send_log に 'rejected' を残す", () => {
     expect(sendEmailFn).toContain("status: 'rejected'");
-    // 403（authorizeClientCall が false）
+    // 403（authorizeClientCall が null）
     const forbiddenBlock = sendEmailFn.slice(
-      sendEmailFn.indexOf("if (!ok) {"),
+      sendEmailFn.indexOf("if (!clientTenants) {"),
       sendEmailFn.indexOf("status: 403"),
     );
     expect(forbiddenBlock).toContain("logRejected(");

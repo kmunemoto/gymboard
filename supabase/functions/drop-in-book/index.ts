@@ -17,6 +17,9 @@
 // (同じトレーナーのカレンダー枠を共有するため)。
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
+} from "../_shared/guestBooking.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,10 +43,13 @@ const BOOKING_TYPE_LABEL = "ドロップイン（¥8,000）";
 
 const GENERIC_ERROR = "Something went wrong on our end. Please try again in a moment.";
 
+// デプロイの確かめ用（何も送らない呼び方で、新しいコードが動いているかを見る。mem/ops/edge-function-deploy.md）
+const BUILD = "2026-11-01-guest-name";
+
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body, null, 2), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "x-gymboard-build": BUILD },
   });
 }
 
@@ -115,7 +121,10 @@ Deno.serve(async (req) => {
     const customAnswers = sanitizeCustomAnswers(body.custom_answers);
 
     if (!UUID_RE.test(tenantId)) return reject("validation", "This booking link is invalid.");
-    if (!guestName || guestName.length > 100) return reject("validation", "Please enter your name.");
+    // The name goes into emails, the gym's LINE and calendar as-is. No links, email addresses or line breaks (2026-11-01 audit trial-book-1/2)
+    const nameProblem = guestNameProblem(guestName);
+    if (nameProblem === "empty" || nameProblem === "too_long") return reject("validation", "Please enter your name.");
+    if (nameProblem) return reject("validation", "Please enter just your name, without links, email addresses or line breaks.");
     if (!EMAIL_RE.test(guestContact) || guestContact.length > 255) {
       return reject("validation", "Please enter a valid email address.");
     }
@@ -193,6 +202,26 @@ Deno.serve(async (req) => {
       .gte("created_at", since1h);
     if (tlErr) return fail("rate_limit_tenant", tlErr.message);
     if ((tenantCount ?? 0) >= RATE_LIMIT_PER_TENANT_1H) {
+      return reject("rate_limited", "Bookings are currently very busy. Please try again shortly, or contact the gym directly.");
+    }
+
+    // 同じメールアドレスは全部のジムを合わせて24時間に5件まで・1つのジムは24時間に60件まで（trial-book と同じ。../_shared/guestBooking.ts）
+    const { count: contactAllCount, error: caErr } = await admin
+      .from("trial_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("guest_contact", guestContact)
+      .gte("created_at", since24h);
+    if (caErr) return fail("rate_limit_contact_all", caErr.message);
+    if ((contactAllCount ?? 0) >= RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H) {
+      return reject("rate_limited", "We've received multiple booking requests from you recently. Please contact the gym directly.");
+    }
+    const { count: tenantDayCount, error: tdErr } = await admin
+      .from("trial_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .gte("created_at", since24h);
+    if (tdErr) return fail("rate_limit_tenant_day", tdErr.message);
+    if ((tenantDayCount ?? 0) >= RATE_LIMIT_PER_TENANT_24H) {
       return reject("rate_limited", "Bookings are currently very busy. Please try again shortly, or contact the gym directly.");
     }
 

@@ -3,6 +3,7 @@ import { Browser } from '@capacitor/browser';
 // URLスキームと本番ドメインは製品ごとに違うため src/lib/brand.ts に集約している
 // （兄弟アプリはそちらだけ差し替える。mem/ops/vertical-fork.md）。
 import { NATIVE_APP_SCHEME, PRODUCTION_WEB_ORIGIN } from '@/lib/brand';
+import { isSafeInAppPath } from "@/lib/safePath";
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -42,7 +43,10 @@ export function getAuthCallbackUrl() {
  */
 export function sanitizeAuthNext(next: string | null | undefined): string | null {
   if (!next) return null;
-  if (next.startsWith('/') && !next.startsWith('//')) return next;
+  // 🔴 "/" 始まりは isSafeInAppPath で見る（2026-10-31 点検 auth-callback-next-1）。以前の
+  //    「/ で始まり // で始まらない」だけでは、"/\evil.example"・"/<タブ>/evil.example" が通り、
+  //    ブラウザが https://evil.example/ に解決していた（通知を開く側と同じ判定にそろえた）。
+  if (next.startsWith('/')) return isSafeInAppPath(next) ? next : null;
   try {
     const u = new URL(next, window.location.origin);
     if (u.origin === window.location.origin || u.protocol === NATIVE_APP_SCHEME) {

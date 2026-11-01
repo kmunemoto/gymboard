@@ -1608,6 +1608,24 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴16（high）: ログイン画面の ?redirect= で、ログイン直後に本番のドメインでスクリプトが動いた（2026-10-31・点検の拡大で発見）
+
+`/auth?redirect=…` の値を確かめずに使っていた（Auth.tsx → SocialAuthButtons が sessionStorage に保存 → AuthCallback が
+`window.location.replace(dest)`）。AuthCallback のコメントは「dest はアプリ自身が書いた値」としていたが、実際は URL の値の写しだった。
+
+- `?redirect=javascript:…` → ログアウト中の人が本物の画面で「Google／Apple でログイン」を押すと、戻った直後に
+  **app.kyoto-salute.com のまま攻撃者のスクリプトが動く**（localStorage のログインの鍵を抜ける。オーナーならジムの全お客様の情報）
+- `?redirect=//evil` や `/\evil` → パスワードでログインした直後に外のサイトへ飛ばせた（偽の「再ログイン」画面でパスワードを盗む）
+- `/auth/callback?next=/\evil.example` も同じ（sanitizeAuthNext が「/ で始まり // で始まらない」しか見ていなかった）
+
+直し方: 3か所とも `src/lib/safePath.ts` の `isSafeInAppPath`（通知を開く側と同じ判定）を通す。Auth.tsx の redirect・
+SocialAuthButtons の保存・AuthCallback の dest（2か所）・sanitizeAuthNext の「/ 始まり」。アプリが自分で付ける redirect は
+`/join/<code>`・`/join-staff/<code>`・`/oauth/consent?…` だけで、どれも通る。ネイティブのアプリには外から `/auth?redirect=` を
+開かせる経路が無いので、次のビルドで揃えばよい（Web は Publish で直る）。
+見張り: `src/test/authCallbackRedirect.test.ts`・`src/test/authNextSanitize.test.ts`
+
+---
+
 ## 穴15（critical）: analyze-meal の写真のパスで、全部のジムの写真を消せた（2026-10-31・点検の拡大で発見）
 
 食事の写真を AI に読ませる `analyze-meal` は、リクエストの `imageUrl` をそのまま **service_role** の
@@ -1619,6 +1637,10 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
   アイコン・ロゴを消せた。**Storage のファイルは DB のバックアップに無く、戻せない**
 - `../../../../../functions/v1/<名前>` → service_role 専用の関数を起動できた（本文は固定なので、迷惑な通知どまり）
 - `%2e%2e`・バックスラッシュ・タブ入りも URL の解析で同じところへ化ける（`src/test/analyzeMealStoragePath.test.ts` で実際に確かめている）
+
+本番（2026-11-01）: #476 を Lovable でデプロイし、未ログインの呼び出しの 401 に `x-gymboard-build: 2026-10-31-storage-path` が
+付くこと（デプロイ前は無し）で新しいコードを確かめた。**悪用の跡は無し**: DB の行が指すファイルは全部残っている
+（食事の写真 14/14・チャットの添付 5/5。体の写真・姿勢の写真は行も0件＝使われていない機能で、消されたのではない）。
 
 直し方: 写真の場所は**食事の行（meals.image_url）から読み**、リクエストの値は使わない。行の値も本人が書けるので、
 `_shared/storagePath.ts` の `isSafeOwnStoragePath`（`<user_id>/` で始まる・空の段/`.`/`..` が無い・`%` `\` `?` `#` 制御文字が無い）

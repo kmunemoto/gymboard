@@ -51,6 +51,22 @@ describe("sanitizeAuthNext", () => {
     expect(sanitizeAuthNext("javascript:alert(1)")).toBeNull();
   });
 
+  it("🔴 「/」始まりでも、ブラウザが外へ解決する形は破棄する（2026-10-31 点検 auth-callback-next-1）", () => {
+    // http(s) ではバックスラッシュは "/" と同じに扱われ、タブ・改行は取り除かれる。
+    // どれも「/ で始まり // で始まらない」を通るのに、開くと https://evil.example/ に着地していた
+    for (const next of ["/\\evil.example/login", "/\t/evil.example/login", "/\n/evil.example/login", "/\\/evil.example"]) {
+      expect(sanitizeAuthNext(next), JSON.stringify(next)).toBeNull();
+    }
+  });
+
+  it("通した値は、解決しても自分のオリジンから出ない", () => {
+    for (const next of ["/join/ABC123", "/kb?x=1#a", "/%5Cevil", "/oauth/consent?authorization_id=x"]) {
+      const out = sanitizeAuthNext(next);
+      expect(out, next).toBe(next);
+      expect(new URL(out!, window.location.origin).origin).toBe(window.location.origin);
+    }
+  });
+
   it("壊れたURL文字列は例外を投げずに破棄する", () => {
     expect(() => sanitizeAuthNext("http://[invalid")).not.toThrow();
     expect(sanitizeAuthNext("http://[invalid")).toBeNull();

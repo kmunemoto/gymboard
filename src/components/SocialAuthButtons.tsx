@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { signInWithOAuthProvider, OAuthProvider } from "@/lib/oauth";
+import { isSafeInAppPath } from "@/lib/safePath";
 
 const AppleLogo = () => (
   <svg viewBox="0 0 384 512" className="w-4 h-4" fill="currentColor" aria-hidden="true">
@@ -32,7 +33,8 @@ const SocialAuthButtons = ({ redirectParam, intendedRole = "customer" }: SocialA
     if (pending) return;
     setPending(provider);
     try {
-      if (redirectParam) {
+      // アプリの中のパスだけ保存する（AuthCallback が戻ったあとに開く先。2026-10-31 点検 auth-redirect-1）
+      if (redirectParam && isSafeInAppPath(redirectParam)) {
         sessionStorage.setItem("postAuthRedirect", redirectParam);
       }
       // ロール意図を OAuth ラウンドトリップ間で引き継ぐ（同一オリジンの sessionStorage は往復後も保持される）。

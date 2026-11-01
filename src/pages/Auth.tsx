@@ -22,6 +22,7 @@ type AuthMode = "login" | "signup" | "forgot";
 type LoginTarget = "customer" | "trainer";
 
 import { getAuthCallbackUrl } from "@/lib/nativeBridge";
+import { isSafeInAppPath } from "@/lib/safePath";
 
 const EMAIL_CALLBACK_URL = getAuthCallbackUrl();
 
@@ -73,7 +74,12 @@ const Auth = () => {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const redirectParam = searchParams.get("redirect");
+  // 🔴 ログイン後に開く先。アプリの中のパスだけ（2026-10-31 点検 auth-redirect-1/2）。
+  //    確かめずに使うと、?redirect=javascript:… が Google/Apple でのログインの戻り（AuthCallback）で
+  //    本番のドメインのまま実行され（ログインの鍵を抜かれる）、?redirect=//evil や /\evil は
+  //    パスワードでのログイン直後に外のサイトへ飛ばせた。
+  const rawRedirectParam = searchParams.get("redirect");
+  const redirectParam = isSafeInAppPath(rawRedirectParam) ? rawRedirectParam : null;
   // AuthCallback が確認リンクの失敗（期限切れ等）を ?error=code で返してくる。
   // 遅延初期化で最初の描画時にだけ読む（このSPA内でクエリが変わることはなく、
   // 変わるのは window.location.replace を伴う実ページ遷移のときだけ）。

@@ -1625,9 +1625,59 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 - 上の「Edge Function の直し」の「残り」（OAuth・LINE の state、_resolve_user_、体験予約のメール中継、ドロップインの枠埋め、通知の回数制限）
 - 穴18 の残り（取り込みアカウントへの招待）・穴21 の残り（起算日より前の予約。仕様の判断を含むので、変えるときは宗本さんに確かめる）・
   穴22 の残り（created_via='reschedule'）・穴26 の残り（古いアプリ）
-- 2026-11-01 の点検の low: membership-oracle-1 / tenant-limit-status-1（所属や人数を他のジムから確かめられる）・
-  auth-callback-session-1（ログイン用のリンクで別のアカウントに切り替えさせられる）→ 2026-11-01 に直し始めた。
-  delete-customer-cascade-1 は下の穴29 で直した
+- 2026-11-01 の点検の low: auth-callback-session-1（ログイン用のリンクで別のアカウントに切り替えさせられる）→ 2026-11-01 に直し始めた。
+  delete-customer-cascade-1 は下の穴29、membership-oracle-1・tenant-limit-status-1 は下の穴30 で直した
+
+---
+
+## 穴30（low ×2）: 他人がどのジムに通っている（いた）かと、他のジムの人数・上限を、ログインした誰でも確かめられた（2026-11-01・点検の拡大で発見）
+
+1. 所属の判定の関数（`is_tenant_member`・`is_tenant_member_any_status`・`has_tenant_role`・`has_role`）は、RLS と門番のトリガーが
+   使うので authenticated から EXECUTE を剥がせない（`security/check.sql` 検査5-c）。引数の user_id・tenant_id を呼んだ人と
+   突き合わせずに答えるので、他人の user_id と公開されているジムの id を組にして直接呼ぶと、在籍・退会・お客様かスタッフかが分かった。
+   チャットを送ろうとしたときの門番のエラーの違い（「所属していない」と「スタッフにだけ」）からも分かった。
+   同じジムのお客様も、他のお客様の在籍・退会を確かめられた。
+2. `get_tenant_limit_status` は、どのジムの id でもお客様数・スタッフ数・上限（＝契約プラン）を返した。
+   `is_tenant_over_limit` は未ログインでも呼べた。
+
+直し方（`20261101110000_membership_answers_scoped.sql`）:
+
+- `_may_see_membership(tenant, user)` を足した。呼んだ人が本人かそのジムの在籍中のスタッフ、または聞かれた人がそのジムの
+  在籍中のスタッフのときだけ true（サーバー＝auth.uid() が無いときも true）。画面からは呼べない。
+- `is_tenant_member`・`is_tenant_member_any_status` はこれが false なら false を返す。
+- `has_tenant_role` は、聞く役割がスタッフ（owner・trainer）だけのときは今まで通り（答えが変わらないうえ、ポリシーで1行ごとに
+  111か所から呼ばれるので重くしない）。お客様の役割を聞くときだけ確かめる。`is_limited_staff` は同じ理由で変えない。
+- `has_role` は本人とサーバーにだけ答える。
+- `get_tenant_limit_status` はそのジムに在籍している人にだけ返す（それ以外は NULL。画面は何も出さない）。
+- `is_tenant_over_limit` は anon から外した（呼び出し元の2つは SECURITY DEFINER。authenticated は 20260808 の取り決めどおり残す）。
+
+正規の呼び方が変わらないことは、本番の全部のポリシー・関数の呼び出し（has_tenant_role 132か所・is_limited_staff 52・
+is_tenant_member 13・is_tenant_member_any_status 3・has_role 2。ビューと他のスキーマには無い）を数えて確かめた:
+auth.uid() を渡すか、スタッフだけが通るポリシー（お知らせの宛先・限定オプションの対象）か、門番のトリガー（予約は本人か
+スタッフの代理、チャットはスタッフ宛てかスタッフから）だけだった。
+
+本番（2026-11-01・3段構え）: 同じトランザクションの中で、適用の前と後に、お客様・オーナー・インストラクター・他のジムのオーナーが
+画面で読む件数（所属・ジム・プラン・メニュー・シフト・予約・プロフィール・チャット・記録・お知らせ）と、正規のチャットの送信
+（お客様→オーナー、オーナー→お客様、インストラクター→お客様）を比べ、1件でも違えば全部戻す形で適用した（同じだった）。
+
+| 聞いた人 | 聞いたこと | 適用前 | 適用後 |
+|---|---|---|---|
+| 他のジムのオーナー | こちらのお客様の在籍・退会したお客様・お客様の役割・印 | どれも true | どれも false |
+| 〃 | こちらのオーナーがオーナーか | true | true（スタッフは今まで通り） |
+| 〃 | こちらの人数・上限 | 返る | NULL |
+| 〃 | こちらのお客様へチャットを送る | 「スタッフにだけ」（＝所属している） | 「所属していない」（所属していない人と同じ） |
+| お客様 | 自分・オーナーの在籍、自分のジムの人数 | true・返る | 同じ |
+| お客様 | 同じジムの他のお客様・退会したお客様の在籍 | true | false |
+| オーナー・インストラクター | お客様の在籍・退会・役割、自分のジムの人数 | true・返る | 同じ |
+| オーナー | 他のジムの人数・上限 | 返る | NULL |
+| service_role | 在籍・印・人数 | true・返る | 同じ |
+
+適用後に別の接続でもう一度演じて、同じ結果・試しのチャットが残っていないことを確かめた。`security/check.sql` の検査18 は4本とも OK。
+
+⚠️ 残り: `is_tenant_over_limit` は authenticated から直接呼べるので、ログインした誰でも「そのジムが上限を超えているか」の1ビットは
+分かる（get_tenant_limit_status の over_limit と同じ情報。20260808 の取り決めで authenticated は剥がさない）。
+
+見張り: `src/test/membershipAnswersScoped.test.ts`（`memberLifecycle.test.ts` の is_tenant_over_limit の権限の項も合わせて直した）
 
 ---
 

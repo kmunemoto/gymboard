@@ -358,6 +358,7 @@ ORDER BY takes_user_id DESC, p.proname;
 -- ここで出したいのは**書き込む関数**だけ。
 -- `has_role` / `is_tenant_member` / `has_tenant_role` は user_id を引数に取るが
 -- **STABLE な述語**で、RLS が使っている。**出さないし、塞いでもいけない。**
+-- （関係の無い人に本当の答えを返さないように「答えを絞る」のは、塞ぐのとは別。★穴30・検査18）
 -- だから `provolatile = 'v'`（VOLATILE ＝ 書き込む）で絞る。
 --
 -- 直し方は2つ（supabase/migrations/20260806160000_rpc_caller_check.sql）:
@@ -820,6 +821,29 @@ SELECT
        ELSE '★要対応: 他のジムの記録・共通のプロフィールまで消す' END AS verdict
 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
 WHERE p.proname = 'delete_customer_cascade';
+
+
+-- ----------------------------------------------------------------------------
+-- 検査18: 所属の判定・ジムの人数を、関係の無い人に答えていないか（★穴30 / 2026-11-01）
+-- ----------------------------------------------------------------------------
+-- is_tenant_member・is_tenant_member_any_status・has_tenant_role は RLS と門番のトリガーが使うので、
+-- authenticated から EXECUTE を剥がせない（検査5-c）。そのため、ログインした誰でも直接呼べる。
+-- 引数の user_id・tenant_id を呼んだ人と突き合わせずに答えると、他人の user_id と公開されているジムの id を組にして、
+-- その人がどのジムに在籍している（いた）か・お客様かスタッフかを確かめられる。チャットの門番のエラーの違いからも分かる。
+-- get_tenant_limit_status は、どのジムの id でもお客様数・上限（＝契約プラン）を返すと、他のジムの経営情報が漏れる。
+--
+-- 本文が auth.uid() を見ていれば OK（関数が無ければ出ない）。
+-- ★ が出たら開いている。直し方は supabase/migrations/20261101110000_membership_answers_scoped.sql
+-- （呼んだ人が本人・そのジムのスタッフ、または聞かれた人がそのジムのスタッフのときだけ本当の答えを返す。
+--  has_tenant_role はスタッフの役割だけを聞くときは今まで通りにして、RLS の1行ごとの重さを増やさない）
+
+SELECT
+  p.proname AS item,
+  CASE WHEN p.prosrc ~ 'auth\.uid\(\)|_may_see_membership' THEN 'OK'
+       ELSE '★要対応: 関係の無い人にも所属・人数を答える' END AS verdict
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
+WHERE p.proname IN ('is_tenant_member', 'is_tenant_member_any_status', 'has_tenant_role', 'get_tenant_limit_status')
+ORDER BY p.proname;
 
 
 -- ----------------------------------------------------------------------------

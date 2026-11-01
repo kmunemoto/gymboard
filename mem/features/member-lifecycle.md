@@ -163,7 +163,7 @@ H-1/H-2 → D → B → G の4回に分けた（1本で流すと、途中で落�
 | お客様 | bookings 33 / profiles 1 が今も読める | OK |
 | anon | 新テーブルは 0 件 | OK |
 | anon | `get_tenant_public` が 1 行返る（体験予約の公開経路） | OK |
-| anon | `is_tenant_over_limit` が呼べる | OK |
+| anon | `is_tenant_over_limit` が呼べる | OK（⚠️ 2026-11-01 に anon から外した。呼び出し元の2つは SECURITY DEFINER なので影響なし。`mem/ops/tenant-boundary.md` 穴30） |
 | 全テナント | 適用後に `over_limit` が true になったジムは 0 | OK |
 
 **テナント越えは対照実験で確かめた。** 空のテーブルを覗いて「0件でした」では、

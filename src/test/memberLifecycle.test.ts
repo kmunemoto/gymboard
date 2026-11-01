@@ -113,11 +113,16 @@ describe("🔴 席を食うかの判断は DB とクライアントで同じ", (
     expect(body![0]).not.toMatch(/'suspended'/);
   });
 
-  it("EXECUTE を authenticated と anon から剥がしていない", () => {
+  it("EXECUTE を authenticated から剥がしていない（anon は 2026-11-01 に外した）", () => {
     expect(sql).toMatch(
       /GRANT EXECUTE ON FUNCTION public\.is_tenant_over_limit\(uuid\) TO authenticated, anon;/,
     );
     expect(sql).not.toMatch(/REVOKE[\s\S]*is_tenant_over_limit/);
+    // 2026-11-01（穴30）に anon だけ外した。呼び出し元の get_tenant_limit_status・enforce_tenant_plan_limit は
+    // どちらも SECURITY DEFINER なので、トリガー経由の呼び出しは落ちない。authenticated は残す。
+    const later = stripSqlComments(read("supabase/migrations/20261101110000_membership_answers_scoped.sql"));
+    expect(later).toContain("REVOKE EXECUTE ON FUNCTION public.is_tenant_over_limit(uuid) FROM PUBLIC, anon;");
+    expect(later).not.toMatch(/REVOKE[^;]*is_tenant_over_limit[^;]*authenticated/);
   });
 });
 

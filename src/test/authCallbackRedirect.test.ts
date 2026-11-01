@@ -16,6 +16,24 @@ describe("AuthCallback のオープンリダイレクト対策が外れていな
     expect(src).toMatch(/const next = sanitizeAuthNext\(params\.get\("next"\)\)/);
   });
 
+  it("🔴 ログイン前に保存した戻り先（postAuthRedirect）も、アプリの中のパスか確かめてから使う（2026-10-31 点検 auth-redirect-1）", () => {
+    // 中身はログイン画面の ?redirect=（URL 由来）。確かめずに replace すると javascript: が本番のドメインで動いた
+    expect(src).toMatch(/const readPostAuthRedirect = \(\): string \| null => \{\s*const raw = sessionStorage\.getItem\("postAuthRedirect"\);\s*sessionStorage\.removeItem\("postAuthRedirect"\);\s*return isSafeInAppPath\(raw\) \? raw : null;/);
+    // 生の sessionStorage の値を replace に渡す形が残っていない
+    expect(src.match(/sessionStorage\.getItem\("postAuthRedirect"\)/g)?.length).toBe(1);
+    expect(src.match(/const dest = readPostAuthRedirect\(\);/g)?.length).toBe(2);
+  });
+
+  it("ログイン画面の ?redirect= は確かめてから使い、ソーシャルログインの前にも確かめて保存する", () => {
+    const auth = readFileSync("src/pages/Auth.tsx", "utf8");
+    expect(auth).toContain('const rawRedirectParam = searchParams.get("redirect");');
+    expect(auth).toContain("const redirectParam = isSafeInAppPath(rawRedirectParam) ? rawRedirectParam : null;");
+    // 生の値は、取り出す行と確かめる行（2回）にしか出てこない＝どこにも生のまま使っていない
+    expect(auth.match(/rawRedirectParam/g)?.length).toBe(3);
+    const social = readFileSync("src/components/SocialAuthButtons.tsx", "utf8");
+    expect(social).toMatch(/if \(redirectParam && isSafeInAppPath\(redirectParam\)\) \{\s*sessionStorage\.setItem\("postAuthRedirect", redirectParam\);/);
+  });
+
   it("params.get(\"next\") を未加工のまま replace に渡していない", () => {
     // 「params.get("next")」がそのまま .replace(...) の引数に現れたら退行のサイン
     expect(src).not.toMatch(/\.replace\([^)]*params\.get\("next"\)/);

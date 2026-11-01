@@ -3,6 +3,14 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { sanitizeAuthNext } from "@/lib/nativeBridge";
+import { isSafeInAppPath } from "@/lib/safePath";
+
+/** ログイン前に保存した「戻り先」を取り出して消す。アプリの中のパスでなければ捨てる（2026-10-31 点検 auth-redirect-1） */
+const readPostAuthRedirect = (): string | null => {
+  const raw = sessionStorage.getItem("postAuthRedirect");
+  sessionStorage.removeItem("postAuthRedirect");
+  return isSafeInAppPath(raw) ? raw : null;
+};
 
 const AuthCallback = () => {
   const { t } = useTranslation();
@@ -95,10 +103,10 @@ const AuthCallback = () => {
             }
           }
           await finalizePendingRole();
-          // dest（sessionStorage）はアプリ自身が書いた値なので次のサニタイズ対象外。
-          // next はURL由来なので、dest が無いときのフォールバックとしてのみ使う。
-          const dest = sessionStorage.getItem("postAuthRedirect");
-          sessionStorage.removeItem("postAuthRedirect");
+          // 🔴 dest（sessionStorage）も確かめる。中身はログイン画面の ?redirect=（URL 由来）を写したもので、
+          //    「アプリ自身が書いた値」ではなかった（2026-10-31 点検 auth-redirect-1。javascript: がここで動いた）。
+          // next はURL由来なので、dest が無いときのフォールバックとしてのみ使う（sanitizeAuthNext 済み）。
+          const dest = readPostAuthRedirect();
           window.location.replace(dest || next || "/");
           return;
         } catch (err) {
@@ -131,8 +139,7 @@ const AuthCallback = () => {
             return;
           }
           await finalizePendingRole();
-          const dest = sessionStorage.getItem("postAuthRedirect");
-          sessionStorage.removeItem("postAuthRedirect");
+          const dest = readPostAuthRedirect();
           window.location.replace(dest || "/");
           return;
         }

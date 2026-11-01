@@ -1602,9 +1602,27 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 - send-transactional-email の service_role 経路で、宛先の解決（_resolve_user_）をそのジムの人に限る
 - 点検ワークフローの medium / low の残り（体験予約のメール中継・ドロップインの枠埋め・LINE の state・
   通知の回数制限 など）。Stripe の sandbox と Pro のコンプ判定は下の穴14 で直した
-- **オーナーの引き継ぎ（transfer_gym_ownership）が tenants.owner_user_id を変えない**。引き継いだあと、
-  元オーナー（インストラクターになる）がジムの設定を更新でき、招待コードも読める。新オーナーは更新できない。
-  本番で引き継ぎは0件（owner_user_id の食い違いは、中身の無い重複のジム1件だけ。2026-10-31 に数えた）
+- ~~オーナーの引き継ぎ（transfer_gym_ownership）が tenants.owner_user_id を変えない~~ → 下の穴23 で直した（2026-11-01）
+
+---
+
+## 穴23（medium）: オーナーを引き継いでも、元オーナーが「持ち主」のまま残った（2026-11-01・点検の拡大で発見）
+
+transfer_gym_ownership は tenant_members の役割（新オーナー=owner、元オーナー=インストラクター）と user_roles しか変えず、
+tenants.owner_user_id は元オーナーのままだった。owner_user_id で「オーナーか」を見ている所（tenants の UPDATE ポリシー・
+_owner_staff_invite_code〔インストラクターの招待コード〕・remove_staff_member・tenant_members の INSERT ポリシーの owner の枝）が多く、
+元オーナーが設定を変え続けられ、招待コードも取れた。新オーナーが API で元オーナーの所属を消しても、元オーナーは owner として
+入れ直せた（全お客様の情報が見える）。元オーナーのアカウント削除も外部キーで失敗した（引き継ぎの目的が果たせない）。
+本番の引き継ぎは0件（潜在）。
+
+直し方（`20261101060000_transfer_ownership_updates_owner.sql`。本番の定義から写して1行足しただけ）: 役割を入れ替えたあと
+`UPDATE public.tenants SET owner_user_id = _to_user_id`。SECURITY DEFINER の中なので tenants の門番（INVOKER）は通る。
+
+本番（2026-11-01・3段構え）: Salute で「オーナー → インストラクターへ引き継ぐ → 新オーナーが元オーナーの所属を消す →
+元オーナーが owner として入れ直す」を、今の関数と直した関数の両方で流して全部取り消した。今の関数は「持ち主は元オーナーのまま・
+元オーナーが招待コードを取れる・入れ直せる」（穴が実在）、直した関数は「持ち主は新オーナー・元オーナーはコードを取れない・
+入れ直しは 42501」。期待値と一致する形で適用し、Salute の持ち主とスタッフが元のままなのを確かめた。security/check.sql に検査16（本番で OK・
+食い違いのジムは0件。owner_user_id が NULL でメンバー0人の空のジムが1件あるが、数えない）。
 
 ---
 

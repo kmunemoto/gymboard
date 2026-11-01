@@ -771,6 +771,37 @@ WHERE to_regclass('public.bookings') IS NOT NULL;
 
 
 -- ----------------------------------------------------------------------------
+-- 検査16: オーナーを引き継いだあと、元オーナーが「持ち主」のまま残らないか（★穴23 / 2026-11-01）
+-- ----------------------------------------------------------------------------
+-- tenants.owner_user_id で「オーナーか」を見ている所（ジムの設定の更新・インストラクターの招待コード・インストラクターを外す・
+-- tenant_members の INSERT ポリシーの owner の枝）は多い。引き継ぎの関数がこの列を移さないと、元オーナーが設定を変え続けられ、
+-- 新オーナーに外されても owner として入れ直せる。
+--
+-- 1行目: 引き継ぎの関数が owner_user_id も移しているか（関数が無ければ出ない）
+-- 2行目以降: owner_user_id が「そのジムの有効なオーナー」と食い違っているジム（メンバーが0人の空のジムは数えない）
+-- ★ が出たら開いている。直し方は supabase/migrations/20261101060000_transfer_ownership_updates_owner.sql
+
+SELECT
+  '引き継ぎの関数が持ち主（owner_user_id）も移す' AS item,
+  CASE WHEN p.prosrc ~* 'UPDATE\s+public\.tenants\s+SET\s+owner_user_id' THEN 'OK'
+       ELSE '★要対応: 引き継いでも元オーナーが持ち主のまま残る' END AS verdict
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
+WHERE p.proname = 'transfer_gym_ownership'
+UNION ALL
+SELECT
+  'ジム ' || t.id::text,
+  '★要対応: owner_user_id がそのジムの有効なオーナーではない（元オーナーが設定を変えられる・owner として入れ直せる）'
+FROM public.tenants t
+WHERE t.owner_user_id IS NOT NULL
+  AND EXISTS (SELECT 1 FROM public.tenant_members m WHERE m.tenant_id = t.id)
+  AND NOT EXISTS (
+    SELECT 1 FROM public.tenant_members m
+     WHERE m.tenant_id = t.id AND m.user_id = t.owner_user_id
+       AND m.role = 'owner' AND m.status = 'active'
+  );
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

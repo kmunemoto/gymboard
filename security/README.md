@@ -80,6 +80,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 13 | オーナーが自分のジムのプラン・上限を API で書き換えられないか（★穴14。列単位の REVOKE は効いていないことがある） |
 | 14 | お客様が自分の契約の列（プラン・起算日）を書き換えられないか（★穴21。自分でジムを作るだけで「スタッフ」になれる） |
 | 15 | お客様が予約の印（source）を偽ったり、自分の予約の日時を API で動かしたりできないか（★穴22。満枠の検査は INSERT のときだけ） |
+| 16 | オーナーを引き継いだあと、元オーナーが「持ち主」のまま残らないか（★穴23。owner_user_id で判定している所が多い） |
 
 **検査2 が本命です。** 検査1 はジムボードで見つかったテーブルを名指しで見るだけですが、
 検査2 は**そのアプリで独自に増えたテーブル**も見つけます。
@@ -115,6 +116,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 14 | ジムの課金・契約の列を画面から書き換えさせない（と、運営だけの課金の印） | `supabase/migrations/20261031090000_billing_flags_and_tenant_billing_guard.sql` |
 | 21 | お客様の契約の列（プラン・起算日）を本人・他のジムから書き換えさせない | `supabase/migrations/20261101040000_profile_plan_guard_scope.sql` |
 | 22 | 予約の source='salute_sync' を画面から付けさせない・お客様に予約の枠を決める列を変えさせない | `supabase/migrations/20261101050000_booking_customer_update_guard.sql` |
+| 23 | オーナーの引き継ぎで、ジムの持ち主（owner_user_id）も新オーナーへ移す | `supabase/migrations/20261101060000_transfer_ownership_updates_owner.sql` |
 
 SQL は `to_regclass` / `to_regprocedure` ガードが入っているので、
 対象が無い環境でも止まりません。
@@ -501,6 +503,19 @@ BEFORE INSERT OR UPDATE のトリガー（**SECURITY INVOKER**。`current_user` 
 🔴 **`20260625100000` をそのまま流さないでください。** 同じファイルの問診の部分も未適用のままで、流すと問診のポリシーが古い形に戻ります。
 **流す前に、自分のアプリのお客様が予約の行をどう UPDATE しているか確かめてください**（ジムボードは status と trainer_note だけ。
 日時の変更は「消して作る」。`src/test/bookingCustomerUpdateGuard.test.ts` が見張っています）。
+
+---
+
+## 穴23: オーナーを引き継いでも、元オーナーが「持ち主」のまま残ります（2026-11-01 追加）
+
+引き継ぎの関数（`transfer_gym_ownership`）が `tenant_members` の役割だけを入れ替え、`tenants.owner_user_id` を元オーナーのまま残していました。
+`owner_user_id` で「オーナーか」を見ている所が多いので、元オーナー（インストラクターになったはずの人）がジムの設定を変え続けられ、
+インストラクターの招待コードも取れました。新オーナーに外されても、`tenant_members` の INSERT ポリシーの owner の枝
+（「`owner_user_id` が自分のジムなら owner として入れる」）で、フル権限のオーナーとして戻れました（全お客様の情報が見える）。
+
+診断は `security/check.sql` の**検査16**。直し方は `supabase/migrations/20261101060000_transfer_ownership_updates_owner.sql`
+（役割を入れ替えたあと `UPDATE tenants SET owner_user_id = 新オーナー`。SECURITY DEFINER の中なので、tenants の門番は通ります）。
+すでに引き継ぎをしたジムがあれば、検査16 の2行目以降に出ます。そのジムは `owner_user_id` を有効なオーナーに直してください。
 
 ---
 

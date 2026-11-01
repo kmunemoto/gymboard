@@ -104,8 +104,13 @@ describe("🔴 後のマイグレーションが戻していない（最後の�
     "_owner_staff_invite_code", "lookup_tenant_by_staff_invite_code",
     "join_tenant_as_staff_with_invite_code", "transfer_gym_ownership",
   ])("%s", (name) => {
+    // transfer_gym_ownership は 2026-11-01 に tenants.owner_user_id も移すように定義し直した
+    // （transferGymOwnership.test.ts が、ここの守りが新しい定義にも残っていることを見張る）
+    const latest: Record<string, string> = {
+      transfer_gym_ownership: "20261101060000_transfer_ownership_updates_owner.sql",
+    };
     const last = files.filter((f) => stripSql(read(`supabase/migrations/${f}`)).includes(`CREATE OR REPLACE FUNCTION public.${name}(`)).pop();
-    expect(last).toBe(MIGRATION);
+    expect(last).toBe(latest[name] ?? MIGRATION);
   });
 });
 

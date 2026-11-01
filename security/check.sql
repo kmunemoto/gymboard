@@ -698,6 +698,41 @@ WHERE EXISTS (
 
 
 -- ----------------------------------------------------------------------------
+-- 検査14: お客様が自分の契約の列（プラン・起算日）を書き換えられないか（★穴21 / 2026-11-01）
+-- ----------------------------------------------------------------------------
+-- 契約の列（plan・cycle_start_date など）が profiles にあって全部のジムで共通なアプリ向け。
+-- 本人の行を「どこかのジムのスタッフなら素通し」にしていると、お客様が自分でジムを1つ作るだけで
+-- （tenants の INSERT は誰でもできる）、元のジムのお客様のまま回数の上限と入金の確認をすり抜けられる。
+-- 2つ目のアカウントのジムに1つ目を入れれば、店の側からも書き換えられる。
+--
+-- ★ が出たら開いている。直し方は
+--   supabase/migrations/20261101040000_profile_plan_guard_scope.sql
+-- ⚠️ 関数名・列名が違うアプリは読み替えること（関数が無ければ何も出ない）。確かめるなら、お客様を演じて
+--    UPDATE profiles SET cycle_start_date = NULL を自分の行に試すのが確実（最後に RAISE で戻すこと）。
+
+SELECT
+  c.rule,
+  CASE
+    WHEN f.prosrc ~* c.pattern THEN 'OK'
+    ELSE '★要対応: ' || c.risk
+  END AS verdict
+FROM pg_proc f
+JOIN pg_namespace n ON n.oid = f.pronamespace AND n.nspname = 'public'
+CROSS JOIN (VALUES
+  ('本人の素通しは、お客様の所属が無いスタッフだけ',
+   'NOT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+public\.tenant_members\s+c\s+WHERE\s+c\.user_id\s*=\s*v_actor\s+AND\s+c\.role\s*=\s*''customer''',
+   '自分でジムを作ったお客様が、自分の契約を書き換えられる'),
+  ('本人は起算日を消せない',
+   'NEW\.cycle_start_date\s+IS\s+NULL',
+   'お客様が起算日を消して、入金の確認をすり抜けられる'),
+  ('他のジムにも通うお客様の契約は、店から変えない',
+   'c\.user_id\s*=\s*NEW\.user_id\s+AND\s+c\.role\s*=\s*''customer''\s+AND\s+c\.status\s*=\s*''active''',
+   '2つ目のアカウントのジムを経由して、契約を書き換えられる')
+) AS c(rule, pattern, risk)
+WHERE f.proname = 'guard_profile_plan_fields';
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

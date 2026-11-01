@@ -1619,6 +1619,7 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 `20261101090000_contact_urls_and_line_id_guard.sql`。本番（2026-11-01・3段構え）: 適用前は「オーナーが javascript: を入れられる・お客様も
 オーナーも LINE ID を書き換えられる」（穴が実在）、適用後は 23514／42501 で拒否、https の URL・連携の解除・サーバー側（service_role）の
 連携は通る（7通りを期待値と突き合わせて適用）。制約は3つとも VALIDATE 済み、試した値は残っていない。
+本番反映（#488）: Web の Publish（openExternalUrl の確認）は `index-C25xZ5rc.js` → `index-C7fVvKY4.js` で確かめた。ネイティブは次のビルドから。
 
 ---
 

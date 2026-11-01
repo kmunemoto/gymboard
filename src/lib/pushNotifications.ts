@@ -65,6 +65,9 @@ export async function requestNativePermission(): Promise<NotificationPermission>
   return toPermission(p.receive);
 }
 
+/** この端末で最後に保存したトークン（ログアウトのときに、この端末の行だけを消すため）。 */
+let lastSavedToken: string | null = null;
+
 /** この端末のトークンを push_devices に保存（端末ごとに upsert）。 */
 async function upsertDevice(
   userId: string,
@@ -80,7 +83,51 @@ async function upsertDevice(
     },
     { onConflict: "user_id,fcm_token" },
   );
+  if (!error) lastSavedToken = token;
   return { error };
+}
+
+/**
+ * ログアウトの前に、この端末の通知の登録を消す（2026-11-01・点検の拡大 push-logout-1）。
+ *
+ * 共用の端末（受付のタブレット・家族の端末・受付の PC）で、ログアウトした人宛ての通知（お客様の名前・予約日時・
+ * チャットの冒頭）が出続けないようにする。🔴 ログアウトした後は RLS で自分の行も消せないので、必ず signOut の前に呼ぶ。
+ * - ネイティブ: この端末のトークンの行だけを消す（他の端末の登録は残す）
+ * - Web: この端末の購読を解除して、その行を消す（次にログインした人は設定で通知を入れ直す）
+ * 失敗してもログアウトは止めない（例外は投げない）。
+ * 同じ端末で別の人がログインしたときの前の人の行は、DB のトリガーが消す（20261101080000。古いアプリにも効く）。
+ */
+export async function forgetThisDeviceForPush(userId: string): Promise<void> {
+  try {
+    if (isNativePush()) {
+      let token = lastSavedToken;
+      if (!token && nativePlatform() === "ios") {
+        const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
+        token = (await FirebaseMessaging.getToken()).token || null;
+      }
+      if (token) {
+        await supabase.from("push_devices").delete().eq("user_id", userId).eq("fcm_token", token);
+      }
+      lastSavedToken = null;
+      await detachNativeListeners();
+      return;
+    }
+    const sw = typeof navigator === "undefined" ? undefined : navigator.serviceWorker;
+    if (!sw) return;
+    // ready は Service Worker が無いと永久に待つので、getRegistration で見る
+    const registration = await sw.getRegistration();
+    const subscription = await registration?.pushManager?.getSubscription();
+    if (!subscription) return;
+    const endpoint = subscription.endpoint;
+    await supabase.from("push_subscriptions").delete().eq("user_id", userId).eq("endpoint", endpoint);
+    try {
+      await subscription.unsubscribe();
+    } catch {
+      /* 解除に失敗しても、行は消したのでこの人宛てには送られない */
+    }
+  } catch (e) {
+    console.warn("[Push] forgetThisDeviceForPush failed:", e);
+  }
 }
 
 /** 通知設定の既定行を用意（無ければ作成）。 */

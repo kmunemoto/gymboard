@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { forgetThisDeviceForPush } from "@/lib/pushNotifications";
 
 type AppRole = "customer" | "trainer";
 
@@ -106,6 +107,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    // この端末の通知の登録を先に消す（2026-11-01・push-logout-1）。共用の端末に、ログアウトした人宛ての通知
+    // （お客様の名前・予約日時・チャットの冒頭）が出続けないように。ログアウト後は RLS で消せないので、必ず前に。
+    // 待つのは最大2秒（通信が詰まってもログアウトは止めない）。
+    const uid = user?.id ?? session?.user?.id;
+    if (uid) {
+      await Promise.race([
+        forgetThisDeviceForPush(uid),
+        new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+      ]);
+    }
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);

@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { useTenant } from "@/hooks/useTenant";
+import { isAllowedOAuthReturn, isStaffRole, oauthReturnHost } from "@/lib/oauthConsent";
 
 // 型定義（supabase.auth.oauth はベータのため明示的にラップする）
 type OAuthNamespace = {
   getAuthorizationDetails: (id: string) => Promise<{
     data: {
       client?: { name?: string; logo_uri?: string } | null;
+      /** 連携先の登録済みの戻り先（同意が要るとき） */
+      redirect_uri?: string | null;
       redirect_url?: string | null;
       redirect_to?: string | null;
     } | null;
@@ -30,6 +33,7 @@ const oauth = (supabase.auth as unknown as { oauth: OAuthNamespace }).oauth;
 
 interface AuthDetails {
   client?: { name?: string; logo_uri?: string } | null;
+  redirect_uri?: string | null;
 }
 
 export default function OAuthConsent() {
@@ -38,7 +42,7 @@ export default function OAuthConsent() {
   const [details, setDetails] = useState<AuthDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { tenant } = useTenant();
+  const { tenant, role } = useTenant();
   const gymName = tenant?.gym_name ?? "";
 
   useEffect(() => {
@@ -62,6 +66,11 @@ export default function OAuthConsent() {
       }
       const immediate = data?.redirect_url ?? data?.redirect_to;
       if (immediate && !data?.client) {
+        // 🔴 戻り先は https（または手元の PC）だけ。javascript: などへは進まない（2026-11-01）
+        if (!isAllowedOAuthReturn(immediate)) {
+          setError("連携先の URL が正しくありません。");
+          return;
+        }
         window.location.href = immediate;
         return;
       }
@@ -86,6 +95,11 @@ export default function OAuthConsent() {
     if (!target) {
       setBusy(false);
       setError("認可サーバーからのリダイレクト先がありませんでした。");
+      return;
+    }
+    if (!isAllowedOAuthReturn(target)) {
+      setBusy(false);
+      setError("連携先の URL が正しくありません。");
       return;
     }
     window.location.href = target;
@@ -116,6 +130,9 @@ export default function OAuthConsent() {
   // 連携先はログイン中のお客様が所属するジム。以前は特定ジム名が直書きされており、
   // どのジムのお客様にも「Salute御所南のデータ」と表示されていた。
   const dataOwnerName = gymName || "ご利用中のジム";
+  // 🔴 名前は誰でも名乗れる（動的なクライアント登録が開いている）。見せるべきは戻り先のドメイン（2026-11-01）。
+  const returnHost = oauthReturnHost(details.redirect_uri);
+  const staff = isStaffRole(role);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
@@ -125,12 +142,22 @@ export default function OAuthConsent() {
             <h1 className="text-xl font-semibold break-all">
               「{clientName}」をアカウントに連携しますか？
             </h1>
-            <p className="text-sm text-muted-foreground">
-              このアプリがあなたとして{dataOwnerName}のデータ（予約・プロフィール・測定履歴）を読み取れるようになります。
+            <p className="text-sm">
+              連携先: <span className="font-mono font-semibold break-all">{returnHost ?? "（不明な連携先）"}</span>
             </p>
+            <p className="text-sm text-muted-foreground">
+              許可すると、このアプリがあなたとして{dataOwnerName}のデータ（予約・プロフィール・測定履歴など）を読み書きできるようになります。
+              ご自身で始めた連携でなければ「拒否する」を押してください。
+            </p>
+            {staff && (
+              <p className="text-sm font-semibold text-destructive">
+                オーナー・インストラクターのアカウントです。許可すると、このアプリがジムのお客様全員の情報に届きます。
+                運営やジムを名乗る連絡で頼まれても、心当たりが無ければ許可しないでください。
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-2">
-            <Button disabled={busy} onClick={() => decide(true)}>
+            <Button disabled={busy || !returnHost} onClick={() => decide(true)}>
               許可する
             </Button>
             <Button variant="outline" disabled={busy} onClick={() => decide(false)}>

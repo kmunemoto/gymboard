@@ -1606,6 +1606,28 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴27（medium）: AI 連携（OAuth）の同意画面で、偽の「ジムボード」アプリにオーナーのトークンを渡させられた（2026-11-01・点検の拡大で発見）
+
+Lovable の AI 連携（MCP。supabase/functions/mcp は @lovable.dev/mcp-js が src/lib/mcp から生成）のため、Supabase Auth の OAuth サーバーが
+有効で、**動的なクライアント登録も開いている**（本番の /auth/v1/.well-known/oauth-authorization-server に registration_endpoint がある。
+2026-11-01 に確かめた）。誰でも client_name「ジムボード」・戻り先が自分のサーバーのアプリを登録し、オーナーに
+「AI 連携の設定をお願いします」と認可のリンクを踏ませられる。本物のドメインの同意画面（/.lovable/oauth/consent）は
+「このアプリが…を**読み取れる**ようになります」とだけ出し、戻り先のドメインを出していなかった。許可されると、そのアプリに
+**オーナーとして読み書きできる**アクセストークン＋リフレッシュトークンが渡る（MCP の3つの道具だけでなく、PostgREST を何でも叩ける）。
+本番の oauth_clients・oauth_consents・oauth_authorizations は全部0件（まだ誰も使っていない・悪用の跡も無い）。
+
+直し方（画面。Web だけの経路なので Publish で届く）: `src/lib/oauthConsent.ts`。
+- 連携先として**戻り先のドメイン**を出す（名前は誰でも名乗れる）。分からなければ「許可する」を押せない
+- 「読み書きできるようになります」と正しく書き、オーナー・インストラクターには「ジムのお客様全員の情報に届く」警告を出す
+- 戻り先が https（または手元の PC の http://localhost）でなければ進まない（javascript: などを止める）
+
+⚠️ **残り（宗本さんの判断）**: 根本は、使っていないなら動的なクライアント登録（または OAuth サーバーごと）を止めること。止めると、
+Claude などからジムのデータを見る AI 連携は（必要なクライアントを手で登録するまで）使えなくなる。
+もう1段の守りとして、OAuth で出したトークン（client_id の入った JWT）には、MCP が使う3表の自分の行の SELECT だけを許す
+RESTRICTIVE ポリシーを全表に足す案もある（通常のアプリのトークンに client_id が無いことを本番の JWT で確かめてから）。
+
+---
+
 ## 穴26（medium）: ログアウトしても端末の通知の登録が消えず、共用の端末に前の人宛ての通知が出続けた（2026-11-01・点検の拡大で発見）
 
 通知の宛先は push_devices（ネイティブの FCM トークン）・push_subscriptions（Web の購読）に「人 × 端末」で入る。ログアウト（signOut）は
@@ -1640,6 +1662,8 @@ send-line-message は、画面からの他人宛てを「同じジムに active 
 （`_shared/lineRecipients.ts` の mayLineMessage。スタッフ → お客様、お客様 → スタッフ。お客様同士は不可）。フラグが ON だった頃の
 古いアプリの送り先（予約・キャンセルの店への連絡、代理予約のお客様への連絡、自分宛て）はすべてこの中に入る。
 `x-gymboard-build` を付けた（デプロイの確認用）。
+本番反映（#485）: Lovable にデプロイを頼み、send-line-message の 401 に `x-gymboard-build: 2026-11-01-line-recipients` が付くことを
+確かめた（対照の send-transactional-email は `2026-11-01-email-tenant` のまま）。
 
 ---
 

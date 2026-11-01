@@ -28,6 +28,9 @@
 //     22:30 閉店の店の 21:15・21:30 の枠を断っていた）
 //   - 同一メールアドレスの予約は 24時間で3件まで (キャンセル済みは数えない)
 //   - テナント全体で 1時間に20件まで (メール差し替えによる回数制限回避への防御)
+//   - 同じメールアドレスは全部のジムを合わせて 24時間で5件まで・1つのジムは 24時間で60件まで（確認メールの中継の上限。
+//     ../_shared/guestBooking.ts。2026-11-01 点検 trial-book-1）
+//   - お名前に URL・メールアドレス・改行・見た目を偽る制御文字は使えない（メール・公式 LINE・カレンダーにそのまま入るため）
 //   - 時間帯の重複は BEFORE INSERT の check_booking_overlap トリガーが最終防衛
 //
 // 通知 (service_role で並列送信・各10秒タイムアウト・結果を response の notify に記録):
@@ -43,6 +46,9 @@ import {
   LEGACY_GUEST_WINDOW_DAYS, isListedStart, jstDateKey, normalizeWindowDays, resolveDayBusinessMinutes,
   shiftDayMinutes, trialBookingLabel, trialMaxAheadMs, trialWindowAnchorMs, type OperatingHours, type ShiftRow,
 } from "../_shared/trialRules.ts";
+import {
+  RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
+} from "../_shared/guestBooking.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,10 +75,13 @@ const CANCELLED = "キャンセル済み";
 
 const GENERIC_ERROR = "サーバーで問題が発生しました。時間をおいて再度お試しください。";
 
+// デプロイの確かめ用（何も送らない呼び方で、新しいコードが動いているかを見る。mem/ops/edge-function-deploy.md）
+const BUILD = "2026-11-01-guest-name";
+
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body, null, 2), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "x-gymboard-build": BUILD },
   });
 }
 
@@ -149,7 +158,10 @@ Deno.serve(async (req) => {
 
     if (!UUID_RE.test(tenantId)) return reject("validation", "ジムの指定が正しくありません。");
     if (menuId && !UUID_RE.test(menuId)) return reject("validation", "メニューの指定が正しくありません。");
-    if (!guestName || guestName.length > 100) return reject("validation", "お名前を入力してください。");
+    // お名前はメール・公式 LINE・カレンダーにそのまま入る。URL・メールアドレス・改行は受け付けない（2026-11-01 点検 trial-book-1/2）
+    const nameProblem = guestNameProblem(guestName);
+    if (nameProblem === "empty" || nameProblem === "too_long") return reject("validation", "お名前を入力してください。");
+    if (nameProblem) return reject("validation", "お名前に URL・メールアドレス・改行は使えません。お名前だけを入力してください。");
     if (!EMAIL_RE.test(guestContact) || guestContact.length > 255) {
       return reject("validation", "正しいメールアドレスを入力してください。");
     }
@@ -278,6 +290,27 @@ Deno.serve(async (req) => {
       .gte("created_at", since1h);
     if (tlErr) return fail("rate_limit_tenant", tlErr.message);
     if ((tenantCount ?? 0) >= RATE_LIMIT_PER_TENANT_1H) {
+      return reject("rate_limited", "ただいま予約が集中しています。しばらく時間をおいてから再度お試しいただくか、ジムへ直接ご連絡ください。");
+    }
+
+    // (3) 同じメールアドレスは、全部のジムを合わせて24時間に5件まで（ジムを替えて同じ人に確認メールを送り続けさせない）
+    const { count: contactAllCount, error: caErr } = await admin
+      .from("trial_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("guest_contact", guestContact)
+      .gte("created_at", since24h);
+    if (caErr) return fail("rate_limit_contact_all", caErr.message);
+    if ((contactAllCount ?? 0) >= RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H) {
+      return reject("rate_limited", "短時間に複数のご予約をいただいたため受付を制限しています。お手数ですがジムへ直接ご連絡ください。");
+    }
+    // (4) 1つのジムは24時間に60件まで（1つのジムから正規のドメインのメールを大量に送らせない）
+    const { count: tenantDayCount, error: tdErr } = await admin
+      .from("trial_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .gte("created_at", since24h);
+    if (tdErr) return fail("rate_limit_tenant_day", tdErr.message);
+    if ((tenantDayCount ?? 0) >= RATE_LIMIT_PER_TENANT_24H) {
       return reject("rate_limited", "ただいま予約が集中しています。しばらく時間をおいてから再度お試しいただくか、ジムへ直接ご連絡ください。");
     }
 

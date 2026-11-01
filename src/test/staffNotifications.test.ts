@@ -311,7 +311,8 @@ describe("Edge Function（ソース）", () => {
     expect(SUMMARY).toContain("const mine = items.filter((i) => i.staff === inst);");
     expect(SUMMARY).toContain("if (mine.length === 0) continue;");
     expect(SUMMARY).toContain("const instKey = `daily-summary-${t.id}-${inst}-${dateKey}`;");
-    expect(SUMMARY).toContain("body: { user_ids: [inst], title: `本日の担当（${mine.length}件）`, body: lines.join(\"\\n\"), url: \"/\", tag: instKey },");
+    // 本文は send-push-notification の上限（500）以内に切ってから送る（2026-11-01 点検 daily-trainer-summary-1・guestBookingGuard.test.ts）
+    expect(SUMMARY).toContain("body: { user_ids: [inst], title: `本日の担当（${mine.length}件）`, body: clipPushBody(lines.join(\"\\n\")), url: \"/\", tag: instKey },");
     // 店の分（オーナー・スタッフ）にはインストラクターを入れない
     expect(SUMMARY).toContain('.neq("staff_access", "limited");');
     // 体験は担当を持たない（先生の分に混ざらない）
@@ -320,7 +321,7 @@ describe("Edge Function（ソース）", () => {
 
   it("朝の本日の予定: メニューが2つ以上ある店だけ、行にメニュー名を添える（menuNameOf と同じ規則）", () => {
     expect(SUMMARY).toContain("(menuRows ?? []).length >= 2 ?");
-    expect(SUMMARY).toContain("label: withMenu(nameMap[b.user_id] || \"顧客\", (b.menu_id as string | null) ?? null),");
+    expect(SUMMARY).toContain("label: withMenu(clipSummaryName(nameMap[b.user_id] || \"顧客\"), (b.menu_id as string | null) ?? null),");
   });
 
   it("🔴 体験・ドロップイン・体験のキャンセルの代表もオーナー（trainer 優先に戻さない）", () => {

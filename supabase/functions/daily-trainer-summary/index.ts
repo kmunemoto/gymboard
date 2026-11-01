@@ -11,16 +11,20 @@
 //     担当している予約だけ通知が届く様にして」）。予約メニューが2つ以上ある店は、行にメニュー名を添える
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
+import { clipPushBody, clipSummaryName } from "../_shared/guestBooking.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
+// デプロイの確かめ用（何も送らない呼び方で、新しいコードが動いているかを見る。mem/ops/edge-function-deploy.md）
+const BUILD = "2026-11-01-guest-name";
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "x-gymboard-build": BUILD },
   });
 }
 
@@ -121,10 +125,10 @@ Deno.serve(async (req) => {
       const items: { time: string; label: string; staff: string | null }[] = [
         ...(bookings || []).map((b: any) => ({
           time: fmtTime(b.booking_date),
-          label: withMenu(nameMap[b.user_id] || "顧客", (b.menu_id as string | null) ?? null),
+          label: withMenu(clipSummaryName(nameMap[b.user_id] || "顧客"), (b.menu_id as string | null) ?? null),
           staff: (b.staff_user_id as string | null) ?? null,
         })),
-        ...(trialBookings || []).map((tb: any) => ({ time: fmtTime(tb.booking_date), label: `🆕 ${tb.guest_name || "体験ゲスト"}`, staff: null })),
+        ...(trialBookings || []).map((tb: any) => ({ time: fmtTime(tb.booking_date), label: `🆕 ${clipSummaryName(tb.guest_name || "体験ゲスト")}`, staff: null })),
       ].sort((a, b) => a.time.localeCompare(b.time));
 
       if (items.length === 0) {
@@ -156,7 +160,7 @@ Deno.serve(async (req) => {
       const title = `本日の予定（${items.length}件）`;
       const bodyLines = items.slice(0, MAX_LINES).map((i) => `${i.time} ${i.label}`);
       if (items.length > MAX_LINES) bodyLines.push(`他${items.length - MAX_LINES}件`);
-      const body = bodyLines.join("\n");
+      const body = clipPushBody(bodyLines.join("\n"));
 
       try {
         const { error: pushErr } = await supabase.functions.invoke("send-push-notification", {
@@ -197,7 +201,7 @@ Deno.serve(async (req) => {
         if (mine.length > MAX_LINES) lines.push(`他${mine.length - MAX_LINES}件`);
         try {
           const { error: instErr } = await supabase.functions.invoke("send-push-notification", {
-            body: { user_ids: [inst], title: `本日の担当（${mine.length}件）`, body: lines.join("\n"), url: "/", tag: instKey },
+            body: { user_ids: [inst], title: `本日の担当（${mine.length}件）`, body: clipPushBody(lines.join("\n")), url: "/", tag: instKey },
           });
           if (instErr) console.error(`daily summary push failed instructor tenant=${t.id}:`, instErr);
           else sent++;

@@ -54,9 +54,20 @@ const MemberInviteCard = ({ clientId, invitedAt, onChanged }: Props) => {
       });
       const payload = data as { ok?: boolean; error?: string } | null;
       if (error || !payload?.ok) {
-        const code = payload?.error ?? "";
+        let code = payload?.error ?? "";
+        // 2xx 以外（409・429 など）は data が空で、理由は返事の本文にある
+        const ctx = (error as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+        if (!code && typeof ctx?.json === "function") {
+          try {
+            code = ((await ctx.json()) as { error?: string } | null)?.error ?? "";
+          } catch {
+            /* 本文が読めなければ汎用の文言 */
+          }
+        }
         const key =
           code === "email_taken" ? "dataImport.invite.errEmailTaken"
+          : code === "already_claimed" ? "dataImport.invite.errAlreadyClaimed"
+          : code === "too_many_invites" ? "dataImport.invite.errTooMany"
           : code === "email_suppressed" ? "dataImport.invite.errSuppressed"
           : code === "invalid_email" ? "dataImport.invite.errInvalidEmail"
           : "dataImport.invite.errFailed";

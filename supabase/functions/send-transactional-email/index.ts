@@ -27,10 +27,15 @@ const SENDER_DOMAIN = "notify.kyoto-salute.com"
 // receiving mail server (accepted by Mailgun, dropped by Gmail/etc with no visible error).
 const FROM_DOMAIN = "notify.kyoto-salute.com"
 
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+// Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
+const BUILD = '2026-11-01-log-redact'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
+  'x-gymboard-build': BUILD,
 }
 
 
@@ -55,7 +60,7 @@ function generateToken(): string {
 // 「トレーナーだから信用する」は認可の根拠にならない。所属は tenant_members で見る。
 // 同じ形の穴を send-push-notification でも塞いだ（PR #246）。
 import { verifyCaller } from '../_shared/auth.ts'
-import { maskEmail } from '../_shared/logSafety.ts'
+import { maskEmail, redactTemplateDataForLog } from '../_shared/logSafety.ts'
 
 /** クライアント（お客様・ジムのスタッフの両方）が呼べるテンプレート。 */
 // 残り5種（trial-booking-confirmation / drop-in-booking-confirmation /
@@ -526,7 +531,7 @@ Deno.serve(async (req) => {
       recipient_email: effectiveRecipient,
       status: 'suppressed',
       tenant_id: tenantId,
-      template_data: templateData,
+      template_data: redactTemplateDataForLog(templateData),
     })
 
     console.log('Email suppressed', { recipient: maskEmail(effectiveRecipient), templateName })
@@ -565,7 +570,7 @@ Deno.serve(async (req) => {
       status: 'failed',
       error_message: 'Failed to look up unsubscribe token',
       tenant_id: tenantId,
-      template_data: templateData,
+      template_data: redactTemplateDataForLog(templateData),
     })
     return new Response(
       JSON.stringify({ error: 'Failed to prepare email' }),
@@ -601,7 +606,7 @@ Deno.serve(async (req) => {
         status: 'failed',
         error_message: 'Failed to create unsubscribe token',
         tenant_id: tenantId,
-        template_data: templateData,
+        template_data: redactTemplateDataForLog(templateData),
       })
       return new Response(
         JSON.stringify({ error: 'Failed to prepare email' }),
@@ -632,7 +637,7 @@ Deno.serve(async (req) => {
         status: 'failed',
         error_message: 'Failed to confirm unsubscribe token storage',
         tenant_id: tenantId,
-        template_data: templateData,
+        template_data: redactTemplateDataForLog(templateData),
       })
       return new Response(
         JSON.stringify({ error: 'Failed to prepare email' }),
@@ -657,7 +662,7 @@ Deno.serve(async (req) => {
       error_message:
         'Unsubscribe token used but email missing from suppressed list',
       tenant_id: tenantId,
-      template_data: templateData,
+      template_data: redactTemplateDataForLog(templateData),
     })
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
@@ -755,7 +760,7 @@ Deno.serve(async (req) => {
         status: 'duplicate',
         error_message: `idempotency key already used: ${explicitIdempotencyKey}`,
         tenant_id: tenantId,
-        template_data: templateData,
+        template_data: redactTemplateDataForLog(templateData),
       })
       console.log('Duplicate send suppressed', { templateName, idempotencyKey: explicitIdempotencyKey })
       return new Response(
@@ -777,7 +782,7 @@ Deno.serve(async (req) => {
     recipient_email: effectiveRecipient,
     status: 'pending',
     tenant_id: tenantId,
-    template_data: templateData,
+    template_data: redactTemplateDataForLog(templateData),
   })
 
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
@@ -834,7 +839,7 @@ Deno.serve(async (req) => {
       status: 'failed',
       error_message: 'Failed to enqueue email',
       tenant_id: tenantId,
-      template_data: templateData,
+      template_data: redactTemplateDataForLog(templateData),
     })
 
     return new Response(JSON.stringify({ error: 'Failed to enqueue email' }), {

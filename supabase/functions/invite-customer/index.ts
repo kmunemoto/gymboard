@@ -27,9 +27,17 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyCaller } from "../_shared/auth.ts";
 
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+// Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
+const BUILD = "2026-11-01-invite-claimed";
+
+/** 1つのジムが24時間に送れる招待メールの数（2026-11-01 点検 invite-customer-2） */
+const INVITE_DAILY_LIMIT = 100;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-gymboard-build": BUILD,
 };
 
 // 唯一の宣言は src/lib/brand.ts の PRODUCTION_WEB_ORIGIN（Deno からは import できない）
@@ -109,6 +117,33 @@ Deno.serve(async (req) => {
     if (authUser.user.user_metadata?.imported !== true) {
       return json({ error: "not_imported" }, 409);
     }
+
+    // 🔴 本人（か誰か）が一度でもログインしたアカウント・Google／Apple がつながったアカウントは触らない
+    //    （2026-11-01 点検 invite-customer-1）。claimed_at は profiles の列で、オーナーが API で消せた
+    //    （いまは DB の門番 trg_guard_profile_claim_fields で止めている）。消して呼び直すと、本人が使っている
+    //    アカウントのメールを攻撃者のアドレスに替え、パスワード設定リンクを受け取って乗っ取れた。
+    //    auth 側の事実（最後のログイン・つながっているログイン手段）で見る。まだ誰も来ていない宛先の打ち直しは今まで通り。
+    const hasOtherLogin = (authUser.user.identities ?? []).some((i) => i.provider !== "email");
+    if (authUser.user.last_sign_in_at || hasOtherLogin) {
+      return json({ error: "already_claimed" }, 409);
+    }
+
+    // 招待メールの送りすぎを止める（2026-11-01 点検 invite-customer-2）。ジムは誰でも開けるので、
+    // 取り込みのアカウントを宛先だけ替えて招待し直すと、正規の送信元から好きなアドレスへ何通でも送れた。
+    // 1つのジムで24時間に INVITE_DAILY_LIMIT 通まで（一度に取り込んだお客様をまとめて招待するのには足りる数）
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: sentToday, error: cErr } = await admin
+      .from("email_send_log")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("template_name", "customer-invite")
+      .eq("status", "pending")
+      .gte("created_at", since);
+    if (cErr) {
+      console.error("invite-customer: rate check failed", cErr);
+      return json({ error: "rate_check_failed" }, 500);
+    }
+    if ((sentToday ?? 0) >= INVITE_DAILY_LIMIT) return json({ error: "too_many_invites" }, 429);
 
     // 1) メールを本人のアドレスに差し替える。
     //    email_confirm: true は「店がこの宛先を保証する」の意（招待の意味論そのもの）

@@ -254,7 +254,8 @@ describe("🔴 再送", () => {
     // 残していないと再送しようがない
     const send = readFileSync(SEND, "utf8");
     const pending = send.slice(send.indexOf("status: 'pending'"));
-    expect(pending.slice(0, 200)).toContain("template_data: templateData");
+    // 2026-11-01: ログインの鍵入りの値（招待リンク）だけ伏せて残す（src/test/inviteCustomerClaim.test.ts）
+    expect(pending.slice(0, 200)).toContain("template_data: redactTemplateDataForLog(templateData)");
   });
 
   it("🔴 キューの payload には材料を載せない（重複して持たない）", () => {

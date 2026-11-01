@@ -56,6 +56,11 @@ send-push-notification / send-transactional-email が引き、古いアプリの
 
 公開済みの旧アプリは今までどおり端末からも送ってくる。
 
+> **2026-11-01 追記**: 端末からの new-booking-notification / booking-confirmation は send-transactional-email が
+> 403 で断るようにした（許可リストから外した。ボタンの飛び先と差出人名を偽った店宛ての通知を送れたため。
+> `mem/ops/tenant-boundary.md` 穴20）。本番の過去30日で端末発（duplicate の行）は0通、送っているのはサーバーだけだった。
+> 下の冪等キーの話は、サーバー同士（notify-new-booking・trial-book など）の重複排除として今も生きている。
+
 - **メール**: send-transactional-email に notification_dedupe による重複排除を追加
   （キー `email:<idempotencyKey>`、INSERT の 23505 で先勝ち判定）。サーバーと旧アプリは
   **同じキー**（`booking-notify-<id>` / `booking-confirm-customer-<id>`）を名乗るので

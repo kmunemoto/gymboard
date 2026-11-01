@@ -29,7 +29,12 @@ const FROM_DOMAIN = "notify.kyoto-salute.com"
 
 // どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
 // Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
-const BUILD = '2026-11-01-log-redact'
+const BUILD = '2026-11-01-email-tenant'
+
+// 画面（service_role 以外）から来たメールのボタンの飛び先。Edge Function（Deno）は src/lib/brand.ts を
+// import できないので写しを置いている（notify-new-booking・invite-customer と同じ扱い）。
+// 唯一の宣言は src/lib/brand.ts の PRODUCTION_WEB_ORIGIN。
+const PRODUCTION_WEB_ORIGIN = 'https://app.kyoto-salute.com'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,16 +66,22 @@ function generateToken(): string {
 // 同じ形の穴を send-push-notification でも塞いだ（PR #246）。
 import { verifyCaller } from '../_shared/auth.ts'
 import { maskEmail, redactTemplateDataForLog } from '../_shared/logSafety.ts'
+import { pickVerifiedTenant, serverDecidedTemplateData, uniqueTenantsOrNull } from '../_shared/emailClientGuard.ts'
 
 /** クライアント（お客様・ジムのスタッフの両方）が呼べるテンプレート。 */
-// 残り5種（trial-booking-confirmation / drop-in-booking-confirmation /
-// new-account-notification / trial-booking-reminder / booking-reminder）は
+// 残り（trial-booking-confirmation / drop-in-booking-confirmation /
+// new-account-notification / trial-booking-reminder / booking-reminder / customer-invite ほか）は
 // service_role 専用。実際に呼んでいるのも Edge Function だけであることを
 // 2026-08-04 に全走査して確認済み（src/ と supabase/functions/ の両方）。
+//
+// 🔴 booking-confirmation と new-booking-notification は 2026-11-01 に外した
+//    （点検の拡大 send-transactional-email-link-1）。どちらも予約の INSERT のトリガー →
+//    notify-new-booking（service_role）が DB の内容から送っている。画面から送れると、お客様が店の
+//    スタッフ宛てに、ボタンの飛び先（dashboardUrl）と差出人名を好きに変えた「新しい予約が入りました」を
+//    正規のドメインから送れた（オーナーのパスワードを狙うフィッシング）。
+//    本番の過去30日: 確認メール192通・店宛216通がすべてサーバー発で、画面発（duplicate の行）は0通。
 const CLIENT_ALLOWED_TEMPLATES = new Set([
-  'booking-confirmation',
   'booking-cancellation',
-  'new-booking-notification',
   // 店が既存の予約のオプションを変えたときのお知らせ。宛先はそのジムの在籍者だけ
   // （下の allow 判定が tenant_members で見る）ので、宛先の自由入力にはならない。
   'booking-option-changed',
@@ -162,6 +173,9 @@ async function bookingStaffOf(
  *
  * 判断の軸は「呼び出し元と宛先が**同じジムに属しているか**」だけ。
  * ロールでゲートを丸ごと開けない（それが今回塞いだ穴）。
+ *
+ * 戻り値: 送ってよいなら「この送信を正当化するジム」（1つ以上）、だめなら null。
+ * どのジムの送信履歴に載せるか（tenantId）は、この中からしか選ばない（pickVerifiedTenant）。
  */
 async function authorizeClientCall(
   admin: ReturnType<typeof createClient>,
@@ -171,33 +185,35 @@ async function authorizeClientCall(
     recipientEmail: string
     templateData: { trainerUserId?: unknown; resolveUserId?: unknown }
   },
-): Promise<boolean> {
-  if (!CLIENT_ALLOWED_TEMPLATES.has(body.templateName)) return false
+): Promise<string[] | null> {
+  if (!CLIENT_ALLOWED_TEMPLATES.has(body.templateName)) return null
 
   const mine = await loadMemberships(admin, caller.userId)
-  if (mine.length === 0) return false // どのジムにも属していない＝送る相手がいない
+  if (mine.length === 0) return null // どのジムにも属していない＝送る相手がいない
   const myTenants = new Set(mine.map((m) => m.tenantId))
   const myStaffTenants = new Set(mine.filter((m) => m.isStaff).map((m) => m.tenantId))
 
   // (1) ジムのスタッフ宛（お客様→自分のジム、スタッフ→自分のジム）。
   //     宛先は「呼び出し元と同じジムの、現役スタッフ」でなければならない。
+  //     正当化するジム = 宛先がスタッフをしているジム ∩ 呼び出し元の在籍ジム
   if (body.recipientEmail === '_resolve_trainer_') {
     const target = body.templateData.trainerUserId
-    if (typeof target !== 'string') return false
+    if (typeof target !== 'string') return null
     const theirs = await loadMemberships(admin, target)
-    return theirs.some((m) => m.isStaff && myTenants.has(m.tenantId))
+    return uniqueTenantsOrNull(theirs.filter((m) => m.isStaff && myTenants.has(m.tenantId)).map((m) => m.tenantId))
   }
 
   // (2) 個人宛（メールアドレスは Edge Function 側で解決する）。
   //     自分自身か、「自分がスタッフをしているジムの在籍者」なら送ってよい
   //     （ジム側の代理予約・代理キャンセルがこの経路）。
+  //     正当化するジム = 自分宛なら自分の在籍ジム、他人宛なら 自分がスタッフのジム ∩ 宛先の在籍ジム
   if (body.recipientEmail === '_resolve_user_') {
     const target = body.templateData.resolveUserId
-    if (typeof target !== 'string') return false
-    if (target === caller.userId) return true
-    if (myStaffTenants.size === 0) return false
+    if (typeof target !== 'string') return null
+    if (target === caller.userId) return uniqueTenantsOrNull([...myTenants])
+    if (myStaffTenants.size === 0) return null
     const theirs = await loadMemberships(admin, target)
-    return theirs.some((m) => myStaffTenants.has(m.tenantId))
+    return uniqueTenantsOrNull(theirs.filter((m) => myStaffTenants.has(m.tenantId)).map((m) => m.tenantId))
   }
 
   // (3) 生のメールアドレス指定。**自分宛だけ**に限る。
@@ -205,9 +221,10 @@ async function authorizeClientCall(
   //     それらしいメールを送れる＝フィッシングの踏み台になる。
   //     ジム側が他人に送りたい場合は (2) の _resolve_user_ を使う。
   const callerEmail = caller.email
-  return typeof body.recipientEmail === 'string'
+  const toSelf = typeof body.recipientEmail === 'string'
     && !!callerEmail
     && body.recipientEmail.toLowerCase() === callerEmail.toLowerCase()
+  return toSelf ? uniqueTenantsOrNull([...myTenants]) : null
 }
 
 /**
@@ -271,14 +288,15 @@ Deno.serve(async (req) => {
 
   // service_role（Edge Function 同士の呼び出し）は従来どおり全テンプレートを送れる。
   // 認証済みユーザーからの呼び出しは「同じジムに属しているか」で判断する。
+  // clientTenants: 画面からの呼び出しで、この送信を正当化するジム（tenantId はこの中からしか選ばない）
+  let clientTenants: string[] | null = null
   if (!caller.isServiceRole) {
     // 本体は下で改めて req.json() で読む。ここは判定のための覗き見なので clone する
     // （Request の body は一度しか読めない）。同じバッファなので内容は必ず一致する。
     let peekedBody: any = null
     try { peekedBody = await req.clone().json() } catch { /* ignore */ }
-    let ok = false
     try {
-      ok = await authorizeClientCall(
+      clientTenants = await authorizeClientCall(
         createClient(supabaseUrl, supabaseServiceKey),
         { userId: caller.userId!, email: caller.email },
         {
@@ -291,9 +309,9 @@ Deno.serve(async (req) => {
       // 所属が引けなかったときは**送らない**。ここで握りつぶして通すと、
       // DB が一時的に落ちている間だけ誰でも送れる関数になる。
       console.error('authorizeClientCall failed', e)
-      ok = false
+      clientTenants = null
     }
-    if (!ok) {
+    if (!clientTenants) {
       await logRejected(
         peekedBody?.templateName || peekedBody?.template_name,
         peekedBody?.recipientEmail || peekedBody?.recipient_email,
@@ -320,9 +338,17 @@ Deno.serve(async (req) => {
   let tenantId: string | null = null
   try {
     const body = await req.json()
-    tenantId = typeof body.tenantId === 'string' ? body.tenantId
+    const requestedTenantId = typeof body.tenantId === 'string' ? body.tenantId
       : typeof body.tenant_id === 'string' ? body.tenant_id
       : null
+    // 🔴 画面からの呼び出しは、渡された tenantId をそのまま信じない（点検の拡大 send-transactional-email-tenant-1）。
+    //    この送信を正当化するジムの中にあるときだけ使う（無ければ候補が1つのときだけ、それ以外は NULL）。
+    //    以前は、お客様が自分で作ったジムの ID を入れると、自分のジムのオーナー・先生のログイン用アドレスが
+    //    入った行がそのジムの履歴に書かれ、オーナーとして読めた。古いアプリは booking.tenant_id（共通のジム）か
+    //    null を送ってくるので、正規の送信の載り先は変わらない。
+    tenantId = caller.isServiceRole
+      ? requestedTenantId
+      : pickVerifiedTenant(requestedTenantId, clientTenants ?? [])
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     messageId = crypto.randomUUID()
@@ -375,7 +401,9 @@ Deno.serve(async (req) => {
   //    通知だけ履歴に出ない、という穴がずっと残る。
   //    templateData に載っている user_id からその人の在籍ジムを引く。
   //    2つ以上のジムに在籍している人は決められないので引き当てない（NULL のまま）。
-  if (!tenantId) {
+  // 🔴 service_role の呼び出しだけ。画面からの呼び出しは上の pickVerifiedTenant で決め終わっている
+  //    （ここを通すと、自分宛のメールに他人の user_id を添えて、その人のジムの履歴に行を書けてしまう）。
+  if (!tenantId && caller.isServiceRole) {
     const hintUserId = templateData.resolveUserId || templateData.trainerUserId
     if (typeof hintUserId === 'string' && hintUserId) {
       const { data: rows } = await createClient(supabaseUrl, supabaseServiceKey)
@@ -386,6 +414,30 @@ Deno.serve(async (req) => {
       const ids = [...new Set((rows ?? []).map((r: { tenant_id: string }) => r.tenant_id))]
       if (ids.length === 1) tenantId = ids[0]
     }
+  }
+
+  // 画面からの呼び出しでは、メールの「誰から・どこへ」をサーバーが決める（点検の拡大 send-transactional-email-link-1）。
+  // ボタンの飛び先は本番のオリジン、ジム名（差出人名・本文）とお店からのご案内は、上で確かめたジムの DB の値。
+  // 🔴 下の振り分け直し（先生の写しを service_role で送り直す）より**前**に置く。後ろに置くと、
+  //    写しのほうは service_role の呼び出しになり、画面の値のまま送られる。
+  if (!caller.isServiceRole) {
+    type GymRow = { gym_name: string | null; booking_email_note: string | null }
+    let gym: GymRow | null = null
+    if (tenantId) {
+      const { data, error } = await createClient(supabaseUrl, supabaseServiceKey)
+        .from('tenants')
+        .select('gym_name, booking_email_note')
+        .eq('id', tenantId)
+        .maybeSingle()
+      // 引けなくても送信は止めない（差出人は製品名になり、ご案内は出ない）
+      if (error) console.error('tenant lookup failed', error)
+      gym = (data as GymRow | null) ?? null
+    }
+    templateData = serverDecidedTemplateData(templateData, {
+      appOrigin: PRODUCTION_WEB_ORIGIN,
+      gymName: gym?.gym_name ?? null,
+      gymNote: gym?.booking_email_note ?? null,
+    })
   }
 
   // Resolve effective recipient: template-level `to` takes precedence over
@@ -710,6 +762,7 @@ Deno.serve(async (req) => {
 
 
   // 差出人名: そのジムの名前を優先（テンプレートに gymName が渡っている場合）。
+  // 画面からの呼び出しでは、gymName は上の serverDecidedTemplateData が DB の値に置き換え済み。
   const senderName =
     String((templateData as Record<string, unknown>)?.gymName ?? '').trim() || BRAND_NAME
 
@@ -742,8 +795,12 @@ Deno.serve(async (req) => {
   //    「キャンセル → 同じ枠を取り直す」で確認メールが永久に消える
   //    （体験のお客様はアプリを持たず、メールが唯一の連絡手段）。
   //    ここに足すキーは、必ず予約行の id を含む（＝二度と再利用されない）ものに限ること。
+  // 🔴 予約の対象は service_role の呼び出しだけ（2026-11-01）。この2つのキーを名乗る正規の送信
+  //    （新規予約・受付確認）は、今は notify-new-booking だけが出す。画面から名乗らせると、予約の
+  //    通知を前もって潰したり、送らずに宛先だけ残る duplicate の行を書かせたりできる。
   const DEDUPE_KEY_PREFIXES = ['booking-notify-', 'booking-confirm-customer-']
-  const dedupable = !!explicitIdempotencyKey
+  const dedupable = caller.isServiceRole
+    && !!explicitIdempotencyKey
     && DEDUPE_KEY_PREFIXES.some((p) => explicitIdempotencyKey!.startsWith(p))
   let dedupeReserved = false
   if (dedupable) {

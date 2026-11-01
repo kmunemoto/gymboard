@@ -2167,7 +2167,7 @@
     "roleOwner": "オーナー",
     "removeAria": "{{name}}をこのジムから外す",
     "removeTitle": "インストラクターを外す",
-    "removeConfirm": "{{name}}をこのジムから外します。担当していた予約は「担当なし」に戻ります。予約自体は消えません。",
+    "removeConfirm": "{{name}}をこのジムから外します。担当していた予約は「担当なし」に戻ります。予約自体は消えません。外した人が同じリンクで戻れないよう、インストラクターの招待リンクも新しくなります。",
     "removedToast": "{{name}}を外しました",
     "errorRemove": "インストラクターを外せませんでした",
     "joinPageTitle": "{{brandJa}}",

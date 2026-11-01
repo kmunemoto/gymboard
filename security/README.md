@@ -79,6 +79,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 12 | 予約・チャット・お知らせの1人宛ての相手が、そのジムの人に限られているか（★穴13） |
 | 13 | オーナーが自分のジムのプラン・上限を API で書き換えられないか（★穴14。列単位の REVOKE は効いていないことがある） |
 | 14 | お客様が自分の契約の列（プラン・起算日）を書き換えられないか（★穴21。自分でジムを作るだけで「スタッフ」になれる） |
+| 15 | お客様が予約の印（source）を偽ったり、自分の予約の日時を API で動かしたりできないか（★穴22。満枠の検査は INSERT のときだけ） |
 
 **検査2 が本命です。** 検査1 はジムボードで見つかったテーブルを名指しで見るだけですが、
 検査2 は**そのアプリで独自に増えたテーブル**も見つけます。
@@ -113,6 +114,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 13 | 予約・チャットの相手をそのジムの人に限る | `supabase/migrations/20261031060000_booking_user_must_be_member.sql`・`supabase/migrations/20261031070000_message_receiver_must_be_member.sql` |
 | 14 | ジムの課金・契約の列を画面から書き換えさせない（と、運営だけの課金の印） | `supabase/migrations/20261031090000_billing_flags_and_tenant_billing_guard.sql` |
 | 21 | お客様の契約の列（プラン・起算日）を本人・他のジムから書き換えさせない | `supabase/migrations/20261101040000_profile_plan_guard_scope.sql` |
+| 22 | 予約の source='salute_sync' を画面から付けさせない・お客様に予約の枠を決める列を変えさせない | `supabase/migrations/20261101050000_booking_customer_update_guard.sql` |
 
 SQL は `to_regclass` / `to_regprocedure` ガードが入っているので、
 対象が無い環境でも止まりません。
@@ -480,6 +482,25 @@ BEFORE INSERT OR UPDATE のトリガー（**SECURITY INVOKER**。`current_user` 
 
 **流す前に、自分のアプリが本人の起算日をどう書いているか確かめてください**（ジムボードは予約を入れた直後に、その予約の日付を入れる。
 `src/test/profilePlanGuard.test.ts` が見張っています）。根本は、契約の列を所属（`tenant_members`）ごとに持つことです。
+
+---
+
+## 穴22: お客様が予約の印を偽って満枠などの検査を飛ばせます・自分の予約の日時を API で動かせます（2026-11-01 追加）
+
+満枠・ブロック枠・休みの日・メニュー・限定オプションの検査（トリガー）に「`source = 'salute_sync'`（昔の Salute 同期の印）なら素通し」が
+入っています。塞ぐはずのポリシー（`20260625100000` の `no_client_salute_source_insert`）がジムボードの本番には入っておらず、
+お客様が `source: "salute_sync"` を付けて予約を作ると全部すり抜けました。また、満枠の検査（`check_booking_overlap`）は INSERT のときだけ
+動くので、お客様が自分の予約を UPDATE できると（当日の消化のために開けてある）、日時を満枠の時間へ動かせました（1枠に2人）。
+
+診断は `security/check.sql` の**検査15**。直し方は `supabase/migrations/20261101050000_booking_customer_update_guard.sql`:
+
+- INSERT に RESTRICTIVE のポリシー（anon・authenticated は `source = 'salute_sync'` を付けられない）
+- 予約の UPDATE の門番（`enforce_booking_update_guard`）で、お客様（その予約のジムのスタッフでない人）は日時・ジム・本人・プラン・source・
+  担当・メニュー・オプションを変えられない。店が取り消した予約も戻せない
+
+🔴 **`20260625100000` をそのまま流さないでください。** 同じファイルの問診の部分も未適用のままで、流すと問診のポリシーが古い形に戻ります。
+**流す前に、自分のアプリのお客様が予約の行をどう UPDATE しているか確かめてください**（ジムボードは status と trainer_note だけ。
+日時の変更は「消して作る」。`src/test/bookingCustomerUpdateGuard.test.ts` が見張っています）。
 
 ---
 

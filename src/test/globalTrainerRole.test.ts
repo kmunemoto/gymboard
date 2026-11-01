@@ -219,9 +219,15 @@ describe("穴11: 印（グローバルな trainer ロール）でスタッフ扱
 
   it("予約の削除・変更の制限（トリガー）と招待コードは、その予約・ジムのスタッフかで見る", () => {
     const fns = latestFunctionBodies();
+    // enforce_booking_update_guard は 2026-11-01 にお客様の UPDATE の制限を足して定義し直した
+    // （bookingCustomerUpdateGuard.test.ts）。スタッフの判定は同じ形のまま。
+    const latestFile: Record<string, string> = {
+      enforce_booking_same_day_delete: STAFF_CHECK_MIGRATION,
+      enforce_booking_update_guard: "20261101050000_booking_customer_update_guard.sql",
+    };
     for (const name of ["enforce_booking_same_day_delete", "enforce_booking_update_guard"]) {
       const f = fns.get(name);
-      expect(f?.file, name).toBe(STAFF_CHECK_MIGRATION);
+      expect(f?.file, name).toBe(latestFile[name]);
       expect(f!.body, name).toContain("public.has_tenant_role(OLD.tenant_id, auth.uid(), ARRAY['owner', 'trainer'])");
     }
     const invite = fns.get("get_my_tenant_invite_code");

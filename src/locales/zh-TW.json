@@ -1748,7 +1748,12 @@
     "socialError": "登入失敗，請重試。"
   },
   "authCallback": {
-    "processing": "認證處理中..."
+    "processing": "認證處理中...",
+    "switchTitle": "這可能是其他帳號的連結",
+    "switchBody": "您目前以 {{email}} 登入。開啟此連結將切換到該連結所屬的帳號（如果是同一帳號，則保持不變）。如果您不認識此連結，請選擇「保持目前帳號」。",
+    "switchBodyNoEmail": "您已登入。開啟此連結將切換到該連結所屬的帳號（如果是同一帳號，則保持不變）。如果您不認識此連結，請選擇「保持目前帳號」。",
+    "switchStay": "保持目前帳號",
+    "switchContinue": "開啟連結並繼續"
   },
   "resetPassword": {
     "logoAlt": "{{brandEn}}",

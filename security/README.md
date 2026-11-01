@@ -121,6 +121,7 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 23 | オーナーの引き継ぎで、ジムの持ち主（owner_user_id）も新オーナーへ移す | `supabase/migrations/20261101060000_transfer_ownership_updates_owner.sql` |
 | 29 | お客様の削除は、呼んだオーナーのジムの記録だけを消す（他のジムにも所属がある人は、共通の行を残して所属だけ外す） | `supabase/migrations/20261101100000_delete_customer_tenant_scope.sql` |
 | 30 | 所属の判定は、本人・そのジムのスタッフ（と、スタッフについての問い）にだけ本当の答えを返す。人数・上限はそのジムの人にだけ | `supabase/migrations/20261101110000_membership_answers_scoped.sql` |
+| 31 | ログイン用のリンクの `#access_token` を受け取らない・ログイン中なら切り替える前に確かめる（画面） | `src/pages/AuthCallback.tsx`・`src/hooks/useAccountSwitchConfirm.tsx`・`src/pages/ResetPassword.tsx`・`src/main.tsx` |
 
 SQL は `to_regclass` / `to_regprocedure` ガードが入っているので、
 対象が無い環境でも止まりません。
@@ -555,6 +556,20 @@ BEFORE INSERT OR UPDATE のトリガー（**SECURITY INVOKER**。`current_user` 
 （ジムボードでは、スタッフだけが通るポリシー2本と、門番のトリガー3本だけでした）。お客様どうしで相手の所属を確かめる仕組みが
 あるアプリでは、そこが false になって止まります。適用の前後で、お客様・オーナー・インストラクターが画面で読む件数が変わらないことを
 確かめてください（ジムボードは同じトランザクションの中で比べ、違えば全部戻す形で適用しました）。
+
+---
+
+## 穴31: ログイン用のリンクを開かせるだけで、別の人のアカウントに黙って切り替えられます（2026-11-01 追加）
+
+`/auth/callback`（とアプリのディープリンク）が URL の `#access_token` / `#refresh_token` を確かめずに `setSession` していると、
+攻撃者は自分のアカウントのトークン入りのリンクを開かせるだけで、相手の端末を自分のアカウントに切り替えられます。
+そっくりのジムを作っておけば、相手は気づかずに体重・写真・相談を入力し、それが攻撃者のジムに入ります。
+メールのリンク（`token_hash`）も、ログイン中かどうかを見ずに `verifyOtp` すると同じです。
+
+画面の修正なので check.sql の検査はありません。`src/pages/AuthCallback.tsx` に `setSession` が残っていないか、
+`verifyOtp` の前に確認が入っているかを見てください。直し方は `#access_token` の受け口を消す（PKCE の `?code=` と
+`?token_hash=` だけにする）ことと、`src/hooks/useAccountSwitchConfirm.tsx` で「今のアカウント」を見せて選んでもらうことです。
+ネイティブのアプリは次のビルドから効きます。
 
 ---
 

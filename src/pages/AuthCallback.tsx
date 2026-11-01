@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
 import { sanitizeAuthNext } from "@/lib/nativeBridge";
 import { isSafeInAppPath } from "@/lib/safePath";
+import { useAccountSwitchConfirm } from "@/hooks/useAccountSwitchConfirm";
 
 /** ログイン前に保存した「戻り先」を取り出して消す。アプリの中のパスでなければ捨てる（2026-10-31 点検 auth-redirect-1） */
 const readPostAuthRedirect = (): string | null => {
@@ -15,6 +16,7 @@ const readPostAuthRedirect = (): string | null => {
 const AuthCallback = () => {
   const { t } = useTranslation();
   const hasHandledRef = useRef(false);
+  const { confirmSwitch, dialog } = useAccountSwitchConfirm();
 
   useEffect(() => {
     if (hasHandledRef.current) return;
@@ -44,6 +46,12 @@ const AuthCallback = () => {
 
       if (tokenHash && type) {
         try {
+          // 🔴 すでに誰かがログインしていたら、リンクのアカウントへ切り替える前に確かめる
+          //    （2026-11-01 点検 auth-callback-session-1。他人のリンクで黙って切り替わっていた）
+          if (!(await confirmSwitch())) {
+            window.location.replace("/");
+            return;
+          }
           const { error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: type as any,
@@ -116,40 +124,15 @@ const AuthCallback = () => {
         }
       }
 
-      const hash = window.location.hash.startsWith("#")
-        ? window.location.hash.slice(1)
-        : window.location.hash;
-      if (hash) {
-        const hashParams = new URLSearchParams(hash);
-        const accessToken = hashParams.get("access_token");
-        const refreshToken = hashParams.get("refresh_token");
-        const hashType = hashParams.get("type");
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (error) {
-            console.error("[AuthCallback] setSession error:", error.message);
-            window.location.replace("/auth");
-            return;
-          }
-          if (hashType === "recovery") {
-            window.location.replace("/reset-password");
-            return;
-          }
-          await finalizePendingRole();
-          const dest = readPostAuthRedirect();
-          window.location.replace(dest || "/");
-          return;
-        }
-      }
-
+      // 🔴 URL の #access_token / #refresh_token は受け取らない（2026-11-01 点検 auth-callback-session-1）。
+      //    以前はここで setSession していたので、他人が自分のトークン入りのリンク（Web の /auth/callback#access_token=…・
+      //    アプリの app.gymboard.mobile://auth/callback#…）を開かせるだけで、その人のアカウントに黙って切り替わった。
+      //    正規の経路はこれを使わない: OAuth は PKCE の ?code=、メールは auth-email-hook の ?token_hash=（上の2つ）。
       window.location.replace("/auth");
     };
 
     handleCallback();
-  }, []);
+  }, [confirmSwitch]); // confirmSwitch は変わらない（useCallback）。二度目は hasHandledRef で何もしない
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -157,6 +140,7 @@ const AuthCallback = () => {
         <DumbbellLoader className="w-16 h-16 text-accent mx-auto" />
         <p className="text-sm text-muted-foreground">{t("authCallback.processing")}</p>
       </div>
+      {dialog}
     </div>
   );
 };

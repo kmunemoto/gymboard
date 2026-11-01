@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import gymboardLogo from "@/assets/gymboard-logo.png";
+import { useAccountSwitchConfirm } from "@/hooks/useAccountSwitchConfirm";
 
 const VERIFY_TIMEOUT_MS = 10_000;
 
@@ -25,6 +26,7 @@ const ResetPassword = () => {
   // 招待メール（CSV で取り込んだ顧客へのアカウント引き渡し）から来た場合。
   // 仕組みはパスワード再設定と同一で、見出しと説明文だけ「はじめて」の文面にする
   const isInvite = searchParams.get("flow") === "invite";
+  const { confirmSwitch, dialog } = useAccountSwitchConfirm();
 
   useEffect(() => {
     if (ran.current) return;
@@ -48,6 +50,12 @@ const ResetPassword = () => {
         const tokenHash = searchParams.get("token_hash");
         const typeParam = searchParams.get("type");
         if (tokenHash) {
+          // 🔴 すでに誰かがログインしていたら、リンクのアカウントへ切り替える前に確かめる
+          //    （2026-11-01 点検 auth-callback-session-1。招待・再設定のリンクも同じ受け口）
+          if (!(await confirmSwitch())) {
+            window.location.replace("/");
+            return;
+          }
           timer = window.setTimeout(() => {
             if (!ready) expire();
           }, VERIFY_TIMEOUT_MS);
@@ -213,6 +221,7 @@ const ResetPassword = () => {
           </CardContent>
         </Card>
       </div>
+      {dialog}
     </div>
   );
 };

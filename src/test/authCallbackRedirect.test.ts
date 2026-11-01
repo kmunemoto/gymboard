@@ -21,7 +21,8 @@ describe("AuthCallback のオープンリダイレクト対策が外れていな
     expect(src).toMatch(/const readPostAuthRedirect = \(\): string \| null => \{\s*const raw = sessionStorage\.getItem\("postAuthRedirect"\);\s*sessionStorage\.removeItem\("postAuthRedirect"\);\s*return isSafeInAppPath\(raw\) \? raw : null;/);
     // 生の sessionStorage の値を replace に渡す形が残っていない
     expect(src.match(/sessionStorage\.getItem\("postAuthRedirect"\)/g)?.length).toBe(1);
-    expect(src.match(/const dest = readPostAuthRedirect\(\);/g)?.length).toBe(2);
+    // 使うのは ?code= の戻りだけ（#access_token の受け口は 2026-11-01 に消した。authCallbackAccountSwitch.test.tsx）
+    expect(src.match(/const dest = readPostAuthRedirect\(\);/g)?.length).toBe(1);
   });
 
   it("ログイン画面の ?redirect= は確かめてから使い、ソーシャルログインの前にも確かめて保存する", () => {

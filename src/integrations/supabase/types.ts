@@ -2651,6 +2651,10 @@ export type Database = {
     }
     Functions: {
       _gen_staff_invite_code: { Args: never; Returns: string }
+      _may_see_membership: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: boolean
+      }
       _owner_staff_invite_code: {
         Args: { p_kind: string; p_regenerate: boolean }
         Returns: string

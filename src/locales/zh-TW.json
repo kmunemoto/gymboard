@@ -1396,7 +1396,17 @@
     "deleteFailed": "刪除失敗",
     "deletedToast": "已刪除",
     "editAria": "編輯",
-    "deleteAria": "刪除"
+    "deleteAria": "刪除",
+    "fieldImages": "圖片",
+    "imagesHint": "最多 {{max}} 張。只有收到此公告的顧客才能查看。",
+    "addImage": "新增圖片",
+    "removeImage": "移除第 {{n}} 張圖片",
+    "imageAlt": "第 {{n}} 張圖片",
+    "imageUploadingShort": "上傳中",
+    "imageUploading": "圖片正在上傳，請在上傳完成後儲存。",
+    "imageUploadFailed": "無法上傳圖片，請換一張試試。",
+    "imageTooMany": "圖片最多 {{max}} 張。",
+    "imagesBadge": "圖片 {{count}} 張"
   },
   "help": {
     "title": "使用指南",
@@ -2233,7 +2243,11 @@
     "title": "公告",
     "markAllRead": "全部標為已讀",
     "allReadToast": "已將所有公告標為已讀",
-    "empty": "暫無公告"
+    "empty": "暫無公告",
+    "imageAlt": "公告圖片（第 {{n}} 張）",
+    "openImage": "放大檢視第 {{n}} 張圖片",
+    "imageViewer": "公告圖片",
+    "hasImages": "含圖片"
   },
   "trainerNav": {
     "menu": "選單",

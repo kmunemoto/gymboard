@@ -86,6 +86,7 @@ export type Database = {
           created_by: string | null
           icon: string
           id: string
+          image_paths: string[]
           image_url: string | null
           image_url2: string | null
           published_at: string
@@ -100,6 +101,7 @@ export type Database = {
           created_by?: string | null
           icon?: string
           id?: string
+          image_paths?: string[]
           image_url?: string | null
           image_url2?: string | null
           published_at?: string
@@ -114,6 +116,7 @@ export type Database = {
           created_by?: string | null
           icon?: string
           id?: string
+          image_paths?: string[]
           image_url?: string | null
           image_url2?: string | null
           published_at?: string
@@ -2985,6 +2988,7 @@ export type Database = {
           p_body: string
           p_icon: string
           p_id?: string
+          p_image_paths?: string[]
           p_published_at: string
           p_target: string
           p_title: string

@@ -1396,7 +1396,17 @@
     "deleteFailed": "Failed to delete",
     "deletedToast": "Deleted",
     "editAria": "Edit",
-    "deleteAria": "Delete"
+    "deleteAria": "Delete",
+    "fieldImages": "Images",
+    "imagesHint": "Up to {{max}}. Only the customers who receive this announcement can see them.",
+    "addImage": "Add image",
+    "removeImage": "Remove image {{n}}",
+    "imageAlt": "Image {{n}}",
+    "imageUploadingShort": "Uploading",
+    "imageUploading": "Images are still uploading. Please save after they finish.",
+    "imageUploadFailed": "Couldn't upload the image. Please try a different one.",
+    "imageTooMany": "You can add up to {{max}} images.",
+    "imagesBadge": "Images: {{count}}"
   },
   "help": {
     "title": "How-to Guide",
@@ -2233,7 +2243,11 @@
     "title": "Announcements",
     "markAllRead": "Mark all as read",
     "allReadToast": "Marked all announcements as read",
-    "empty": "No announcements"
+    "empty": "No announcements",
+    "imageAlt": "Announcement image {{n}}",
+    "openImage": "View image {{n}} full screen",
+    "imageViewer": "Announcement image",
+    "hasImages": "Has images"
   },
   "trainerNav": {
     "menu": "Menu",

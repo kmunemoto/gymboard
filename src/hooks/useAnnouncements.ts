@@ -11,8 +11,11 @@ export interface Announcement {
   published_at: string;
   created_at: string;
   created_by: string | null;
-  image_url?: string | null;
-  image_url2?: string | null;
+  /**
+   * 画像（非公開の置き場のパス。表示は署名つきの URL。src/lib/announcementImages.ts）。
+   * 以前の image_url / image_url2 は使わない（外のサイトの画像だと、見た人の IP アドレスがそのサイトに渡る。DB で常に NULL）
+   */
+  image_paths?: string[] | null;
 }
 
 /** Customer-facing list: published announcements visible to current user, plus read state. */

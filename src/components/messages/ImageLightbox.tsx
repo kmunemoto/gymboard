@@ -6,6 +6,10 @@ interface ImageLightboxProps {
   /** 表示中の画像の署名URL。null なら閉じている */
   url: string | null;
   onClose: () => void;
+  /** 重なりの順（既定 z-50）。z-[60] の全画面の上から開くとき（お知らせ）は、それより上を渡す */
+  zClassName?: string;
+  /** 読み上げ・代替テキスト（既定はチャットの添付画像の文言） */
+  label?: string;
 }
 
 /**
@@ -23,8 +27,9 @@ interface ImageLightboxProps {
  * 全画面に何かを出しておいて閉じ方が1つしか無いのは、Android で詰まる。
  * 背景タップ・×ボタン・Escape の3つを用意する。
  */
-const ImageLightbox = ({ url, onClose }: ImageLightboxProps) => {
+const ImageLightbox = ({ url, onClose, zClassName = "z-50", label }: ImageLightboxProps) => {
   const { t } = useTranslation();
+  const text = label ?? t("messageAttachment.imageAlt");
 
   useEffect(() => {
     if (!url) return;
@@ -47,9 +52,9 @@ const ImageLightbox = ({ url, onClose }: ImageLightboxProps) => {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={t("messageAttachment.imageAlt")}
+      aria-label={text}
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+      className={`fixed inset-0 ${zClassName} bg-black/90 flex items-center justify-center p-4`}
     >
       <button
         type="button"
@@ -61,7 +66,7 @@ const ImageLightbox = ({ url, onClose }: ImageLightboxProps) => {
       </button>
       <img
         src={url}
-        alt={t("messageAttachment.imageAlt")}
+        alt={text}
         // 画像自体を押しても閉じない（拡大して見たいので誤爆させない）
         onClick={(e) => e.stopPropagation()}
         className="max-h-full max-w-full object-contain rounded-lg"

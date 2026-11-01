@@ -30,6 +30,7 @@ Workflow({ name: "gymboard-security-audit", args: { since: "2026-11-01" } })
 - `since` は下の「点検の記録」の最後の日付。それより後に変わったファイルから先に読む（省くと全体を同じ重みで読む）。
 - 名前で見つからないとき（台本を置いたのがセッションの開始より後、など）は、ファイルを直接渡す:
   `Workflow({ scriptPath: ".claude/workflows/gymboard-security-audit.js", args: { since: "…" } })`
+  （2026-11-01: 台本を main に入れたあと、作業セッションが再起動した時点で `gymboard-security-audit` が呼べる一覧に出た＝名前で呼べる）
 - 規模: 点検の7体＋指摘ごとに1〜2体。前回（6つの範囲）は45体・約3時間半かかった。
 - CLAUDE.md の「ワークフローの使い方」では、回す前に宗本さんの確認を取る。
   **定期点検は 2026-11-01 に宗本さんが頼んだので、予定から回すときは確認しない。** 手で臨時に回すときは確認を取る。
@@ -71,4 +72,4 @@ Workflow({ name: "gymboard-security-audit", args: { since: "2026-11-01" } })
 | 日付 | 範囲 | 体数 | 指摘 | 反証で落ちた | 直したもの |
 |---|---|---|---|---|---|
 | 2026-10-31 | 未ログインで呼べる Edge Function 13本（3組に分けた） | 6 | 21（critical 3・high 2・medium 12・low 4） | 0 | 穴11〜14・「Edge Function の直し」（#469〜#473・#475） |
-| 2026-11-01 | 残りの Edge Function・画面・DB（6つの範囲） | 45 | 33（critical 1・high 5・medium 18・low 9） | 1 | 穴15〜28（#476〜#488）。残りは tenant-boundary.md の「点検の残り」 |
+| 2026-11-01 | 残りの Edge Function・画面・DB（6つの範囲） | 45 | 33（critical 1・high 5・medium 18・low 9） | 1 | 穴15〜31（#476〜#493）。最初の点検の残りも穴32・33（#494・#495）。残りは tenant-boundary.md の「点検の残り」 |

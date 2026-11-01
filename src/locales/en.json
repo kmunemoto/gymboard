@@ -1748,7 +1748,12 @@
     "socialError": "Sign-in failed. Please try again."
   },
   "authCallback": {
-    "processing": "Authenticating..."
+    "processing": "Authenticating...",
+    "switchTitle": "This link may be for a different account",
+    "switchBody": "You're signed in as {{email}}. Opening this link switches to the account it belongs to (if it's the same account, nothing changes). If you don't recognize this link, choose “Stay signed in”.",
+    "switchBodyNoEmail": "You're already signed in. Opening this link switches to the account it belongs to (if it's the same account, nothing changes). If you don't recognize this link, choose “Stay signed in”.",
+    "switchStay": "Stay signed in",
+    "switchContinue": "Open link and continue"
   },
   "resetPassword": {
     "logoAlt": "{{brandEn}}",

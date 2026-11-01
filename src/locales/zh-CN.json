@@ -1748,7 +1748,12 @@
     "socialError": "登录失败，请重试。"
   },
   "authCallback": {
-    "processing": "认证处理中..."
+    "processing": "认证处理中...",
+    "switchTitle": "这可能是其他账号的链接",
+    "switchBody": "您当前以 {{email}} 登录。打开此链接将切换到该链接所属的账号（如果是同一账号，则保持不变）。如果您不认识此链接，请选择“保持当前账号”。",
+    "switchBodyNoEmail": "您已登录。打开此链接将切换到该链接所属的账号（如果是同一账号，则保持不变）。如果您不认识此链接，请选择“保持当前账号”。",
+    "switchStay": "保持当前账号",
+    "switchContinue": "打开链接并继续"
   },
   "resetPassword": {
     "logoAlt": "{{brandEn}}",

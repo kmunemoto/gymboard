@@ -1625,8 +1625,34 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 - 上の「Edge Function の直し」の「残り」（OAuth・LINE の state、_resolve_user_、体験予約のメール中継、ドロップインの枠埋め、通知の回数制限）
 - 穴18 の残り（取り込みアカウントへの招待）・穴21 の残り（起算日より前の予約。仕様の判断を含むので、変えるときは宗本さんに確かめる）・
   穴22 の残り（created_via='reschedule'）・穴26 の残り（古いアプリ）
-- 2026-11-01 の点検の low: auth-callback-session-1（ログイン用のリンクで別のアカウントに切り替えさせられる）→ 2026-11-01 に直し始めた。
-  delete-customer-cascade-1 は下の穴29、membership-oracle-1・tenant-limit-status-1 は下の穴30 で直した
+- 2026-11-01 の点検の low（判断の要らないもの）は全部直した: delete-customer-cascade-1 は下の穴29、
+  membership-oracle-1・tenant-limit-status-1 は穴30、auth-callback-session-1 は穴31
+
+---
+
+## 穴31（low）: ログイン用のリンクを開かせるだけで、別の人のアカウントに黙って切り替えられた（2026-11-01・点検の拡大で発見）
+
+`/auth/callback`（とアプリの `app.gymboard.mobile://auth/callback`）は、URL の `#access_token` / `#refresh_token` を確かめずに
+`setSession` していた。攻撃者はそっくりのジム（名前・ロゴは自由。ジム名は重複できる）に自分のお客様アカウントを作り、そのトークン入りの
+リンクを開かせるだけで、相手の端末を自分のアカウントに切り替えられた。本人は自分のジムだと思って体重・写真・食事・相談を入力し、
+それが攻撃者のジムに入る。メールのリンク（`token_hash`。`/auth/callback` と `/reset-password`）も、ログイン中かどうかを見ずに切り替えていた。
+（反証役が挙げた「切り替わった端末の通知の登録が攻撃者のアカウントに残る」件は、穴26 の DB の門番〔1つの端末＝最後にログインした1人〕で
+すでに塞がっている。）
+
+直し方（画面。Web は Publish、ネイティブは次のビルドから）:
+
+- `#access_token` の受け口を消した。正規の経路は使っていない（OAuth は PKCE の `?code=`、メールは auth-email-hook の `?token_hash=`）。
+  アプリのディープリンクも hash を渡さない（`src/main.tsx`）。
+- `token_hash` は、すでに誰かがログインしていたら、切り替える前に「今のアカウント」（メールアドレス）を見せて選んでもらう
+  （`src/hooks/useAccountSwitchConfirm.tsx`。「今のアカウントのまま」・Esc ならリンクを使わずにホームへ）。
+  `/auth/callback` と `/reset-password`（パスワード再設定・取り込んだお客様への招待）の両方。ログインしていなければ今まで通り何も出さない。
+  リンクの持ち主は確かめる（verifyOtp）までは分からないので、「同じアカウントなら、そのまま続きます」と書いてある（5言語）。
+
+⚠️ 残り: 次のビルドが入るまで、古いネイティブ版は今まで通り切り替わる（サーバーからは区別できない）。auth-email-hook が
+token_hash を取れなかったときの予備（`payload.data.url` をそのまま使う）が implicit の戻り（`#access_token`）になる場合、
+そのリンクではログインできずにログイン画面へ戻る（今までも使われた形跡は無い。起きたら PKCE か token_hash に寄せる）。
+
+見張り: `src/test/authCallbackAccountSwitch.test.tsx`（`authCallbackRedirect.test.ts` の戻り先の数も合わせて直した）
 
 ---
 

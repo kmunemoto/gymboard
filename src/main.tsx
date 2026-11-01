@@ -98,7 +98,8 @@ if (Capacitor.isNativePlatform()) {
       const parsed = new URL(url);
       const { Browser } = await import("@capacitor/browser");
       Browser.close().catch(() => {});
-      window.location.href = `/auth/callback${parsed.search}${parsed.hash}`;
+      // #access_token などの hash は渡さない（/auth/callback も受け取らない。2026-11-01 点検 auth-callback-session-1）
+      window.location.href = `/auth/callback${parsed.search}`;
     } catch (e) {
       console.warn("appUrlOpen handling failed:", e);
     }

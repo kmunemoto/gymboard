@@ -14,9 +14,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
 
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+// Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
+const BUILD = "2026-11-01-announcement-target";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
+  "x-gymboard-build": BUILD,
 };
 
 // 導入・停止期間の古いお知らせを誤って一斉送信しないための安全窓。
@@ -110,6 +115,30 @@ Deno.serve(async (req) => {
           .eq("status", "active");
         const excluded = new Set(a.target === "except" ? audience : []);
         userIds = (members ?? []).map((m: any) => m.user_id).filter((id: string) => !excluded.has(id));
+      }
+      // 🔴 1人宛て・個別の宛先は、そのジムの人だけ（2026-11-01 点検 push-announcements-1）。
+      //    target は表に直接書ける値で、send-push-notification は service_role の呼び出しでは宛先の所属を見ない。
+      //    確かめないと、どのジムのオーナーでも他のジムの人に公式アプリの通知を送れた（DB の門番
+      //    trg_guard_announcement_target に重ねる。門番より前に入った行にも効く）。
+      if (a.target !== "all" && a.target !== "except" && userIds.length > 0) {
+        if (!a.tenant_id) {
+          userIds = [];
+        } else {
+          const { data: memberRows, error: memberErr } = await supabase
+            .from("tenant_members")
+            .select("user_id")
+            .eq("tenant_id", a.tenant_id)
+            .in("user_id", userIds);
+          if (memberErr) {
+            // 確かめられないまま送らない。クレームを外して次の実行でやり直す
+            console.error(`announcement member check failed for ${a.id}:`, memberErr);
+            await supabase.from("announcements").update({ push_sent_at: null } as any).eq("id", a.id);
+            results.push({ id: a.id, recipients: 0, skipped: "member_check_error" });
+            continue;
+          }
+          const members = new Set((memberRows ?? []).map((m: any) => m.user_id));
+          userIds = userIds.filter((id) => members.has(id));
+        }
       }
       if (userIds.length === 0) {
         results.push({ id: a.id, recipients: 0, skipped: "no_recipients" });

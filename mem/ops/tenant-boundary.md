@@ -1608,6 +1608,28 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴17（high）: お知らせの「1人宛て」で、他のジムの人に公式アプリの通知を送れた（2026-11-01・点検の拡大で発見）
+
+`announcements.target` には 'all'／'except'／'only' のほか、古いアプリが書く「1人宛て」（user_id）が入る。表への直接の
+INSERT／UPDATE は自分のジムの行しか見ず、target は何でも入った。push-announcements はそれを service_role で
+send-push-notification に渡す（service_role は宛先の所属を見ない）→ 誰でも開けるジムのオーナーが、他のジムの人の端末に
+「お知らせ: <好きな題名>」を送れた（push_sent_at を NULL に戻せば何度でも）。本番の4件はどれも全員・除く・個別で、1人宛ては0件。
+
+直し方（穴13 と同じ形）: `20261101010000_announcement_target_must_be_member.sql` の門番（SECURITY INVOKER・画面からだけ）が、
+INSERT と宛先・ジムを変える UPDATE で「uuid の形で、そのジムに所属している人（在籍の状態は問わない）」を求める。題名・本文だけの
+編集では見ない。送る側（push-announcements）でも、1人宛て・個別の宛先を tenant_members で絞る（確かめられなければ送らずにやり直す）。
+本番（2026-11-01・3段構え）: オーナーを演じて「他のジムの人宛て」「uuid でない宛先」「既存の行の宛先を他のジムの人へ」は拒否、
+「そのジムのお客様宛て」「全員」「題名・本文だけの編集」は通る、service_role は対象外、を確かめた（試しの行は全部戻した）。検査12 は3表とも OK。
+
+ついでに `monthly-report-notification` に認可（service_role / cron だけ）を足した。本体は全部のジムの LINE 連携者へ一斉に送り、
+返事に user_id を並べる作りで、今は早期 return で無効化してあるが、本番がその版かを外から確かめる手段が無かった（呼ぶと送られうる）。
+認可を足した版をデプロイして、本番をそろえる。
+
+#477（ログイン画面の redirect）の Web の Publish は、公開サイトの index.html が読み込むスクリプトが
+`index-Ba41HYLJ.js` → `index-BdTCKwU9.js` に変わったことで確かめた（DB の pg_net で取得。コンテナからは公開サイトを開けないため）。
+
+---
+
 ## 穴16（high）: ログイン画面の ?redirect= で、ログイン直後に本番のドメインでスクリプトが動いた（2026-10-31・点検の拡大で発見）
 
 `/auth?redirect=…` の値を確かめずに使っていた（Auth.tsx → SocialAuthButtons が sessionStorage に保存 → AuthCallback が

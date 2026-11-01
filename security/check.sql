@@ -646,8 +646,11 @@ SELECT
   END AS verdict
 FROM (VALUES
   ('public.bookings', 'is_tenant_member_any_status\s*\(\s*NEW\.tenant_id\s*,\s*NEW\.user_id'),
-  ('public.messages', 'is_tenant_member_any_status\s*\(\s*NEW\.tenant_id\s*,\s*NEW\.receiver_id')
-) AS x(tbl, pattern);
+  ('public.messages', 'is_tenant_member_any_status\s*\(\s*NEW\.tenant_id\s*,\s*NEW\.receiver_id'),
+  -- お知らせの「1人宛て」（target = user_id。2026-11-01 追加。直し方は 20261101010000_announcement_target_must_be_member.sql）
+  ('public.announcements', 'is_tenant_member_any_status\s*\(\s*NEW\.tenant_id\s*,\s*v_target')
+) AS x(tbl, pattern)
+WHERE to_regclass(x.tbl) IS NOT NULL;
 
 
 -- ----------------------------------------------------------------------------

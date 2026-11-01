@@ -106,8 +106,8 @@ Lovable の `query_database` にそのまま貼って実行してください。
 | 1 | `tenant_members` への書き込みを絞る | `supabase/migrations/20260803120000_tenant_members_write_scope.sql` |
 | 2 | グローバル trainer で書けるテーブルを塞ぐ | `supabase/migrations/20260803140000_global_trainer_write_scope.sql` |
 | 3 | プッシュ通知の宛先をテナントで絞る | `supabase/functions/send-push-notification/index.ts` |
-| 4 | 送信メールの宛先をテナントで絞る | `supabase/functions/send-transactional-email/index.ts` |
-| 5 | LINE送信の宛先をテナントで絞る | `supabase/functions/send-line-message/index.ts` |
+| 4 | 送信メールの宛先をテナントで絞る（画面からの呼び出しは、載せるジム・リンク・差出人名もサーバーが決める） | `supabase/functions/send-transactional-email/index.ts`・`supabase/functions/_shared/emailClientGuard.ts` |
+| 5 | LINE送信の宛先をテナントで絞る（自分以外は「スタッフ ⇔ その在籍者」だけ。お客様同士は不可） | `supabase/functions/send-line-message/index.ts`・`supabase/functions/_shared/lineRecipients.ts` |
 | 6 | **メールキューRPCから anon を剥がす** | `supabase/migrations/20260805000000_email_queue_revoke_roles.sql` |
 | 7 | **DB内の関数が他プロジェクトを叩くのを止める** | 実DBで直す（下記。リポジトリには無い） |
 | 11 | **印の判定を「そのジムのスタッフか」に差し替える** | `supabase/migrations/20261031040000_staff_checks_tenant_scoped.sql` |

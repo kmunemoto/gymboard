@@ -1,9 +1,15 @@
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+// Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
+const BUILD = "2026-11-01-line-recipients";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-gymboard-build": BUILD,
 };
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
+import { mayLineMessage, type LineMembership } from "../_shared/lineRecipients.ts";
 
 const LINE_API = "https://api.line.me/v2/bot/message/push";
 const MAX_MESSAGE_LEN = 2000;
@@ -27,36 +33,36 @@ const MAX_MESSAGE_LEN = 2000;
 // **エラー無しで NULL / false を返す**。`null === null` で素通りする。
 // `tenant_members` を直接引く。
 
-/** そのユーザーが所属している（active な）テナントIDの集合 */
-async function tenantIdsOf(
+/** そのユーザーの有効な（active な）所属と役割 */
+async function membershipsOf(
   admin: SupabaseClient,
   userId: string,
-): Promise<Set<string>> {
+): Promise<LineMembership[]> {
   const { data, error } = await admin
     .from("tenant_members")
-    .select("tenant_id")
+    .select("tenant_id, role")
     .eq("user_id", userId)
     .eq("status", "active");
   if (error) throw error;
-  const out = new Set<string>();
-  for (const row of (data ?? []) as { tenant_id: string | null }[]) {
+  const out: LineMembership[] = [];
+  for (const row of (data ?? []) as { tenant_id: string | null; role: string | null }[]) {
     // tenant_id が NULL の行を入れると「NULL 同士が一致した」判定を作ってしまう
-    if (row.tenant_id) out.add(row.tenant_id);
+    if (row.tenant_id) out.push({ tenantId: row.tenant_id, role: row.role ?? "" });
   }
   return out;
 }
 
-/** 同じテナントに属しているか。**判定できなければ false（fail-close）** */
-async function sharesTenant(
+/**
+ * 自分以外の人へ送ってよいか。**判定できなければ false（fail-close）**
+ * 同じジムに一緒に在籍していて、どちらかがそのジムのスタッフのときだけ（お客様同士は不可。2026-11-01）。
+ */
+async function mayMessage(
   admin: SupabaseClient,
-  a: string,
-  b: string,
+  callerId: string,
+  targetId: string,
 ): Promise<boolean> {
-  const [mine, theirs] = await Promise.all([tenantIdsOf(admin, a), tenantIdsOf(admin, b)]);
-  for (const t of mine) {
-    if (theirs.has(t)) return true;
-  }
-  return false;
+  const [mine, theirs] = await Promise.all([membershipsOf(admin, callerId), membershipsOf(admin, targetId)]);
+  return mayLineMessage(mine, theirs);
 }
 
 Deno.serve(async (req) => {
@@ -116,7 +122,9 @@ Deno.serve(async (req) => {
 
     // AUTHZ
     //  - service_role … サーバ側の通知経路。宛先は呼び出し元が解決済み
-    //  - 認証ユーザー … 自分自身、または**自分と同じテナントに属する人**のみ
+    //  - 認証ユーザー … 自分自身、または同じジムの「スタッフ ⇔ その在籍者」だけ
+    //    🔴 お客様同士は不可（2026-11-01・点検の拡大 send-line-message-1）。以前は「同じジムなら誰にでも」で、
+    //       お客様が他のお客様へ、全ジム共通の公式アカウントから任意の文面（リンク付き）を送れた
     //  - 生の line_user_id … service_role のみ（LINE ID を直に指定できると
     //    テナントの概念を丸ごと迂回できるため）
     if (!caller.isServiceRole) {
@@ -133,7 +141,7 @@ Deno.serve(async (req) => {
       if (user_id !== caller.userId) {
         let allowed = false;
         try {
-          allowed = await sharesTenant(supabase, caller.userId, user_id);
+          allowed = await mayMessage(supabase, caller.userId, user_id);
         } catch (e) {
           // 判定できないときは送らない（fail-close）。
           console.error("tenant check failed:", e);

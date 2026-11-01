@@ -802,6 +802,27 @@ WHERE t.owner_user_id IS NOT NULL
 
 
 -- ----------------------------------------------------------------------------
+-- 検査17: お客様の削除が、他のジムの記録・共通のプロフィールまで消さないか（★穴29 / 2026-11-01）
+-- ----------------------------------------------------------------------------
+-- 顧客一覧の「削除」（delete_customer_cascade）が user_id だけで記録を消していると、2つのジムに所属の行がある人
+-- （移籍したインストラクター・2つのジムに通うお客様）を片方のオーナーが削除したとき、もう片方のジムのチャット・予約・
+-- トレーニングの記録と、ジムをまたいで1つしかないプロフィール・印（user_roles）まで消える。
+-- 退会済みの所属の行は、オーナーが「在籍」に戻せるので、今は2つのジムに所属していない人でも狙える。
+--
+-- 本文に「tenant_id で絞った DELETE」がチャットとトレーニングの記録の両方にあれば OK（関数が無ければ出ない）。
+-- ★ が出たら開いている。直し方は supabase/migrations/20261101100000_delete_customer_tenant_scope.sql
+
+SELECT
+  'お客様の削除が、呼んだオーナーのジムの記録だけを消す' AS item,
+  CASE WHEN p.prosrc ~* 'DELETE\s+FROM\s+public\.messages\s+WHERE[^;]*tenant_id'
+        AND p.prosrc ~* 'DELETE\s+FROM\s+public\.workouts\s+WHERE[^;]*tenant_id'
+       THEN 'OK'
+       ELSE '★要対応: 他のジムの記録・共通のプロフィールまで消す' END AS verdict
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
+WHERE p.proname = 'delete_customer_cascade';
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

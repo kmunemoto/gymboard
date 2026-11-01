@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { corsHeaders as baseCorsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v5.9.6/index.ts";
 // hasRole（user_roles ベース）はここでは使わない。テナント横断のグローバルロールなので
 // 宛先制限の役に立たない。所属は tenant_members で見る（loadTenantMemberships）。
@@ -7,6 +7,10 @@ import { verifyCaller } from "../_shared/auth.ts";
 import { keepAssignedInstructors, parseBookingPushTag } from "../_shared/staffRouting.ts";
 import { trialBookingLabel } from "../_shared/trialRules.ts";
 import { isAllowedPushUrl } from "../_shared/safeUrl.ts";
+
+// デプロイの確かめ用（何も送らない呼び方で、新しいコードが動いているかを見る。mem/ops/edge-function-deploy.md）
+const BUILD = "2026-11-01-push-recipients";
+const corsHeaders = { ...baseCorsHeaders, "x-gymboard-build": BUILD };
 
 // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
 // 本番ドメイン 'app.kyoto-salute.com' に修正済み（2026-07）。
@@ -258,7 +262,9 @@ async function sendFcm(
 // にしか送れない。trainer に特例は無い。
 const MAX_PUSH_TARGETS = 100;
 
-interface TenantMembership { tenantId: string; active: boolean }
+interface TenantMembership { tenantId: string; active: boolean; role: string }
+
+const isStaffRole = (role: string) => role === "owner" || role === "trainer";
 
 /**
  * 指定ユーザーの tenant_members 所属を引く。
@@ -281,14 +287,14 @@ async function loadTenantMemberships(
   if (userIds.length === 0) return map;
   const { data, error } = await admin
     .from("tenant_members")
-    .select("user_id, tenant_id, status")
+    .select("user_id, tenant_id, status, role")
     .in("user_id", userIds);
   if (error) throw error;
-  for (const row of (data ?? []) as { user_id: string; tenant_id: string | null; status: string | null }[]) {
+  for (const row of (data ?? []) as { user_id: string; tenant_id: string | null; status: string | null; role: string | null }[]) {
     // tenant_id が NULL の行は捨てる。拾うと「NULL 同士が一致」する経路ができる。
     if (!row.tenant_id) continue;
     const list = map.get(row.user_id) ?? [];
-    list.push({ tenantId: row.tenant_id, active: row.status === "active" });
+    list.push({ tenantId: row.tenant_id, active: row.status === "active", role: row.role ?? "" });
     map.set(row.user_id, list);
   }
   return map;
@@ -688,13 +694,17 @@ Deno.serve(async (req) => {
               status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
+          // 同じジムに一緒に所属していて、どちらかがそのジムのスタッフ（owner / trainer）のときだけ送れる
+          // （2026-11-01 点検 send-push-notification-6。以前は「同じジムなら誰にでも」で、お客様が同じジムの他のお客様へ
+          //  公式アプリの通知を好きな文面で送れた。LINE の mayLineMessage〔../_shared/lineRecipients.ts〕と同じ規則）。
+          //   - スタッフ → そのジムのお客様（代理予約・取り消し・オプションの変更の連絡。お客様は退会済みでもよい）
+          //   - お客様 → そのジムのスタッフ（予約・キャンセル・日時の変更の連絡）
+          const callerActive = (memberships.get(callerId) ?? []).filter((m) => m.active);
           const denied = otherIds.filter((id) => {
-            const targetMemberships = memberships.get(id);
-            if (!targetMemberships || targetMemberships.length === 0) return true;
-            for (const m of targetMemberships) {
-              if (callerTenants.has(m.tenantId)) return false;
-            }
-            return true;
+            const targetMemberships = memberships.get(id) ?? [];
+            return !targetMemberships.some((t) =>
+              callerActive.some((c) => c.tenantId === t.tenantId && (isStaffRole(c.role) || isStaffRole(t.role)))
+            );
           });
           if (denied.length > 0) {
             return new Response(JSON.stringify({ error: "Forbidden", denied }), {

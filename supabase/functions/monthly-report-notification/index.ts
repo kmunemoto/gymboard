@@ -1,8 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { verifyCaller } from "../_shared/auth.ts";
+
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+const BUILD = "2026-11-01-monthly-report-authz";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
+  "x-gymboard-build": BUILD,
 };
 
 // JST helpers
@@ -15,6 +20,18 @@ const fmtJa = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // 🔴 呼べるのは service_role / cron だけ（2026-11-01 点検）。下の本体は全部のジムの LINE 連携者へ一斉に送り、
+  //    返事に user_id を並べる作り。今は無効化してあるが、無効化より前の版が本番に残っていると未ログインで動いた。
+  //    認可を先に置き、本番もこの版にそろえる。
+  const caller = await verifyCaller(req);
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const cronAuthorized = !!cronSecret && req.headers.get("x-cron-secret") === cronSecret;
+  if (!caller?.isServiceRole && !cronAuthorized) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     // LINE通知は無効化されました（ユーザー要望）。

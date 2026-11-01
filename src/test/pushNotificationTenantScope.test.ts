@@ -57,7 +57,8 @@ describe("send-push-notification: 宛先はテナントで絞る", () => {
   it("tenant_members から所属を引くヘルパーがある", () => {
     expect(code).toMatch(/async function loadTenantMemberships\(/);
     expect(code).toMatch(/\.from\("tenant_members"\)/);
-    expect(code).toMatch(/\.select\("user_id, tenant_id, status"\)/);
+    // role はお客様同士を断るのに使う（2026-11-01 send-push-notification-6）
+    expect(code).toMatch(/\.select\("user_id, tenant_id, status, role"\)/);
   });
 
   it("tenant_id が NULL の行を捨てている（null 同士の一致を作らない）", () => {
@@ -86,9 +87,21 @@ describe("send-push-notification: 宛先はテナントで絞る", () => {
   });
 
   it("所属が引けない宛先は拒否する（fail-close）", () => {
+    // 所属が無ければ空の配列 → some() が false → denied に入る
+    expect(code).toMatch(/const targetMemberships = memberships\.get\(id\) \?\? \[\];/);
+    expect(code).toMatch(/return !targetMemberships\.some\(/);
+  });
+
+  it("🔴 お客様同士は送れない（同じジムで、どちらかがそのジムのスタッフのときだけ。2026-11-01 send-push-notification-6）", () => {
+    // 以前は「同じジムなら誰にでも」で、お客様が同じジムの他のお客様へ公式アプリの通知を好きな文面で送れた。
+    // LINE の mayLineMessage（_shared/lineRecipients.ts）と同じ規則。
+    expect(code).toMatch(/const isStaffRole = \(role: string\) => role === "owner" \|\| role === "trainer";/);
+    expect(code).toMatch(/const callerActive = \(memberships\.get\(callerId\) \?\? \[\]\)\.filter\(\(m\) => m\.active\);/);
     expect(code).toMatch(
-      /if \(!targetMemberships \|\| targetMemberships\.length === 0\) return true;/,
+      /callerActive\.some\(\(c\) => c\.tenantId === t\.tenantId && \(isStaffRole\(c\.role\) \|\| isStaffRole\(t\.role\)\)\)/,
     );
+    // 「同じジムなら誰でも」の形に戻っていない
+    expect(code).not.toMatch(/if \(callerTenants\.has\(m\.tenantId\)\) return false;/);
   });
 
   it("waitlist 経路もテナント所属を確認している", () => {

@@ -32,6 +32,7 @@ const DISTRIBUTED_FILES = [
   "supabase/migrations/20261101040000_profile_plan_guard_scope.sql",
   "supabase/migrations/20261101050000_booking_customer_update_guard.sql",
   "supabase/migrations/20261101060000_transfer_ownership_updates_owner.sql",
+  "supabase/migrations/20261101100000_delete_customer_tenant_scope.sql",
   "supabase/functions/send-push-notification/index.ts",
   "supabase/functions/send-transactional-email/index.ts",
   "supabase/functions/_shared/emailClientGuard.ts",

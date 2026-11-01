@@ -103,10 +103,11 @@ describe("send-line-message の宛先が絞られている", () => {
     );
   });
 
-  it("他人宛ては同一テナントの相手だけ", () => {
+  it("他人宛ては同一テナントの「スタッフ ⇔ その在籍者」だけ（お客様同士は不可。lineRecipients.test.ts）", () => {
     const clientBlock = /if\s*\(!caller\.isServiceRole\)\s*\{([\s\S]*?)\n    \}/.exec(code)?.[1];
     expect(clientBlock).toMatch(/user_id\s*!==\s*caller\.userId/);
-    expect(clientBlock, "同一テナントの確認をしていません").toMatch(/sharesTenant\(/);
+    expect(clientBlock, "同一テナントの確認をしていません").toMatch(/mayMessage\(/);
+    expect(code).toContain("return mayLineMessage(mine, theirs);");
   });
 
   it("判定に失敗したら送らない（fail-close）", () => {

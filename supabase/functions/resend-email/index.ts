@@ -20,9 +20,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyCaller } from "../_shared/auth.ts";
 
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
+const BUILD = "2026-11-01-no-invite-resend";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-gymboard-build": BUILD,
 };
 
 const json = (body: unknown, status = 200) =>
@@ -74,6 +78,10 @@ Deno.serve(async (req) => {
       .eq("tenant_id", tenantId)
       .maybeSingle();
     if (!row) return json({ error: "not_found" }, 404);
+
+    // 🔴 招待メールは再送しない（2026-11-01 点検 invite-link-in-log-1）。履歴のリンク（ログインの鍵入り）は
+    //    伏せてあるので描き直せない。お客様のカードの「招待する」からやり直すと、新しいリンクで送られる
+    if (row.template_name === "customer-invite") return json({ error: "invite_needs_reissue" }, 409);
 
     // 材料を探す。結果の行（sent / failed）は材料を持たないので、
     // 同じ message_id の行から拾う

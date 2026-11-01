@@ -2788,6 +2788,8 @@
       "statusInvited": "Invited {{date}}",
       "errInvalidEmail": "The email address format is invalid",
       "errEmailTaken": "This address is already used by another account. Ask the customer to log in with their existing account",
+      "errAlreadyClaimed": "This customer has already signed in. An invitation can’t be sent",
+      "errTooMany": "Too many invitations have been sent. Please try again later",
       "errSuppressed": "Mail to this address has bounced before, so it cannot be sent. Please confirm another address",
       "errFailed": "Could not send the invitation. Please try again later"
     }

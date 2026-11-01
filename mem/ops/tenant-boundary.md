@@ -1608,6 +1608,33 @@ service_role / cron 用の関数は、送信済みの印を先に付けておけ
 
 ---
 
+## 穴18（high）: 招待で、本人が使っているお客様のアカウントを乗っ取れた・招待リンクが送信履歴に残っていた（2026-11-01・点検の拡大で発見）
+
+CSV で取り込んだお客様への招待（invite-customer）まわりの3つ。
+
+1. **乗っ取り**: invite-customer は「imported_at があり claimed_at が無い」お客様のメールを差し替えて、パスワード設定リンクを送る。
+   claimed_at は profiles の列で、オーナーが API で消せた → 消して招待し直すと、本人が使っているアカウントのメールが攻撃者の
+   アドレスになり、リンクからパスワードを設定して乗っ取れた（本人は締め出される）。
+   → `20261101020000_profile_claim_fields_guard.sql` の門番（SECURITY INVOKER）で、画面から imported_at・claimed_at・invited_at を
+   変えられない（書くのは import_customers・claim_my_profile〔どちらも DEFINER〕と invite-customer〔service_role〕だけ）。
+   invite-customer は auth 側の事実（一度でもログインした・Google/Apple がつながった）で「本人が来た」を見て 409。
+2. **招待リンクが送信履歴に残る**: send-transactional-email が template_data をそのまま email_send_log に書いていて、招待の inviteUrl
+   （token_hash 入り）をインストラクターも読めた（お客様が開く前に開けば、そのお客様としてログインできる）。
+   → `_shared/logSafety.ts` の `redactTemplateDataForLog` で、ログインの鍵（token_hash・access_token・refresh_token）入りの値を
+   伏せてから履歴に書く（8か所）。体験の取り消しリンク（token=）は鍵ではないので伏せない。resend-email は招待を断る（新しいリンクで招待し直す）。
+   本番の履歴に鍵入りの行は0件だった（招待はまだ使われていない）。
+3. **招待メールの送りすぎ**: 取り込みのアカウントを宛先だけ替えて、正規の送信元から何通でも送れた → 1つのジムで24時間に100通まで。
+
+画面: 招待カードは 409／429 の理由を返事の本文から読み、「このお客様はもうログインしています」「送信が多すぎます」を出す（5言語）。
+本番（2026-11-01・3段構え）: オーナー・お客様本人・service_role を演じて、表示名などの編集・同じ値での保存は通り、3つの印の変更は
+オーナーも本人も拒否、claim_my_profile と service_role の invited_at は通る、を確かめた（全部戻した）。
+
+⚠️ 残り: 自分で開いたジムの取り込みアカウントを、他人のアドレスで招待すること自体はできる（リンクは本人に届くので攻撃者は入れない。
+本人が後で Google ログインすると、そのアカウント＝攻撃者のジムのお客様につながりうる）。email_confirm をやめる案は GoTrue の挙動の
+確かめが要るので保留。
+
+---
+
 ## 穴17（high）: お知らせの「1人宛て」で、他のジムの人に公式アプリの通知を送れた（2026-11-01・点検の拡大で発見）
 
 `announcements.target` には 'all'／'except'／'only' のほか、古いアプリが書く「1人宛て」（user_id）が入る。表への直接の

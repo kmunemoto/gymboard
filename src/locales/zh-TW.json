@@ -2788,6 +2788,8 @@
       "statusInvited": "{{date}} 已邀請",
       "errInvalidEmail": "電子郵件地址格式不正確",
       "errEmailTaken": "此地址已被其他帳號使用。請讓客戶用既有帳號登入",
+      "errAlreadyClaimed": "這位客戶已登入，無法傳送邀請",
+      "errTooMany": "邀請郵件傳送過多，請稍後再試",
       "errSuppressed": "此地址曾投遞失敗，無法發送。請確認其他地址",
       "errFailed": "邀請發送失敗，請稍後再試"
     }

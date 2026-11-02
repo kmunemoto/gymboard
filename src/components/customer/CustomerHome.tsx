@@ -25,7 +25,6 @@ import { formatDate } from "@/lib/dateFormat";
 import { supabase } from "@/integrations/supabase/client";
 import { getCycleWindow, getNextBookingOrdinal, resolveCycleMonths, resolveCycleUnit, resolveGraceDays } from "@/lib/courseProgress";
 import { reportPeriodAt } from "@/lib/reportPeriod";
-import { toPlanUsageBooking, toProgressBooking } from "@/lib/planUsage";
 import WorkoutShareModal from "./WorkoutShareModal";
 import { buildSession, type RawWorkout } from "@/lib/workoutShare";
 import { getMuscleGroup, summarizeMuscleGroups } from "@/lib/muscleGroup";
@@ -176,8 +175,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         cycleStartDate: profile?.cycle_start_date,
         plan: currentPlan,
         maxSessions,
-        // 🔴 予約の種類（プラン名）も渡す。今のプランの予約の1回目から数える（2026-11-02）
-        bookings: bookings.map(toProgressBooking),
+        bookings: bookings.map((b) => ({ id: b.id, booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
         cycleMonths: resolveCycleMonths(currentPlan, tenantPlans),
         graceDays: resolveGraceDays(currentPlan, tenantPlans, profile?.grace_enabled),
         cycleUnit: resolveCycleUnit(currentPlan, tenantPlans),
@@ -317,7 +315,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
         planName={profile?.plan}
         cycleStartDate={profile?.cycle_start_date}
         tenantPlans={tenantPlans}
-        bookings={bookings.map(toPlanUsageBooking)}
+        bookings={bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
         cycleStartPinned={profile?.cycle_start_pinned}
         graceEnabled={profile?.grace_enabled}
         showUsagePeriod={profile?.show_usage_period}
@@ -593,7 +591,7 @@ const CustomerHome = ({ onNavigate }: { onNavigate?: (tab: CustomerTab) => void 
                         cycleStartPinned: profile?.cycle_start_pinned,
                         graceEnabled: profile?.grace_enabled,
                         tenantPlans,
-                        bookings: bookings.map(toPlanUsageBooking),
+                        bookings: bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
                       }, 0, now) ?? getCycleWindow(profile?.cycle_start_date, now, resolveCycleMonths(currentPlan, tenantPlans), resolveCycleUnit(currentPlan, tenantPlans));
                       if (!currentCycle) return t("home.checkData");
                       const cycleVisited = bookings.filter(b => {

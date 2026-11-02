@@ -19,7 +19,6 @@ import { getCycleWindow as getSharedCycleWindow, resolveCycleMonths, resolveCycl
 import { useTranslation } from "react-i18next";
 import { SAME_DAY_FORFEIT_STATUS, useMyBookings } from "@/hooks/useBookings";
 import { reportPeriodAt, reportPeriodLabel, type ReportPeriodSource } from "@/lib/reportPeriod";
-import { toPlanUsageBooking } from "@/lib/planUsage";
 import {
   WORKOUT_LOG_ENABLED,
   MEALS_ENABLED,
@@ -75,8 +74,7 @@ const CustomerMonthlyReport = ({ onBack }: Props) => {
       cycleStartPinned: profile?.cycle_start_pinned,
       graceEnabled: profile?.grace_enabled,
       tenantPlans: tenantPlans ?? [],
-      // 🔴 予約の種類（プラン名）も渡す。今のプランの予約の1回目から数える（2026-11-02）
-      bookings: myBookings.map(toPlanUsageBooking),
+      bookings: myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
     };
   }, [profileLoading, myBookingsLoading, profile?.plan, profile?.cycle_start_date, profile?.cycle_start_pinned, profile?.grace_enabled, tenantPlans, myBookings]);
 

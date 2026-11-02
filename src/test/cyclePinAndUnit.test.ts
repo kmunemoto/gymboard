@@ -272,6 +272,23 @@ describe("配線: クライアント・エッジ関数", () => {
     expect(src).toMatch(/cycle_unit:\s*\n\s*form\.plan_type === "subscription" && form\.cycle_unit !== "months"/);
   });
 
+  it("TrainerClientDetail: 起算日を手で変えられるのは「固定」のときだけ（日付がまだ無い最初の1回を除く。2026-11-02）", () => {
+    // 宗本さんの決定「手入力は固定のときだけ」。固定オフのお客様は予約から自動で決まる（今ある回数は変えない）
+    const src = readFileSync("src/components/trainer/TrainerClientDetail.tsx", "utf8");
+    expect(src).toContain("const canEditCycleStart = !isLimitedStaff && (cycleStartPinned || !cycleStartDate);");
+    // 日付の入力と「今日にリセット」の両方
+    expect(src).toMatch(/type="date"\s*value=\{cycleStartDate\}\s*disabled=\{!canEditCycleStart\}/);
+    expect(src).toMatch(/disabled=\{!canEditCycleStart\} onClick=\{handleResetCycleToToday\}/);
+    // 押せないボタンの裏口も塞ぐ（変更の関数そのものが固定でないと動かない）
+    expect(src).toMatch(/const handleCycleStartDateChange = async \(newDate: string\) => \{\s*if \(!canEditCycleStart\) return;/);
+    // 手で変えられないときは理由を出す（固定のスイッチへ案内）
+    expect(src).toMatch(/\{!canEditCycleStart && !isLimitedStaff && \(\s*<p[^>]*>\{t\("clientDetail\.cycleStartLockedHint"\)\}<\/p>/);
+    for (const lng of ["ja", "en", "ko", "zh-CN", "zh-TW"]) {
+      const json = JSON.parse(readFileSync(`src/locales/${lng}.json`, "utf8"));
+      expect(typeof json.clientDetail.cycleStartLockedHint, lng).toBe("string");
+    }
+  });
+
   it("TrainerClientDetail: 固定スイッチは日付なしでは操作できない", () => {
     const src = readFileSync("src/components/trainer/TrainerClientDetail.tsx", "utf8");
     expect(src).toMatch(/checked=\{cycleStartPinned\}/);

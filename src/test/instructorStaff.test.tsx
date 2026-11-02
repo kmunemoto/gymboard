@@ -429,8 +429,11 @@ describe("画面のつなぎ込み（ソース）", () => {
     const src = read("src/components/trainer/TrainerClientDetail.tsx");
     expect(src).toContain("canManageStatus={!isLimitedStaff}");
     expect(src).toMatch(/\{!isLimitedStaff && \(\s*<MemberPaymentsSection/);
-    // プラン・起算日（日付・今日に戻す）・猶予は DB（GB005）が断るので、先に押せなくしておく
-    expect(src.match(/disabled=\{isLimitedStaff\}/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+    // プラン・猶予は DB（GB005）が断るので、先に押せなくしておく
+    expect(src.match(/disabled=\{isLimitedStaff\}/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // 起算日（日付・今日に戻す）は「固定」のときだけ手で変えられる（2026-11-02）。インストラクターはいつでも不可
+    expect(src).toContain("const canEditCycleStart = !isLimitedStaff && (cycleStartPinned || !cycleStartDate);");
+    expect(src.match(/disabled=\{!canEditCycleStart\}/g)?.length ?? 0).toBe(2);
     expect(src).toContain("disabled={!cycleStartDate || isLimitedStaff}");
   });
 

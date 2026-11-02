@@ -241,7 +241,7 @@ describe("お知らせ管理: 画像だけで送る（2026-11-02）", () => {
   // 宗本さん「タイトルと文章入れなくても画像だけでもお知らせ送れる様にして」
   const openBlank = () => fireEvent.click(screen.getByText(i18n.t("announcement.newBtn")));
 
-  it("🔴 画像があれば、タイトルと本文が空でも送れる。タイトルは「画像のお知らせ」で保存する", async () => {
+  it("🔴 画像があれば、タイトルと本文が空でも送れる。タイトルは「画像が送られました」で保存する", async () => {
     await renderManager();
     openBlank();
     choose("flyer.png");

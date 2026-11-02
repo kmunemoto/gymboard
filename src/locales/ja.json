@@ -1387,7 +1387,7 @@
     "deleteTitle": "お知らせを削除しますか？",
     "deleteDesc": "この操作は取り消せません。",
     "errTitleBody": "タイトルと本文を入力するか、画像を付けてください",
-    "imageOnlyTitle": "画像のお知らせ",
+    "imageOnlyTitle": "画像が送られました",
     "errTarget": "配信対象の顧客を選択してください",
     "errExcept": "除くお客様を選択してください",
     "errSchedule": "配信日時を指定してください",

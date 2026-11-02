@@ -219,8 +219,8 @@ const TrainerAnnouncementManager = () => {
     // お知らせの行と「選んだ人」と画像を1つのトランザクションで書く（間に配信が挟まって、
     // 除く人がまだ居ない状態で全員に送らないように）。ジムは DB 側で自分の所属に決まる
     const { error } = await supabase.rpc("save_announcement", {
-      // タイトルが空なら「画像のお知らせ」を入れる。一覧・プッシュ通知の見出しになり、
-      // 画像を出せない古いアプリ（次のビルドより前）でも空の行にならない
+      // タイトルが空なら「画像が送られました」を入れる（2026-11-02 宗本さんの指定）。一覧・プッシュ通知の見出しになり、
+      // 画像を出せない古いアプリ（画像の表示 #497 より前の版）でも空の行にならない
       p_title: title.trim() || t("announcement.imageOnlyTitle"),
       p_body: body.trim(),
       p_icon: icon,

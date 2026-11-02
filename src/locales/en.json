@@ -1387,7 +1387,7 @@
     "deleteTitle": "Delete this announcement?",
     "deleteDesc": "This action cannot be undone.",
     "errTitleBody": "Enter a title and body, or attach an image",
-    "imageOnlyTitle": "Image announcement",
+    "imageOnlyTitle": "An image has been sent",
     "errTarget": "Please select target customers",
     "errExcept": "Please select the customers to exclude",
     "errSchedule": "Please specify a delivery date & time",

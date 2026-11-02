@@ -1387,7 +1387,7 @@
     "deleteTitle": "공지를 삭제하시겠습니까?",
     "deleteDesc": "이 작업은 취소할 수 없습니다.",
     "errTitleBody": "제목과 본문을 입력하거나 이미지를 첨부해 주세요",
-    "imageOnlyTitle": "이미지 공지",
+    "imageOnlyTitle": "이미지가 전송되었습니다",
     "errTarget": "발송 대상 고객을 선택해 주세요",
     "errExcept": "제외할 고객을 선택해 주세요",
     "errSchedule": "발송 일시를 지정해 주세요",

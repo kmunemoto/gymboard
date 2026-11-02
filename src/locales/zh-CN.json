@@ -1387,7 +1387,7 @@
     "deleteTitle": "要删除公告吗？",
     "deleteDesc": "此操作无法撤销。",
     "errTitleBody": "请输入标题和正文，或附上图片",
-    "imageOnlyTitle": "图片公告",
+    "imageOnlyTitle": "已发送图片",
     "errTarget": "请选择发送对象客户",
     "errExcept": "请选择要排除的顾客",
     "errSchedule": "请指定发送时间",

@@ -94,9 +94,10 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
     let cancelled = false;
     (async () => {
       const nowIso = new Date().toISOString();
-      const { data, error } = await (supabase
+      // 件数だけを数える（行を読んで数えると1000件で頭打ちになる。2026-11-02）
+      const { count, error } = await (supabase
         .from("trial_bookings") as any)
-        .select("id")
+        .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenant.id)
         // 🔴 コード（2026-08-26 に日本語から移行）。DB のトリガーが入口で正すので、
         //    古いアプリが日本語を書いても保存された値はこのコードになる
@@ -107,7 +108,7 @@ const TrainerDashboard = ({ onSelectClient, onMessageClient, onNavigateFollowUps
         setPendingFollowUps(0);
         return;
       }
-      setPendingFollowUps((data || []).length);
+      setPendingFollowUps(count ?? 0);
     })();
     return () => { cancelled = true; };
   }, [tenant?.id]);

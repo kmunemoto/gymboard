@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { useAuth } from "@/contexts/AuthContext";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
 import {
@@ -101,11 +102,18 @@ export const useMessages = (otherUserId: string | null, options?: UseMessagesOpt
   const fetchMessages = useCallback(async () => {
     const sides = resolveSides();
     if (!sides || sides.otherIds.length === 0) return;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(conversationFilter(sides.selfIds, sides.otherIds))
-      .order("created_at", { ascending: true });
+    // 古い順なので、1回で読むと1000件を超えたとき**新しいメッセージから**黙って欠ける。
+    // ページに分けて全件読む（fetchAllRows。2026-11-02）。読めなかったときは従来どおり何もしない
+    const data = await fetchAllRows((from, to) =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(conversationFilter(sides.selfIds, sides.otherIds))
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+      { key: (m) => m.id },
+    ).catch(() => null);
     if (data) setMessages(await withSignedUrls(data as Message[]));
     setLoading(false);
   }, [resolveSides]);

@@ -73,6 +73,8 @@ class FixtureQuery implements PromiseLike<{ data: unknown; error: null }> {
   private embeds: { key: string; table: string; fk: string }[] = [];
   private sort: { column: string; asc: boolean }[] = [];
   private max: number | null = null;
+  /** range(from, to) の開始位置。本物の PostgREST と同じく、並べたあとに読み飛ばす */
+  private skip = 0;
   private mode: "select" | "insert" | "update" | "upsert" | "delete" = "select";
   private payload: Row[] = [];
   private singleMode: "none" | "one" | "maybe" = "none";
@@ -146,7 +148,7 @@ class FixtureQuery implements PromiseLike<{ data: unknown; error: null }> {
     return this;
   }
   limit(n: number) { this.max = n; return this; }
-  range(from: number, to: number) { this.max = to - from + 1; return this; }
+  range(from: number, to: number) { this.skip = from; this.max = to - from + 1; return this; }
   abortSignal() { return this; }
   throwOnError() { return this; }
   maybeSingle() { this.singleMode = "maybe"; return this; }
@@ -201,6 +203,7 @@ class FixtureQuery implements PromiseLike<{ data: unknown; error: null }> {
         return (av < bv ? -1 : av > bv ? 1 : 0) * (s.asc ? 1 : -1);
       });
     }
+    if (this.skip > 0) out = out.slice(this.skip);
     if (this.max != null) out = out.slice(0, this.max);
 
     if (this.singleMode !== "none") return { data: out[0] ?? null, error: null };

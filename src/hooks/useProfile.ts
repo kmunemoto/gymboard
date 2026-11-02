@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { useAuth } from "@/contexts/AuthContext";
 import { SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { uniqueChannelName } from "@/lib/realtimeChannel";
@@ -248,13 +249,23 @@ export const useAllCustomerProfiles = () => {
     // 同日キャンセル消化(SAME_DAY_FORFEIT_STATUS)は実際には来店していないため、
     // 「次回予約」「最終来店日」の算出対象からは除外する（プラン消化数の算出は
     // courseProgress.ts が別途行うため、そちらは意図的に触れない）。
-    const { data: allBookings } = await supabase
-      .from("bookings")
-      .select("user_id, booking_date, booking_type, status")
-      .in("user_id", customerIds)
-      .neq("status", "キャンセル済み")
-      .neq("status", SAME_DAY_FORFEIT_STATUS)
-      .order("booking_date", { ascending: true });
+    // 🔴 ジム全体の予約なので、1回で読むと1000件で黙って欠ける（新しい予約から欠け、
+    //    「次回予約」が出なくなる）。ページに分けて全件読む（fetchAllRows。2026-11-02）。
+    //    読めなかったときは従来どおり「予約なし」として続ける
+    const allBookings = await fetchAllRows((from, to) =>
+      supabase
+        .from("bookings")
+        .select("user_id, booking_date, booking_type, status")
+        .in("user_id", customerIds)
+        .neq("status", "キャンセル済み")
+        .neq("status", SAME_DAY_FORFEIT_STATUS)
+        .order("booking_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ).catch((e: unknown) => {
+      console.warn("お客様の予約の読み込みに失敗:", e);
+      return null;
+    });
 
     // 性別は profiles が持っている（2026-09-05 に user_avatars から移した）。
     // 上の select("*") で一緒に取れているので、ここで問い合わせを1本減らせる。

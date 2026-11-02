@@ -11,6 +11,7 @@
 //    CSV は「全部持ち出せる」ことが価値なので、ページングして最後まで取る（fetchAll）。
 
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { formatJST } from "@/lib/timezone";
 import type { CsvColumn } from "@/lib/csvExport";
 
@@ -25,22 +26,14 @@ export const EXPORT_KINDS: readonly ExportKind[] = [
   "payments",
 ] as const;
 
-/** 1000行の壁を越えて全件取る。取得順は呼び出し側の order に従う。 */
-const PAGE = 1000;
-
-const fetchAll = async <T,>(
+/**
+ * 1000行の壁を越えて全件取る（src/lib/fetchAllRows.ts）。取得順は呼び出し側の order に従う。
+ * 🔴 並びの最後に必ず id を足す（2026-11-02）。日付だけだと、同じ日の行がページの境目をまたいだとき
+ *    同じ行が2回出たり1行抜けたりする（トレーニング記録は同じ日に何行もあるので、ほぼ確実に起きていた）
+ */
+const fetchAll = <T,>(
   build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
-): Promise<T[]> => {
-  const out: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await build(from, from + PAGE - 1);
-    if (error) throw new Error(error.message);
-    const rows = data ?? [];
-    out.push(...rows);
-    if (rows.length < PAGE) break;
-  }
-  return out;
-};
+): Promise<T[]> => fetchAllRows(build);
 
 /**
  * 顧客IDの配列から profiles を引く。
@@ -125,6 +118,7 @@ const fetchCustomers = async (tenantId: string): Promise<CustomerRow[]> => {
       .eq("tenant_id", tenantId)
       .eq("role", "customer")
       .order("joined_at", { ascending: true })
+      .order("id", { ascending: true })
       .range(from, to),
   );
   if (members.length === 0) return [];
@@ -181,6 +175,7 @@ const fetchBookings = (tenantId: string) =>
       .select("id, user_id, booking_date, booking_type, status, staff_user_id, trainer_note, created_via, created_at")
       .eq("tenant_id", tenantId)
       .order("booking_date", { ascending: false })
+      .order("id", { ascending: false })
       .range(from, to),
   );
 
@@ -248,6 +243,7 @@ const fetchWorkouts = (tenantId: string) =>
       .select("id, user_id, workout_date, exercise_id, weight, reps, sets, notes, exercises(name)")
       .eq("tenant_id", tenantId)
       .order("workout_date", { ascending: false })
+      .order("id", { ascending: false })
       .range(from, to),
   );
 
@@ -278,6 +274,7 @@ const fetchMeasurements = (tenantId: string) =>
       .select("id, user_id, measured_date, weight, body_fat")
       .eq("tenant_id", tenantId)
       .order("measured_date", { ascending: false })
+      .order("id", { ascending: false })
       .range(from, to),
   );
 
@@ -316,6 +313,7 @@ const fetchPayments = (tenantId: string) =>
       .select("id, user_id, paid_on, amount_yen, kind, method, plan_name, note, created_at")
       .eq("tenant_id", tenantId)
       .order("paid_on", { ascending: false })
+      .order("id", { ascending: false })
       .range(from, to),
   );
 

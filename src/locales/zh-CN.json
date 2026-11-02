@@ -1569,7 +1569,6 @@
     "planChangedToast": "已将 {{name}} 的套餐变更为“{{plan}}”",
     "cycleStart": "使用期间（起算日）",
     "resetToToday": "重置为今天",
-    "cycleStartAutoHint": "有当前方案的预约时，从其中第一次预约日起自动计算。此日期仅在还没有当前方案的预约时使用（开启固定时除外）。",
     "expiry": "有效期：{{date}}",
     "expiryPending": "有效期：未确定（首次预约后将自动按该日期设定）",
     "expiryConsumed": "次数已全部预约（下次预约后周期将更新）",

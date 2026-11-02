@@ -1,6 +1,6 @@
 import { addDays, format, parseISO, startOfDay } from "date-fns";
 import { getCycleWindow, resolveEffectiveCycle, type CycleWindow } from "./courseProgress";
-import { computePlanUsage, planUsageStart, type PlanUsageBooking, type PlanUsageInput } from "./planUsage";
+import { computePlanUsage, type PlanUsageBooking, type PlanUsageInput } from "./planUsage";
 import { getJSTNow, toJSTDate } from "./timezone";
 
 /**
@@ -41,29 +41,16 @@ export type PeriodDayHint =
   | { kind: "inPeriod"; period: CycleWindow; count: number }
   | null;
 
-// 保存された起算日が無くても、今のプランの予約があれば数えられる（planUsageStart。2026-11-02）
 const isSubscription = (input: PlanUsageInput | null | undefined): input is PlanUsageInput =>
-  !!input && (input.planType ?? "subscription") === "subscription";
+  !!input && !!input.startDate && (input.planType ?? "subscription") === "subscription";
 
 const activeTimes = (bookings: PlanUsageBooking[]) =>
   bookings.filter((b) => b.status !== "キャンセル済み").map((b) => ({ b, at: toJSTDate(b.booking_date) }));
 
-/** 「この日に予約したら」の仮の予約。今のプランの予約として数える（鎖の先頭を決めるのに使う） */
-const probeOn = (input: PlanUsageInput, dateKey: string): PlanUsageBooking => ({
-  booking_date: `${dateKey}T12:00:00+09:00`,
-  status: "予約済み",
-  booking_type: input.planName ?? null,
-});
-
-/**
- * その日を含む区切り（回数の数え方と同じ。未来の1回目へは先回りしない）。
- * 鎖の先頭は渡した予約から決める（カード＝computePlanUsage と同じ。planUsageStart）
- */
-const cycleAt = (input: PlanUsageInput, bookings: PlanUsageBooking[], day: Date) => {
-  const start = planUsageStart(input, bookings);
-  if (!start) return null;
-  return resolveEffectiveCycle({
-    cycleStartDate: start,
+/** その日を含む区切り（回数の数え方と同じ。未来の1回目へは先回りしない） */
+const cycleAt = (input: PlanUsageInput, bookings: PlanUsageBooking[], day: Date) =>
+  resolveEffectiveCycle({
+    cycleStartDate: input.startDate!,
     maxSessions: input.maxSessions ?? null,
     cycleMonths: input.cycleMonths,
     cycleUnit: input.cycleUnit,
@@ -74,7 +61,6 @@ const cycleAt = (input: PlanUsageInput, bookings: PlanUsageBooking[], day: Date)
     allowOverflow: input.allowOverflow,
     pinned: input.cycleStartPinned === true,
   });
-};
 
 /**
  * ある予約が属する期間と、その中で何回目か。猶予で前の期間へ回る予約は carry。
@@ -137,10 +123,8 @@ export function periodDayHint(
 ): PeriodDayHint {
   if (!isSubscription(input) || !view) return null;
   const day = startOfDay(parseISO(dateKey));
-  const probe = probeOn(input, dateKey);
-  // 鎖の先頭（その日に予約が入ったとして決める）より前の日には案内しない
-  const start = planUsageStart(input, [...bookings, probe]);
-  if (!start || day < startOfDay(parseISO(start))) return null;
+  if (day < startOfDay(parseISO(input.startDate!))) return null;
+  const probe: PlanUsageBooking = { booking_date: `${dateKey}T12:00:00+09:00`, status: "予約済み" };
   const place = placeOf(input, [...bookings, probe], probe);
   if (!place || place.carry) return null; // 猶予の日（前回分）は案内しない
   if (view.current && place.window.start.getTime() === view.current.start.getTime()) return null; // 今回の分
@@ -162,9 +146,10 @@ export function repeatPeriodBreak(
 ): { dateKey: string; ordinal: number } | null {
   if (!isSubscription(input) || weeks < 2) return null;
   const first = parseISO(dateKey);
-  const probes: PlanUsageBooking[] = Array.from({ length: weeks }, (_, i) =>
-    probeOn(input, format(addDays(first, i * 7), "yyyy-MM-dd")),
-  );
+  const probes: PlanUsageBooking[] = Array.from({ length: weeks }, (_, i) => ({
+    booking_date: `${format(addDays(first, i * 7), "yyyy-MM-dd")}T12:00:00+09:00`,
+    status: "予約済み",
+  }));
   const all = [...bookings, ...probes];
   /** その回が数えられる期間の開始日（猶予で前の期間へ回る回は、前の期間） */
   const ownerStart = (probe: PlanUsageBooking): number | null => {

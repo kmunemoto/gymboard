@@ -98,8 +98,8 @@ describe("アプリの起算日の自動設定は、DB の規則の中に収ま�
   it("🔴 予約を入れた直後に、その予約の日付（JST）を入れる（消さない）", () => {
     // 予約の日時は `${date}T${時刻}:00+09:00` で、起算日にはその date を渡す
     expect(hooks).toContain("const bookingDate = `${date}T${startTime}:00+09:00`;");
-    expect(hooks).toContain("await rebaseCycleStartIfNeeded(userId, date, data.id, bookingType);");
-    expect(hooks.indexOf("booking_date: bookingDate")).toBeLessThan(hooks.indexOf("await rebaseCycleStartIfNeeded(userId, date, data.id, bookingType);"));
+    expect(hooks).toContain("await rebaseCycleStartIfNeeded(userId, date, data.id);");
+    expect(hooks.indexOf("booking_date: bookingDate")).toBeLessThan(hooks.indexOf("await rebaseCycleStartIfNeeded(userId, date, data.id);"));
     expect(hooks).toContain('await supabase.from("profiles").update({ cycle_start_date: dateKey }).eq("user_id", userId);');
     // DB に断られても予約は成立させる（古いアプリも同じ）
     expect(hooks).toContain('console.warn("rebaseCycleStartIfNeeded failed:", e);');

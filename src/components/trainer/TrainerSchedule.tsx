@@ -154,8 +154,6 @@ const TrainerSchedule = () => {
           id: b.id,
           booking_date: `${b.date}T${b.startTime}:00+09:00`,
           status: b.status,
-          // 🔴 回数は今のプランの予約の1回目から数える（手で入れた起算日はいちばん下。2026-11-02）
-          booking_type: b.booking_type ?? null,
         });
         map.set(b.user_id, rows);
       });

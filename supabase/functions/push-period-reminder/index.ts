@@ -9,11 +9,10 @@ import {
   computeSubscriptionUsage,
   isoToJstYmd,
   periodReminderDaysLeft,
-  resolveCycleAnchorYmd,
 } from "../_shared/cycle.ts";
 
 // デプロイの確認用（応答ヘッダー x-gymboard-build。mem/ops/edge-function-deploy.md）
-const BUILD = "2026-11-02-cycle-anchor";
+const BUILD = "2026-11-02-saved-start";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +24,7 @@ const corsHeaders = {
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const REMINDER_DAYS = [7, 3];
 
-/** 1000行の壁を越えて全件取る（src/lib/gymDataExport.ts の fetchAll と同じ）。順番は呼び出し側の order */
+/** 1000行の壁を越えて全件取る（src/lib/fetchAllRows.ts と同じ。mem/ops/postgrest-max-rows.md）。順番は呼び出し側の order */
 const PAGE = 1000;
 async function fetchAllRows<T>(
   build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
@@ -80,17 +79,16 @@ Deno.serve(async (req) => {
 
     const [{ data: plans }, { data: prefs }, { data: tenants }, { data: bookings }] = await Promise.all([
       tenantIds.length
-        ? supabase.from("tenant_plans").select("tenant_id, plan_name, plan_type, max_sessions, cycle_months, cycle_unit, grace_days, allow_overflow").in("tenant_id", tenantIds)
+        ? supabase.from("tenant_plans").select("tenant_id, plan_name, plan_type, max_sessions, cycle_months, cycle_unit, grace_days").in("tenant_id", tenantIds)
         : Promise.resolve({ data: [] as any[] }),
       supabase.from("notification_preferences").select("user_id, reminder_period").in("user_id", userIds),
       tenantIds.length
         ? supabase.from("tenants").select("id, gym_name").in("id", tenantIds)
         : Promise.resolve({ data: [] as any[] }),
-      // booking_type: 予約したときのプラン名。区切りの鎖の先頭（今のプランの予約の1回目）を決める
-      // 🔴 1000行で黙って切れる（PostgREST の max-rows）。2026-11 時点で全ジム合わせて 970行あまり。
+      // 🔴 1000行で黙って切れる（PostgREST の max-rows）。2026-11 時点で全ジム合わせて970行あまり。
       //    切れると新しい予約が落ち、残り回数・期限を間違えて通知する。ページを分けて最後まで読む
       fetchAllRows((from, to) =>
-        supabase.from("bookings").select("id, user_id, booking_date, status, booking_type")
+        supabase.from("bookings").select("id, user_id, booking_date, status")
           .in("user_id", userIds).neq("status", "キャンセル済み")
           .order("booking_date", { ascending: true }).order("id", { ascending: true })
           .range(from, to)
@@ -104,10 +102,10 @@ Deno.serve(async (req) => {
     const optedOut = new Set(
       (prefs ?? []).filter((p: any) => p.reminder_period === false).map((p: any) => p.user_id),
     );
-    const bookingsByUser = new Map<string, { iso: string; type: string | null }[]>();
+    const bookingsByUser = new Map<string, string[]>();
     (bookings ?? []).forEach((b: any) => {
       const arr = bookingsByUser.get(b.user_id) ?? [];
-      arr.push({ iso: b.booking_date, type: b.booking_type ?? null });
+      arr.push(b.booking_date);
       bookingsByUser.set(b.user_id, arr);
     });
 
@@ -125,23 +123,13 @@ Deno.serve(async (req) => {
       if (tp.max_sessions == null) continue;
 
       const graceDays = p.grace_enabled === false ? 0 : tp.grace_days ?? 0;
-      const userBookings = bookingsByUser.get(p.user_id) ?? [];
-      // 🔴 鎖の先頭は今のプランの予約の1回目（手で入れた起算日はいちばん下。2026-11-02）。画面と同じ
-      const startYmd = resolveCycleAnchorYmd({
-        savedYmd: isoToJstYmd(`${p.cycle_start_date}T00:00:00+09:00`),
-        planName: p.plan,
-        bookings: userBookings,
-        pinned: p.cycle_start_pinned === true,
-        allowOverflow: tp.allow_overflow,
-      });
-      if (!startYmd) continue;
       const usage = computeSubscriptionUsage({
-        startYmd,
+        startYmd: isoToJstYmd(`${p.cycle_start_date}T00:00:00+09:00`),
         maxSessions: tp.max_sessions,
         cycleMonths: tp.cycle_months,
         cycleUnit: tp.cycle_unit,
         graceDays,
-        bookingIsos: userBookings.map((b) => b.iso),
+        bookingIsos: bookingsByUser.get(p.user_id) ?? [],
         nowJstYmd,
         anchorToFirstBooking: true, // 表示（クライアント）と同じ「1回目の予約日起点」で期限を判定
         pinned: p.cycle_start_pinned === true, // 起算日固定のお客様は店が決めた窓のまま

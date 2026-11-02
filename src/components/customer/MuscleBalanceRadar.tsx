@@ -17,7 +17,6 @@ import {
   subscribeTenantMuscleGroups,
 } from "@/lib/tenantMuscleGroups";
 import { reportPeriodAt, reportPeriodLabel, type ReportPeriodSource } from "@/lib/reportPeriod";
-import { toPlanUsageBooking } from "@/lib/planUsage";
 import { formatDate } from "@/lib/dateFormat";
 
 interface WorkoutRow {
@@ -64,8 +63,7 @@ const OwnRadarCard = () => {
       cycleStartPinned: profile?.cycle_start_pinned,
       graceEnabled: profile?.grace_enabled,
       tenantPlans: allPlans ?? [],
-      // 🔴 予約の種類（プラン名）も渡す。今のプランの予約の1回目から数える（2026-11-02）
-      bookings: bookings.map(toPlanUsageBooking),
+      bookings: bookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
     };
   }, [profileLoading, bookingsLoading, profile?.plan, profile?.cycle_start_date, profile?.cycle_start_pinned, profile?.grace_enabled, allPlans, bookings]);
   return <RadarCard userId={user?.id} periodSource={periodSource} />;

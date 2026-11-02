@@ -37,7 +37,7 @@ import { useStaffSchedules } from "@/hooks/useStaffSchedules";
 import { useBookingFrequencyLimits } from "@/hooks/useBookingFrequencyLimits";
 import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { useBookingBlockedWindows } from "@/hooks/useBookingBlockedWindows";
-import { computePlanUsage, resolvePlanUsageInput, toPlanUsageBooking, toProgressBooking } from "@/lib/planUsage";
+import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
 import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/lib/bookingErrors";
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
@@ -115,8 +115,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     if (input && profile?.grace_enabled === false) input.graceDays = 0;
     return input;
   }, [profile?.plan, profile?.cycle_start_date, profile?.cycle_start_pinned, profile?.grace_enabled, currentTenantPlan]);
-  // 🔴 予約の種類（プラン名）も渡す。利用期間は今のプランの予約の1回目から数える（2026-11-02）
-  const planBookingsForUsage = useMemo(() => myBookings.map(toPlanUsageBooking), [myBookings]);
+  const planBookingsForUsage = useMemo(
+    () => myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status })),
+    [myBookings],
+  );
   // カード表示用は「今日」基準（今の期間の消化状況を出す。従来どおり）
   const planUsage = useMemo(
     () => (planUsageInput ? computePlanUsage(planUsageInput, planBookingsForUsage, getJSTNow()) : null),
@@ -839,7 +841,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // 各予約の「今回 n/m 回目」算出用に BookingForProgress 形式へ変換
   // NOTE: hooks must run before any early return below to satisfy Rules of Hooks
-  const bookingsForProgress: BookingForProgress[] = useMemo(() => myBookings.map(toProgressBooking), [myBookings]);
+  const bookingsForProgress: BookingForProgress[] = useMemo(
+    () =>
+      myBookings.map((b) => ({
+        id: b.id,
+        booking_date: `${b.date}T${b.startTime}:00+09:00`,
+        status: b.status,
+      })),
+    [myBookings],
+  );
 
   // ジムが設定したキャンセルについての案内。空欄なら何も出さない（既定文は持たない）。
   const cancelPolicy = tenant?.cancel_policy_body?.trim() || "";
@@ -888,7 +898,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
           planName={profile?.plan}
           cycleStartDate={profile?.cycle_start_date}
           tenantPlans={tenantPlans}
-          bookings={planBookingsForUsage}
+          bookings={myBookings.map((b) => ({ booking_date: `${b.date}T${b.startTime}:00+09:00`, status: b.status }))}
           cycleStartPinned={profile?.cycle_start_pinned}
           graceEnabled={profile?.grace_enabled}
           showUsagePeriod={profile?.show_usage_period}

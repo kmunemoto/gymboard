@@ -107,34 +107,6 @@ function graceLent(
   return Math.min(capacity, tailCount);
 }
 
-/**
- * 回数を数え始める日（区切りの鎖の先頭）。クライアント courseProgress.ts の resolveCycleAnchor と同じ。
- *
- * 🔴 今のプランの予約の1回目が最優先、保存された起算日（手で入れた日付を含む）はいちばん下（2026-11-02）。
- * 宗本さん「予約の1回目を最優先に考えて自動で。利用期間を手動で設定するやつの優先順位は一番下」。
- * - 今のプランの予約（type が今のプラン名）の、いちばん新しい連続した並びの1回目の日
- * - 並びが無ければ保存された起算日。起算日固定（pinned）・超過を許さないプランも保存された起算日
- * bookings はキャンセル済みを除いた予約（type は予約したときのプラン名＝bookings.booking_type）。
- */
-export function resolveCycleAnchorYmd(params: {
-  savedYmd: string | null;
-  planName: string | null | undefined;
-  bookings: { iso: string; type: string | null }[];
-  pinned?: boolean | null;
-  allowOverflow?: boolean | null;
-}): string | null {
-  const saved = params.savedYmd || null;
-  const { planName } = params;
-  if (params.pinned === true || params.allowOverflow === false || !planName) return saved;
-  const sorted = [...params.bookings].sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
-  let first: string | null = null;
-  for (let i = sorted.length - 1; i >= 0; i--) {
-    if (sorted[i].type !== planName) break;
-    first = sorted[i].iso;
-  }
-  return first ? isoToJstYmd(first) : saved;
-}
-
 export interface EffectiveUsage {
   windowStart: number;
   windowEnd: number; // 排他上限（最終利用日 = end - 1日）

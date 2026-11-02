@@ -156,8 +156,28 @@ describe("🔴 お客様に見せない", () => {
     walk("src");
     expect(readers.sort()).toEqual([
       "src/components/trainer/TrainerSchedule.tsx",
-      "src/hooks/useBookings.ts",
+      // 予定表（useAllBookings）の読み込みは、1000件の壁を越えるために src/lib/scheduleRows.ts へ移した（2026-11-02）
+      "src/lib/scheduleRows.ts",
     ]);
+  });
+
+  it("その読み込み（fetchScheduleRows）を使うのは予定表のフックだけで、そのフックを使うのは店の画面だけ", () => {
+    const importers: string[] = [];
+    const callers: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const path = `${dir}/${e.name}`;
+        if (e.isDirectory()) { if (!path.startsWith("src/test") && !path.startsWith("src/dev")) walk(path); continue; }
+        if (!/\.tsx?$/.test(path)) continue;
+        const src = readFileSync(path, "utf8");
+        if (/from "@\/lib\/scheduleRows"/.test(src)) importers.push(path);
+        if (/useAllBookings\(\)/.test(src)) callers.push(path);
+      }
+    };
+    walk("src");
+    expect(importers).toEqual(["src/hooks/useBookings.ts"]);
+    expect(callers.length).toBeGreaterThan(0);
+    expect(callers.filter((p) => !p.startsWith("src/components/trainer/"))).toEqual([]);
   });
 
   it("入力欄が「スタッフだけ」と伝えている", () => {

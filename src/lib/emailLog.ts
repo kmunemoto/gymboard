@@ -63,6 +63,8 @@ export const loadEmailLog = async (
     .select("id, created_at, template_name, recipient_email, status, error_message")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
+    // 同じ時刻にまとめて送った行（招待の一括送信など）がページの境目で重複・欠落しないよう、最後に id で並べる
+    .order("id", { ascending: false })
     .range(from, from + LOG_PAGE - 1);
 
   if (opts.recipientEmail) q = q.eq("recipient_email", opts.recipientEmail);

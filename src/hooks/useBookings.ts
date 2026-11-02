@@ -51,6 +51,7 @@ const NOTIFY_CUSTOMER_LINE_ON_BOOKING = false;
 export { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";
 import { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";
 import { resyncCalendarCreate } from "@/lib/calendarResync";
+import { fetchScheduleRows } from "@/lib/scheduleRows";
 
 const logEmailInvoke = (
   context: string,
@@ -200,11 +201,8 @@ export const useAllBookings = () => {
   const fetchBookings = useCallback(async () => {
     setLoading(true);
 
-    const [{ data: rows, error }, { data: trialRows }, { data: blockedRows }] = await Promise.all([
-      supabase.from("bookings").select("*").order("booking_date", { ascending: true }),
-      supabase.from("trial_bookings").select("*").order("booking_date", { ascending: true }),
-      supabase.from("blocked_slots").select("*"),
-    ]);
+    // 🔴 全件をページに分けて読む（1回だと1000件で黙って欠ける。src/lib/scheduleRows.ts）
+    const [{ data: rows, error }, { data: trialRows }, { data: blockedRows }] = await fetchScheduleRows();
 
     if (error) {
       console.error("Failed to fetch bookings:", error);

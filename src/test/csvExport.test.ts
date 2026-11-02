@@ -154,8 +154,13 @@ describe("🔴 取得は必ずテナントで絞る", () => {
   });
 
   it("1000行の壁を越えて全件取る（ページング）", () => {
-    expect(src).toMatch(/const PAGE = 1000;/);
-    expect(src).toMatch(/if \(rows\.length < PAGE\) break;/);
+    // ページングは共通の fetchAllRows（src/lib/fetchAllRows.ts。単体テストは fetchAllRows.test.ts）
+    expect(src).toMatch(/import \{ fetchAllRows \} from "@\/lib\/fetchAllRows";/);
+    expect(src).toMatch(/=> fetchAllRows\(build\);/);
+    // 🔴 ページで読むものは、並びの最後に id を足す（同じ日付の行がページの境目で重複・欠落しない。2026-11-02）
+    const ranged = src.match(/\.order\("[a-z_]+", \{ ascending: (?:true|false) \}\)\n\s*\.order\("id", \{ ascending: (?:true|false) \}\)\n\s*\.range\(from, to\)/g) ?? [];
+    expect(ranged.length).toBe((src.match(/\.range\(from, to\)/g) ?? []).length);
+    expect(ranged.length).toBe(5);
     // 取得はすべて共通ヘルパ2本（fetchAll / fetchProfilesByUserIds）を通す。
     // 生の select が散ると、ページングや絞りの抜けを1箇所で守れなくなる
     const rawSelects = (src.match(/await supabase\s*\n?\s*\.from\(/g) ?? []).length;

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMeasurements } from "@/hooks/useMeasurements";
 import {
@@ -83,11 +84,19 @@ const ProgressCharts = () => {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("workouts")
-        .select("*, exercises(name)")
-        .eq("user_id", user.id)
-        .order("workout_date", { ascending: true });
+      // 古い順に並べるので、1回で読むと1000件を超えたとき**新しい記録から**黙って欠ける。
+      // ページに分けて全件読む（fetchAllRows。同じ日の記録が多いので、並びの最後に id を足す）
+      const data = await fetchAllRows((from, to) =>
+        supabase
+          .from("workouts")
+          .select("*, exercises(name)")
+          .eq("user_id", user.id)
+          .order("workout_date", { ascending: true })
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to),
+        { key: (w) => w.id },
+      ).catch(() => null);
       if (data) {
         setWorkouts(
           data.map((w: any) => ({

@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
     // プラン側に設定があれば優先、無ければテナント既定、どちらも無ければ60分
     // （resolvePlanSlotMinutes / sendCancelEmailNotification と同じ「null=継承」の作法）
     const slotMinutes =
-      ((planRes.data as { slot_duration_minutes: number | null }[] | null)?.[0]?.slot_duration_minutes ?? null) ??
+      (planRes.data as { slot_duration_minutes: number | null }[] | null)?.[0]?.slot_duration_minutes ??
       (tenantRes.data?.slot_duration_minutes as number | null) ??
       60;
     // 🔴 オプションぶんは「同じ1回のセッション」なので表示する時間に含める

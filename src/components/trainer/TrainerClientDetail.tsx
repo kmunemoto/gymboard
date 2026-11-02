@@ -47,7 +47,7 @@ import { format, subDays } from "date-fns";
 import { ja } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getJSTNow, getJSTToday, formatJST } from "@/lib/timezone";
-import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
+import { computePlanUsage, resolvePlanUsageInput, type PlanUsageBooking } from "@/lib/planUsage";
 import { resolveGraceDays } from "@/lib/courseProgress";
 import { resolvePlanSlotMinutes } from "@/lib/planSlotDuration";
 import { readOptionMinutes, sessionMinutes as withOptions } from "@/lib/bookingOptions";
@@ -68,6 +68,18 @@ import MemberTimeline from "./clientDetail/MemberTimeline";
 import MemberPaymentsSection from "./clientDetail/MemberPaymentsSection";
 import MemberAgreementsSection from "./clientDetail/MemberAgreementsSection";
 import type { SetEntry, ExerciseEntry, ExerciseMaster, WorkoutRecord, MealRecord } from "./clientDetail/types";
+
+/**
+ * 消化状況カード・期限・部位バランスに渡す予約。
+ * 🔴 予約の種類（予約したときのプラン名）も渡す。利用期間は今のプランの予約の1回目から数える
+ *    （手で入れた起算日はいちばん下。2026-11-02・resolveCycleAnchor）。落とすと保存された起算日で数え、
+ *    予定表のチップと食い違う
+ */
+const toUsageBooking = (b: { date: string; status: string; booking_type?: string | null }): PlanUsageBooking => ({
+  booking_date: b.date,
+  status: b.status,
+  booking_type: b.booking_type ?? null,
+});
 
 interface TrainerClientDetailProps {
   clientId: string;
@@ -327,7 +339,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
     cycleStartPinned,
     graceEnabled,
     tenantPlans,
-    bookings: clientBookings2.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status })),
+    bookings: clientBookings2.map(toUsageBooking),
   }), [loadingBookings, clientPlan, cycleStartDate, cycleStartPinned, graceEnabled, tenantPlans, clientBookings2]);
 
   if (loadingProfile) {
@@ -905,7 +917,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
               planName={clientPlan}
               cycleStartDate={cycleStartDate}
               tenantPlans={tenantPlans}
-              bookings={bookings.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status }))}
+              bookings={bookings.map(toUsageBooking)}
               cycleStartPinned={cycleStartPinned}
               graceEnabled={graceEnabled}
             />
@@ -929,6 +941,12 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                   {t("clientDetail.resetToToday")}
                 </Button>
               </div>
+              {/* 🔴 手で入れた日付はいちばん下（2026-11-02 宗本さん「予約の1回目を最優先に考えて自動で。
+                  利用期間を手動で設定するやつの優先順位は一番下」）。予約がある間は1回目の予約日から数えるので、
+                  ここを変えても期間が動かないことを先に伝える（固定中は下の説明のとおり、この日付が最優先） */}
+              {!cycleStartPinned && (
+                <p className="text-[11px] text-muted-foreground">{t("clientDetail.cycleStartAutoHint")}</p>
+              )}
               {/* 起算日の固定（明示スイッチ）。日付が無い間はONにできない */}
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -951,7 +969,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 const usage = input
                   ? computePlanUsage(
                       input,
-                      bookings.map((b: { date: string; status: string }) => ({ booking_date: b.date, status: b.status })),
+                      bookings.map(toUsageBooking),
                       getJSTNow(),
                     )
                   : null;

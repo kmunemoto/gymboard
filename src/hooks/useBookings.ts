@@ -375,12 +375,11 @@ export const checkSlotBlocked = (
 };
 
 /**
- * 新しいルーティンの1回目の予約なら、起算日（profiles.cycle_start_date）を
- * その予約日に自動設定する。ジムの運用「期限は1回目のトレーニング日から」に合わせ、
- * 1回目の予約が入るまでは期限未確定（PlanUsageCard 側で非表示）にできる。
- * 発動条件の詳細は shouldRebaseCycleStart（courseProgress.ts）を参照。失敗しても予約は成立させる。
+ * 新しいルーティンの1回目の予約なら、起算日（profiles.cycle_start_date）をその予約日に自動設定する。ジムの運用「期限は1回目のトレーニング日から」に合わせ、
+ * 1回目の予約が入るまでは期限未確定（PlanUsageCard 側で非表示）にできる。発動条件の詳細は shouldRebaseCycleStart（courseProgress.ts）。失敗しても予約は成立させる。
+ * bookingType は保存した予約の種類（今のプランの予約かどうかで回数の鎖の先頭が変わる。別の種類の代理予約を今のプランの1回目とみなさない。2026-11-02）
  */
-async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, excludeBookingId: string): Promise<void> {
+async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, excludeBookingId: string, bookingType: string): Promise<void> {
   try {
     const { data: prof } = await supabase
       .from("profiles")
@@ -422,7 +421,7 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
 
     const { data: rows } = await supabase
       .from("bookings")
-      .select("booking_date, status")
+      .select("booking_date, status, booking_type")
       .eq("user_id", userId)
       .neq("id", excludeBookingId);
 
@@ -433,10 +432,11 @@ async function rebaseCycleStartIfNeeded(userId: string, dateKey: string, exclude
       cycleUnit,
       graceDays,
       bookingDateKey: dateKey,
-      existingBookings: (rows ?? []).map((r) => ({ id: "", booking_date: r.booking_date, status: r.status })),
+      existingBookings: (rows ?? []).map((r) => ({ id: "", booking_date: r.booking_date, status: r.status, booking_type: r.booking_type ?? null })),
       allowOverflow,
       // 🔴 店が起算日を固定しているお客様では自動書き換えしない（店の設定が最上位）
       pinned: (prof as { cycle_start_pinned?: boolean | null }).cycle_start_pinned === true,
+      planName: prof.plan, bookingType, // 🔴 今のプランの予約の1回目から判定（表示と同じ。手で入れた起算日はいちばん下。2026-11-02）
     });
     if (!ok) return;
 
@@ -528,7 +528,7 @@ export const createBooking = async (
   if (!error && data) {
     // 新しいルーティンの1回目なら起算日を予約日に自動設定（期限＝1回目から1ヶ月）。
     // 後続処理（表示更新・定期予約の2回目以降）が新しい起算日を見られるよう await する。
-    await rebaseCycleStartIfNeeded(userId, date, data.id);
+    await rebaseCycleStartIfNeeded(userId, date, data.id, bookingType);
 
     // silent: 予約変更（reschedule）の内部呼び出し。通知は呼び出し側が「変更」1通にまとめる。
     if (!opts.silent) {

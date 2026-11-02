@@ -1569,6 +1569,7 @@
     "planChangedToast": "Changed {{name}}'s plan to \"{{plan}}\"",
     "cycleStart": "Usage period (start date)",
     "resetToToday": "Reset to today",
+    "cycleStartAutoHint": "While there are bookings on the current plan, the period is counted automatically from the first of them. This date is only used until the first booking on the current plan (unless pinned).",
     "expiry": "Expiry: {{date}}",
     "expiryPending": "Expiry: not set yet (set automatically from the first booking date)",
     "expiryConsumed": "All sessions booked (the period renews on the next booking)",

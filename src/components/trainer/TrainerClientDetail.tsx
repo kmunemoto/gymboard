@@ -573,7 +573,14 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   };
 
 
+  // 🔴 起算日を手で変えられるのは「固定」をオンにしたときだけ（2026-11-02 宗本さんの決定）。
+  //    固定オフのお客様は、予約から自動で決まる（1回目の予約日から1ヶ月・使い切ったら次の1回目から）。
+  //    日付がまだ無いときの最初の1回だけは手で入れられる（最初の予約が入ると自動の日付に置き換わる）。
+  //    今ある回数・保存された日付は変えない（mem/features/cycle-pin-and-unit.md）
+  const canEditCycleStart = !isLimitedStaff && (cycleStartPinned || !cycleStartDate);
+
   const handleCycleStartDateChange = async (newDate: string) => {
+    if (!canEditCycleStart) return;
     // 日付を消すときは固定も解除する（日付なしの固定は意味を持たないため）
     const clearPin = !newDate && cycleStartPinned;
     const { error } = await supabase
@@ -920,15 +927,18 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                 <Input
                   type="date"
                   value={cycleStartDate}
-                  disabled={isLimitedStaff}
+                  disabled={!canEditCycleStart}
                   onChange={(e) => handleCycleStartDateChange(e.target.value)}
                   className="flex-1 min-w-0 h-9 text-sm"
                 />
-                <Button variant="outline" size="sm" disabled={isLimitedStaff} onClick={handleResetCycleToToday} className="shrink-0 h-9 text-xs gap-1">
+                <Button variant="outline" size="sm" disabled={!canEditCycleStart} onClick={handleResetCycleToToday} className="shrink-0 h-9 text-xs gap-1">
                   <RotateCcw className="w-3 h-3" />
                   {t("clientDetail.resetToToday")}
                 </Button>
               </div>
+              {!canEditCycleStart && !isLimitedStaff && (
+                <p className="text-[11px] text-muted-foreground">{t("clientDetail.cycleStartLockedHint")}</p>
+              )}
               {/* 起算日の固定（明示スイッチ）。日付が無い間はONにできない */}
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">

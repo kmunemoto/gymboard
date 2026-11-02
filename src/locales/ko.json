@@ -1569,6 +1569,7 @@
     "planChangedToast": "{{name}}님의 플랜을 \"{{plan}}\"으로 변경했습니다",
     "cycleStart": "이용 기간 (기산일)",
     "resetToToday": "오늘로 초기화",
+    "cycleStartLockedHint": "예약에 따라 자동으로 정해집니다(첫 예약일부터 1개월, 횟수를 다 쓰면 다음 첫 예약부터). 직접 바꾸려면 아래의 \"기산일 고정\"을 켜 주세요.",
     "expiry": "유효기간: {{date}}",
     "expiryPending": "유효기간: 미확정 (첫 예약이 들어오면 그 날짜로 자동 설정됩니다)",
     "expiryConsumed": "횟수 모두 예약 완료 (다음 예약으로 기간이 갱신됩니다)",

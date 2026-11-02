@@ -1569,6 +1569,7 @@
     "planChangedToast": "已將 {{name}} 的方案變更為「{{plan}}」",
     "cycleStart": "使用期間（起算日）",
     "resetToToday": "重設為今天",
+    "cycleStartLockedHint": "依預約自動決定（從第一次預約日起1個月，次數用完後從下一次預約開始）。如需手動變更，請開啟下方的「固定起算日」。",
     "expiry": "有效期限：{{date}}",
     "expiryPending": "有效期限：未確定（首次預約後將自動依該日期設定）",
     "expiryConsumed": "次數已全部預約（下次預約後週期將更新）",

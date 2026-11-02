@@ -237,6 +237,75 @@ describe("お知らせ管理: 画像を付ける", () => {
   });
 });
 
+describe("お知らせ管理: 画像だけで送る（2026-11-02）", () => {
+  // 宗本さん「タイトルと文章入れなくても画像だけでもお知らせ送れる様にして」
+  const openBlank = () => fireEvent.click(screen.getByText(i18n.t("announcement.newBtn")));
+
+  it("🔴 画像があれば、タイトルと本文が空でも送れる。タイトルは「画像のお知らせ」で保存する", async () => {
+    await renderManager();
+    openBlank();
+    choose("flyer.png");
+    await waitFor(() => expect(thumbs()).toHaveLength(1));
+    publish();
+    await waitFor(() => expect(m.rpc).toHaveBeenCalledTimes(1));
+    expect(m.rpc.mock.calls[0][1]).toMatchObject({
+      p_title: i18n.t("announcement.imageOnlyTitle"), p_body: "", p_image_paths: [P(1)],
+    });
+    expect(m.toastError).not.toHaveBeenCalled();
+  });
+
+  it("画像があれば、タイトルだけ・本文だけでも送れる（入れたものはそのまま）", async () => {
+    await renderManager();
+    openBlank();
+    fireEvent.change(screen.getByPlaceholderText(i18n.t("announcement.bodyPlaceholder")), { target: { value: "今月のチラシです" } });
+    choose("flyer.png");
+    await waitFor(() => expect(thumbs()).toHaveLength(1));
+    publish();
+    await waitFor(() => expect(m.rpc).toHaveBeenCalledTimes(1));
+    expect(m.rpc.mock.calls[0][1]).toMatchObject({ p_title: i18n.t("announcement.imageOnlyTitle"), p_body: "今月のチラシです" });
+  });
+
+  it("🔴 画像が無いときは、今までどおりタイトルと本文の両方が要る", async () => {
+    await renderManager();
+    openBlank();
+    fireEvent.change(screen.getByPlaceholderText(i18n.t("announcement.titlePlaceholder")), { target: { value: "冬季休業" } });
+    publish();
+    expect(m.toastError).toHaveBeenCalledWith(i18n.t("announcement.errTitleBody"));
+    expect(m.rpc).not.toHaveBeenCalled();
+  });
+
+  it("🔴 画像を上げている途中なら、画像だけのお知らせも保存させない（空のお知らせが配信される）", async () => {
+    m.upload.mockImplementation(() => new Promise(() => {}));
+    await renderManager();
+    openBlank();
+    choose("flyer.png");
+    publish();
+    expect(m.toastError).toHaveBeenCalledWith(i18n.t("announcement.imageUploading"));
+    expect(m.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("お客様: 画像だけのお知らせ", () => {
+  it("本文が無ければ本文の欄を出さず、画像だけを出す", async () => {
+    const imageOnlyTitle = i18n.t("announcement.imageOnlyTitle"); // 保存されるタイトル（フォークの言い換えに追従）
+    m.announcements = [row({ id: "a-1", title: imageOnlyTitle, body: "", image_paths: [P(1)] })];
+    const { default: AnnouncementsDialog } = await import("@/components/customer/AnnouncementsDialog");
+    render(<AnnouncementsDialog open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText(imageOnlyTitle));
+    await waitFor(() => expect(m.sign).toHaveBeenCalledWith([P(1)]));
+    expect(screen.queryByTestId("announcement-body")).toBeNull();
+    expect(screen.getByTestId("announcement-images")).toBeTruthy();
+  });
+
+  it("本文があれば今までどおり出す", async () => {
+    m.announcements = [row({ id: "a-1", title: "冬季休業", body: "年末年始のお休み" })];
+    const { default: AnnouncementsDialog } = await import("@/components/customer/AnnouncementsDialog");
+    render(<AnnouncementsDialog open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText("冬季休業"));
+    expect(screen.getByTestId("announcement-body").textContent).toContain("年末年始のお休み");
+  });
+});
+
 describe("お知らせ管理: 保存済みの画像", () => {
   it("編集で開くと保存済みの画像を出す。外して更新すると、更新できてから置き場から消す", async () => {
     m.rows = [row({ id: "a-9", image_paths: [P(1), P(2)] })];

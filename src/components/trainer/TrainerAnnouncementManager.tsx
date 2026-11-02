@@ -202,12 +202,14 @@ const TrainerAnnouncementManager = () => {
 
   const handleSubmit = async () => {
     if (!user) return;
-    if (!title.trim() || !body.trim()) { toast.error(t("announcement.errTitleBody")); return; }
+    // 上げ終わる前に保存すると、その画像が付かないまま配信される（画像だけのお知らせなら中身が空になる）
+    if (uploadingCount > 0) { toast.error(t("announcement.imageUploading")); return; }
+    // 🔴 画像があれば、タイトルと本文は空でよい（2026-11-02 宗本さん「タイトルと文章入れなくても画像だけでも
+    //    お知らせ送れる様にして」）。画像が無いときは今までどおり両方要る
+    if (images.length === 0 && (!title.trim() || !body.trim())) { toast.error(t("announcement.errTitleBody")); return; }
     const audienceErr = audienceErrorKey(targetMode, audienceIds);
     if (audienceErr) { toast.error(t(audienceErr)); return; }
     if (scheduleMode === "later" && !publishedAt) { toast.error(t("announcement.errSchedule")); return; }
-    // 上げ終わる前に保存すると、その画像が付かないまま配信される
-    if (uploadingCount > 0) { toast.error(t("announcement.imageUploading")); return; }
     if (images.length > MAX_ANNOUNCEMENT_IMAGES) {
       toast.error(t("announcement.imageTooMany", { max: MAX_ANNOUNCEMENT_IMAGES }));
       return;
@@ -217,7 +219,9 @@ const TrainerAnnouncementManager = () => {
     // お知らせの行と「選んだ人」と画像を1つのトランザクションで書く（間に配信が挟まって、
     // 除く人がまだ居ない状態で全員に送らないように）。ジムは DB 側で自分の所属に決まる
     const { error } = await supabase.rpc("save_announcement", {
-      p_title: title.trim(),
+      // タイトルが空なら「画像のお知らせ」を入れる。一覧・プッシュ通知の見出しになり、
+      // 画像を出せない古いアプリ（次のビルドより前）でも空の行にならない
+      p_title: title.trim() || t("announcement.imageOnlyTitle"),
       p_body: body.trim(),
       p_icon: icon,
       p_published_at: scheduleMode === "later" ? new Date(publishedAt).toISOString() : new Date().toISOString(),
@@ -370,7 +374,9 @@ const TrainerAnnouncementManager = () => {
                         </>
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap break-all">{a.body}</p>
+                    {a.body.trim() && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap break-all">{a.body}</p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={t("announcement.editAria")}>

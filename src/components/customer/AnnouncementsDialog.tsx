@@ -111,9 +111,12 @@ const AnnouncementsDialog = ({ open, onClose }: Props) => {
                 載せても「手で選択してコピー」になり、結局 LINE に貼り直しになる。
                 チャットと同じ MessageText を使う（HTML としては描画しないので、
                 お客様が自由に入力した本文でもスクリプトの入り口にならない）。 */}
-            <div className="text-foreground pt-2">
-              <MessageText text={selected.body} />
-            </div>
+            {/* 画像だけのお知らせ（本文なし）では本文の欄を出さない */}
+            {selected.body.trim() && (
+              <div className="text-foreground pt-2" data-testid="announcement-body">
+                <MessageText text={selected.body} />
+              </div>
+            )}
             {/* 画像は本文の下に、横幅いっぱいで並べる（チラシの文字が読める大きさ）。押すと全画面 */}
             {imagePaths.length > 0 && (
               <div className="pt-2 space-y-3" data-testid="announcement-images">

@@ -2653,6 +2653,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _announcement_image_paths_ok: {
+        Args: { p_paths: string[]; p_tenant: string }
+        Returns: boolean
+      }
       _gen_staff_invite_code: { Args: never; Returns: string }
       _may_see_membership: {
         Args: { p_tenant_id: string; p_user_id: string }

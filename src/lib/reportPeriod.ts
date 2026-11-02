@@ -2,6 +2,7 @@ import { addDays, addMonths, format, parseISO, startOfDay } from "date-fns";
 import { resolveEffectiveCycle, type CycleWindow } from "./courseProgress";
 import {
   PLAN_USAGE_EXCLUDED_PLAN_NAMES,
+  planUsageStart,
   resolvePlanUsageInput,
   type PlanUsageBooking,
   type PlanUsageInput,
@@ -62,9 +63,12 @@ const effectiveCycle = (
   bookings: PlanUsageBooking[],
   referenceDate: Date,
   mode: "card" | "past",
-) =>
-  resolveEffectiveCycle({
-    cycleStartDate: input.startDate!,
+) => {
+  // 鎖の先頭は今のプランの予約の1回目（カードと同じ。planUsageStart。2026-11-02）
+  const start = planUsageStart(input, bookings);
+  if (!start) return null;
+  return resolveEffectiveCycle({
+    cycleStartDate: start,
     maxSessions: input.maxSessions ?? null,
     cycleMonths: input.cycleMonths,
     cycleUnit: input.cycleUnit,
@@ -77,6 +81,7 @@ const effectiveCycle = (
     allowOverflow: input.allowOverflow,
     pinned: input.cycleStartPinned === true,
   });
+};
 
 /**
  * 区切りの先頭で、猶予により前の区切りへ回った予約（lent 件）の最後の日。無ければ null。
@@ -113,7 +118,8 @@ const hasActiveBooking = (bookings: PlanUsageBooking[], from: Date, toExclusive:
   });
 
 const previousPeriod = (next: ReportPeriod, input: PlanUsageInput, bookings: PlanUsageBooking[]): ReportPeriod => {
-  const contractStart = startOfDay(parseISO(input.startDate!));
+  const start0 = planUsageStart(input, bookings);
+  const contractStart = start0 ? startOfDay(parseISO(start0)) : next.start;
   let refDay = addDays(next.start, -1);
   for (let guard = 0; guard < 240 && refDay >= contractStart; guard++) {
     const q = effectiveCycle(input, bookings, refDay, "past");
@@ -148,7 +154,7 @@ export function reportPeriodAt(
   now: Date = getJSTNow(),
 ): ReportPeriod | null {
   const input = cardInput(source);
-  if (!input || !input.startDate) return null;
+  if (!input || !planUsageStart(input, source.bookings)) return null;
   if ((input.planType ?? "subscription") !== "subscription") return null;
   const eff = effectiveCycle(input, source.bookings, now, "card");
   if (!eff) return null;

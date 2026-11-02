@@ -1,5 +1,5 @@
 import { addDays, differenceInDays, parseISO, startOfDay } from "date-fns";
-import { resolveEffectiveCycle } from "./courseProgress";
+import { resolveCycleAnchor, resolveEffectiveCycle } from "./courseProgress";
 import { getJSTNow, toJSTDate } from "./timezone";
 
 // GymBoard 共通: お客様のプラン消化状況（今サイクルであと何回予約できるか）を算出する。
@@ -14,6 +14,11 @@ import { getJSTNow, toJSTDate } from "./timezone";
 export type PlanKind = "subscription" | "ticket" | "period" | "unconfigured";
 
 export interface PlanUsageInput {
+  /**
+   * 今のプラン名（profiles.plan）。サブスクの区切りの鎖の先頭（今のプランの予約の1回目）を決める
+   * （resolveCycleAnchor。2026-11-02）。resolvePlanUsageInput が入れる
+   */
+  planName?: string | null;
   /** 'subscription' | 'ticket' | 'period'（tenant_plans.plan_type） */
   planType?: string | null;
   /** プランの回数上限（tenant_plans.max_sessions）。null = 無制限 */
@@ -45,7 +50,45 @@ export interface PlanUsageBooking {
   /** ISO 文字列（例: 2026-07-05T14:00:00+09:00 もしくは 2026-07-05） */
   booking_date: string;
   status: string;
+  /**
+   * 予約したときのプラン名（bookings.booking_type）。サブスクの区切りの鎖の先頭を決める。
+   * 🔴 画面では必ず渡す（渡さないと保存された起算日のまま数え、他の画面と食い違う）
+   */
+  booking_type?: string | null;
 }
+
+/** 画面の予約（useMyBookings / useAllBookings の形：JST の日付と開始時刻） */
+type ScreenBooking = { date: string; startTime: string; status: string; booking_type?: string | null };
+
+/**
+ * 画面の予約を、利用期間・回数を数える材料にする。
+ * 🔴 予約の種類（予約したときのプラン名）も必ず渡す。落とすと保存された起算日のまま数え、
+ *    他の画面（予定表のチップ・カード）と食い違う（2026-11-02・resolveCycleAnchor）
+ */
+export const toPlanUsageBooking = (b: ScreenBooking): PlanUsageBooking => ({
+  booking_date: `${b.date}T${b.startTime}:00+09:00`,
+  status: b.status,
+  booking_type: b.booking_type ?? null,
+});
+
+/** toPlanUsageBooking に予約の id を足したもの（チップ・ホームの「今回 n/m回目」用） */
+export const toProgressBooking = (b: ScreenBooking & { id: string }) => ({ id: b.id, ...toPlanUsageBooking(b) });
+
+/**
+ * サブスクの区切りを数え始める日（鎖の先頭）。
+ * 🔴 今のプランの予約の1回目が最優先、保存された起算日（手で入れた日付を含む）はいちばん下（2026-11-02）。
+ * 詳しくは courseProgress.ts の resolveCycleAnchor。回数券・期間プランは購入日（保存された起算日）のまま。
+ */
+export const planUsageStart = (input: PlanUsageInput, bookings: ReadonlyArray<PlanUsageBooking>): string | null =>
+  (input.planType ?? "subscription") === "subscription"
+    ? resolveCycleAnchor({
+        cycleStartDate: input.startDate,
+        planName: input.planName,
+        bookings,
+        pinned: input.cycleStartPinned,
+        allowOverflow: input.allowOverflow,
+      })
+    : input.startDate ?? null;
 
 export interface PlanUsage {
   kind: PlanKind;
@@ -112,8 +155,10 @@ export function computePlanUsage(
   bookings: PlanUsageBooking[],
   now: Date = getJSTNow(),
 ): PlanUsage {
-  const { planType, maxSessions, validityDays, startDate, cycleMonths, cycleUnit, graceDays } = input;
+  const { planType, maxSessions, validityDays, cycleMonths, cycleUnit, graceDays } = input;
   const pinned = input.cycleStartPinned === true;
+  // サブスクは今のプランの予約の1回目から（保存された起算日は予約が無いときだけ）。planUsageStart 参照
+  const startDate = planUsageStart(input, bookings);
   if (!startDate) return UNCONFIGURED;
 
   const anchor = startOfDay(parseISO(startDate));
@@ -205,6 +250,7 @@ export function resolvePlanUsageInput(
   if (!planName) return null;
   if (tenantPlan) {
     return {
+      planName,
       planType: tenantPlan.plan_type ?? "subscription",
       maxSessions: tenantPlan.max_sessions ?? null,
       validityDays: tenantPlan.validity_days ?? null,
@@ -220,11 +266,11 @@ export function resolvePlanUsageInput(
   }
   // 旧データ互換: tenant_plans に無い名称
   if (planName === "通い放題") {
-    return { planType: "subscription", maxSessions: null, validityDays: null, startDate: startDate ?? null, cycleStartPinned: cycleStartPinned ?? null };
+    return { planName, planType: "subscription", maxSessions: null, validityDays: null, startDate: startDate ?? null, cycleStartPinned: cycleStartPinned ?? null };
   }
   const m = planName.match(/月(\d+)回/);
   if (m) {
-    return { planType: "subscription", maxSessions: parseInt(m[1], 10), validityDays: null, startDate: startDate ?? null, cycleStartPinned: cycleStartPinned ?? null };
+    return { planName, planType: "subscription", maxSessions: parseInt(m[1], 10), validityDays: null, startDate: startDate ?? null, cycleStartPinned: cycleStartPinned ?? null };
   }
   return null;
 }

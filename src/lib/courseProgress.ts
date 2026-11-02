@@ -330,6 +330,58 @@ export const resolveCycleUnit = (
 };
 
 /**
+ * 回数の鎖の先頭を決めるのに使う予約。`booking_type` は予約したときのプラン名（bookings.booking_type）。
+ * 渡さない（undefined）と並びが作れず、保存された起算日のまま数える（画面では必ず渡すこと。
+ * 渡しているかは cycleAnchorFirstBooking.test.ts が見張る）。
+ */
+export type AnchorBooking = { booking_date: string; status: string; booking_type?: string | null };
+
+/**
+ * 回数を数え始める日（区切りの鎖の先頭）。保存された起算日の代わりに、これを起算日として渡す。
+ *
+ * 🔴 **今のプランの予約の1回目を最優先。手で入れた起算日はいちばん下**（2026-11-02）。
+ *
+ * 宗本さん（予定表とお客様詳細のスクリーンショット）「利用期間の計算の仕方さ、予約の1回目を最優先に
+ * 考えて自動で。利用期間を手動で設定するやつの優先順位は一番下分かる？手動で決められる利用期間を
+ * 優先に利用期間を決めないで」。
+ *
+ * 月4回・予約 10/4, 10/18, 11/2, 11/9… のお客様で、お客様詳細の「今日にリセット」で起算日が 11/2 に
+ * なった。保存された起算日より前の予約はどの区切りにも入らないので、10/4 から始まっていた区切りが
+ * 途中で切られ、11/2 の予約が「1/4」（正しくは 3/4）、カードが「予約済み 4/4」になっていた。
+ *
+ * - 今のプランの予約（`booking_type` が今のプラン名と同じ）の、**いちばん新しい連続した並び**の1回目の日。
+ *   そこから区切りを順に解く（1回目の日から1ヶ月・使い切ったら次・間が空いたら次の1回目から）。
+ *   並びは「別の種類の予約より後ろ」だけ＝プランを変えたお客様の前のプランの予約を、今のプランの回数に混ぜない
+ * - 並びが無ければ保存された起算日（手で入れた日付・予約したときの自動設定）。1回目のご予約待ちなど
+ * - 予約の種類にプラン名を入れていない店（「通常」など）は並びができないので、今まで通り保存された起算日
+ * - 起算日を固定（pinned）しているお客様は保存された起算日（店が明示的に決めたもの。2026-08-22）
+ * - 超過を許さないプラン（allowOverflow=false）も保存された起算日（DB の GB004 がその暦窓で数えて断るので、
+ *   表示も同じ窓にする）
+ */
+export const resolveCycleAnchor = (params: {
+  cycleStartDate: string | null | undefined;
+  planName: string | null | undefined;
+  bookings: ReadonlyArray<AnchorBooking>;
+  pinned?: boolean | null;
+  allowOverflow?: boolean | null;
+}): string | null => {
+  const saved = params.cycleStartDate || null;
+  const { planName } = params;
+  if (params.pinned === true || params.allowOverflow === false || !planName) return saved;
+  const active = params.bookings
+    .filter((b) => b.status !== "キャンセル済み")
+    .sort((a, b) => new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime());
+  // いちばん新しい予約からさかのぼり、今のプランの予約が続く間だけ並びに入れる
+  let first: string | null = null;
+  for (let i = active.length - 1; i >= 0; i--) {
+    if (active[i].booking_type !== planName) break;
+    first = active[i].booking_date;
+  }
+  if (!first) return saved;
+  return format(startOfDay(toJSTDate(first)), "yyyy-MM-dd");
+};
+
+/**
  * cycle_start_date を起算日として、targetDate を含むサイクル期間 [start, end) を求める。
  * cycleMonths でサイクルの長さ（月数・応当日ベース）を指定できる（既定 1ヶ月）。
  *
@@ -383,6 +435,8 @@ export interface BookingForProgress {
   id: string;
   booking_date: string; // ISO string
   status: string;
+  /** 予約したときのプラン名（bookings.booking_type）。回数の鎖の先頭（resolveCycleAnchor）を決める */
+  booking_type?: string | null;
 }
 
 export interface CourseProgress {
@@ -492,11 +546,40 @@ export const shouldRebaseCycleStart = (params: {
    * UI 側も日付なしでは固定をONにできない）。
    */
   pinned?: boolean | null;
+  /**
+   * 今のプラン名（profiles.plan）。鎖の先頭（resolveCycleAnchor）を決めるのに使う。
+   * 渡さないと、保存された起算日のまま判定する（従来どおり）
+   */
+  planName?: string | null;
+  /**
+   * 新しい予約の種類（bookings.booking_type。お客様の予約は今のプラン名、代理予約は店が選んだもの）。
+   * 🔴 実際に保存した値を渡す。今のプラン名で決め打ちすると、別の種類で入れた代理予約でも
+   *    「今のプランの1回目」とみなして起算日を書き換えてしまう。渡さないと鎖には入れない（従来どおり）
+   */
+  bookingType?: string | null;
 }): boolean => {
-  const { cycleStartDate, maxSessions, cycleMonths, cycleUnit, bookingDateKey, existingBookings } = params;
+  const { maxSessions, cycleMonths, cycleUnit, bookingDateKey, existingBookings } = params;
   const allowOverflow = params.allowOverflow !== false;
-  if (!cycleStartDate) return true; // 起算日未設定 → 1回目の予約日を起算日に
+  const saved = params.cycleStartDate;
+  if (!saved) return true; // 起算日未設定 → 1回目の予約日を起算日に
   if (params.pinned === true) return false; // 🔴 起算日固定 → 自動調整しない
+
+  // 🔴 鎖の先頭は「今のプランの予約の1回目」（2026-11-02。resolveCycleAnchor）。表示と同じ先頭から判定する。
+  //    保存された起算日が手で後ろへずらされていても（「今日にリセット」など）、それを起点にしない
+  const anchor = params.planName
+    ? resolveCycleAnchor({
+        cycleStartDate: saved,
+        planName: params.planName,
+        bookings: [
+          ...existingBookings,
+          { booking_date: `${bookingDateKey}T12:00:00+09:00`, status: "予約済み", booking_type: params.bookingType ?? null },
+        ],
+        allowOverflow,
+      })
+    : saved;
+  // この予約が今のプランの並びの1回目（プランを変えて最初の予約など）→ その日を起算日に
+  if (anchor === bookingDateKey) return anchor !== saved;
+  const cycleStartDate = anchor ?? saved;
 
   // 起算日より過去の日付への予約（過去分の記録など）では動かさない
   if (bookingDateKey < cycleStartDate) return false;
@@ -601,7 +684,10 @@ export const getBookingProgressIndex = (
   const target = bookings.find((b) => b.id === bookingId);
   if (!target) return null;
   const targetDate = toJSTDate(target.booking_date);
-  const progress = computeCourseProgress(cycleStartDate, plan, bookings, targetDate, cycleMonths, cycleUnit);
+  // 🔴 鎖の先頭は「今のプランの予約の1回目」。保存された起算日（手で入れた日付を含む）は予約が無いときだけ
+  //    （2026-11-02。resolveCycleAnchor）。カード（computePlanUsage）と同じ先頭から数える
+  const startKey = resolveCycleAnchor({ cycleStartDate, planName: plan, bookings, pinned });
+  const progress = computeCourseProgress(startKey, plan, bookings, targetDate, cycleMonths, cycleUnit);
   if (!progress.cycle) {
     return { index: 0, total: progress.monthlyTotal, isUnlimited: progress.isUnlimited, isUnconfigured: progress.isUnconfigured, isOverflow: false, isGraceCarryover: false };
   }
@@ -611,11 +697,11 @@ export const getBookingProgressIndex = (
   // 回数上限のあるプランだけが対象で、通い放題・未設定は暦窓のまま（従来どおり）。
   let cycle = progress.cycle;
   let cycleBookings = progress.cycleBookings;
-  let effStartKey = cycleStartDate ?? "";
+  let effStartKey = startKey ?? "";
   let lent = 0;
-  if (!progress.isUnlimited && total !== null && total > 0 && cycleStartDate) {
+  if (!progress.isUnlimited && total !== null && total > 0 && startKey) {
     const eff = resolveEffectiveCycle({
-      cycleStartDate,
+      cycleStartDate: startKey,
       maxSessions: total,
       cycleMonths,
       cycleUnit,

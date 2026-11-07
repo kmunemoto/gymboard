@@ -214,6 +214,8 @@
       "bookingPolicySection": "预约政策",
       "sameDayPenaltyTitle": "将当天取消自动计为已消耗次数",
       "sameDayPenaltyDesc": "开启后，当天取消的预约，以及当天改到明天以后的预约，将自动计为消耗1次。同一天内更改时间不计消耗（在日程表中取消时请取消勾选“计为已消耗次数”，再按新时间重新预约）。关闭则取消、更改均不受处罚。",
+      "sameDayLaterMoveTitle": "允许顾客将当天的预约改到当天更晚的时间",
+      "sameDayLaterMoveDesc": "开启后，当天有预约的顾客可在预约开始时间之前，通过应用将其改到当天更晚的空闲时段。不计消耗，也不受预约截止时间（如“截至前一天”）的限制。改到更早的时间仍需像以前一样联系健身房。更改后您会收到通知。",
       "sameDayPenaltyUpdated": "已更新预约政策",
       "sameDayPenaltySaveFailed": "保存预约政策失败",
       "displaySection": "显示设置",
@@ -677,6 +679,9 @@
     "rescheduleForfeitWarningDesc": "将当天的预约改到明天以后，原时段无法再安排给其他人，将计为消耗1次。如只需在同一天内更改时间，请通过应用内聊天或LINE联系我们（不计消耗）。",
     "rescheduleForfeitConfirmBtn": "计次并更改",
     "sameDayTimeChangeContactGym": "如需在同一天内更改时间，请通过应用内聊天或LINE联系健身房（不会计为消耗1次）。",
+    "laterTodayHint": "可以改到今天比此预约更晚的空闲时段（不计消耗）。如需改到更早的时间，请通过聊天或LINE联系健身房。",
+    "laterTodayNotAllowed": "无法进行此更改。已过开始时间的预约或改到更早的时间，请通过聊天或LINE联系健身房。",
+    "rescheduleForfeitWarningDescLaterToday": "将当天的预约改到明天以后，原时段无法再安排给其他人，将计为消耗1次。改到今天比此预约更晚的时间则不计消耗（请在日历中选择今天）。",
     "rescheduling": "更改中...",
     "cancelPolicyTitle": "关于取消",
     "errorAppOutdated": "由于App不是最新版本，预约未能完成。请更新到最新版本后重试。"

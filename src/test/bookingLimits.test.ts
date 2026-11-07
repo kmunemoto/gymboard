@@ -503,8 +503,10 @@ describe("🔴 画面が予約回数の制限を見ている", () => {
   it("🔴 リスケ中の除外は消化かどうかで変える（DBと同じ答えになるように）", () => {
     // 消化リスケでは旧行が「同日キャンセル済み」で残り DB はそれを数える。
     // クライアントも除外しない（除外すると「空き」と見せた枠が必ず GB003 で拒否される）。
+    // ただし当日の後ろへの変更（laterFloor より後ろの枠・2026-11-07）は、DB の move_booking_later_today が
+    // 旧行を消してから作るので除外する（src/lib/sameDayReschedule.ts）。
     expect(customerBooking).toContain(
-      "rescheduleTargetForfeits ? null : (rescheduleTarget?.id ?? null)",
+      "rescheduleTargetForfeits && !(laterFloor !== null && time > laterFloor) ? null : (rescheduleTarget?.id ?? null)",
     );
   });
 

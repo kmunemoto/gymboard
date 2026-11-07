@@ -87,6 +87,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "daily_booking_limit_weekdays",
   // 担当のいる予約メニューの時間を、そのメニュー専用にするか。既定 true（TENANT_DEFAULT_TRUE_COLS 側）。
   "menu_staff_hours_exclusive",
+  // 当日の予約を、同じ日の後ろの時間へお客様が変更できるか（2026-11-07）。既定 false（今まで通り）。
+  "same_day_later_reschedule_enabled",
 ];
 
 /**
@@ -146,6 +148,8 @@ export const TENANT_DEFAULT_FALSE_COLS: readonly string[] = [
   "next_cycle_payment_required",
   // 列が読めない環境では出さない（今まで通り）。出すと、未適用の環境で読み直しが走り続ける
   "show_remaining_slots",
+  // 列が読めない環境では「当日の後ろへの変更」を出さない（今まで通り。DB の関数も無いため）
+  "same_day_later_reschedule_enabled",
 ];
 
 /** boolean 以外の列の既定値（null は「未設定」＝関連UIを出さない、の意味で使われる） */

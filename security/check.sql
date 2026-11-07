@@ -847,6 +847,29 @@ ORDER BY p.proname;
 
 
 -- ----------------------------------------------------------------------------
+-- 検査19: 当日削除の見張りの例外の印を、決まった関数だけが立てているか（2026-11-07）
+-- ----------------------------------------------------------------------------
+-- 当日キャンセルの消化が ON のジムでは、お客様が当日の予約を消すことを enforce_booking_same_day_delete が止めている
+-- （消化なしの当日キャンセルの抜け道になるため）。例外は、当日の予約を同じ日の後ろへ動かす move_booking_later_today が
+-- 「消す → 作る」で消すその予約だけで、トランザクションの中だけの設定 app.same_day_later_move を印にしている。
+-- **この印を立てる関数が増えたら、その関数から消化なしの当日キャンセルができる。**
+--
+-- 印を口にする関数は、見張り本体（enforce_booking_same_day_delete）と move_booking_later_today の2つだけなら OK。
+-- move_booking_later_today は SECURITY INVOKER（DEFINER だと RLS を素通りして他の人の予約を動かせる）であること。
+-- ★ が出たら開いている。直し方・理由は supabase/migrations/20261107010000_same_day_later_reschedule.sql
+
+SELECT
+  p.proname AS item,
+  CASE WHEN p.proname = 'enforce_booking_same_day_delete' THEN 'OK（見張り本体）'
+       WHEN p.proname = 'move_booking_later_today' AND NOT p.prosecdef THEN 'OK（INVOKER）'
+       WHEN p.proname = 'move_booking_later_today' THEN '★要対応: SECURITY DEFINER になっている'
+       ELSE '★要対応: 決まった関数以外が当日削除の例外の印を立てている' END AS verdict
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
+WHERE p.prokind = 'f' AND p.prosrc LIKE '%app.same_day_later_move%'
+ORDER BY p.proname;
+
+
+-- ----------------------------------------------------------------------------
 -- 検査7: cron の POST 先（⚠️ このファイルの最後に置いてあります）
 -- ----------------------------------------------------------------------------
 -- ⚠️ **pg_cron を入れていない環境ではエラーになります。**

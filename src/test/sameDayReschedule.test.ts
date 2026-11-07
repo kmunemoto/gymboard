@@ -62,6 +62,11 @@ describe("laterTodayFloor（当日の後ろへ動かせるときの下限）", (
     expect(laterTodayFloor({ enabled: true, target, today: TODAY, nowTime: "17:30" })).toBeNull();
   });
 
+  it("🔴 店が営業時間外に入れた予約は動かさない（アプリの日時の変更と同じ。DB の関数も断る）", () => {
+    expect(laterTodayFloor({ enabled: true, target: { ...target, outsideHours: true }, today: TODAY, nowTime: "12:00" })).toBeNull();
+    expect(laterTodayFloor({ enabled: true, target: { ...target, outsideHours: false }, today: TODAY, nowTime: "12:00" })).toBe("17:00");
+  });
+
   it("設定が OFF・変更中でない・当日の予約でない・時刻が無い → null", () => {
     expect(laterTodayFloor({ enabled: false, target, today: TODAY, nowTime: "12:00" })).toBeNull();
     expect(laterTodayFloor({ enabled: true, target: null, today: TODAY, nowTime: "12:00" })).toBeNull();
@@ -152,6 +157,12 @@ describe("お客様の予約変更の画面（CustomerBooking）", () => {
     expect(start).toContain("setSelectedDate(laterTodayFromFor(b) !== null ? startOfDay(getJSTNow()) : undefined);");
   });
 
+  it("🔴 当日キャンセルの警告（2段目）で、後ろへ動かせる予約なら「キャンセルせずに日時を変更から（消化しない）」と伝える", () => {
+    expect(src).toContain(
+      't(laterTodayFromFor(cancelTarget) !== null ? "booking.sameDayForfeitWarningDescLaterToday" : "booking.sameDayForfeitWarningDesc")',
+    );
+  });
+
   it("明日以降へ動かすときの消化の警告で、後ろへ動かせるジムでは「今日の後ろなら消化しない」と伝える", () => {
     expect(src).toContain(
       't(laterTodayFrom !== null ? "booking.rescheduleForfeitWarningDescLaterToday" : "booking.rescheduleForfeitWarningDesc")',
@@ -177,6 +188,22 @@ describe("文面（5言語）", () => {
         expect(typeof text === "string" && text.length > 0, loc).toBe(true);
       }
     }
+  });
+
+  it("当日キャンセルの警告（後ろへ動かせるとき）が全言語にあり、文中のボタン名は実際のボタン名（日時を変更）と同じ", () => {
+    for (const loc of locales) {
+      const j = read(loc);
+      const text: unknown = j.booking.sameDayForfeitWarningDescLaterToday;
+      expect(typeof text === "string" && text.length > 0, loc).toBe(true);
+      expect(text, loc).toContain(j.booking.reschedule);
+    }
+    const ja = read("ja");
+    expect(ja.booking.sameDayForfeitWarningDescLaterToday).toContain(`「${ja.booking.reschedule}」`);
+    expect(ja.booking.sameDayForfeitWarningDescLaterToday).toContain("後ろ");
+    expect(ja.booking.sameDayForfeitWarningDescLaterToday).toMatch(/消化には(なり|なら)/);
+    expect(ja.booking.sameDayForfeitWarningDescLaterToday).toContain("前のお時間");
+    // 当日キャンセルそのものは今まで通り消化（最初の文は元の警告と同じ趣旨）
+    expect(ja.booking.sameDayForfeitWarningDescLaterToday).toContain("1回分の消化");
   });
 
   it("日本語: 設定の説明・お客様の警告・店のチェックの説明が、新しい決まり（明日以降は消化・同じ日の中は消化しない）を書いている", () => {

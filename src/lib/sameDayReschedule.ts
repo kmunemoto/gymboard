@@ -45,7 +45,7 @@ export const laterTodayFloor = (args: {
   /** tenants.same_day_later_reschedule_enabled（`=== true` で渡す。列が読めない環境では出さない） */
   enabled: boolean;
   /** 動かす予約。null＝変更中でない */
-  target: { date: string; startTime: string } | null | undefined;
+  target: { date: string; startTime: string; outsideHours?: boolean | null } | null | undefined;
   /** 今日（JST） */
   today: string;
   /** 今の時刻（JST HH:mm） */
@@ -53,6 +53,8 @@ export const laterTodayFloor = (args: {
 }): string | null => {
   const { enabled, target, today, nowTime } = args;
   if (!enabled || !target || target.date !== today) return null;
+  // 店が営業時間外に入れた予約は店に頼んでもらう（アプリの日時の変更と同じ。DB の関数も断る）
+  if (target.outsideHours) return null;
   // 始まった（開始時刻を過ぎた）予約は動かさない。DB も同じ（now() >= booking_date なら断る）
   if (!target.startTime || target.startTime <= nowTime) return null;
   return target.startTime;

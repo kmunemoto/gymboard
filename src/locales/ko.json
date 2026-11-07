@@ -664,6 +664,7 @@
     "cancelDescWithTime": "{{date}} {{startTime}}〜{{endTime}} 의 예약을 취소합니다.",
     "sameDayForfeitWarningTitle": "정말 취소하시겠습니까?",
     "sameDayForfeitWarningDesc": "당일 취소는 다른 분께 안내할 수 없어 1회 소진으로 처리됩니다. 시간 변경만 원하시면 취소하지 마시고 앱 채팅이나 LINE으로 연락해 주세요.",
+    "sameDayForfeitWarningDescLaterToday": "당일 취소는 다른 분께 안내할 수 없어 1회 소진으로 처리됩니다. 같은 날 더 늦은 시간으로 바꾸시려면 취소하지 마시고 예약의 「일시 변경」(캘린더 아이콘)에서 변경할 수 있습니다(소진되지 않습니다). 더 이른 시간으로의 변경은 앱 채팅이나 LINE으로 연락해 주세요.",
     "sameDayForfeitConfirmBtn": "소진 처리하고 취소",
     "waitlistJoin": "예약 대기",
     "waitlistJoined": "대기 중",

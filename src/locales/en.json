@@ -291,6 +291,8 @@
       "cancelPolicyUnset": "Not set (nothing is shown to members)",
       "cancelPolicySaved": "Cancellation notice saved",
       "cancelPolicySaveFailed": "Failed to save the cancellation notice",
+      "cancelPolicySameDayOnlyTitle": "Show only for same-day cancellations and changes",
+      "cancelPolicySameDayOnlyDesc": "When on, the policy is not shown at the top of the booking page or for cancellations made before the day. It appears only in the confirmation for a same-day cancellation and for moving a same-day booking to a later date (when it counts as a used session).",
       "businessDaysTitle": "Set business hours by day of the week",
       "businessDaysDesc": "Turn this on to set business hours and closed days for each day of the week. Leave it off to use the same hours every day.",
       "businessDaysClosed": "Closed",

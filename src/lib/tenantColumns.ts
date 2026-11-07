@@ -89,6 +89,9 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "menu_staff_hours_exclusive",
   // 当日の予約を、同じ日の後ろの時間へお客様が変更できるか（2026-11-07）。既定 false（今まで通り）。
   "same_day_later_reschedule_enabled",
+  // キャンセルについての案内を、当日のキャンセル・当日の予約の明日以降への変更のときだけ出すか（2026-11-07）。
+  // 既定 false（今まで通り: 予約画面の上とキャンセルの確認に出す）。src/lib/cancelPolicyDisplay.ts
+  "cancel_policy_same_day_only",
 ];
 
 /**
@@ -150,6 +153,8 @@ export const TENANT_DEFAULT_FALSE_COLS: readonly string[] = [
   "show_remaining_slots",
   // 列が読めない環境では「当日の後ろへの変更」を出さない（今まで通り。DB の関数も無いため）
   "same_day_later_reschedule_enabled",
+  // 列が読めない環境では、キャンセルについての案内を今まで通りの場所に出す
+  "cancel_policy_same_day_only",
 ];
 
 /** boolean 以外の列の既定値（null は「未設定」＝関連UIを出さない、の意味で使われる） */

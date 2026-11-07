@@ -75,10 +75,12 @@ describe("お客様側の表示", () => {
     ).not.toMatch(/cancel_policy_body[^\n]*\|\|\s*t\(/);
   });
 
-  it("予約画面とキャンセル確認の両方に出している", () => {
-    // 予約する前に読めることと、キャンセルする瞬間に読めることの両方が要る
-    const uses = [...src.matchAll(/\{cancelPolicy && \(|\{!forfeitPending && cancelPolicy && \(/g)];
-    expect(uses.length, "cancelPolicy の表示箇所が2つありません").toBeGreaterThanOrEqual(2);
+  it("予約画面とキャンセル確認の両方に出している（どこに出すかはジムの設定で決まる）", () => {
+    // 予約する前に読めることと、キャンセルする瞬間に読めることの両方が要る（既定・今まで通り）。
+    // 2026-11-07 から「当日のキャンセル・当日の予約の明日以降への変更のときだけ」も選べる
+    // （tenants.cancel_policy_same_day_only・cancelPolicyDisplay.test.tsx）。
+    expect(src).toMatch(/\{cancelPolicy && policyShownAt\("bookingTop"\) && \(/);
+    expect(src).toMatch(/\{!forfeitPending && cancelPolicy && policyShownAt\("cancelConfirm", cancelTarget\.date\) && \(/);
   });
 
   it("ペナルティ警告が出ているときは、そちらを優先する", () => {

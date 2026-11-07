@@ -168,6 +168,12 @@ export interface Tenant {
    */
   cancel_policy_body: string | null;
   /**
+   * キャンセルについての案内を、当日の予約のキャンセルと、当日の予約を明日以降へ変える確認のときだけ出すか
+   * （2026-11-07）。既定 false＝予約画面の上とキャンセルの確認に出す（今まで通り）。
+   * 判定は `src/lib/cancelPolicyDisplay.ts`。undefined＝列がまだ読めない環境（今まで通り）。
+   */
+  cancel_policy_same_day_only?: boolean;
+  /**
    * 何日先まで予約を受け付けるか。null = 未設定で、画面ごとの従来の上限に従う
    * （会員は1ヶ月・公開ページは10日）。解釈は `src/lib/bookingWindow.ts`。
    */

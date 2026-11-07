@@ -291,6 +291,8 @@
       "cancelPolicyUnset": "미설정(회원에게 아무것도 표시하지 않음)",
       "cancelPolicySaved": "취소 안내문을 저장했습니다",
       "cancelPolicySaveFailed": "취소 안내문 저장에 실패했습니다",
+      "cancelPolicySameDayOnlyTitle": "당일 취소·변경 시에만 표시",
+      "cancelPolicySameDayOnlyDesc": "켜면 예약 화면 상단과 전날까지의 취소에는 표시하지 않고, 당일 취소와 당일 예약을 내일 이후로 변경하는(1회 소진되는) 경우의 확인에만 표시합니다.",
       "businessDaysTitle": "요일별로 영업시간 다르게 설정",
       "businessDaysDesc": "켜면 요일별 영업시간과 정기 휴무일을 설정할 수 있습니다. 꺼 두면 모든 요일이 같은 시간으로 적용됩니다.",
       "businessDaysClosed": "정기 휴무일",

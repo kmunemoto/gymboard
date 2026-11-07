@@ -39,6 +39,7 @@ import { useBookingBlockedWindows } from "@/hooks/useBookingBlockedWindows";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
 import { isLaterTodayError, laterTodayFloor, sameDayRescheduleRule } from "@/lib/sameDayReschedule";
+import { showCancelPolicyAt, type CancelPolicyPlace } from "@/lib/cancelPolicyDisplay";
 import { moveBookingLaterToday } from "@/hooks/bookingLaterToday";
 import SameDayNotice from "@/components/booking/SameDayNotice";
 import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/lib/bookingErrors";
@@ -873,6 +874,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
 
   // ジムが設定したキャンセルについての案内。空欄なら何も出さない（既定文は持たない）。
   const cancelPolicy = tenant?.cancel_policy_body?.trim() || "";
+  // どこに出すかはジムの設定で決まる（当日のキャンセル・変更のときだけ、も選べる。src/lib/cancelPolicyDisplay.ts）
+  const policyShownAt = (place: CancelPolicyPlace, targetDate?: string) =>
+    showCancelPolicyAt(place, { sameDayOnly: tenant?.cancel_policy_same_day_only === true, targetDate, today: getJSTToday() });
 
   const cancelDescription = cancelTarget
     ? t("booking.cancelDescWithTime", { date: formatJST(`${cancelTarget.date}T00:00:00+09:00`, "M月d日（E）", { locale: ja }), startTime: cancelTarget.startTime, endTime: cancelTarget.endTime })
@@ -902,8 +906,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">{t("booking.advanceNotice")}</p>
           {/* ジムが書いたキャンセルについての案内。設定していないジムには何も出さない。
-              予約する前に読めるよう、キャンセル確認だけでなくここにも出す。 */}
-          {cancelPolicy && (
+              予約する前に読めるよう、キャンセル確認だけでなくここにも出す（「当日のときだけ」のジムでは出さない）。 */}
+          {cancelPolicy && policyShownAt("bookingTop") && (
             <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3">
               <p className="text-[11px] font-bold flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -1295,8 +1299,9 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 {forfeitPending ? t(laterTodayFromFor(cancelTarget) !== null ? "booking.sameDayForfeitWarningDescLaterToday" : "booking.sameDayForfeitWarningDesc") : cancelDescription}
               </p>
               {/* ジムが書いたキャンセルについての案内。設定していないジムには何も出さない。
-                  ペナルティの警告（forfeitPending）を出しているときは、そちらが優先。 */}
-              {!forfeitPending && cancelPolicy && (
+                  ペナルティの警告（forfeitPending）を出しているときは、そちらが優先。
+                  「当日のときだけ」のジムでは、当日の予約のキャンセルにだけ出す（前日までのふだんのキャンセルには出さない）。 */}
+              {!forfeitPending && cancelPolicy && policyShownAt("cancelConfirm", cancelTarget.date) && (
                 <p className="text-xs text-muted-foreground whitespace-pre-line rounded-lg bg-muted/50 p-3 text-left">
                   {cancelPolicy}
                 </p>
@@ -1333,6 +1338,10 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
             <div className="space-y-2 text-center sm:text-left">
               <h3 className="text-lg font-semibold">{t("booking.rescheduleForfeitWarningTitle")}</h3>
               <p className="text-sm text-muted-foreground">{t(laterTodayFrom !== null ? "booking.rescheduleForfeitWarningDescLaterToday" : "booking.rescheduleForfeitWarningDesc")}</p>
+              {/* 当日の予約を明日以降へ変える（消化）ときの、キャンセルについての案内。「当日のときだけ」のジムだけ出す */}
+              {cancelPolicy && policyShownAt("rescheduleForfeit", rescheduleTarget?.date) && (
+                <p className="text-xs text-muted-foreground whitespace-pre-line rounded-lg bg-muted/50 p-3 text-left">{cancelPolicy}</p>
+              )}
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
               <Button

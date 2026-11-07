@@ -84,23 +84,39 @@ beforeEach(() => {
 });
 
 // ── DB ───────────────────────────────────────────────────────────────────
-const MIGRATION = "supabase/migrations/20261107010000_same_day_later_reschedule.sql";
-const RAW = readFileSync(MIGRATION, "utf8");
-const SQL = RAW.replace(/--[^\n]*/g, "");
-const fnBody = (name: string) => {
-  const start = SQL.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
-  return SQL.slice(start, SQL.indexOf("$function$;", start));
+// 関数は 20261107010000 で作り、20261107020000 で行を固める形に定義し直した（独立レビューの指摘 L1）。
+// 中身は「その関数を最後に定義した migration」で見る（古い版を見て通ってしまわないように）。
+const MIGRATIONS_DIR = "supabase/migrations";
+const MIGRATION_FILES = readdirSync(MIGRATIONS_DIR).filter((n) => n.endsWith(".sql")).sort();
+const stripSql = (sql: string) => sql.replace(/--[^\n]*/g, "");
+const readMigration = (f: string) => stripSql(readFileSync(`${MIGRATIONS_DIR}/${f}`, "utf8"));
+const latestFn = (name: string): { file: string; body: string } => {
+  let found = { file: "", body: "" };
+  for (const f of MIGRATION_FILES) {
+    const sql = readMigration(f);
+    const at = sql.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
+    if (at >= 0) found = { file: f, body: sql.slice(at, sql.indexOf("$function$;", at)) };
+  }
+  return found;
 };
+const COLUMN_RAW = readFileSync(`${MIGRATIONS_DIR}/20261107010000_same_day_later_reschedule.sql`, "utf8");
+const LOCK_FILE = "20261107020000_same_day_later_move_row_lock.sql";
 
 describe("DB: 設定の列", () => {
   it("既定は OFF（今まで通り）。特定のジムの値をリポジトリに書かない", () => {
-    expect(SQL).toMatch(/ADD COLUMN IF NOT EXISTS same_day_later_reschedule_enabled boolean NOT NULL DEFAULT false/);
-    expect(RAW).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
+    expect(stripSql(COLUMN_RAW)).toMatch(/ADD COLUMN IF NOT EXISTS same_day_later_reschedule_enabled boolean NOT NULL DEFAULT false/);
+    for (const f of ["20261107010000_same_day_later_reschedule.sql", LOCK_FILE]) {
+      expect(readFileSync(`${MIGRATIONS_DIR}/${f}`, "utf8"), f).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
+    }
   });
 });
 
 describe("DB: move_booking_later_today（当日の予約を、同じ日の後ろへ動かす）", () => {
-  const body = fnBody("move_booking_later_today");
+  const { file, body } = latestFn("move_booking_later_today");
+
+  it("最新の定義は行を固める版（20261107020000）", () => {
+    expect(file).toBe(LOCK_FILE);
+  });
 
   it("🔴 SECURITY INVOKER（お客様の権限のまま。RLS と予約の見張りはアプリの日時の変更と同じ）", () => {
     expect(body).toContain("SECURITY INVOKER");
@@ -119,10 +135,15 @@ describe("DB: move_booking_later_today（当日の予約を、同じ日の後ろ
     expect(body).toContain("v_today   date := (now() AT TIME ZONE 'Asia/Tokyo')::date;");
   });
 
-  it("🔴 確かめてから消す。印は消す直前に立てて直後に下ろす。消せなかったら（同時に2回など）止める", () => {
+  it("🔴 読むときに行を固め、消すときも「予約済み・同じ日時」に限る（店の取り消し・変更を上書きしない。レビュー L1）", () => {
+    expect(body).toContain("SELECT * INTO v_old FROM public.bookings b WHERE b.id = p_booking_id FOR UPDATE;");
+    expect(body).toMatch(/DELETE FROM public\.bookings\s+WHERE id = v_old\.id AND status = '予約済み' AND booking_date = v_old\.booking_date;/);
+  });
+
+  it("🔴 確かめてから消す。印は消す直前に立てて直後に下ろす。消せなかったら（同時に2回・店が取り消した など）止める", () => {
     const lastCheck = body.indexOf("OR p_new_booking_date <= v_old.booking_date THEN");
     const setFlag = body.indexOf("PERFORM set_config('app.same_day_later_move', v_old.id::text, true);");
-    const del = body.indexOf("DELETE FROM public.bookings WHERE id = v_old.id;");
+    const del = body.indexOf("DELETE FROM public.bookings");
     const clear = body.indexOf("PERFORM set_config('app.same_day_later_move', '', true);");
     const ins = body.indexOf("INSERT INTO public.bookings");
     expect(lastCheck).toBeGreaterThan(0);
@@ -147,10 +168,13 @@ describe("DB: move_booking_later_today（当日の予約を、同じ日の後ろ
     expect(ins).not.toContain("v_old.source");
   });
 
-  it("🔴 お客様（authenticated）だけが呼べる。anon には渡さない", () => {
-    expect(SQL).toContain("REVOKE ALL ON FUNCTION public.move_booking_later_today(uuid, timestamptz) FROM PUBLIC, anon;");
-    expect(SQL).toContain("GRANT EXECUTE ON FUNCTION public.move_booking_later_today(uuid, timestamptz) TO authenticated;");
-    expect(SQL).not.toMatch(/TO anon/);
+  it("🔴 お客様（authenticated）だけが呼べる。anon には渡さない（作った版・定義し直した版とも）", () => {
+    for (const f of ["20261107010000_same_day_later_reschedule.sql", LOCK_FILE]) {
+      const sql = readMigration(f);
+      expect(sql, f).toContain("REVOKE ALL ON FUNCTION public.move_booking_later_today(uuid, timestamptz) FROM PUBLIC, anon;");
+      expect(sql, f).toContain("GRANT EXECUTE ON FUNCTION public.move_booking_later_today(uuid, timestamptz) TO authenticated;");
+      expect(sql, f).not.toMatch(/TO anon/);
+    }
   });
 
   it("GB013 はアプリが知っている番号（「アプリが古い」と出さない）", () => {
@@ -160,10 +184,14 @@ describe("DB: move_booking_later_today（当日の予約を、同じ日の後ろ
 });
 
 describe("DB: 当日削除の見張り（enforce_booking_same_day_delete）の例外", () => {
-  const body = fnBody("enforce_booking_same_day_delete");
-  const bypass = "IF COALESCE(current_setting('app.same_day_later_move', true), '') = OLD.id::text THEN\n    RETURN OLD;\n  END IF;";
+  const { file, body } = latestFn("enforce_booking_same_day_delete");
+  const bypass = "IF OLD.status = '予約済み'\n     AND COALESCE(current_setting('app.same_day_later_move', true), '') = OLD.id::text THEN\n    RETURN OLD;\n  END IF;";
 
-  it("🔴 例外は「その予約の ID の印」があるときだけ", () => {
+  it("最新の定義は 20261107020000（予約済みの行に限る版）", () => {
+    expect(file).toBe(LOCK_FILE);
+  });
+
+  it("🔴 例外は「予約済み」の行に「その予約の ID の印」があるときだけ（店が取り消した行は通さない）", () => {
     expect(body).toContain(bypass);
     expect(body.split("app.same_day_later_move").length - 1).toBe(1);
   });
@@ -181,17 +209,20 @@ describe("DB: 当日削除の見張り（enforce_booking_same_day_delete）の�
   });
 
   it("🔴 印を立てるのは move_booking_later_today だけ（ほかの migration・関数が立てていない）", () => {
-    const setters: string[] = [];
-    for (const f of readdirSync("supabase/migrations").filter((n) => n.endsWith(".sql"))) {
-      const sql = readFileSync(`supabase/migrations/${f}`, "utf8").replace(/--[^\n]*/g, "");
-      for (const m of sql.matchAll(/set_config\('app\.same_day_later_move'/g)) setters.push(`${f}@${m.index}`);
+    const owners = new Set<string>();
+    let count = 0;
+    for (const f of MIGRATION_FILES) {
+      const sql = readMigration(f);
+      for (const m of sql.matchAll(/set_config\('app\.same_day_later_move'/g)) {
+        count += 1;
+        const before = sql.slice(0, m.index);
+        const fns = [...before.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)\(/g)];
+        owners.add(fns.length ? fns[fns.length - 1][1] : "(関数の外)");
+      }
     }
-    expect(setters).toHaveLength(2); // 立てる・下ろす
-    expect(setters.every((s) => s.startsWith("20261107010000_same_day_later_reschedule.sql@"))).toBe(true);
-    const moveStart = SQL.indexOf("CREATE OR REPLACE FUNCTION public.move_booking_later_today(");
-    for (const m of SQL.matchAll(/set_config\('app\.same_day_later_move'/g)) {
-      expect(m.index!).toBeGreaterThan(moveStart);
-    }
+    expect([...owners]).toEqual(["move_booking_later_today"]);
+    expect(count).toBe(4); // 作った版・定義し直した版で、それぞれ立てる・下ろす
+    expect(latestFn("move_booking_later_today").body.split("set_config('app.same_day_later_move'").length - 1).toBe(2);
   });
 });
 

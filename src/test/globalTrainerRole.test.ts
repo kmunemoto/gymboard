@@ -222,9 +222,9 @@ describe("穴11: 印（グローバルな trainer ロール）でスタッフ扱
     // enforce_booking_update_guard は 2026-11-01 にお客様の UPDATE の制限を足して定義し直した
     // （bookingCustomerUpdateGuard.test.ts）。スタッフの判定は同じ形のまま。
     // enforce_booking_same_day_delete は 2026-11-07 に「当日の後ろへの変更が消すときだけ通す」を足して
-    // 定義し直した（sameDayLaterMove.test.ts）。スタッフの判定は同じ形のまま。
+    // 定義し直し、同日さらに「予約済みの行に限る」にした（sameDayLaterMove.test.tsx）。スタッフの判定は同じ形のまま。
     const latestFile: Record<string, string> = {
-      enforce_booking_same_day_delete: "20261107010000_same_day_later_reschedule.sql",
+      enforce_booking_same_day_delete: "20261107020000_same_day_later_move_row_lock.sql",
       enforce_booking_update_guard: "20261101050000_booking_customer_update_guard.sql",
     };
     for (const name of ["enforce_booking_same_day_delete", "enforce_booking_update_guard"]) {

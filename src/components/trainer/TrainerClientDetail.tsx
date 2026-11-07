@@ -67,6 +67,8 @@ import MemberInviteCard from "./clientDetail/MemberInviteCard";
 import MemberTimeline from "./clientDetail/MemberTimeline";
 import MemberPaymentsSection from "./clientDetail/MemberPaymentsSection";
 import MemberAgreementsSection from "./clientDetail/MemberAgreementsSection";
+import ForfeitedBookingRow from "./clientDetail/ForfeitedBookingRow";
+import { SAME_DAY_FORFEIT_STATUS } from "@/lib/bookingStatus";
 import type { SetEntry, ExerciseEntry, ExerciseMaster, WorkoutRecord, MealRecord } from "./clientDetail/types";
 
 interface TrainerClientDetailProps {
@@ -110,6 +112,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
   const [loadingMeals, setLoadingMeals] = useState(true);
   const [clientBookings2, setClientBookings2] = useState<any[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
+  const [bookingsReload, setBookingsReload] = useState(0); // 消化を取り消したあとに読み直す（ForfeitedBookingRow）
   // セッションメモ（カルテ）。予約1件ごとの自由記入メモ（bookings.trainer_note）。
   const [editingNoteBookingId, setEditingNoteBookingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -288,7 +291,7 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
       setLoadingBookings(false);
     };
     fetchBookings();
-  }, [clientId, sessionMinutes, tenantPlans]);
+  }, [clientId, sessionMinutes, tenantPlans, bookingsReload]);
 
   const handleSaveNote = async (bookingId: string) => {
     setSavingNote(true);
@@ -1709,6 +1712,10 @@ const TrainerClientDetail = ({ clientId, onBack }: TrainerClientDetailProps) => 
                         )}
                       </div>
                     </div>
+                    {/* 消化扱いにした当日キャンセルの印と「消化を取り消す」（オーナーだけ） */}
+                    {b.status === SAME_DAY_FORFEIT_STATUS && (
+                      <ForfeitedBookingRow booking={b} canUndo={!isLimitedStaff} onChanged={() => setBookingsReload((n) => n + 1)} />
+                    )}
 
                     {editingNoteBookingId === b.id ? (
                       <div className="space-y-2 pl-12">

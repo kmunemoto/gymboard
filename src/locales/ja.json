@@ -664,6 +664,7 @@
     "cancelDescWithTime": "{{date}} {{startTime}}〜{{endTime}} の予約をキャンセルします。",
     "sameDayForfeitWarningTitle": "本当にキャンセルしますか？",
     "sameDayForfeitWarningDesc": "当日キャンセルは枠を他の方にご案内できないため、1回分の消化になります。時間の変更のみご希望の場合は、キャンセルせずアプリのチャットかLINEにご連絡ください。",
+    "sameDayForfeitWarningDescLaterToday": "当日キャンセルは枠を他の方にご案内できないため、1回分の消化になります。同じ日の後ろのお時間に変えたい場合は、キャンセルせずに予約の「日時を変更」（カレンダーのマーク）から変更できます（消化にはなりません）。前のお時間への変更は、アプリのチャットかLINEにご連絡ください。",
     "sameDayForfeitConfirmBtn": "消化扱いでキャンセルする",
     "waitlistJoin": "キャンセル待ち",
     "waitlistJoined": "待機中",

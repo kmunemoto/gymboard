@@ -1291,7 +1291,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                 {forfeitPending ? t("booking.sameDayForfeitWarningTitle") : t("booking.cancelConfirmTitle")}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {forfeitPending ? t("booking.sameDayForfeitWarningDesc") : cancelDescription}
+                {/* 後ろへ動かせる予約なら「キャンセルせずに日時を変更から」と案内する（src/lib/sameDayReschedule.ts） */}
+                {forfeitPending ? t(laterTodayFromFor(cancelTarget) !== null ? "booking.sameDayForfeitWarningDescLaterToday" : "booking.sameDayForfeitWarningDesc") : cancelDescription}
               </p>
               {/* ジムが書いたキャンセルについての案内。設定していないジムには何も出さない。
                   ペナルティの警告（forfeitPending）を出しているときは、そちらが優先。 */}

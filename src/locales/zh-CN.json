@@ -664,6 +664,7 @@
     "cancelDescWithTime": "将取消 {{date}} {{startTime}}〜{{endTime}} 的预约。",
     "sameDayForfeitWarningTitle": "确定要取消吗？",
     "sameDayForfeitWarningDesc": "当天取消无法再安排给其他人，因此计为消耗1次。如果只是想更改时间，请不要取消，直接通过应用内聊天或LINE联系我们。",
+    "sameDayForfeitWarningDescLaterToday": "当天取消无法再安排给其他人，因此计为消耗1次。如想改到今天更晚的时间，请不要取消，可通过预约的“更改日期时间”（日历图标）进行更改（不计消耗）。如需改到更早的时间，请通过应用内聊天或LINE联系我们。",
     "sameDayForfeitConfirmBtn": "计为已消耗并取消",
     "waitlistJoin": "候补登记",
     "waitlistJoined": "候补中",

@@ -2192,6 +2192,7 @@ export type Database = {
           booking_window_days: number | null
           business_type: string
           cancel_policy_body: string | null
+          cancel_policy_same_day_only: boolean
           created_at: string
           current_period_end: string | null
           daily_booking_limit: number | null
@@ -2272,6 +2273,7 @@ export type Database = {
           booking_window_days?: number | null
           business_type?: string
           cancel_policy_body?: string | null
+          cancel_policy_same_day_only?: boolean
           created_at?: string
           current_period_end?: string | null
           daily_booking_limit?: number | null
@@ -2352,6 +2354,7 @@ export type Database = {
           booking_window_days?: number | null
           business_type?: string
           cancel_policy_body?: string | null
+          cancel_policy_same_day_only?: boolean
           created_at?: string
           current_period_end?: string | null
           daily_booking_limit?: number | null

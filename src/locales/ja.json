@@ -291,6 +291,8 @@
       "cancelPolicyUnset": "未設定（お客様には何も表示しません）",
       "cancelPolicySaved": "キャンセルについての案内を保存しました",
       "cancelPolicySaveFailed": "キャンセルについての案内の保存に失敗しました",
+      "cancelPolicySameDayOnlyTitle": "当日のキャンセル・変更のときだけ出す",
+      "cancelPolicySameDayOnlyDesc": "オンにすると、予約画面の上と前日までのキャンセルには出さず、当日のキャンセルと、当日の予約を明日以降へ変更する（消化になる）ときの確認にだけ出します。",
       "businessDaysTitle": "曜日ごとに営業時間を変える",
       "businessDaysDesc": "オンにすると曜日ごとの営業時間と定休日を設定できます。オフのままなら全曜日が同じ時間です。",
       "businessDaysClosed": "定休日",

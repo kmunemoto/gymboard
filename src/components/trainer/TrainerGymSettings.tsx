@@ -25,6 +25,7 @@ import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
 import RemainingSlotsCard from "./RemainingSlotsCard";
 import SameDayRulesCard from "./SameDayRulesCard";
+import CancelPolicyPlacementSwitch from "./CancelPolicyPlacementSwitch";
 import VisitGuideCards from "./VisitGuideCards";
 import NextCyclePaymentCard from "./NextCyclePaymentCard";
 import ActiveClientsSettingsCard from "./ActiveClientsSettingsCard";
@@ -1238,6 +1239,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
               <Save className="w-4 h-4 mr-1" />
               {savingCancelPolicy ? t("common.saving") : t("common.save")}
             </Button>
+            <CancelPolicyPlacementSwitch />{/* 当日のキャンセル・変更のときだけ出す（押したらすぐ保存） */}
           </CardContent>
         </Card>
       </section>

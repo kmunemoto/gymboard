@@ -291,6 +291,8 @@
       "cancelPolicyUnset": "未设置（不向会员显示任何内容）",
       "cancelPolicySaved": "已保存取消说明",
       "cancelPolicySaveFailed": "取消说明保存失败",
+      "cancelPolicySameDayOnlyTitle": "仅在当天取消・变更时显示",
+      "cancelPolicySameDayOnlyDesc": "开启后，不在预约页面顶部和前一天及更早的取消中显示，仅在当天取消，以及将当天的预约改到明天以后（计为消耗1次）时的确认中显示。",
       "businessDaysTitle": "按星期设置不同的营业时间",
       "businessDaysDesc": "开启后可按星期分别设置营业时间和固定休息日。保持关闭则所有星期使用相同时间。",
       "businessDaysClosed": "固定休息日",

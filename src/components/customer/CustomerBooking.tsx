@@ -39,6 +39,7 @@ import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { useBookingBlockedWindows } from "@/hooks/useBookingBlockedWindows";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
+import { sameDayRescheduleRule } from "@/lib/sameDayReschedule";
 import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/lib/bookingErrors";
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
@@ -755,6 +756,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       setSelectedSlot(null);
       return;
     }
+    // 🔴 同じ日の中の時間変更は消化しない決まり（2026-11-07）。アプリでは動かさず店に頼んでもらう（理由は src/lib/sameDayReschedule.ts）
+    if (sameDayRescheduleRule({ penaltyEnabled: !!tenant?.same_day_cancel_penalty_enabled, targetDate: rescheduleTarget.date, newDate: dateKey, today: getJSTToday() }) === "contactGym") { toast.error(t("booking.sameDayTimeChangeContactGym")); setSelectedSlot(null); return; }
     // 消化リスケは旧行が「同日キャンセル済み」で残って回数に数えられ続けるため、
     // 上限ちょうどのお客様は**構造的に必ず GB004 で失敗する**。押させてから
     // 消化→拒否→復元の往復をさせるより、先に理由を言って止める。

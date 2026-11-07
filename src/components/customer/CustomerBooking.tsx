@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Clock, Trash2, CalendarPlus, Info, CalendarClock, X, Phone, MessageCircle, MessageSquare, ClipboardList, Sparkles } from "lucide-react";
-import { openExternalUrl } from "@/lib/nativeBridge";
+import { CalendarDays, Clock, Trash2, CalendarPlus, Info, CalendarClock, X, ClipboardList, Sparkles } from "lucide-react";
 import { sendLineMessage } from "@/lib/lineNotify";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,7 +38,9 @@ import { useBookingCapacityWindows } from "@/hooks/useBookingCapacityWindows";
 import { useBookingBlockedWindows } from "@/hooks/useBookingBlockedWindows";
 import { computePlanUsage, resolvePlanUsageInput } from "@/lib/planUsage";
 import { isPlanLimitError, isPlanSessionLimitReached } from "@/lib/planSessionLimit";
-import { sameDayRescheduleRule } from "@/lib/sameDayReschedule";
+import { isLaterTodayError, laterTodayFloor, sameDayRescheduleRule } from "@/lib/sameDayReschedule";
+import { moveBookingLaterToday } from "@/hooks/bookingLaterToday";
+import SameDayNotice from "@/components/booking/SameDayNotice";
 import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/lib/bookingErrors";
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
@@ -287,6 +288,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const excludeSlot = rescheduleTarget
     ? { date: rescheduleTarget.date, startTime: rescheduleTarget.startTime }
     : null;
+  // 当日の予約を同じ日の後ろへ動かせるなら、その下限＝元の開始時刻（ジムの設定・2026-11-07。src/lib/sameDayReschedule.ts）。
+  // laterFloor は「今開いている日が今日」のときだけ。後ろの枠は締切の例外になり、「見るだけ」の日にもしない
+  const laterTodayFromFor = (b: BookingWithTime | null) => laterTodayFloor({ enabled: tenant?.same_day_later_reschedule_enabled === true, target: b, today: getJSTToday(), nowTime: formatJST(new Date(), "HH:mm") });
+  const laterTodayFrom = laterTodayFromFor(rescheduleTarget);
+  const laterFloor = dateKey === getJSTToday() ? laterTodayFrom : null;
   // カレンダーの「今回の利用期間」（帯・下の説明・日を選んだときの一言。src/components/booking/CalendarPeriod.tsx）
   const period = useCalendarPeriod(planUsageInput, planBookingsForUsage, profile?.show_usage_period, excludeSlot);
 
@@ -318,7 +324,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   // 今日(JST)で、かつ締切を過ぎていて1枠も取れない日か。「空き状況の閲覧のみ」の案内を出す対象。
   // hours_before の店では当日でも取れる枠が残るので、その場合は案内を出さない。
   const isViewOnlyDay = (date: string): boolean =>
-    !!date && date === getJSTToday() && isDayPastCutoff(date, cutoff, Date.now(), lastBookableStartOn(date));
+    !!date && date === getJSTToday() && laterTodayFrom === null && isDayPastCutoff(date, cutoff, Date.now(), lastBookableStartOn(date));
 
   // このテナントで同日キャンセル消化が有効、かつ「変更対象の予約」が今日(JST)の分か。
   // 当日の枠を手放す変更なので、当日キャンセルと同じく消化扱いにする。
@@ -342,7 +348,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       frequencyLimits,
       { dateKey: date, startMinutes, userId: user.id },
       myBookings,
-      rescheduleTargetForfeits ? null : (rescheduleTarget?.id ?? null),
+      // 当日の後ろへの変更（laterFloor より後ろ）は旧行を消してから作る → 消化リスケでも除外する
+      rescheduleTargetForfeits && !(laterFloor !== null && time > laterFloor) ? null : (rescheduleTarget?.id ?? null),
     );
   };
 
@@ -367,7 +374,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   //    「その日に予約している人だけには分かるようにしてほしい。当日の日付を押したときに
   //     その日の状況が見えるように。アプリから当日の予約の変更はできない」。
   //    当日はそもそも締切済みで予約も変更もできないので、押せても見るだけで済む。
-  const selectedDayViewOnly = isDayViewOnly(closedDays, dateKey, hasOwnBookingOn(dateKey));
+  //    当日の後ろへ動かすときは除く（元の予約を消してから作るので、その日の件数は増えない。DB も通す）
+  const selectedDayViewOnly = isDayViewOnly(closedDays, dateKey, hasOwnBookingOn(dateKey)) && laterFloor === null;
 
   // 🔴 1枠も取れない日はカレンダーで選べなくする（2026-09-20 宗本さんの要望）。
   //    状態は持たず毎回数え直すので、キャンセルで枠が空けば自動で押せる日に戻る。
@@ -423,14 +431,15 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       const time = minutesToTime(totalMin);
       const blocked = isSlotBlocked(dateKey, time);
       const tooSoon = isSlotPastCutoff(dateKey, time, cutoff);
+      const late = tooSoon && !(laterFloor !== null && time > laterFloor); // 当日の後ろへの変更は締切の例外
       const overLimit = isSlotOverLimit(dateKey, time);
       const notAccepting = isSlotNotAccepting(dateKey, time);
       slots.push({
         id: `${dateKey}-${time}`, time,
         // 🔴 上限で埋まった当日は1枠も押せない。DB も GB007 で断るので、
         //    押せる見た目にすると「押したのに断られる」になる。見せるだけにする。
-        available: !selectedDayViewOnly && !blocked && !tooSoon && !overLimit && !notAccepting,
-        blocked, tooSoon, overLimit, notAccepting,
+        available: !selectedDayViewOnly && !blocked && !late && !overLimit && !notAccepting,
+        blocked, tooSoon: late, overLimit, notAccepting,
         dayFull: selectedDayViewOnly,
       });
     }
@@ -708,7 +717,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const startReschedule = (b: BookingWithTime) => {
     if (b.outsideHours) { toast.info(t("booking.outsideHoursRescheduleNote")); return; } // 店が営業時間外に入れた予約は店に連絡（変更の巻き戻しで元に戻せないため）
     setRescheduleTarget(b);
-    setSelectedDate(undefined);
+    // 当日の後ろへ動かせる予約なら、今日を開いておく（後ろの空き時間がすぐ見える。別の日はカレンダーで選べる）
+    setSelectedDate(laterTodayFromFor(b) !== null ? startOfDay(getJSTNow()) : undefined);
     setSelectedSlot(null);
     // 変更しても担当は引き継がれる（rescheduleBooking が元の担当を渡す）。
     // 空き枠の表示もその担当基準にしないと、実際には取れない枠を「空き」と見せてしまう。
@@ -733,7 +743,11 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
     if (!selectedDate || !selectedSlot) return;
     const slot = slots.find((s) => s.id === selectedSlot);
     if (!slot) return;
-    if (isSlotPastCutoff(dateKey, slot.time, cutoff)) {
+    // 当日の決まり（2026-11-07。理由は src/lib/sameDayReschedule.ts）: 明日以降へ＝消化（forfeit）／
+    // 同じ日の後ろ＝ジムの設定が ON なら消化なしでアプリから動かせる（laterToday）／それ以外の同じ日の中＝店に頼む（contactGym）
+    const rule = sameDayRescheduleRule({ penaltyEnabled: !!tenant?.same_day_cancel_penalty_enabled, laterFrom: laterTodayFrom, targetDate: rescheduleTarget.date, newDate: dateKey, newStart: slot.time, today: getJSTToday() });
+    const later = rule === "laterToday"; // 締切の例外・消化しない・DB の move_booking_later_today で動かす
+    if (isSlotPastCutoff(dateKey, slot.time, cutoff) && !later) {
       toast.error(t("booking.errorAdvance"));
       setSelectedSlot(null);
       return;
@@ -756,31 +770,34 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
       setSelectedSlot(null);
       return;
     }
-    // 🔴 同じ日の中の時間変更は消化しない決まり（2026-11-07）。アプリでは動かさず店に頼んでもらう（理由は src/lib/sameDayReschedule.ts）
-    if (sameDayRescheduleRule({ penaltyEnabled: !!tenant?.same_day_cancel_penalty_enabled, targetDate: rescheduleTarget.date, newDate: dateKey, today: getJSTToday() }) === "contactGym") { toast.error(t("booking.sameDayTimeChangeContactGym")); setSelectedSlot(null); return; }
+    // 🔴 同じ日の中の時間変更は消化しない決まり（2026-11-07）。後ろへ動かせない変更は、アプリでは動かさず店に頼んでもらう
+    if (rule === "contactGym") { toast.error(t("booking.sameDayTimeChangeContactGym")); setSelectedSlot(null); return; }
     // 消化リスケは旧行が「同日キャンセル済み」で残って回数に数えられ続けるため、
     // 上限ちょうどのお客様は**構造的に必ず GB004 で失敗する**。押させてから
     // 消化→拒否→復元の往復をさせるより、先に理由を言って止める。
-    // 非消化リスケは旧行が消える（純増ゼロ）ので、ここで止めてはいけない。
-    if (rescheduleTargetForfeits && isPlanLimitReachedOn(dateKey)) {
+    // 非消化リスケ（当日の後ろへの変更も）は旧行が消える（純増ゼロ）ので、ここで止めてはいけない。
+    if (!later && rescheduleTargetForfeits && isPlanLimitReachedOn(dateKey)) {
       toast.error(t("planSessions.errorRescheduleForfeitReached"));
       return;
     }
     // 当日の予約変更（消化対象）は、最初の押下では警告表示に切り替えるだけに留める。
-    if (rescheduleTargetForfeits && !rescheduleForfeitPending) {
+    if (!later && rescheduleTargetForfeits && !rescheduleForfeitPending) {
       setRescheduleForfeitPending(true);
       return;
     }
     setSubmitting(true);
     try {
-      const { error, restoreFailed } = await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time, { forfeitOld: rescheduleTargetForfeits });
+      const { error, restoreFailed } = later
+        ? await moveBookingLaterToday(rescheduleTarget.id, dateKey, slot.time)
+        : await rescheduleBooking(rescheduleTarget.id, dateKey, slot.time, { forfeitOld: rescheduleTargetForfeits });
       if (error) {
         // 復元まで失敗した場合は「変更に失敗」では足りない（元の予約が消えている）。
         // GB004 は消化リスケ（旧行が数えられ続ける）で他端末とのずれ等から到達しうる。
         toast.error(
           restoreFailed ? t("bookingLimits.errorRestoreFailed")
             : isPlanLimitError(error)
-              ? (rescheduleTargetForfeits ? t("planSessions.errorRescheduleForfeitReached") : t("planSessions.errorReached"))
+              ? (rescheduleTargetForfeits && !later ? t("planSessions.errorRescheduleForfeitReached") : t("planSessions.errorReached"))
+            : isLaterTodayError(error) ? t("booking.laterTodayNotAllowed")
             : isDayClosedError(error) ? t("closedDays.errorClosed")
             : isBlockedWindowError(error) ? t("blockedWindows.errorNotAccepting")
             : isBookingLimitError(error) ? t("bookingLimits.errorOverLimit")
@@ -1129,49 +1146,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
                   {t("booking.availableSlots", { date: formatDate(selectedDate, "monthDayDow") })}
                 </h3>
                 {!isViewOnlyDay(dateKey) && <CalendarPeriodHint hint={period.hintFor(dateKey)} />}
-                {isViewOnlyDay(dateKey) && (
-                  <div className="mb-3 rounded-xl border border-accent/30 bg-accent/5 p-3">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                      <p className="text-xs text-foreground leading-relaxed">
-                        {t("booking.sameDayViewOnlyNotice")}
-                      </p>
-                    </div>
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {tenant?.phone && (
-                        <Button asChild variant="accent" size="sm" className="flex-1 min-w-[110px]">
-                          {/* 番号は画面に出さず、tel: リンクで発信のみ行う */}
-                          <a href={`tel:${tenant.phone}`}>
-                            <Phone className="w-3.5 h-3.5 mr-1.5" />
-                            {t("booking.callGym")}
-                          </a>
-                        </Button>
-                      )}
-                      {tenant?.line_url && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 min-w-[110px]"
-                          onClick={() => tenant?.line_url && openExternalUrl(tenant.line_url)}
-                        >
-                          <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-                          {t("common.lineContact")}
-                        </Button>
-                      )}
-                      {onOpenChat && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 min-w-[110px]"
-                          onClick={onOpenChat}
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
-                          {t("booking.chatWithGym")}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {/* 今日の案内（当日の後ろへ動かせる／締切を過ぎて見るだけ）。部品は src/components/booking/SameDayNotice.tsx */}
+                <SameDayNotice laterToday={laterFloor !== null} viewOnly={isViewOnlyDay(dateKey)} phone={tenant?.phone} lineUrl={tenant?.line_url} onOpenChat={onOpenChat} />
                 {selectedDayViewOnly && (
                   <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 p-4 text-center space-y-1">
                     <p className="text-sm font-bold">{t("closedDays.customerFullToday")}</p>
@@ -1355,7 +1331,7 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
           <div className="w-full max-w-md rounded-2xl border border-border bg-background glass p-6 shadow-lg">
             <div className="space-y-2 text-center sm:text-left">
               <h3 className="text-lg font-semibold">{t("booking.rescheduleForfeitWarningTitle")}</h3>
-              <p className="text-sm text-muted-foreground">{t("booking.rescheduleForfeitWarningDesc")}</p>
+              <p className="text-sm text-muted-foreground">{t(laterTodayFrom !== null ? "booking.rescheduleForfeitWarningDescLaterToday" : "booking.rescheduleForfeitWarningDesc")}</p>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2">
               <Button

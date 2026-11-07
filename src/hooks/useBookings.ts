@@ -737,7 +737,7 @@ export const rescheduleBooking = async (
   return { data: { id: created.id }, error: null };
 };
 
-async function sendRescheduleToTrainer(
+export async function sendRescheduleToTrainer(
   userId: string,
   oldBookingDate: string, // ISO（旧日時）
   newDate: string,

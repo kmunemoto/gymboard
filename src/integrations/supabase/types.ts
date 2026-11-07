@@ -2222,6 +2222,7 @@ export type Database = {
           public_theme_color: string | null
           reminder_email_note: string | null
           same_day_cancel_penalty_enabled: boolean
+          same_day_later_reschedule_enabled: boolean
           show_counseling_responses: boolean
           show_nav_announcements: boolean
           show_nav_counseling: boolean
@@ -2301,6 +2302,7 @@ export type Database = {
           public_theme_color?: string | null
           reminder_email_note?: string | null
           same_day_cancel_penalty_enabled?: boolean
+          same_day_later_reschedule_enabled?: boolean
           show_counseling_responses?: boolean
           show_nav_announcements?: boolean
           show_nav_counseling?: boolean
@@ -2380,6 +2382,7 @@ export type Database = {
           public_theme_color?: string | null
           reminder_email_note?: string | null
           same_day_cancel_penalty_enabled?: boolean
+          same_day_later_reschedule_enabled?: boolean
           show_counseling_responses?: boolean
           show_nav_announcements?: boolean
           show_nav_counseling?: boolean
@@ -2939,6 +2942,10 @@ export type Database = {
         Returns: boolean
       }
       menu_trial_open: { Args: { p_menu_id: string }; Returns: boolean }
+      move_booking_later_today: {
+        Args: { p_booking_id: string; p_new_booking_date: string }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string

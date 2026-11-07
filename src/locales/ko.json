@@ -214,6 +214,8 @@
       "bookingPolicySection": "예약 정책",
       "sameDayPenaltyTitle": "당일 취소를 자동으로 소진 처리",
       "sameDayPenaltyDesc": "켜면 당일 취소된 예약과, 당일에 내일 이후로 일시를 변경한 예약이 자동으로 1회 소진 처리됩니다. 같은 날 안에서의 시간 변경은 소진되지 않습니다(예정표에서 취소할 때 「소진 처리하기」 체크를 해제하고 새 시간으로 다시 등록하세요). 끄면 페널티 없이 취소・변경할 수 있습니다.",
+      "sameDayLaterMoveTitle": "당일 예약을 같은 날 더 늦은 시간으로 고객이 변경할 수 있게 하기",
+      "sameDayLaterMoveDesc": "켜면 당일 예약이 있는 고객이 예약 시작 시각 전까지 같은 날 더 늦은 빈 시간으로 앱에서 변경할 수 있습니다. 1회 소진되지 않으며, 예약 마감(전날까지 등)과 관계없이 변경할 수 있습니다. 더 이른 시간으로의 변경은 지금처럼 짐에 연락해야 합니다. 변경되면 알림이 옵니다.",
       "sameDayPenaltyUpdated": "예약 정책을 업데이트했습니다",
       "sameDayPenaltySaveFailed": "예약 정책 저장에 실패했습니다",
       "displaySection": "표시 설정",
@@ -677,6 +679,9 @@
     "rescheduleForfeitWarningDesc": "당일 예약을 내일 이후로 변경하면 원래 시간대는 다른 분께 안내할 수 없어 1회 소진 처리됩니다. 같은 날 안에서 시간만 변경하시려면 앱 채팅이나 LINE으로 연락해 주세요(소진되지 않습니다).",
     "rescheduleForfeitConfirmBtn": "소진 처리하고 변경",
     "sameDayTimeChangeContactGym": "같은 날 안에서 시간을 변경하시려면 앱 채팅이나 LINE으로 짐에 연락해 주세요(1회 소진으로 처리되지 않습니다).",
+    "laterTodayHint": "이 예약보다 늦은 빈 시간이라면 오늘 안에서 변경할 수 있습니다(1회 소진되지 않습니다). 더 이른 시간으로 변경하시려면 채팅이나 LINE으로 짐에 연락해 주세요.",
+    "laterTodayNotAllowed": "이 변경은 할 수 없었습니다. 시작 시각이 지난 예약이나 더 이른 시간으로의 변경은 채팅이나 LINE으로 짐에 연락해 주세요.",
+    "rescheduleForfeitWarningDescLaterToday": "당일 예약을 내일 이후로 변경하면 원래 시간대는 다른 분께 안내할 수 없어 1회 소진 처리됩니다. 오늘 이 예약보다 늦은 시간으로 변경하면 소진되지 않습니다(캘린더에서 오늘을 선택해 주세요).",
     "rescheduling": "변경 중...",
     "cancelPolicyTitle": "취소에 대하여",
     "errorAppOutdated": "앱이 최신 버전이 아니어서 예약하지 못했습니다. 최신 버전으로 업데이트한 후 다시 시도해 주세요."

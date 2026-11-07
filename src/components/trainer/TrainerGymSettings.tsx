@@ -24,6 +24,7 @@ import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
 import RemainingSlotsCard from "./RemainingSlotsCard";
+import SameDayRulesCard from "./SameDayRulesCard";
 import VisitGuideCards from "./VisitGuideCards";
 import NextCyclePaymentCard from "./NextCyclePaymentCard";
 import ActiveClientsSettingsCard from "./ActiveClientsSettingsCard";
@@ -132,7 +133,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
-  const [savingSameDayPenalty, setSavingSameDayPenalty] = useState(false);
   const [savingDailySummary, setSavingDailySummary] = useState(false);
   // 表示ON/OFFの各トグル。どれも同じ形の更新なので、保存中フラグは
   // 「どのカラムを保存中か」で共有する（トグルごとにstateを持たない）。
@@ -270,21 +270,6 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
     if (error) toast.error(t("settings.trainer.saveFailed"));
     else toast.success(t("settings.trainer.displayNameUpdated"));
     setSavingName(false);
-  };
-
-  const handleToggleSameDayPenalty = async (checked: boolean) => {
-    if (!tenant) return;
-    setSavingSameDayPenalty(true);
-    const { error } = await supabase
-      .from("tenants")
-      .update({ same_day_cancel_penalty_enabled: checked })
-      .eq("id", tenant.id);
-    if (error) toast.error(t("settings.trainer.sameDayPenaltySaveFailed"));
-    else {
-      toast.success(t("settings.trainer.sameDayPenaltyUpdated"));
-      refetchTenant();
-    }
-    setSavingSameDayPenalty(false);
   };
 
   // 表示ON/OFFはどの項目も「tenants の boolean 列を1つ更新して再取得」で同じ形なので、
@@ -1227,21 +1212,7 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
       {/* === 予約ポリシー === */}
       <section className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.bookingPolicySection")}</h3>
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h4 className="font-bold text-sm">{t("settings.trainer.sameDayPenaltyTitle")}</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("settings.trainer.sameDayPenaltyDesc")}</p>
-              </div>
-              <Switch
-                checked={!!tenant?.same_day_cancel_penalty_enabled}
-                disabled={savingSameDayPenalty || !tenant}
-                onCheckedChange={handleToggleSameDayPenalty}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <SameDayRulesCard />{/* 当日キャンセルの消化・当日の後ろへの変更（別ファイル: 行数の上限のため） */}
 
         {/* お客様に見せるキャンセルについての案内。
             ⚠️ **既定文を持たせない。** ペナルティの有無は店ごとに違うので、

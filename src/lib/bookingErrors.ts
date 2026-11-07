@@ -59,6 +59,7 @@ export const KNOWN_GUARD_CODES = [
   "GB010", // 店が指定したお客様だけのオプションを、指定されていないお客様が付けた
   "GB011", // その時間は担当のいるメニュー（例: ピラティス）専用
   "GB012", // そのメニューは今は予約できない（店が外した・別のジムのメニュー）
+  "GB013", // 当日の後ろへの変更の条件に合わない（move_booking_later_today。src/lib/sameDayReschedule.ts）
 ] as const;
 
 /** 予約のガードが使う SQLSTATE の形。ここに当てはまるものだけを「規則による拒否」とみなす。 */

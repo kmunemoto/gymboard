@@ -423,8 +423,10 @@ describe("🔴 見せるだけで、押せないこと", () => {
 
   it("🔴 「その日に予約がある人だけ」を画面側でも渡している", () => {
     // ここが抜けると、当日が上限の日を**全員**が開けてしまう
+    // 当日の後ろへ動かすとき（laterFloor・2026-11-07）は「見るだけ」にしない（元の予約を消してから作るので、
+    // その日の件数は増えない。DB の move_booking_later_today も通す）
     expect(code).toMatch(
-      /const selectedDayViewOnly = isDayViewOnly\(closedDays, dateKey, hasOwnBookingOn\(dateKey\)\);/,
+      /const selectedDayViewOnly = isDayViewOnly\(closedDays, dateKey, hasOwnBookingOn\(dateKey\)\) && laterFloor === null;/,
     );
     expect(code).toMatch(
       /const selectedDayClosed = isDayHardClosed\(closedDays, dateKey, hasOwnBookingOn\(dateKey\)\);/,

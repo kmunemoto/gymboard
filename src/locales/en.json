@@ -214,6 +214,8 @@
       "bookingPolicySection": "Booking Policy",
       "sameDayPenaltyTitle": "Automatically count same-day cancellations as used",
       "sameDayPenaltyDesc": "When on, a booking cancelled on the same day, or moved on the same day to tomorrow or later, is automatically counted as one used session. Changing the time within the same day is not counted (in the schedule, uncheck \"Count as a used session\" when cancelling, then book the new time). When off, customers can cancel or change with no penalty.",
+      "sameDayLaterMoveTitle": "Let customers move a same-day booking to a later time that day",
+      "sameDayLaterMoveDesc": "When on, a customer with a booking today can move it in the app, before its start time, to a later open time on the same day. It does not count as a used session, and it is allowed regardless of the booking deadline (e.g. \"until the day before\"). Moving to an earlier time still goes through the gym, as before. You will be notified when a booking is moved.",
       "sameDayPenaltyUpdated": "Booking policy updated",
       "sameDayPenaltySaveFailed": "Failed to save the booking policy",
       "displaySection": "Display",
@@ -677,6 +679,9 @@
     "rescheduleForfeitWarningDesc": "Moving a same-day booking to tomorrow or later forfeits the original slot as one session, since it can't be offered to someone else. To change the time within the same day, please contact us via the in-app chat or LINE (no session is used).",
     "rescheduleForfeitConfirmBtn": "Change (counts as used)",
     "sameDayTimeChangeContactGym": "To change the time within the same day, please contact the gym via the in-app chat or LINE (it won't count as a used session).",
+    "laterTodayHint": "You can move this booking to a later open time today (it won't count as a used session). To move to an earlier time, please contact the gym via chat or LINE.",
+    "laterTodayNotAllowed": "This change couldn't be made. For a booking that has already started, or to move to an earlier time, please contact the gym via chat or LINE.",
+    "rescheduleForfeitWarningDescLaterToday": "Moving a same-day booking to tomorrow or later forfeits the original slot as one session, since it can't be offered to someone else. Moving it to a later time today does not use a session (pick today on the calendar).",
     "rescheduling": "Changing...",
     "cancelPolicyTitle": "About cancellations",
     "errorAppOutdated": "We couldn't book this because the app is out of date. Please update to the latest version and try again."

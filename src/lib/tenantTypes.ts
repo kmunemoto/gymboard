@@ -39,6 +39,12 @@ export interface Tenant {
   booking_cutoff_hours: number;
   same_day_cancel_penalty_enabled: boolean;
   /**
+   * 当日の予約を、同じ日の後ろの時間へお客様がアプリから変更できるか（2026-11-07）。既定 false。
+   * 消化しない。判定は `src/lib/sameDayReschedule.ts`、動かすのは DB の `move_booking_later_today`。
+   * undefined＝列がまだ読めない環境（出さない）。
+   */
+  same_day_later_reschedule_enabled?: boolean;
+  /**
    * 体験予約だけ、予定表の「時間ブロック」（blocked_slots）を無視して受けるか。既定 false。
    * 会員予約・店の代理予約・ドロップインには効かない。
    * 同時受入数・営業時間・予約の締切は true でもそのまま効く。

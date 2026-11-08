@@ -23,6 +23,7 @@ import TrainerStaffManager from "./TrainerStaffManager";
 import TrialLinkCard from "./TrialLinkCard";
 import TrialCancelNoteCard from "./TrialCancelNoteCard";
 import TrialIgnoreBlocksCard from "./TrialIgnoreBlocksCard";
+import TrialWindowCard from "./TrialWindowCard";
 import RemainingSlotsCard from "./RemainingSlotsCard";
 import SameDayRulesCard from "./SameDayRulesCard";
 import CancelPolicyPlacementSwitch from "./CancelPolicyPlacementSwitch";
@@ -1335,6 +1336,12 @@ const TrainerGymSettings = ({ onSignOut }: TrainerGymSettingsProps) => {
           <section className="space-y-3">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialIgnoreBlocksSection")}</h3>
             <TrialIgnoreBlocksCard />
+          </section>
+
+          {/* === 体験予約の受付期間（何日先まで。会員とは別・2026-11-08）。実装は TrialWindowCard === */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("settings.trainer.trialWindowSection")}</h3>
+            <TrialWindowCard />
           </section>
         </>
       )}

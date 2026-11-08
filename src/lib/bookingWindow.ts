@@ -58,6 +58,19 @@ export const normalizeBookingWindowDays = (raw: unknown): number | null => {
   return n;
 };
 
+/**
+ * 体験予約（公開ページ・メニューの体験）の「何日先まで」の設定値（2026-11-08 宗本さん「体験の受付を2週間先までに延ばしたい」）。
+ *
+ * 体験だけの設定（`tenants.trial_booking_window_days`）→ 予約全体の設定（`booking_window_days`）の順に見る。
+ * どちらも未設定なら null を返す（呼び出し側が従来の既定 `{ days: LEGACY_GUEST_WINDOW_DAYS }` を使う）。
+ * 体験だけの設定は会員の予約・ドロップインには効かない（会員を縮めずに体験だけ延ばせるようにするため）。
+ *
+ * 🔴 trial-book（`supabase/functions/_shared/trialRules.ts` の `trialWindowDays`）と同じ答えを返すこと。
+ *    片方だけ直すと「画面で選べた日を送ると断られる」（テストが突き合わせている）。
+ */
+export const trialBookingWindowDays = (trialDays: unknown, generalDays: unknown): number | null =>
+  normalizeBookingWindowDays(trialDays) ?? normalizeBookingWindowDays(generalDays);
+
 /** 呼び出し側が渡す「従来の既定」。`days` か `months` のどちらか一方を入れる。 */
 export interface LegacyWindow {
   days?: number;

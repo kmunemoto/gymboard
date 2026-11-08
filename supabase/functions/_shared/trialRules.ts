@@ -125,6 +125,13 @@ export const normalizeWindowDays = (raw: unknown): number | null => {
   return n;
 };
 
+/**
+ * 体験の「何日先まで」（日）。体験だけの設定（tenants.trial_booking_window_days）→ booking_window_days → 従来の10日。
+ * src/lib/bookingWindow.ts の trialBookingWindowDays（＋画面の既定 LEGACY_GUEST_WINDOW_DAYS）と同じ答え（2026-11-08）。
+ */
+export const trialWindowDays = (trialDays: unknown, generalDays: unknown): number =>
+  normalizeWindowDays(trialDays) ?? normalizeWindowDays(generalDays) ?? LEGACY_GUEST_WINDOW_DAYS;
+
 /** JST の暦日（yyyy-MM-dd）の0時の実時刻（ms）。読めなければ null */
 export const jstDayStartMs = (dateKey: string | null | undefined): number | null => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((dateKey ?? "").trim());

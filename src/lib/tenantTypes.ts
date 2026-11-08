@@ -178,6 +178,11 @@ export interface Tenant {
    * （会員は1ヶ月・公開ページは10日）。解釈は `src/lib/bookingWindow.ts`。
    */
   booking_window_days: number | null;
+  /**
+   * 体験予約（公開ページ・メニューの体験）だけの「何日先まで」（2026-11-08）。
+   * null = booking_window_days と同じ（それも未設定なら10日）。会員の予約には効かない。`src/lib/bookingWindow.ts`
+   */
+  trial_booking_window_days?: number | null;
   /** 予約確認メールに足す、店からの案内。null/空なら何も足さない。 */
   booking_email_note: string | null;
   /** 前日リマインドメールに足す、店からの案内。null/空なら何も足さない。 */

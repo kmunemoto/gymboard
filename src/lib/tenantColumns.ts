@@ -92,6 +92,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   // キャンセルについての案内を、当日のキャンセル・当日の予約の明日以降への変更のときだけ出すか（2026-11-07）。
   // 既定 false（今まで通り: 予約画面の上とキャンセルの確認に出す）。src/lib/cancelPolicyDisplay.ts
   "cancel_policy_same_day_only",
+  // 体験予約だけの「何日先まで」（2026-11-08）。NULL = booking_window_days と同じ（今まで通り）。src/lib/bookingWindow.ts
+  "trial_booking_window_days",
 ];
 
 /**
@@ -176,6 +178,8 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   // 未適用の環境では「未設定」＝画面ごとの従来の上限（会員1ヶ月・公開ページ10日）。
   // ここに数字を置くと、列が読めない環境で全店の受付範囲が勝手に変わる。
   booking_window_days: null,
+  // 体験だけの「何日先まで」。未設定は booking_window_days と同じ（trialBookingWindowDays）
+  trial_booking_window_days: null,
   // 既定文は持たせない（cancel_policy_body と同じ理由）。
   booking_email_note: null,
   reminder_email_note: null,

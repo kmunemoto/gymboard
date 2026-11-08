@@ -43,8 +43,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
-  LEGACY_GUEST_WINDOW_DAYS, isListedStart, jstDateKey, normalizeWindowDays, resolveDayBusinessMinutes,
-  shiftDayMinutes, trialBookingLabel, trialMaxAheadMs, trialWindowAnchorMs, type OperatingHours, type ShiftRow,
+  isListedStart, jstDateKey, resolveDayBusinessMinutes,
+  shiftDayMinutes, trialBookingLabel, trialMaxAheadMs, trialWindowAnchorMs, trialWindowDays, type OperatingHours, type ShiftRow,
 } from "../_shared/trialRules.ts";
 import {
   RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
     // (ジムごとに正しい情報を載せる。旧実装は Salute 固定だったため他ジムには送っていなかった)。
     const { data: tenant, error: tErr } = await admin
       .from("tenants")
-      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen, booking_email_note, trial_email_cancel_note, operating_hours, booking_window_days")
+      .select("id, gym_name, status, address, email, website_url, slot_duration_minutes, trial_price_yen, booking_email_note, trial_email_cancel_note, operating_hours, booking_window_days, trial_booking_window_days")
       .eq("id", tenantId)
       .maybeSingle();
     if (tErr) return fail("tenant_lookup", tErr.message);
@@ -252,8 +252,9 @@ Deno.serve(async (req) => {
     }
 
     // ===== 何日先まで =====
-    // ジムが決めた日数（未設定は10日）。メニューの開始日がまだ先なら、開始日の前日から数える。
-    const windowDays = normalizeWindowDays(tenant.booking_window_days) ?? LEGACY_GUEST_WINDOW_DAYS;
+    // ジムが決めた日数。体験だけの設定 → 予約全体の設定 → 未設定は10日（2026-11-08。画面は src/lib/bookingWindow.ts）。
+    // メニューの開始日がまだ先なら、開始日の前日から数える。
+    const windowDays = trialWindowDays(tenant.trial_booking_window_days, tenant.booking_window_days);
     const anchorMs = trialWindowAnchorMs(Date.now(), menu?.starts_on);
     if (bookingInstant.getTime() - anchorMs > trialMaxAheadMs(windowDays)) {
       return reject("too_far", `ご予約は${windowDays}日先まで承っています。別の日時をお選びください。`);

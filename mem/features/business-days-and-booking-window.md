@@ -164,6 +164,22 @@ isBeyondBookingWindow(dateKey, tenant?.booking_window_days ?? null, { days: LEGA
 
 見落としではないので、後から「代理予約にも効かせ忘れている」と直さないこと。
 
+### 体験だけの受付期間（`tenants.trial_booking_window_days`・2026-11-08）
+
+宗本さん「体験の受付を2週間先までに延ばしたい」。`booking_window_days` は会員と公開ページの**共通**なので、
+14 にすると会員（未設定なら1ヶ月先）まで2週間に縮む。体験だけの列を足した。
+
+- 決め方: **体験だけの設定 → `booking_window_days` → 従来の10日**。
+  画面は `trialBookingWindowDays`（`src/lib/bookingWindow.ts`）、trial-book は `trialWindowDays`
+  （`supabase/functions/_shared/trialRules.ts`）。**両方が同じ答え**を返すことを `src/test/trialBookingWindow.test.tsx` が突き合わせる
+  （片方だけ直すと「画面で選べた日を送ると断られる」）
+- 効くのは体験予約ページ（メニューの体験は開始日の前日から数える）と trial-book だけ。会員の予約・ドロップイン・店の代理予約は変わらない
+- 公開ページへは `get_tenant_public` の末尾の列で届ける（`20261108010000_trial_booking_window_days.sql`・DROP → CREATE → GRANT）
+- 設定はジム設定の「体験予約」カテゴリーの `TrialWindowCard`（選んだらすぐ保存）
+- 🔴 出す順番: trial-book（Edge Function）を先にデプロイしてから Web を公開する。逆だと、画面は14日先まで出すのに
+  サーバーが「10日先まで」（＋余裕2日）で断る日ができる
+- 御所南は 2026-11-08 に 14日
+
 ---
 
 ## 触った場所

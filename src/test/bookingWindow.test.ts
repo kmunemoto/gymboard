@@ -137,8 +137,15 @@ describe("🔴 画面がこの関数を使っている（直書きが戻って�
     for (const f of ["src/pages/TrialBooking.tsx", "src/pages/DropInBooking.tsx"]) {
       const src = readFileSync(f, "utf8");
       expect(src, `${f} に上限日数の直書きが残っています`).not.toMatch(/MAX_DAYS_AHEAD/);
-      expect(src).toMatch(/isBeyondBookingWindow\(\s*yyyyMMdd,\s*tenant\?\.booking_window_days \?\? null,\s*\{ days: LEGACY_GUEST_WINDOW_DAYS \},?\s*\)/);
     }
+    // ドロップインは予約全体の設定のまま
+    expect(readFileSync("src/pages/DropInBooking.tsx", "utf8")).toMatch(
+      /isBeyondBookingWindow\(\s*yyyyMMdd,\s*tenant\?\.booking_window_days \?\? null,\s*\{ days: LEGACY_GUEST_WINDOW_DAYS \},?\s*\)/,
+    );
+    // 体験は「体験だけの設定 → 予約全体の設定」（2026-11-08・trialBookingWindow.test.tsx）
+    const trial = readFileSync("src/pages/TrialBooking.tsx", "utf8");
+    expect(trial).toMatch(/const trialWindow = trialBookingWindowDays\(tenant\?\.trial_booking_window_days, tenant\?\.booking_window_days\);/);
+    expect(trial).toMatch(/isBeyondBookingWindow\(yyyyMMdd, trialWindow, \{ days: LEGACY_GUEST_WINDOW_DAYS \}\)/);
   });
 
   it("🔴 店側の代理予約には受付期間をかけていない（意図的）", () => {

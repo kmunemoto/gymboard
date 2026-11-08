@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { isSlotPastCutoff, isDayPastCutoff } from "@/lib/bookingCutoff";
 import { bookingSlotMinutes, isClosedDate, minutesToTime, resolveDayBusinessMinutes, weekdayOfDateKey } from "@/lib/businessHours";
 import { resolveSlotCapacity, type BookingCapacityWindow } from "@/lib/bookingCapacity";
-import { isBeyondBookingWindow, LEGACY_GUEST_WINDOW_DAYS } from "@/lib/bookingWindow";
+import { isBeyondBookingWindow, LEGACY_GUEST_WINDOW_DAYS, trialBookingWindowDays } from "@/lib/bookingWindow";
 import BookingQuestionFields from "@/components/booking/BookingQuestionFields";
 import {
   buildAnswerSnapshot,
@@ -72,6 +72,8 @@ interface PublicTenant {
   booking_cutoff_hours: number | null;
   /** 何日先まで受け付けるか。null/未設定は従来どおり10日先まで。 */
   booking_window_days: number | null;
+  /** 体験だけの「何日先まで」（2026-11-08）。null/未設定（列を返さない環境も）は booking_window_days と同じ */
+  trial_booking_window_days?: number | null;
   /**
    * 🔴 体験予約だけ、予定表の「時間ブロック」を無視して受けるか（2026-09-14）。
    * null/未設定（＝ get_tenant_public にこの列が無い環境）は **false 扱い**で、
@@ -280,6 +282,8 @@ const TrialBooking = () => {
   // ⚠️ 公開ページは get_tenant_public 経由なので、この2列を返す migration が
   // 本番DBに適用されるまでは undefined になり、prev_day のままになる（安全側）。
   const cutoff = { type: tenant?.booking_cutoff_type, hours: tenant?.booking_cutoff_hours };
+  // 何日先まで: 体験だけの設定 → 予約全体の設定 → 従来の10日（trial-book と同じ。src/lib/bookingWindow.ts）
+  const trialWindow = trialBookingWindowDays(tenant?.trial_booking_window_days, tenant?.booking_window_days);
 
   const generateSlots = () => {
     const slots: { id: string; time: string; available: boolean; blocked: boolean; tooSoon: boolean }[] = [];
@@ -734,12 +738,10 @@ const TrialBooking = () => {
                   if (menu) {
                     if (isBeforeMenuStart(menu, yyyyMMdd)) return true;
                     if (menuTrialSlotMinutes(tenant?.operating_hours, sessionMinutes, yyyyMMdd, menu.shifts).length === 0) return true;
-                    return yyyyMMdd > menuTrialWindowEndKey(menu.startsOn, tenant?.booking_window_days ?? null);
+                    return yyyyMMdd > menuTrialWindowEndKey(menu.startsOn, trialWindow);
                   }
                   // 何日先まで受けるか。店が未設定なら従来どおり10日先まで。
-                  return isBeyondBookingWindow(
-                    yyyyMMdd, tenant?.booking_window_days ?? null, { days: LEGACY_GUEST_WINDOW_DAYS },
-                  );
+                  return isBeyondBookingWindow(yyyyMMdd, trialWindow, { days: LEGACY_GUEST_WINDOW_DAYS });
                 }}
                 className="pointer-events-auto"
               />

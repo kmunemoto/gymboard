@@ -1,36 +1,47 @@
-## 目的
-「トレーナーのホームタブで『画面の読み込みに失敗しました』が出続ける」障害について、**新規に作った空テナントでも再現するか** を実機で確認し、コードバグか既存テナント固有データ起因かを切り分ける。コードは一切変更しない（調査のみ）。
+# analyze-meal で使えるモデルについての回答（コード変更なし）
 
-## 前提として確定済みの事実
-- `https://gymboard.lovable.app/` と `https://app.kyoto-salute.com/` は同一ビルドを配信中（`assets/index-nghBznDj.js`）。`gymboard.lovable.app` はカスタムドメインへ 302 でリダイレクト。→ **デプロイ鮮度の問題ではない**。
+このプロジェクトの AI 利用一覧を 2026-11-09 に読み取りで取得した結果です（workspace_models: included）。何も変更していません。
 
-## 実施ステップ（ビルドモードで実行）
+## 1・2. チャットで使えるモデル ID（いまの呼び出し先 /v1/chat/completions で使えるかどうか）
 
-1. **新規オーナーアカウント作成**（Playwright, headless Chromium, viewport 1280x1800）
-   - `https://app.kyoto-salute.com/auth` を開く → "Gym Owner" タブ → "Sign up here"
-   - `trainer-test-<epoch>@testmail.app` / `TestPass123!` / 表示名 `TestOwner<epoch>` でサインアップ
-   - メール確認が必須なので、**確認完了は `supabase--migration` で直接 `auth.users.email_confirmed_at = now()` を打つ**（他フィールドは触らない）。これは今回のみの検証目的の1レコード更新で、既存ユーザーには影響しない。
+画像入力は、下の表のモデルすべてが対応しています。
 
-2. **ログイン → ダッシュボード遷移**
-   - 同アカウントで `/auth` にログイン
-   - 初回サインイン時に `signup-trainer` Edge Function が呼ばれて `tenants` と `tenant_members` (role=owner) と `user_roles` (role=trainer) が作られる想定
-   - ホーム（dashboard タブ）を開き、以下を捕捉:
-     - `page.on("pageerror")` / `page.on("console")` の全ログ
-     - スクリーンショット
-     - ネットワークで 4xx/5xx を返したリクエスト（URL + ステータス + レスポンス冒頭）
+| プロバイダ | モデル ID | chat-completions で使えるか |
+|---|---|---|
+| Google | google/gemini-2.5-flash（廃止予定） | 使える |
+| Google | google/gemini-2.5-flash-lite | 使える |
+| Google | google/gemini-2.5-pro | 使える |
+| Google | google/gemini-3-flash-preview | 使える（プレビュー版） |
+| Google | google/gemini-3.1-pro-preview | 使える（プレビュー版） |
+| Google | google/gemini-3.1-flash-lite | 使える |
+| Google | google/gemini-3.5-flash / 3.6-flash / 3.7-flash / 3.8-flash | 使える |
+| Google | google/gemini-4-argon | 使える |
+| OpenAI | openai/gpt-5, gpt-5-mini, gpt-5-nano, gpt-5.2, gpt-5.4, gpt-5.4-mini, gpt-5.4-nano, gpt-5.5, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra, gpt-6-luna, gpt-6-sol, gpt-6.1-sol, gpt-6.1-terra, chat-latest | 使える（responses でも使える） |
+| OpenAI | openai/gpt-5.4-pro, openai/gpt-5.5-pro | 使えない（responses 専用） |
+| Anthropic | anthropic/claude-opus-5-5, claude-opus-5, claude-sonnet-5, claude-fable-5-1, claude-haiku-4-5 | 使えない（messages 専用） |
 
-3. **分岐**
-   - **再現する（真っさらでも「読み込みに失敗しました」）** → コードバグ確定。`[LazyBoundary] chunk/render error:` の全スタックトレースとネットワーク失敗を丸ごとユーザーへ報告。
-   - **再現しない（新規テナントでは正常表示）** → 既存テナント固有データ依存確定。作成したテストアカウント認証情報を報告し、次ターンで既存テナントのどのクエリ／レコードが刺さっているかを個別に切り分け。
+画像生成・音声・埋め込み・動画用のモデル（gemini-*-image、gpt-image-*、tts、transcribe、veo など）は、料理の判定には使えないので表から外しました。
 
-4. **後片付け**
-   - どちらの結論でも作成した検証用ユーザー・テナント（`user_roles`, `tenant_members`, `tenants`, `profiles`, `auth.users` の該当行）を削除する SQL を最後に実行し、DB を汚さない。
+## 3. 画像の理解と推論の精度が一番高いもの
 
-## 技術メモ
-- `.workspace/skills/` は使わない。プレーンな Playwright スクリプトを `/tmp/browser/dash/` に置いて `python3` で走らせる。
-- 認証済みセッションはローカルストレージへ Supabase JS が書き込むので、Playwright 側で追加の cookie 注入は不要（ブラウザで実際にログイン操作を行うため）。
-- `email_confirmed_at` の直接 UPDATE は `auth` スキーマへの書き込みだが、既存ポリシー上 `service_role` として `supabase--migration` で実行可能。トリガーは張らない。
-- 変更するファイルは **無し**。DB への一時的な書き込みのみで、最後に revert。
+一覧にはベンチマークが載っていないので、どれが一番かは確定できません。一覧の説明文から読み取れる、最上位クラスの候補は次のとおりです。
 
-## 承認をお願いしたい点
-- 新規テストアカウント作成と、`auth.users.email_confirmed_at` の直接更新（1行、テストアカウントのみ、後で削除）を実施してよいか。承認いただければすぐに実行します。
+- **google/gemini-4-argon**：正式版（廃止予定なし）。説明文は「Frontier Gemini model」。いまのコードの URL と書き方のまま、model の文字列を変えるだけで使えます。いちばん手軽な最上位の候補です。
+- **openai/gpt-6-astra**：正式版。このワークスペースのチャットの既定モデルで、OpenAI の最上位にあたります（gpt-6.1-sol の説明文が「Near-Astra」なので、それより上）。chat-completions でも使えます。
+- **anthropic/claude-opus-5-5**：正式版。ただし、呼び出し先を messages に変える必要があります。
+
+本当に精度を確かめるなら、同じ食事写真を何枚か使って、上の3つを比べるのが確実です。
+
+## 4. Claude は使えますか
+
+使えます。この5つが一覧に出ていて、このワークスペースのデータ保持の設定でも messages での利用が許可されています: claude-opus-5-5, claude-opus-5, claude-sonnet-5, claude-fable-5-1, claude-haiku-4-5。
+条件があります。Claude は messages（Anthropic 形式）専用なので、いまの /v1/chat/completions の呼び出しのままでは使えません。呼び出し先とリクエストの形を変える必要があります。
+
+## 5. 推論の深さの指定
+
+今回は確かめられていません。一覧からは、パラメータの正確な書き方が読み取れませんでした。SDK の型定義も手元で開けなかったので、書き方を推測でお伝えするのは控えます。実装するときに、SDK が生成するモデルごとの型を見て、正確な項目名を確定させます。
+
+## 6. google/gemini-2.5-flash は今も使えますか
+
+いまは使えますが、**廃止予定（deprecated: true）**です。廃止日は 1792454400 で、これは **2026-10-20** にあたり、**もう過ぎています**。一覧にはまだ残っていますが、いつ使えなくなってもおかしくない状態です。早めに切り替えることをおすすめします。
+同じ系統の後継で、正式版のものは google/gemini-3.8-flash です。精度を最優先するなら、上の gemini-4-argon です。

@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { isSafeOwnStoragePath } from "../_shared/storagePath.ts";
+import { MEAL_STAGE_TIMEOUTS, askWithFallback, type AiCaller } from "../_shared/mealAiModel.ts";
 
 // どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
 // Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
-const BUILD = "2026-10-31-storage-path";
+const BUILD = "2026-11-09-gemini-4-argon";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,19 +13,34 @@ const corsHeaders = {
   "x-gymboard-build": BUILD,
 };
 
-async function callAI(apiKey: string, messages: unknown[], model = "google/gemini-2.5-flash") {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw Object.assign(new Error(`AI error ${res.status}: ${text}`), { status: res.status });
+// AI を1回呼ぶ。モデルは _shared/mealAiModel.ts（主: 一番賢いモデル・予備: 速いモデル）が決める。
+// 時間切れは AbortController で切る（Edge Function 全体の時間に収めるため）。
+async function callAI(apiKey: string, messages: unknown[], model: string, timeoutMs: number) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, messages }),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw Object.assign(new Error(`AI error ${res.status}: ${text}`), { status: res.status });
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
+  } finally {
+    clearTimeout(timer);
   }
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
 }
+
+const caller = (apiKey: string, messages: unknown[]): AiCaller =>
+  (model, timeoutMs) => callAI(apiKey, messages, model, timeoutMs);
+
+const logFallback = (stage: string) => (message: string, detail?: unknown) =>
+  console.error(`[analyze-meal] ${stage}: ${message}`, detail ?? "");
 
 function parseJson(text: string) {
   const m = text.match(/\{[\s\S]*\}/);
@@ -128,19 +144,27 @@ serve(async (req) => {
   ]
 }`;
 
-    const stage1Content = await callAI(LOVABLE_API_KEY, [
-      { role: "system", content: stage1System },
-      { role: "user", content: [
-        { type: "image_url", image_url: { url: resolvedImageUrl, detail: "high" } },
-        { type: "text", text: "この食事の写真に映っているすべての料理を特定してください。" },
-      ]},
-    ]);
-
-    let stage1Result;
-    try { stage1Result = parseJson(stage1Content); } catch { stage1Result = null; }
+    // 1段目: 写真から料理を特定する（主のモデルで読めなければ予備で聞き直す）
+    const stage1 = await askWithFallback(
+      caller(LOVABLE_API_KEY, [
+        { role: "system", content: stage1System },
+        { role: "user", content: [
+          { type: "image_url", image_url: { url: resolvedImageUrl, detail: "high" } },
+          { type: "text", text: "この食事の写真に映っているすべての料理を特定してください。" },
+        ]},
+      ]),
+      (text) => {
+        let parsed;
+        try { parsed = parseJson(text); } catch { parsed = null; }
+        return parsed?.dishes?.length ? parsed : null;
+      },
+      MEAL_STAGE_TIMEOUTS.dishes,
+      logFallback("stage1"),
+    );
+    const stage1Result = stage1.result;
 
     if (!stage1Result?.dishes?.length) {
-      console.error("Stage 1 failed:", stage1Content);
+      console.error("Stage 1 failed:", stage1.raw);
       return new Response(JSON.stringify({ error: "料理の特定に失敗しました。もう一度お試しください。" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -181,16 +205,23 @@ ${mealTypeInstruction}
   "feedback": "アドバイステキスト"
 }`;
 
-    const stage2Content = await callAI(LOVABLE_API_KEY, [
-      { role: "system", content: stage2System },
-      { role: "user", content: "上記の食事内容の栄養素を計算してください。" },
-    ]);
-
-    let analysis;
-    try { analysis = parseJson(stage2Content); } catch { analysis = null; }
+    // 2段目: 栄養の計算とアドバイス（同じく、読めなければ予備で聞き直す）
+    const stage2 = await askWithFallback(
+      caller(LOVABLE_API_KEY, [
+        { role: "system", content: stage2System },
+        { role: "user", content: "上記の食事内容の栄養素を計算してください。" },
+      ]),
+      (text) => {
+        try { return parseJson(text); } catch { return null; }
+      },
+      MEAL_STAGE_TIMEOUTS.nutrition,
+      logFallback("stage2"),
+    );
+    const analysis = stage2.result;
+    console.log(`[analyze-meal] models stage1=${stage1.model} stage2=${stage2.model}`);
 
     if (!analysis) {
-      console.error("Stage 2 failed:", stage2Content);
+      console.error("Stage 2 failed:", stage2.raw);
       return new Response(JSON.stringify({ error: "栄養素の計算に失敗しました。もう一度お試しください。" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -221,7 +252,8 @@ ${mealTypeInstruction}
       throw new Error("Database update failed");
     }
 
-    return new Response(JSON.stringify({ success: true, analysis: { ...total, dishes, feedback: analysis.feedback } }), {
+    // models: どちらのモデルが答えたか（画面は使わない。確かめ用）
+    return new Response(JSON.stringify({ success: true, analysis: { ...total, dishes, feedback: analysis.feedback }, models: { dishes: stage1.model, nutrition: stage2.model } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: unknown) {

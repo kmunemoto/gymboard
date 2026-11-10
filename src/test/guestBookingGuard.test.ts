@@ -9,11 +9,18 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import {
-  GUEST_NAME_MAX, RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
+  GUEST_NAME_MAX, RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_1H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
 } from "../../supabase/functions/_shared/guestBooking";
+import { TOP_LEVEL_DOMAINS } from "../../supabase/functions/_shared/tlds";
 
 describe("guestNameProblem: お名前として受け付けるもの", () => {
-  it.each(["佐藤 一郎", "やまだ たろう", "Taro Yamada", "Jean-Luc O'Neil", "J. Smith", "李 小龍", "김민준", "Ana María", "😀 さくら", "👨‍👩‍👧 家族"])(
+  it.each([
+    "佐藤 一郎", "やまだ たろう", "Taro Yamada", "Jean-Luc O'Neil", "J. Smith", "李 小龍", "김민준", "Ana María", "😀 さくら", "👨‍👩‍👧 家族",
+    // 2026-11-10: 頭文字＋点の書き方（kim・ren・who は TLD でもある）・敬称・点でつないだ名前
+    "T.Yamada", "K.Munemoto", "J.Smith", "J.Kim", "Y.Ren", "Mr.Kim", "Dr.Who", "Ana.Maria", "J.R. Smith", "J.R.Smith", "J.R.Kim",
+    // 区切り・文の「。」・数字の点
+    "ジョン・スミス", "山田/ヤマダ", "山田です。よろしく", "Mary-Jane", "No.1 山田", "山田 2.5",
+  ])(
     "%s は受け付ける",
     (name) => {
       expect(guestNameProblem(name)).toBeNull();
@@ -55,11 +62,58 @@ describe("guestNameProblem: お名前として受け付けるもの", () => {
   ])("🔴 URL・メールアドレスらしいもの（%s）は受け付けない", (name) => {
     expect(guestNameProblem(name)).toBe("link");
   });
+
+  // 2026-11-10 定期点検 guest-name-1: よくある TLD の一覧（25個）だけ見ていたので、次が通っていた
+  it.each([
+    "要確認 salute-pay.tokyo/confirm",
+    "山田 salute.ai/pay",
+    "山田 salute.store/pay",
+    "山田 lin.ee/abc",
+    "山田 forms.gle/abc",
+    "山田 youtu.be/x",
+    "山田 bit.do/x",
+    "山田 is.gd/x",
+    "山田 x.gd/abc", // 1文字のドメインでも、パスが続けば断る
+    "山田 t.co/abc",
+    "山田 help.support",
+    "山田 pay.salute.cloud",
+    "203.0.113.5/pay", // IP アドレス
+    "山田 203.0.113.5",
+    "山田 サルート.jp", // 日本語のドメイン
+    "山田 salute.コム", // 日本語の TLD
+    "山田 salute。ai/pay", // 「。」はブラウザが点として読む
+    "山田 ｓａｌｕｔｅ．ａｉ", // 全角
+    "dr.tokyo/pay", // 敬称の形でも、パスが続けば断る
+  ])("🔴 TLD 全体と形で見る（%s は受け付けない）", (name) => {
+    expect(guestNameProblem(name)).toBe("link");
+  });
+});
+
+describe("TLD の一覧（_shared/tlds.ts）", () => {
+  it("Public Suffix List のトップレベル（1400件以上）で、代表の値が入っている", () => {
+    expect(TOP_LEVEL_DOMAINS.size).toBeGreaterThanOrEqual(1400);
+    for (const t of ["com", "jp", "tokyo", "kyoto", "ai", "store", "ee", "gle", "be", "gd", "do", "co", "support", "help", "cloud", "コム", "みんな"]) {
+      expect(TOP_LEVEL_DOMAINS.has(t), t).toBe(true);
+    }
+    // 名前の語は入っていない（入っていると "T.Yamada" などを断ってしまう）
+    for (const w of ["yamada", "munemoto", "smith", "maria", "lee", "taro"]) {
+      expect(TOP_LEVEL_DOMAINS.has(w), w).toBe(false);
+    }
+  });
+
+  it("小文字・点なし・空なし", () => {
+    for (const t of TOP_LEVEL_DOMAINS) {
+      expect(t, t).toBe(t.toLowerCase());
+      expect(t.includes("."), t).toBe(false);
+      expect(t.length, t).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("回数の上限", () => {
-  it("同じアドレスは全部のジムで24時間5件・1つのジムは24時間60件", () => {
+  it("同じアドレスは全部のジムで24時間5件・1つのジムは1時間20件・24時間60件", () => {
     expect(RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H).toBe(5);
+    expect(RATE_LIMIT_PER_TENANT_1H).toBe(20);
     expect(RATE_LIMIT_PER_TENANT_24H).toBe(60);
   });
 
@@ -84,18 +138,32 @@ describe.each([
     expect(src).toContain(message);
   });
 
-  it("🔴 同じアドレスは全部のジムを合わせて数える（tenant_id で絞らない）・1つのジムの24時間の上限もある", () => {
-    const all = src.slice(src.indexOf("const { count: contactAllCount"), src.indexOf("if (caErr)"));
-    expect(all).toContain('.eq("guest_contact", guestContact)');
-    expect(all).not.toContain("tenant_id");
-    expect(src).toContain("(contactAllCount ?? 0) >= RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H");
-    const day = src.slice(src.indexOf("const { count: tenantDayCount"), src.indexOf("if (tdErr)"));
-    expect(day).toContain('.eq("tenant_id", tenantId)');
-    expect(src).toContain("(tenantDayCount ?? 0) >= RATE_LIMIT_PER_TENANT_24H");
-    // どちらも予約を作る前
+  it("🔴 中継の上限は店が消せない記録（email_send_quota）で数える（trial_bookings の行で数えない。2026-11-10 点検 trial-book-cap-1）", () => {
     const insertAt = src.indexOf('.from("trial_bookings")\n      .insert(');
-    expect(src.indexOf("const { count: contactAllCount")).toBeLessThan(insertAt);
-    expect(src.indexOf("const { count: tenantDayCount")).toBeLessThan(insertAt);
+    const reserveAt = src.indexOf("const quota = await reserveEmailSend(admin, {");
+    expect(reserveAt).toBeGreaterThan(-1);
+    expect(reserveAt).toBeLessThan(insertAt); // 予約を作る前
+    const call = src.slice(reserveAt, src.indexOf("});", reserveAt));
+    expect(call).toContain('kind: "guest_confirm"');
+    expect(call).toContain("recipient: guestContact");
+    expect(call).toContain("perRecipient24h: RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H");
+    expect(call).toContain("perTenant1h: RATE_LIMIT_PER_TENANT_1H");
+    expect(call).toContain("perTenant24h: RATE_LIMIT_PER_TENANT_24H");
+    // 行で数える古い上限は残っていない（オーナーが行を消す・作成日時を書き換えるだけで数え直させられた）
+    expect(src).not.toContain("contactAllCount");
+    expect(src).not.toContain("tenantDayCount");
+    expect(src).not.toContain("tenantCount");
+    // 数えられないときは受け付けない（500）
+    expect(src).toContain('if (quota.reason === "error") return fail("rate_limit_quota", quota.detail ?? "");');
+  });
+
+  it("🔴 予約を作れなかったら、積んだ1通ぶんを戻す（満枠で取り直すお客様の上限を減らさない）", () => {
+    const err = src.slice(src.indexOf("if (insErr) {"));
+    expect(err.slice(0, 200)).toContain("await releaseEmailSend(admin, quota.id);");
+  });
+
+  it("🔴 宛先は小文字にそろえて保存する（大文字・小文字の違いで別の宛先にさせない。点検 trial-book-2）", () => {
+    expect(src).toContain('const guestContact = String(body.guest_contact ?? "").trim().toLowerCase();');
   });
 });
 

@@ -8,7 +8,7 @@
  * Edge Function のログは関係者・Lovable のエージェントが見られ、貼り付けやスクリーンショットで外にも出る。
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { maskEmail } from "../../supabase/functions/_shared/logSafety";
 
 /** console.* の呼び出しの引数を、括弧の対応を見て取り出す */
@@ -97,5 +97,73 @@ describe("send-transactional-email のログ", () => {
       expect(leaks(c, ["effectiveRecipient", "normalizedEmail", "recipientEmail"]), c.slice(0, 120)).toEqual([]);
     }
     expect(src).toContain("recipient: maskEmail(effectiveRecipient)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 全部の Edge Function（2026-11-10 定期点検 send-trial-reminders-log-1）。
+// それまでは auth-email-hook と send-transactional-email の2本だけを見ていて、send-trial-reminders が体験のお客様の
+// アドレスを平文で出していた（handle-email-unsubscribe も）。宛先らしい変数・.email はどの関数でも maskEmail を通す。
+// ---------------------------------------------------------------------------
+describe("全部の Edge Function のログ", () => {
+  const root = "supabase/functions";
+  const files = readdirSync(root)
+    .filter((d) => d !== "mcp" && !d.startsWith("_"))
+    .map((d) => `${root}/${d}/index.ts`)
+    .filter((f) => existsSync(f));
+
+  /** 文字列は落とし、テンプレート文字列は ${…} の式だけ残す（文言の中の "email" で誤検知しない） */
+  const exprsOnly = (call: string) =>
+    call
+      // 手で伏せている書き方（先頭の1文字＋***@＋ドメイン。handle-email-suppression）は伏せたものとして扱う
+      .replace(/(\w+)\[0\]\s*\+\s*'\*\*\*@'\s*\+\s*\1\.split\('@'\)\[1\]/g, "masked")
+      .replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, "''")
+      .replace(/`(?:[^`\\]|\\.)*`/g, (lit) => [...lit.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1]).join(" , "));
+
+  /** maskEmail(…) の中身を消す（括弧の対応を見る） */
+  const withoutMasked = (s: string) => {
+    let out = "";
+    for (let i = 0; i < s.length; ) {
+      if (s.startsWith("maskEmail(", i)) {
+        let depth = 1;
+        let j = i + "maskEmail(".length;
+        while (j < s.length && depth > 0) {
+          if (s[j] === "(") depth++;
+          else if (s[j] === ")") depth--;
+          j++;
+        }
+        out += "masked";
+        i = j;
+      } else {
+        out += s[i++];
+      }
+    }
+    return out;
+  };
+
+  const LEAK = /\b(?:contact|guestContact|guest_contact|recipientEmail|recipient_email|effectiveRecipient|normalizedEmail)\b|\.email\b/;
+
+  it("走査の対象が見つかっている", () => {
+    expect(files.length).toBeGreaterThan(30);
+    expect(files).toContain("supabase/functions/send-trial-reminders/index.ts");
+  });
+
+  it.each(files)("🔴 %s はメールアドレス・連絡先を伏せずにログへ出さない", (f) => {
+    const src = readFileSync(f, "utf8");
+    for (const c of consoleCalls(src)) {
+      const exprs = withoutMasked(exprsOnly(c));
+      expect(exprs, c.slice(0, 160)).not.toMatch(LEAK);
+    }
+  });
+
+  it("走査が当たることの確認（伏せていない書き方は見つける・伏せた書き方は通す）", () => {
+    const bad = withoutMasked(exprsOnly("console.error(`Failed to send reminder to ${contact}:`, e)"));
+    expect(bad).toMatch(LEAK);
+    const bad2 = withoutMasked(exprsOnly("console.log('Email unsubscribed', { email: tokenRecord.email })"));
+    expect(bad2).toMatch(LEAK);
+    const ok = withoutMasked(exprsOnly("console.error(`Failed (booking ${booking.id}, to ${maskEmail(contact)})`)"));
+    expect(ok).not.toMatch(LEAK);
+    const ok2 = withoutMasked(exprsOnly("console.log('Skip non-email contact (booking ' + booking.id + ')')"));
+    expect(ok2).not.toMatch(LEAK);
   });
 });

@@ -1,4 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+// ログにメールアドレスを平文で出さない（2026-11-10 定期点検 send-trial-reminders-log-1 の走査で見つかった）
+import { maskEmail } from '../_shared/logSafety.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,12 +121,12 @@ Deno.serve(async (req) => {
   if (suppressError) {
     console.error('Failed to suppress email', {
       error: suppressError,
-      email: tokenRecord.email,
+      recipient: maskEmail(tokenRecord.email),
     })
     return jsonResponse({ error: 'Failed to process unsubscribe' }, 500)
   }
 
-  console.log('Email unsubscribed', { email: tokenRecord.email })
+  console.log('Email unsubscribed', { recipient: maskEmail(tokenRecord.email) })
 
   return jsonResponse({ success: true })
 })

@@ -47,6 +47,9 @@ const THIRD_PARTY_HOSTS = [
   "jsr.io",
   "raw.githubusercontent.com",
   "www.w3.org",
+  // リンクではなく、宛先をそろえる名前（Gmail は点を落としても同じ受信箱。_shared/emailQuota.ts の canonicalEmail）
+  "gmail.com",
+  "googlemail.com",
 ];
 
 const hostOf = (url: string) => new URL(url).host;

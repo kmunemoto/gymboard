@@ -920,6 +920,33 @@ export type Database = {
         }
         Relationships: []
       }
+      email_send_quota: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          recipient_key: string
+          source_ref: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          recipient_key: string
+          source_ref?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          recipient_key?: string
+          source_ref?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       email_unsubscribe_tokens: {
         Row: {
           created_at: string
@@ -2997,6 +3024,19 @@ export type Database = {
       regenerate_instructor_invite_code: { Args: never; Returns: string }
       regenerate_staff_invite_code: { Args: never; Returns: string }
       remove_staff_member: { Args: { p_user_id: string }; Returns: undefined }
+      reserve_email_send: {
+        Args: {
+          p_kind: string
+          p_max_recipient_24h: number
+          p_max_source: number
+          p_max_tenant_1h: number
+          p_max_tenant_24h: number
+          p_recipient_key: string
+          p_source_ref: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       resolve_booking_capacity: {
         Args: { p_booking_date: string; p_tenant_id: string }
         Returns: number

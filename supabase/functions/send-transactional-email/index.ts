@@ -29,7 +29,7 @@ const FROM_DOMAIN = "notify.kyoto-salute.com"
 
 // どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
 // Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
-const BUILD = '2026-11-01-email-tenant'
+const BUILD = '2026-11-10-email-quota'
 
 // 画面（service_role 以外）から来たメールのボタンの飛び先。Edge Function（Deno）は src/lib/brand.ts を
 // import できないので写しを置いている（notify-new-booking・invite-customer と同じ扱い）。
@@ -67,6 +67,11 @@ function generateToken(): string {
 import { verifyCaller } from '../_shared/auth.ts'
 import { maskEmail, redactTemplateDataForLog } from '../_shared/logSafety.ts'
 import { pickVerifiedTenant, serverDecidedTemplateData, uniqueTenantsOrNull } from '../_shared/emailClientGuard.ts'
+import { invokeAsService } from '../_shared/invokeAsService.ts'
+import { UNCLAIMED_USER_LIMITS, reserveEmailSend } from '../_shared/emailQuota.ts'
+
+/** 取り込み（import-customers）のアカウントが、招待の前に持っている届かないアドレスのドメイン */
+const IMPORT_PLACEHOLDER_DOMAIN = '@gymboard.invalid'
 
 /** クライアント（お客様・ジムのスタッフの両方）が呼べるテンプレート。 */
 // 残り（trial-booking-confirmation / drop-in-booking-confirmation /
@@ -333,6 +338,9 @@ Deno.serve(async (req) => {
   let explicitIdempotencyKey: string | null = null
   let messageId: string
   let templateData: Record<string, any> = {}
+  // 再送（resend-email）は、必ず届けるメールでも配信停止を見る（2026-11-10 点検 resend-email-1）。
+  // 止める向きにしか働かないので、誰が付けてきても受け付ける
+  let honorSuppression = false
   // どのジムの通知か。履歴画面（TrainerEmailLog）がこれで絞る。
   // 認証メールはジムに属さないので null のまま＝スタッフには見えない。
   let tenantId: string | null = null
@@ -354,6 +362,7 @@ Deno.serve(async (req) => {
     messageId = crypto.randomUUID()
     explicitIdempotencyKey = body.idempotencyKey || body.idempotency_key || null
     idempotencyKey = explicitIdempotencyKey || messageId
+    honorSuppression = body.honorSuppression === true
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
     }
@@ -467,16 +476,15 @@ Deno.serve(async (req) => {
           : null
         const { to, copyTo } = resendTargets({ key: explicitIdempotencyKey, instructorId, representativeId, bookingStaff })
         if (copyTo) {
-          const { error: copyErr } = await createClient(supabaseUrl, supabaseServiceKey).functions.invoke('send-transactional-email', {
-            body: {
-              templateName,
-              recipientEmail: '_resolve_trainer_',
-              tenantId,
-              idempotencyKey: `${explicitIdempotencyKey}-${copyTo}`,
-              templateData: { ...templateData, trainerUserId: copyTo },
-            },
+          // 🔴 supabase.functions.invoke は使わない（本番の鍵が Authorization に載らず 401 になる。../_shared/invokeAsService.ts）
+          const copy = await invokeAsService('send-transactional-email', {
+            templateName,
+            recipientEmail: '_resolve_trainer_',
+            tenantId,
+            idempotencyKey: `${explicitIdempotencyKey}-${copyTo}`,
+            templateData: { ...templateData, trainerUserId: copyTo },
           })
-          if (copyErr) console.error('instructor copy failed', copyErr)
+          if (copy.error) console.error('instructor copy failed', copy.error)
         }
         templateData = { ...templateData, trainerUserId: to }
       }
@@ -485,6 +493,38 @@ Deno.serve(async (req) => {
       console.error('representative lookup failed', e)
     }
   }
+
+  // 🔴 サーバー（service_role）からの「user_id で宛先を引く」送信も、宛先がそのジムの人かを確かめる（2026-11-10 点検 trial-book-1）。
+  //    以前はそのまま getUserById で引いたので、体験予約のメニューの担当をよそのジムの人の id に書き換えると、
+  //    その人のログイン用アドレスへ送らせ、送信履歴（ジムのスタッフが読める）で読めた。
+  //    店宛て（_resolve_trainer_）はそのジムの在籍中のオーナー・インストラクター、お客様宛て（_resolve_user_）は
+  //    そのジムに在籍の行がある人（退会後の取り消しの連絡もあるので、状態は問わない）。
+  //    画面からの呼び出しは authorizeClientCall がもっと強く確かめ済み。
+  if (caller.isServiceRole && tenantId
+      && (effectiveRecipient === '_resolve_trainer_' || effectiveRecipient === '_resolve_user_')) {
+    const asStaff = effectiveRecipient === '_resolve_trainer_'
+    const target = asStaff ? templateData.trainerUserId : templateData.resolveUserId
+    let q = createClient(supabaseUrl, supabaseServiceKey)
+      .from('tenant_members')
+      .select('user_id')
+      .eq('tenant_id', tenantId)
+      .eq('user_id', typeof target === 'string' ? target : '')
+    if (asStaff) q = q.eq('status', 'active').in('role', ['owner', 'trainer'])
+    const { data: member, error: memberErr } = await q.limit(1)
+    if (memberErr || !member || member.length === 0) {
+      console.error('Recipient is not a member of the tenant', { templateName, asStaff, error: memberErr?.message })
+      await logRejected(templateName, recipientEmail, `recipient is not a ${asStaff ? 'staff member' : 'member'} of the tenant`, tenantId)
+      return new Response(
+        JSON.stringify({ error: 'Recipient is not a member of this gym' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+  }
+
+  // まだ本人が来ていない取り込みのアカウント宛てか（下で、配信停止を見る・回数を数える。2026-11-10 点検 invite-email-relay-1）。
+  // 招待（invite-customer）は、店が入力したアドレスをそのアカウントに付ける。そのあと予約の確認・取り消しのメールを
+  // 「必ず届けるメール」として上限なく送れたので、他人のアドレスを付けて嫌がらせのメールを送り続けられた。
+  let unclaimedRecipient = false
 
   // Special: resolve trainer email from DB when placeholder is used
   if (effectiveRecipient === '_resolve_trainer_' && templateData.trainerUserId) {
@@ -508,6 +548,7 @@ Deno.serve(async (req) => {
     const { data: authUser } = await supabaseForAuth.auth.admin.getUserById(templateData.resolveUserId)
     if (authUser?.user?.email) {
       effectiveRecipient = authUser.user.email
+      unclaimedRecipient = authUser.user.user_metadata?.imported === true && !authUser.user.last_sign_in_at
     } else {
       console.error('Could not resolve user email', { resolveUserId: templateData.resolveUserId })
       await logRejected(templateName, recipientEmail, `could not resolve user email (${templateData.resolveUserId})`, tenantId)
@@ -543,9 +584,13 @@ Deno.serve(async (req) => {
     'new-booking-notification',
     'trial-booking-confirmation',
     'new-account-notification',
-    'trial-booking-reminder',
+    // 🔴 trial-booking-reminder（体験の前日リマインド）は入れない（2026-11-10 点検 send-trial-reminders-1）。
+    //    前日の念押しで、確認メールは別に届いている。配信停止した人には送らない
   ])
-  const mustDeliver = MUST_DELIVER_TEMPLATES.has(templateName)
+  // 必ず届けるメールでも、次のときは配信停止を見る（止める向きにしか働かない）:
+  // - 再送（resend-email が honorSuppression を付ける。2026-11-10 点検 resend-email-1）
+  // - まだ本人が来ていない取り込みのアカウント宛て（招待で店が付けたアドレス。点検 invite-email-relay-1）
+  const mustDeliver = MUST_DELIVER_TEMPLATES.has(templateName) && !honorSuppression && !unclaimedRecipient
   console.log('Preparing transactional email', {
     templateName,
     recipient: maskEmail(effectiveRecipient),
@@ -595,6 +640,23 @@ Deno.serve(async (req) => {
       }
     )
   }
+  }
+
+  // 取り込みのアカウントで、まだ招待していない（届かない仮のアドレスの）宛てには送らない（送ると不達が積もる）
+  if (effectiveRecipient.toLowerCase().endsWith(IMPORT_PLACEHOLDER_DOMAIN)) {
+    await supabase.from('email_send_log').insert({
+      message_id: messageId,
+      template_name: templateName,
+      recipient_email: effectiveRecipient,
+      status: 'suppressed',
+      error_message: 'not invited yet (placeholder address)',
+      tenant_id: tenantId,
+      template_data: redactTemplateDataForLog(templateData),
+    })
+    return new Response(
+      JSON.stringify({ success: false, reason: 'no_address' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
   }
 
   // 3. Get or create unsubscribe token (one token per email address).
@@ -826,6 +888,39 @@ Deno.serve(async (req) => {
       )
     } else {
       console.error('Dedupe reservation failed — sending anyway', { error: dedupeErr })
+    }
+  }
+
+  // まだ本人が来ていない取り込みのアカウント宛ては、同じ宛先へ24時間10通まで（店が消せない記録で数える。
+  // ../_shared/emailQuota.ts。2026-11-10 点検 invite-email-relay-1）。数えられないときは送らない。
+  // 重複排除（上）のあとに数える（重複で送らない分まで数えない）。止めたら冪等キーの予約も戻す
+  if (unclaimedRecipient) {
+    const quota = await reserveEmailSend(supabase, {
+      kind: 'unclaimed_user',
+      recipient: effectiveRecipient,
+      tenantId,
+      limits: UNCLAIMED_USER_LIMITS,
+    })
+    if (!quota.ok) {
+      if (dedupeReserved && explicitIdempotencyKey) {
+        await supabase.from('notification_dedupe').delete().eq('idempotency_key', `email:${explicitIdempotencyKey}`)
+      }
+      await supabase.from('email_send_log').insert({
+        message_id: messageId,
+        template_name: templateName,
+        recipient_email: effectiveRecipient,
+        status: 'rejected',
+        error_message: quota.reason === 'error'
+          ? 'could not check the limit for an account not yet claimed'
+          : 'too many emails to an account not yet claimed',
+        tenant_id: tenantId,
+        template_data: redactTemplateDataForLog(templateData),
+      })
+      console.warn('Unclaimed recipient limit', { templateName, recipient: maskEmail(effectiveRecipient), reason: quota.reason })
+      return new Response(
+        JSON.stringify({ success: false, reason: 'rate_limited' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
     }
   }
 

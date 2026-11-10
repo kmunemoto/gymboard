@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 
+/**
+ * tenant_id を持つが、ジムを閉じても消さない表。
+ * - email_send_quota: メールの回数の上限を数える「送った記録」。消すと、ジムを閉じて開き直すだけで上限を数え直させられる
+ *   （2026-11-10 定期点検 trial-book-cap-1・穴34）。宛先は SHA-256 だけで、8日で自分から消える
+ */
+const KEEP_ON_CLOSE = new Set(["email_send_quota"]);
+
 // オーナーの引き継ぎ／ジムを閉じる（2026-08-13）。
 //
 // ── なぜ要るか ─────────────────────────────────────────────────────
@@ -164,7 +171,9 @@ describe("ジムを閉じる（delete_my_gym）", () => {
       .filter(([, , row]) => /^\s+tenant_id\??:/m.test(row))
       .map(([, name]) => name)
       // profiles は所属を外すだけ。tenants 自体は最後に消す
-      .filter((n) => n !== "profiles" && n !== "tenants");
+      .filter((n) => n !== "profiles" && n !== "tenants")
+      // わざと残すもの（下の「消さない」のテスト）
+      .filter((n) => !KEEP_ON_CLOSE.has(n));
 
     const missing = tenantScoped.filter(
       (t) => !new RegExp(`DELETE FROM public\\.${t}\\b`).test(fn),
@@ -173,6 +182,11 @@ describe("ジムを閉じる（delete_my_gym）", () => {
       missing,
       `テナント配下のテーブルが消し漏れています（閉じたジムの行が残ります）: ${missing.join(", ")}`,
     ).toEqual([]);
+  });
+
+  it("🔴 メールの送った記録（email_send_quota）は消さない（ジムを閉じて回数の上限を数え直させない）", () => {
+    // 2026-11-10 定期点検 trial-book-cap-1（mem/ops/tenant-boundary.md の穴34）。宛先は SHA-256 だけで、8日で自分から消える
+    expect(fn).not.toMatch(/DELETE FROM public\.email_send_quota\b/);
   });
 
   it("最後にテナント本体を消す", () => {

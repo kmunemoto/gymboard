@@ -2849,6 +2849,8 @@
     "resendFailed": "重新发送失败，请稍后再试",
     "resendNoPayload": "该通知无法重新发送（发送于本功能之前，未保留可重发的内容）",
     "resendSuppressed": "该地址已退订，无法发送。请向客户确认其他地址",
+    "resendLimited": "每封邮件最多重新发送2次，每家健身房每天最多30封。请通过其他方式联系客户",
+    "resendDelivered": "该邮件已送达（无需重新发送）",
     "loadFailed": "无法加载记录，请稍后刷新",
     "attempts": "尝试 {{count}} 次",
     "authNote": "注册和密码重置邮件不会显示在这里（不属于各健身房的通知）。",

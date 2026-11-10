@@ -16,12 +16,31 @@
 //
 // 元のキーを使い回すと `notification_dedupe` に弾かれ、`duplicate` を記録して
 // 200 で返ってくる。店から見ると「押したのに何も起きない」になる（一番タチが悪い）。
+//
+// ## 🔴 回数の上限と配信停止（2026-11-10 定期点検 resend-email-1）
+//
+// 以前は状態も回数も見なかったので、ジムを開いた人が「自分のジム宛ての体験予約（宛先は他人）」の行を何度でも
+// 再送でき、正規のドメインから同じ人へ上限なしで送れた（確認メールは配信停止も効かない MUST_DELIVER）。いまは:
+// - 届かなかった行（failed・dlq・bounced）だけ。同じ送信がもう届いていれば断る（already_delivered）
+// - 1通につき2回・1つのジムで24時間30通・同じ宛先へ24時間5通まで（店が消せない記録で数える。../_shared/emailQuota.ts）
+// - 必ず届けるメールでも配信停止を見る（honorSuppression）
+// - 営業中（active・trial）のジムだけ
+//
+// ## 🔴 送信は invokeAsService で頼む
+//
+// supabase.functions.invoke だと本番の鍵（sb_secret_…）が Authorization に載らず、send-transactional-email が
+// 401 で断っていた（2026-11-10 まで、再送は一度も成功していなかった。../_shared/invokeAsService.ts）。
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyCaller } from "../_shared/auth.ts";
+import { invokeAsService } from "../_shared/invokeAsService.ts";
+import { RESEND_LIMITS, releaseEmailSend, reserveEmailSend } from "../_shared/emailQuota.ts";
 
 // どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
-const BUILD = "2026-11-01-no-invite-resend";
+const BUILD = "2026-11-10-resend-limits";
+
+/** 再送してよい行の状態（画面が「届かなかった」として再送ボタンを出すもの。rejected は材料が無いので no_payload になる） */
+const RESENDABLE_STATUSES = new Set(["failed", "dlq", "bounced", "rejected"]);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,11 +92,14 @@ Deno.serve(async (req) => {
     //    （log_id だけで引くと、他ジムの通知を再送できてしまう）
     const { data: row } = await admin
       .from("email_send_log")
-      .select("id, message_id, template_name, recipient_email, template_data")
+      .select("id, message_id, template_name, recipient_email, template_data, status")
       .eq("id", logId)
       .eq("tenant_id", tenantId)
       .maybeSingle();
     if (!row) return json({ error: "not_found" }, 404);
+
+    // 🔴 届かなかった行だけ（画面がボタンを出すのと同じ条件。届いた行・送信中の行は再送しない）
+    if (!RESENDABLE_STATUSES.has(String(row.status))) return json({ error: "not_failed" }, 409);
 
     // 🔴 招待メールは再送しない（2026-11-01 点検 invite-link-in-log-1）。履歴のリンク（ログインの鍵入り）は
     //    伏せてあるので描き直せない。お客様のカードの「招待する」からやり直すと、新しいリンクで送られる
@@ -102,29 +124,60 @@ Deno.serve(async (req) => {
     // 黙って「送った」ことにしない
     if (!templateData) return json({ error: "no_payload" }, 409);
 
-    const { data: result, error: sendErr } = await admin.functions.invoke(
-      "send-transactional-email",
-      {
-        body: {
-          templateName: row.template_name,
-          // 履歴に残っているのは**解決済みの宛先**なので、そのまま使う
-          recipientEmail: row.recipient_email,
-          tenantId,
-          templateData,
-          // 🔴 毎回新しいキー。使い回すと重複排除に弾かれて何も起きない
-          idempotencyKey: `resend-${row.id}-${crypto.randomUUID()}`,
-        },
-      },
-    );
-    if (sendErr) {
-      console.error("resend-email: send failed", sendErr);
+    // 同じ送信（message_id）が、あとで届いていれば送り直さない（日をまたいだ再試行で、古い日の行に失敗が残ることがある）
+    if (row.message_id) {
+      const { count: delivered } = await admin
+        .from("email_send_log")
+        .select("id", { count: "exact", head: true })
+        .eq("message_id", row.message_id)
+        .eq("tenant_id", tenantId)
+        .eq("status", "sent");
+      if ((delivered ?? 0) > 0) return json({ error: "already_delivered" }, 409);
+    }
+
+    // 営業中のジムだけ（お試し期間が切れたジムから、昔の行を送り続けさせない）
+    const { data: gym } = await admin.from("tenants").select("status").eq("id", tenantId).maybeSingle();
+    if (!gym || !["active", "trial"].includes(String(gym.status))) return json({ error: "Forbidden" }, 403);
+
+    // 🔴 回数の上限（1通2回・1ジム24時間30通・同じ宛先24時間5通）。店が消せない記録で数える
+    const quota = await reserveEmailSend(admin, {
+      kind: "resend",
+      recipient: String(row.recipient_email ?? ""),
+      tenantId,
+      sourceRef: String(row.message_id ?? row.id),
+      limits: RESEND_LIMITS,
+    });
+    if (!quota.ok) {
+      if (quota.reason === "error") {
+        console.error("resend-email: quota check failed", quota.detail);
+        return json({ error: "send_failed" }, 500);
+      }
+      return json({ error: "resend_limited" }, 429);
+    }
+
+    // 🔴 supabase.functions.invoke は使わない（鍵が載らず 401 になる。../_shared/invokeAsService.ts）
+    const sent = await invokeAsService("send-transactional-email", {
+      templateName: row.template_name,
+      // 履歴に残っているのは**解決済みの宛先**なので、そのまま使う
+      recipientEmail: row.recipient_email,
+      tenantId,
+      templateData,
+      // 🔴 毎回新しいキー。使い回すと重複排除に弾かれて何も起きない
+      idempotencyKey: `resend-${row.id}-${crypto.randomUUID()}`,
+      // 🔴 必ず届けるメール（体験予約の確認など）でも、再送では配信停止を見る
+      honorSuppression: true,
+    });
+    if (sent.error) {
+      console.error("resend-email: send failed", sent.error);
+      await releaseEmailSend(admin, quota.id);
       return json({ error: "send_failed" }, 502);
     }
 
     // 配信停止リストに載っている宛先は、ここで止まるのが正しい
     // （届かないと分かっている先へ何度も送らない）。店にはそう伝える
-    const payload = result as { success?: boolean; reason?: string } | null;
+    const payload = sent.data as { success?: boolean; reason?: string } | null;
     if (payload && payload.success === false) {
+      await releaseEmailSend(admin, quota.id);
       return json({ error: payload.reason ?? "send_failed" }, 409);
     }
 

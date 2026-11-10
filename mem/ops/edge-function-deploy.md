@@ -289,3 +289,17 @@ FROM extensions.pg_stat_statements;
 2026-10-28 のインストラクター対応ではこれで notify-new-booking を確かめた（新しい形 0→1、古い形 172 のまま）。
 害の無い呼び方が無い関数（体験予約・毎日のまとめ）は、本番で自然に動いたあとに同じ数え方で見られる
 （宛先の絞り込みなら `"tenant_members"."staff_access" <> ` を含む形）。
+
+## 🔴 Edge Function から別の Edge Function を呼ぶときは invokeAsService（2026-11-10）
+
+本番の `SUPABASE_SERVICE_ROLE_KEY` は新しい形式の鍵（`sb_secret_…`）。新しい supabase-js（`npm:@supabase/supabase-js@2`。
+2026-11 時点で 2.119）の `functions.invoke` は、この形式の鍵を **Authorization に載せない**（apikey だけ）。呼ばれる側は
+`verifyCaller`（Bearer が service_role の鍵と同じか）でサーバー同士を見分けるので、**401 で断られ、呼ばれた側の記録にも残らない**。
+esm.sh の 2.49.x は鍵の形式に関係なく Bearer を付けるので、そちらを使う関数は動いている。
+
+- 体験の前日リマインド・送信履歴の再送・招待・先生への写しが、これで一度も送れていなかった（`mem/ops/tenant-boundary.md` の穴34）
+- 直し方: `supabase/functions/_shared/invokeAsService.ts`（fetch で `Authorization: Bearer <鍵>` と `apikey` を自分で付ける）
+- 見張り: `src/test/emailSendQuota.test.ts`（npm の supabase-js を使う関数は functions.invoke を使わない・functions.invoke を
+  使う関数は esm.sh の 2.4x に固定）。**supabase-js を上げるときは、functions.invoke を invokeAsService に置き換えてから**
+- 確かめ方: 呼ばれた側の送信履歴（email_send_log）に行が増えるか。cron から呼ぶ関数は pg_net の応答が5秒で打ち切られる
+  （`net._http_response` は timed_out）が、関数そのものは最後まで動く（2026-11-10 に booking-reminder の行の時刻で確かめた）

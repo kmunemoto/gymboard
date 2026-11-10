@@ -77,6 +77,9 @@ const TrainerEmailLog = () => {
       const key =
         r.code === "no_payload" ? "emailLog.resendNoPayload"
         : r.code === "email_suppressed" ? "emailLog.resendSuppressed"
+        // 再送の回数の上限（1通2回・1ジム1日30通。2026-11-10 点検 resend-email-1）
+        : r.code === "resend_limited" ? "emailLog.resendLimited"
+        : r.code === "already_delivered" ? "emailLog.resendDelivered"
         : "emailLog.resendFailed";
       toast.error(t(key));
     } finally {

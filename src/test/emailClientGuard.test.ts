@@ -188,7 +188,9 @@ describe("send-transactional-email: 画面からの呼び出しの扱い", () =>
   it("🔴 決め直しは、先生への写しの送り直し・宛先の解決・本文の描画より前", () => {
     const at = handler.indexOf("templateData = serverDecidedTemplateData(templateData, {");
     expect(at).toBeLessThan(handler.indexOf("await representativeInsteadOfInstructor("));
-    expect(at).toBeLessThan(handler.indexOf("functions.invoke('send-transactional-email'"));
+    // 写しは invokeAsService で頼む（2026-11-10。supabase.functions.invoke では本番の鍵が載らない）
+    expect(handler.indexOf("invokeAsService('send-transactional-email'")).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(handler.indexOf("invokeAsService('send-transactional-email'"));
     expect(at).toBeLessThan(handler.indexOf("React.createElement(template.component, templateData)"));
     expect(at).toBeLessThan(handler.indexOf("const senderName ="));
   });

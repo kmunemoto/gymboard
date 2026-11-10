@@ -18,8 +18,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
-  RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
+  RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_1H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
 } from "../_shared/guestBooking.ts";
+import { releaseEmailSend, reserveEmailSend } from "../_shared/emailQuota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,14 +38,13 @@ const MAX_AHEAD_MS = 12 * 24 * 60 * 60 * 1000; // ページ上は10日先まで�
 const SLOT_MIN_START = 600; // 10:00 (JST 分)
 const SLOT_MAX_START = 1260; // 21:00 (JST 分)
 const RATE_LIMIT_PER_CONTACT_24H = 3;
-const RATE_LIMIT_PER_TENANT_1H = 20;
 const CANCELLED = "キャンセル済み";
 const BOOKING_TYPE_LABEL = "ドロップイン（¥8,000）";
 
 const GENERIC_ERROR = "Something went wrong on our end. Please try again in a moment.";
 
 // デプロイの確かめ用（何も送らない呼び方で、新しいコードが動いているかを見る。mem/ops/edge-function-deploy.md）
-const BUILD = "2026-11-01-guest-name";
+const BUILD = "2026-11-10-email-quota";
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body, null, 2), {
@@ -116,7 +116,8 @@ Deno.serve(async (req) => {
 
     const tenantId = String(body.tenant_id ?? "").trim();
     const guestName = String(body.guest_name ?? "").trim();
-    const guestContact = String(body.guest_contact ?? "").trim();
+    // Stored lower-cased so case variants are not counted as different addresses (2026-11-10 audit trial-book-2)
+    const guestContact = String(body.guest_contact ?? "").trim().toLowerCase();
     const bookingDateRaw = String(body.booking_date ?? "").trim();
     const customAnswers = sanitizeCustomAnswers(body.custom_answers);
 
@@ -181,7 +182,7 @@ Deno.serve(async (req) => {
     const gymContactEmail = ((tenant.email as string | null) ?? "").trim();
     const gymWebsiteUrl = ((tenant.website_url as string | null) ?? "").trim();
 
-    // ===== 連続予約ガード (trial と共有のカウント。tenant_id 全体で見るため kind をまたいで数える) =====
+    // ===== 連続予約ガード (同じジム・同じアドレスで3件。trial と共有。tenant_id で見るため kind をまたいで数える) =====
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count: contactCount, error: rlErr } = await admin
       .from("trial_bookings")
@@ -194,34 +195,24 @@ Deno.serve(async (req) => {
     if ((contactCount ?? 0) >= RATE_LIMIT_PER_CONTACT_24H) {
       return reject("rate_limited", "We've received multiple booking requests from you recently. Please contact the gym directly.");
     }
-    const since1h = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count: tenantCount, error: tlErr } = await admin
-      .from("trial_bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .gte("created_at", since1h);
-    if (tlErr) return fail("rate_limit_tenant", tlErr.message);
-    if ((tenantCount ?? 0) >= RATE_LIMIT_PER_TENANT_1H) {
-      return reject("rate_limited", "Bookings are currently very busy. Please try again shortly, or contact the gym directly.");
-    }
 
-    // 同じメールアドレスは全部のジムを合わせて24時間に5件まで・1つのジムは24時間に60件まで（trial-book と同じ。../_shared/guestBooking.ts）
-    const { count: contactAllCount, error: caErr } = await admin
-      .from("trial_bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("guest_contact", guestContact)
-      .gte("created_at", since24h);
-    if (caErr) return fail("rate_limit_contact_all", caErr.message);
-    if ((contactAllCount ?? 0) >= RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H) {
-      return reject("rate_limited", "We've received multiple booking requests from you recently. Please contact the gym directly.");
-    }
-    const { count: tenantDayCount, error: tdErr } = await admin
-      .from("trial_bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .gte("created_at", since24h);
-    if (tdErr) return fail("rate_limit_tenant_day", tdErr.message);
-    if ((tenantDayCount ?? 0) >= RATE_LIMIT_PER_TENANT_24H) {
+    // 確認メールの中継の上限（trial-book と同じ記録・同じ数え方。../_shared/emailQuota.ts）。
+    // 🔴 店が消せない記録（email_send_quota）で数える（2026-11-10 点検 trial-book-cap-1）。予約を作れなかったら戻す
+    const quota = await reserveEmailSend(admin, {
+      kind: "guest_confirm",
+      recipient: guestContact,
+      tenantId,
+      limits: {
+        perRecipient24h: RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H,
+        perTenant1h: RATE_LIMIT_PER_TENANT_1H,
+        perTenant24h: RATE_LIMIT_PER_TENANT_24H,
+      },
+    });
+    if (!quota.ok) {
+      if (quota.reason === "error") return fail("rate_limit_quota", quota.detail ?? "");
+      if (quota.reason === "recipient") {
+        return reject("rate_limited", "We've received multiple booking requests from you recently. Please contact the gym directly.");
+      }
       return reject("rate_limited", "Bookings are currently very busy. Please try again shortly, or contact the gym directly.");
     }
 
@@ -241,6 +232,8 @@ Deno.serve(async (req) => {
       .single();
 
     if (insErr) {
+      // 予約ができなかったので、積んだ1通ぶんを戻す
+      await releaseEmailSend(admin, quota.id);
       const msg = insErr.message ?? "";
       if (msg.includes("この時間帯") || /overlap/i.test(msg)) {
         return reject("slot_taken", "That time slot was just booked. Please choose another time.");

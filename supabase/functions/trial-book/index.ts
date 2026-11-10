@@ -27,9 +27,11 @@
 //     1枠が閉店までに収まる（../_shared/trialRules.ts。2026-10-31 までは 10:00〜21:00 開始の直書きで、
 //     22:30 閉店の店の 21:15・21:30 の枠を断っていた）
 //   - 同一メールアドレスの予約は 24時間で3件まで (キャンセル済みは数えない)
-//   - テナント全体で 1時間に20件まで (メール差し替えによる回数制限回避への防御)
-//   - 同じメールアドレスは全部のジムを合わせて 24時間で5件まで・1つのジムは 24時間で60件まで（確認メールの中継の上限。
-//     ../_shared/guestBooking.ts。2026-11-01 点検 trial-book-1）
+//   - 確認メールの中継の上限（../_shared/guestBooking.ts・../_shared/emailQuota.ts）: 同じメールアドレスは全部のジムを
+//     合わせて24時間で5件まで・1つのジムは1時間20件・24時間60件まで。🔴 trial_bookings の行ではなく、店が消せない
+//     記録（email_send_quota）で数える（2026-11-10 定期点検 trial-book-2・trial-book-cap-1。行で数えていたので、
+//     オーナーが行を消す・作成日時を書き換えるだけで数え直させられた）。宛先は小文字にそろえて保存し、+タグ・Gmail の点も
+//     そろえて数える
 //   - お名前に URL・メールアドレス・改行・見た目を偽る制御文字は使えない（メール・公式 LINE・カレンダーにそのまま入るため）
 //   - 時間帯の重複は BEFORE INSERT の check_booking_overlap トリガーが最終防衛
 //
@@ -47,8 +49,9 @@ import {
   shiftDayMinutes, trialBookingLabel, trialMaxAheadMs, trialWindowAnchorMs, trialWindowDays, type OperatingHours, type ShiftRow,
 } from "../_shared/trialRules.ts";
 import {
-  RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
+  RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H, RATE_LIMIT_PER_TENANT_1H, RATE_LIMIT_PER_TENANT_24H, guestNameProblem,
 } from "../_shared/guestBooking.ts";
+import { releaseEmailSend, reserveEmailSend } from "../_shared/emailQuota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,7 +69,6 @@ const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|
 // 送信中の日付境界ズレ(深夜の駆け込み)を許容する小さな猶予を持たせる。
 const DEADLINE_GRACE_MS = 10 * 60 * 1000;
 const RATE_LIMIT_PER_CONTACT_24H = 3;
-const RATE_LIMIT_PER_TENANT_1H = 20;
 const CANCELLED = "キャンセル済み";
 // 2026-08-08 まで、ここに Salute御所南のテナントIDを直書きし、そのジムだけ
 // 確認メールを「初回無料体験」表記にしていた。**体験の有料化に伴い分岐ごと廃止。**
@@ -76,7 +78,7 @@ const CANCELLED = "キャンセル済み";
 const GENERIC_ERROR = "サーバーで問題が発生しました。時間をおいて再度お試しください。";
 
 // デプロイの確かめ用（何も送らない呼び方で、新しいコードが動いているかを見る。mem/ops/edge-function-deploy.md）
-const BUILD = "2026-11-01-guest-name";
+const BUILD = "2026-11-10-email-quota";
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body, null, 2), {
@@ -151,7 +153,8 @@ Deno.serve(async (req) => {
 
     const tenantId = String(body.tenant_id ?? "").trim();
     const guestName = String(body.guest_name ?? "").trim();
-    const guestContact = String(body.guest_contact ?? "").trim();
+    // 宛先は小文字にそろえて保存する（大文字・小文字の違いで別の宛先として数えさせない。2026-11-10 点検 trial-book-2）
+    const guestContact = String(body.guest_contact ?? "").trim().toLowerCase();
     const bookingDateRaw = String(body.booking_date ?? "").trim();
     const customAnswers = sanitizeCustomAnswers(body.custom_answers);
     const menuId = String(body.menu_id ?? "").trim();
@@ -282,36 +285,25 @@ Deno.serve(async (req) => {
     if ((contactCount ?? 0) >= RATE_LIMIT_PER_CONTACT_24H) {
       return reject("rate_limited", "短時間に複数のご予約をいただいたため受付を制限しています。お手数ですがジムへ直接ご連絡ください。");
     }
-    // (2) テナント全体で 1時間に20件まで (メールアドレス差し替えでの (1) 回避に対する防御)
-    const since1h = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count: tenantCount, error: tlErr } = await admin
-      .from("trial_bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .gte("created_at", since1h);
-    if (tlErr) return fail("rate_limit_tenant", tlErr.message);
-    if ((tenantCount ?? 0) >= RATE_LIMIT_PER_TENANT_1H) {
-      return reject("rate_limited", "ただいま予約が集中しています。しばらく時間をおいてから再度お試しいただくか、ジムへ直接ご連絡ください。");
-    }
 
-    // (3) 同じメールアドレスは、全部のジムを合わせて24時間に5件まで（ジムを替えて同じ人に確認メールを送り続けさせない）
-    const { count: contactAllCount, error: caErr } = await admin
-      .from("trial_bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("guest_contact", guestContact)
-      .gte("created_at", since24h);
-    if (caErr) return fail("rate_limit_contact_all", caErr.message);
-    if ((contactAllCount ?? 0) >= RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H) {
-      return reject("rate_limited", "短時間に複数のご予約をいただいたため受付を制限しています。お手数ですがジムへ直接ご連絡ください。");
-    }
-    // (4) 1つのジムは24時間に60件まで（1つのジムから正規のドメインのメールを大量に送らせない）
-    const { count: tenantDayCount, error: tdErr } = await admin
-      .from("trial_bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .gte("created_at", since24h);
-    if (tdErr) return fail("rate_limit_tenant_day", tdErr.message);
-    if ((tenantDayCount ?? 0) >= RATE_LIMIT_PER_TENANT_24H) {
+    // (2) 確認メールの中継の上限。🔴 店が消せない記録（email_send_quota）で数える（2026-11-10 点検 trial-book-cap-1）。
+    //     同じ宛先は全部のジムを合わせて24時間5件・1つのジムは1時間20件・24時間60件。予約を作る前に1通ぶん積み、
+    //     作れなかったら戻す
+    const quota = await reserveEmailSend(admin, {
+      kind: "guest_confirm",
+      recipient: guestContact,
+      tenantId,
+      limits: {
+        perRecipient24h: RATE_LIMIT_PER_CONTACT_ALL_TENANTS_24H,
+        perTenant1h: RATE_LIMIT_PER_TENANT_1H,
+        perTenant24h: RATE_LIMIT_PER_TENANT_24H,
+      },
+    });
+    if (!quota.ok) {
+      if (quota.reason === "error") return fail("rate_limit_quota", quota.detail ?? "");
+      if (quota.reason === "recipient") {
+        return reject("rate_limited", "短時間に複数のご予約をいただいたため受付を制限しています。お手数ですがジムへ直接ご連絡ください。");
+      }
       return reject("rate_limited", "ただいま予約が集中しています。しばらく時間をおいてから再度お試しいただくか、ジムへ直接ご連絡ください。");
     }
 
@@ -329,10 +321,12 @@ Deno.serve(async (req) => {
         // booking_type / status は DB デフォルト ('初回無料体験' / '予約済み')。
         // '予約済み' で入れることで send-trial-reminders の前日リマインドも対象になる。
       })
-      .select("id, booking_date, cancel_token")
+      .select("id, booking_date, cancel_token, staff_user_id")
       .single();
 
     if (insErr) {
+      // 予約ができなかったので、積んだ1通ぶんを戻す（満枠で取り直すお客様の上限を減らさない）
+      await releaseEmailSend(admin, quota.id);
       const msg = insErr.message ?? "";
       const code = (insErr as { code?: string }).code ?? "";
       if (code === "GB012") {
@@ -472,7 +466,11 @@ Deno.serve(async (req) => {
     // 2') メニューの体験は担当（先生）にもメール（代表と同じ人なら送らない）。
     //     宗本さん「先生には担当のマシンピラティスの予約に関する通知だけ」（mem/features/instructor-staff.md）。
     //     キーは代表と別（-staff）。代表のキー（trial-notify-…）を先生に使わない
-    if (menu && menu.staff_user_id !== trainerId) {
+    // 🔴 宛先は予約の行の担当（DB の apply_trial_menu が INSERT の時に確かめた値）。最初に読んだメニューの担当は使わない
+    //    （2026-11-10 点検 trial-book-1。読んでから INSERT までの間に担当を書き換えると、ジムのスタッフでない人の
+    //    ログイン用アドレスへ送らせ、送信履歴で読めた）
+    const bookedStaff = (inserted.staff_user_id as string | null) ?? null;
+    if (menu && bookedStaff && bookedStaff !== trainerId) {
       tasks.push(
         invokeFn("send-transactional-email", {
           templateName: "new-booking-notification",
@@ -486,7 +484,7 @@ Deno.serve(async (req) => {
             planName: bookingLabel,
             gymName,
             dashboardUrl: "https://app.kyoto-salute.com",
-            trainerUserId: menu.staff_user_id,
+            trainerUserId: bookedStaff,
           },
         }).then((ok) => { notify.staff_email = ok; }),
       );

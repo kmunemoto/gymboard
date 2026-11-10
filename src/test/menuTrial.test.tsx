@@ -437,7 +437,8 @@ describe("trial-book・通知", () => {
 
   it("🔴 先生へのメールは代表のキーと別（送り直しの対象にならない）", () => {
     expect(BOOK).toContain("idempotencyKey: `trial-notify-${notifyKey}-staff`,");
-    expect(BOOK).toContain("if (menu && menu.staff_user_id !== trainerId) {");
+    // 宛先は予約の行の担当（DB が INSERT の時に確かめた値。2026-11-10 点検 trial-book-1）
+    expect(BOOK).toContain("if (menu && bookedStaff && bookedStaff !== trainerId) {");
     const uuid = "9f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f";
     expect(REPRESENTATIVE_KEY.test(`trial-notify-2026-11-25T17:00:00+09:00-a@b.jp-staff`)).toBe(false);
     expect(REPRESENTATIVE_KEY.test(`trial-cancel-${uuid}-${uuid}`)).toBe(false);

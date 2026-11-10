@@ -24,12 +24,26 @@
 // 確かめる。🔴 グローバルな trainer ロール（hasRole）では判定しない — 自由登録で
 // 誰でも取れる権限なので、それを根拠にすると他ジムの顧客のメールを差し替えられてしまう。
 
+//
+// ## 🔴 送信は invokeAsService で頼む（2026-11-10）
+//
+// supabase.functions.invoke だと本番の鍵（sb_secret_…）が Authorization に載らず、send-transactional-email が
+// 401 で断っていた（招待メールは一度も送れていなかった。../_shared/invokeAsService.ts）。
+//
+// ## 🔴 配信停止のアドレスは、アカウントに付ける前に断る（2026-11-10 定期点検 invite-email-relay-1）
+//
+// 以前はアドレスをアカウントに付けてから招待を送り、配信停止で断られてもアドレスは付いたままだった。
+// 招待が1通も届かず・招待の上限も使わずに、配信停止した人のアドレスを付けられ、そのあとの予約の確認・取り消しの
+// メール（必ず届けるメール）がその人へ届いた。いまは付ける前に配信停止リストを見る。
+// （付けたあとの予約のメールも、本人が来るまでは配信停止を見て・回数を数える。send-transactional-email）
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyCaller } from "../_shared/auth.ts";
+import { invokeAsService } from "../_shared/invokeAsService.ts";
 
 // どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。
 // Edge Function は push でも Publish でも出ないので、デプロイの確認に使う（mem/ops/edge-function-deploy.md）。
-const BUILD = "2026-11-01-invite-claimed";
+const BUILD = "2026-11-10-invite-suppressed";
 
 /** 1つのジムが24時間に送れる招待メールの数（2026-11-01 点検 invite-customer-2） */
 const INVITE_DAILY_LIMIT = 100;
@@ -145,6 +159,19 @@ Deno.serve(async (req) => {
     }
     if ((sentToday ?? 0) >= INVITE_DAILY_LIMIT) return json({ error: "too_many_invites" }, 429);
 
+    // 🔴 配信停止（不達・苦情・本人の停止）のアドレスは、アカウントに付ける前に断る（2026-11-10 点検 invite-email-relay-1）。
+    //    付けてから断ると、アドレスだけが付いたまま残る
+    const { data: suppressed, error: sErr } = await admin
+      .from("suppressed_emails")
+      .select("id")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+    if (sErr) {
+      console.error("invite-customer: suppression check failed", sErr);
+      return json({ error: "rate_check_failed" }, 500);
+    }
+    if (suppressed) return json({ error: "email_suppressed" }, 409);
+
     // 1) メールを本人のアドレスに差し替える。
     //    email_confirm: true は「店がこの宛先を保証する」の意（招待の意味論そのもの）
     const { error: updErr } = await admin.auth.admin.updateUserById(targetUserId, {
@@ -184,27 +211,23 @@ Deno.serve(async (req) => {
       .eq("id", tenantId)
       .maybeSingle();
 
-    const { data: sendResult, error: sendErr } = await admin.functions.invoke(
-      "send-transactional-email",
-      {
-        body: {
-          templateName: "customer-invite",
-          recipientEmail: email,
-          tenantId,
-          idempotencyKey: `customer-invite-${targetUserId}-${crypto.randomUUID()}`,
-          templateData: {
-            gymName: gym?.gym_name ?? "",
-            customerName: prof.display_name ?? target.display_name ?? "",
-            inviteUrl,
-          },
-        },
+    // 🔴 supabase.functions.invoke は使わない（鍵が載らず 401 になる。../_shared/invokeAsService.ts）
+    const sent = await invokeAsService("send-transactional-email", {
+      templateName: "customer-invite",
+      recipientEmail: email,
+      tenantId,
+      idempotencyKey: `customer-invite-${targetUserId}-${crypto.randomUUID()}`,
+      templateData: {
+        gymName: gym?.gym_name ?? "",
+        customerName: prof.display_name ?? target.display_name ?? "",
+        inviteUrl,
       },
-    );
-    if (sendErr) {
-      console.error("invite-customer: send failed", sendErr);
+    });
+    if (sent.error) {
+      console.error("invite-customer: send failed", sent.error);
       return json({ error: "send_failed" }, 502);
     }
-    const payload = sendResult as { success?: boolean; reason?: string } | null;
+    const payload = sent.data as { success?: boolean; reason?: string } | null;
     if (payload && payload.success === false) {
       // 配信停止リスト（過去に不達）。届かないと分かっている宛先には送らない
       return json({ error: payload.reason ?? "send_failed" }, 409);

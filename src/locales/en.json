@@ -2849,6 +2849,8 @@
     "resendFailed": "Could not resend. Please try again later",
     "resendNoPayload": "This notification cannot be resent (it was sent before this feature, so the content was not kept)",
     "resendSuppressed": "This address is unsubscribed, so it cannot be sent. Please confirm another address with the customer",
+    "resendLimited": "Resending is limited to 2 times per email and 30 emails per gym per day. Please contact the customer another way",
+    "resendDelivered": "This email has already been delivered (no need to resend)",
     "loadFailed": "Could not load the history. Please refresh after a moment",
     "attempts": "{{count}} attempts",
     "authNote": "Sign-up and password-reset emails do not appear here (they are not per-gym notifications).",

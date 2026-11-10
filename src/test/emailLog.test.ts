@@ -109,7 +109,8 @@ describe("送る側が tenantId を渡している", () => {
   it.each(senders)("%s が tenantId を載せている", (path) => {
     const src = readFileSync(path, "utf8");
     // ⚠️ ファイル冒頭の説明にも関数名が出るので、**実際の呼び出し**だけを見る
-    const calls = src.split(/invoke(?:Fn)?\(\s*["']send-transactional-email["']/).slice(1);
+    // invokeAsService: Edge Function 同士は fetch で鍵を付けて頼む（2026-11-10。supabase/functions/_shared/invokeAsService.ts）
+    const calls = src.split(/invoke(?:Fn|AsService)?\(\s*["']send-transactional-email["']/).slice(1);
     expect(calls.length, "呼び出しが見つからない（検査が空振りしている）").toBeGreaterThan(0);
     for (const c of calls) {
       expect(c.slice(0, 600), "この呼び出しに tenantId が無い").toMatch(/tenantId/);

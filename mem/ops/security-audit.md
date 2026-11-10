@@ -73,3 +73,4 @@ Workflow({ name: "gymboard-security-audit", args: { since: "2026-11-01" } })
 |---|---|---|---|---|---|
 | 2026-10-31 | 未ログインで呼べる Edge Function 13本（3組に分けた） | 6 | 21（critical 3・high 2・medium 12・low 4） | 0 | 穴11〜14・「Edge Function の直し」（#469〜#473・#475） |
 | 2026-11-01 | 残りの Edge Function・画面・DB（6つの範囲） | 45 | 33（critical 1・high 5・medium 18・low 9） | 1 | 穴15〜31（#476〜#493）。最初の点検の残りも穴32・33（#494・#495）。残りは tenant-boundary.md の「点検の残り」 |
+| 2026-11-10 | 定期点検（予定から・7つの範囲すべて結果あり） | 34 | 19（medium 6・low 13） | 0 | なし（critical・high が無かったので、全部宗本さんの判断待ち。tenant-boundary.md の「2026-11-10 の定期点検の残り」）。約3時間 |

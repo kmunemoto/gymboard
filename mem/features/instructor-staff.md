@@ -75,6 +75,10 @@
 - **止めていないもの**: bookings（代わりの予約）・workouts（記録）・messages・profiles（連絡先）・blocked_slots（予定表の枠のブロック）。
   先生の仕事なので。
 - 店の設定（tenants）・プラン（tenant_plans）は、もともとオーナーしか書けない。
+- ジムの画像の置き場（storage の gym-assets。ロゴのファイル）の書き込み・差し替え・削除は、2026-11-11 に
+  `AND NOT is_limited_staff(...)` を足した（穴38。tenants.logo_url の列はオーナーだけでも、その URL が指すファイルは
+  インストラクターが API で差し替えられ、公開の体験予約ページとお客様のアプリに出ていた）。一覧（SELECT）は残した。
+  お知らせの画像（announcement-images）は最初から外している。置き場を足すときは、ここも同じにすること。
 - `tenantMembershipWrites.test.ts` は「誰に開いているか」の検査から RESTRICTIVE を外した（絞るだけで何も開けないため）。
 
 ### 関数

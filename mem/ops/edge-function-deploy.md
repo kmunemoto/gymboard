@@ -231,6 +231,16 @@ monthly-report-notification・process-email-queue・send-line-message・send-tri
 全部読んで、**型の注釈だけで動きは変わっていない**ことを確かめた。Lovable は「余分なデプロイはしていない」と言っていた。
 
 - デプロイを頼む関数は、Lovable のビルドで型が通る書き方にしておく（`any` に逃げず、Map などは型を明示）
+
+**2026-11-11 には package.json だけを書き換えて main に push された**（Edge Function 3本のデプロイを頼んだとき）。
+Lovable のプレビュー用の部品（`@lovable.dev/vite-plugin-dev-server-bridge`・`@lovable.dev/vite-plugin-hmr-gate`）を
+devDependencies に足し、bun.lock だけ更新して **package-lock.json は合わせていなかった**。CI は `npm ci` なので、
+**そのままだと次の PR から CI が「package.json と package-lock.json が一致しない」で必ず落ちる**
+（手元で `npm ci --dry-run` を流して確かめた）。2つとも npm の公開の部品なので、`npm install --package-lock-only` で
+package-lock.json を合わせた（足されたのは2つだけ。vite.config.ts からは使っていない）。
+
+- Lovable のコミットが package.json を触っていたら、`npm ci --dry-run` で一致を確かめる。合わなければ
+  `npm install --package-lock-only --ignore-scripts` で package-lock.json を合わせて PR に入れる
 - push されたら差分を全部読む。動きが変わっていなければそのままでよい（戻すと次の依頼でまた直される）
 
 **Lovable のプロジェクトの決まり（Knowledge）に「頼まれていないコードを変えない」を入れた（2026-10-28・宗本さんの指示）。**

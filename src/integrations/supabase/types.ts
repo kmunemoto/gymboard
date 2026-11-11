@@ -890,6 +890,33 @@ export type Database = {
           },
         ]
       }
+      email_send_quota: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          recipient_key: string
+          source_ref: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          recipient_key: string
+          source_ref?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          recipient_key?: string
+          source_ref?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       email_send_state: {
         Row: {
           auth_email_ttl_minutes: number
@@ -917,33 +944,6 @@ export type Database = {
           send_delay_ms?: number
           transactional_email_ttl_minutes?: number
           updated_at?: string
-        }
-        Relationships: []
-      }
-      email_send_quota: {
-        Row: {
-          created_at: string
-          id: string
-          kind: string
-          recipient_key: string
-          source_ref: string | null
-          tenant_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          kind: string
-          recipient_key: string
-          source_ref?: string | null
-          tenant_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          kind?: string
-          recipient_key?: string
-          source_ref?: string | null
-          tenant_id?: string | null
         }
         Relationships: []
       }

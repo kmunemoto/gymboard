@@ -6,9 +6,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
 
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。mem/ops/edge-function-deploy.md
+const BUILD = "2026-11-10-reminder-per-gym";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-gymboard-build": BUILD,
 };
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -65,15 +69,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Group by user_id
-    const byUser = new Map<string, typeof bookings>();
+    // お客様 × ジム でまとめる（2026-11-10 定期点検 booking-reminder-tenant-1）。
+    // 🔴 以前はお客様ごとに全部のジムの予約を1通にまとめ、最初の予約のジムの送信履歴に残していた。2つのジムに所属の行が
+    //    ある人だと、片方のジムのスタッフが、もう片方のジムでの予約の時刻を送信履歴（template_data.bookingTimes）で読めた。
+    //    いまはジムごとに1通（名前・ご案内・プランもそのジムのもの）。1つのジムだけに通う人（今は全員）は今まで通り1通
+    const byUserTenant = new Map<string, typeof bookings>();
     for (const b of bookings) {
-      const arr = byUser.get(b.user_id) ?? [];
+      const key = `${b.user_id}|${b.tenant_id ?? ""}`;
+      const arr = byUserTenant.get(key) ?? [];
       arr.push(b);
-      byUser.set(b.user_id, arr);
+      byUserTenant.set(key, arr);
     }
 
-    const userIds = [...byUser.keys()];
+    const userIds = [...new Set(bookings.map((b) => b.user_id))];
     const tenantIds = [...new Set(bookings.map((b) => b.tenant_id).filter(Boolean))] as string[];
 
     const [{ data: profiles }, { data: prefs }, { data: tenants }] = await Promise.all([
@@ -96,7 +104,8 @@ Deno.serve(async (req) => {
     let pushSent = 0;
     let emailSent = 0;
 
-    for (const [userId, userBookings] of byUser.entries()) {
+    for (const userBookings of byUserTenant.values()) {
+      const userId = userBookings[0].user_id as string;
       const profile: any = profileMap.get(userId);
       const sorted = [...userBookings].sort(
         (a, b) => new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime(),
@@ -113,8 +122,9 @@ Deno.serve(async (req) => {
         .join("、");
 
       const displayName = profile?.display_name || "お客";
-      const planName: string = profile?.plan || sorted[0].booking_type || "";
       const tenantId = sorted[0].tenant_id as string | null;
+      // プラン名はそのジムのもの（profiles.plan は所属のジムの値なので、別のジムの予約には使わない）
+      const planName: string = (profile?.tenant_id === tenantId ? profile?.plan : null) || sorted[0].booking_type || "";
       const gymName = tenantId ? (tenantMap.get(tenantId) as any)?.gym_name ?? "" : "";
       // リマインドに足す、店からのご案内。空/未設定ならブロックごと出さない。
       const gymNote = tenantId
@@ -131,7 +141,8 @@ Deno.serve(async (req) => {
               title: "明日のご予約",
               body: `明日 ${dateLong} ${times}〜 トレーニングのご予約があります`,
               url: "/",
-              tag: `booking-reminder-${tomorrowDateStr}`,
+              // ジムごとに別のタグ（同じタグだと端末で後の1通が前の1通を置き換える）
+              tag: `booking-reminder-${tomorrowDateStr}-${tenantId ?? "none"}`,
             },
           });
           if (pushErr) console.error(`Push failed for ${userId}:`, pushErr);
@@ -149,7 +160,7 @@ Deno.serve(async (req) => {
             templateName: "booking-reminder",
             recipientEmail: "_resolve_user_",
             tenantId,
-            idempotencyKey: `booking-reminder-${userId}-${tomorrowDateStr}`,
+            idempotencyKey: `booking-reminder-${userId}-${tenantId ?? "none"}-${tomorrowDateStr}`,
             templateData: {
               resolveUserId: userId,
               customerName: `${displayName}`,
@@ -171,7 +182,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        usersTargeted: byUser.size,
+        usersTargeted: userIds.length,
+        remindersBuilt: byUserTenant.size,
         bookingsFound: bookings.length,
         pushSent,
         emailSent,

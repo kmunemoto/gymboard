@@ -9,7 +9,7 @@ import { trialBookingLabel } from "../_shared/trialRules.ts";
 import { isAllowedPushUrl } from "../_shared/safeUrl.ts";
 
 // デプロイの確かめ用（何も送らない呼び方で、新しいコードが動いているかを見る。mem/ops/edge-function-deploy.md）
-const BUILD = "2026-11-01-push-recipients";
+const BUILD = "2026-11-11-push-quiet";
 const corsHeaders = { ...baseCorsHeaders, "x-gymboard-build": BUILD };
 
 // 'app.gymboard.app' は DNS 未設定で存在しないドメインだったため、実際に生きている
@@ -321,10 +321,23 @@ function activeTenantIds(
  *   - キャンセル … booking_notify_log.staff_user_id（予約は消えている。消える前の担当を残している）
  * 担当が分からないときは外さない（届かないより、届くほうがまし）。オーナー・スタッフ・お客様は外さない。
  */
+/**
+ * 画面からの呼び出しで、振り分けに使ってよい範囲（2026-11-10 定期点検 send-push-notification-routing-oracle-1）。
+ * 呼んだ人が先生のジムのスタッフでなければ、タグが「呼んだ本人の予約」のときだけ振り分ける。
+ * 以前は、お客様がタグに他のお客様の user_id を入れて先生宛てに送ると、先生が外れたか（＝その人のその日の予約の担当が
+ * 先生以外か）が応答で分かり、同じジムの他のお客様が来る日を調べられた。null はサーバーからの呼び出し（制限なし）。
+ */
+interface RoutingScope {
+  callerId: string;
+  /** 呼んだ人が在籍中のオーナー・スタッフであるジム */
+  staffTenants: Set<string>;
+}
+
 async function dropUnassignedInstructors(
   admin: SupabaseClient,
   tag: unknown,
   userIds: string[],
+  scope: RoutingScope | null,
 ): Promise<string[]> {
   const parsed = parseBookingPushTag(tag);
   if (!parsed) return userIds;
@@ -345,14 +358,20 @@ async function dropUnassignedInstructors(
     //    その人の予約の有無を調べられた。
     const instructorTenants = [...new Set(rows.map((r) => r.tenant_id))];
 
+    // 🔴 先生のジムのスタッフでない呼び出し（お客様）は、本人の予約のタグのときだけ振り分ける（2026-11-10）。
+    //    今のアプリのお客様の呼び出しは、タグに自分の user_id・自分の予約しか入れない
+    const restrictTo = scope && !instructorTenants.every((t) => scope.staffTenants.has(t)) ? scope.callerId : null;
+    if (restrictTo && parsed.kind !== "booking" && parsed.customerId !== restrictTo) return userIds;
+
     let assigned: Set<string> | null = null;
     if (parsed.kind === "booking") {
-      const { data, error } = await admin
+      let q = admin
         .from("bookings")
         .select("staff_user_id")
         .eq("id", parsed.bookingId)
-        .in("tenant_id", instructorTenants)
-        .maybeSingle();
+        .in("tenant_id", instructorTenants);
+      if (restrictTo) q = q.eq("user_id", restrictTo);
+      const { data, error } = await q.maybeSingle();
       if (!error && data) {
         const s = (data as { staff_user_id: string | null }).staff_user_id;
         assigned = new Set(s ? [s] : []);
@@ -439,6 +458,13 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // 画面（service_role 以外）からの呼び出しの扱い（2026-11-10 定期点検 send-push-notification-routing-oracle-1）。
+    // routingScope: 先生の振り分けに使ってよい範囲（null はサーバー＝制限なし）。
+    // quietResponse: 応答に件数を出さない（{ ok: true } だけ）。外れた・届いた・端末の数から、他の人の予約や端末を推し量らせない。
+    //   今のアプリ・古いアプリは応答の件数を読んでいない（呼びっぱなし）
+    let routingScope: RoutingScope | null = null;
+    let quietResponse = false;
 
     // ---- 新しい体験予約をスタッフへ（trial-book・drop-in-book が service_role で呼ぶ）
     if (purpose === "trial_booking") {
@@ -544,6 +570,10 @@ Deno.serve(async (req) => {
       // ---- 認証必須: 予約キャンセルで空いた枠を、その枠のキャンセル待ちへ通知 ----
       // 受信者はサーバー側で booking_waitlist から解決する（RLSにより顧客の
       // クライアントからは他人の待機行を読めないため）。本文もサーバー生成。
+      // 🔴 開く先も受け取らない（2026-11-11 定期点検 send-push-notification-waitlist-url-1）。以前は呼んだお客様が url を
+      //    付けると、他のお客様に届く「空きが出ました」の開く先（アプリ内のパス。よそのジムの体験予約ページなど）を決められた。
+      //    アプリは今も昔もこの経路で url を送っていない（体験予約の通知と同じく、ホームを開く）
+      url = undefined;
       const caller = await verifyCaller(req);
       if (!caller) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -583,6 +613,7 @@ Deno.serve(async (req) => {
             status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+        quietResponse = true;
       }
 
       // JST の日付キーと開始時刻（分）
@@ -685,8 +716,21 @@ Deno.serve(async (req) => {
         // 自分宛は常に許可。それ以外は「同じテナントに active で所属しているか」で判定する。
         // trainer だから素通し、はしない（上の MAX_PUSH_TARGETS のコメント参照）。
         const otherIds: string[] = [...new Set(user_ids as string[])].filter((id) => id !== callerId);
+        quietResponse = true;
+        if (otherIds.length === 0) {
+          // 自分宛てだけ。振り分けの範囲を決めるのに、自分の所属だけ読む
+          const own = await loadTenantMemberships(adminClient, [callerId]);
+          routingScope = {
+            callerId,
+            staffTenants: new Set((own.get(callerId) ?? []).filter((m) => m.active && isStaffRole(m.role)).map((m) => m.tenantId)),
+          };
+        }
         if (otherIds.length > 0) {
           const memberships = await loadTenantMemberships(adminClient, [callerId, ...otherIds]);
+          routingScope = {
+            callerId,
+            staffTenants: new Set((memberships.get(callerId) ?? []).filter((m) => m.active && isStaffRole(m.role)).map((m) => m.tenantId)),
+          };
           const callerTenants = activeTenantIds(memberships, callerId);
           if (callerTenants.size === 0) {
             // どのテナントにも active で所属していない呼び出し元は、他人に送れない（fail-close）
@@ -717,10 +761,11 @@ Deno.serve(async (req) => {
 
 
     // 予約のプッシュから、その予約の担当でない先生（インストラクター）を外す（古いアプリはスタッフ全員に送ってくる）
-    user_ids = await dropUnassignedInstructors(adminClient, tag, user_ids as string[]);
+    user_ids = await dropUnassignedInstructors(adminClient, tag, user_ids as string[], routingScope);
     if ((user_ids as string[]).length === 0) {
-      // 外れた理由を応答に出さない（送った場合と見分けにくくする。send-push-notification-5）
-      return new Response(JSON.stringify({ sent: 0, total: 0 }), {
+      // 外れた理由を応答に出さない（送った場合と見分けにくくする。send-push-notification-5）。
+      // 画面からの呼び出しには、送ったときと同じ { ok: true } を返す（2026-11-10）
+      return new Response(JSON.stringify(quietResponse ? { ok: true } : { sent: 0, total: 0 }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -881,6 +926,10 @@ Deno.serve(async (req) => {
 
     const totalSent = webSent + fcmSent;
     const totalTargets = subscriptions.length + devices.length;
+    // 画面からの呼び出しには件数を出さない（外れた場合と同じ形。2026-11-10 点検 send-push-notification-routing-oracle-1）
+    if (quietResponse) {
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     return new Response(
       JSON.stringify({
         sent: totalSent,

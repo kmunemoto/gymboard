@@ -104,3 +104,55 @@ describe("ジムの人数・上限は、そのジムの人にだけ返す", () =
     expect(SQL).not.toMatch(/REVOKE[^;]*is_tenant_over_limit[^;]*authenticated/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 穴30 から漏れていた3つ（2026-11-11・定期点検 shares_tenant_with_me-1）。
+//   `supabase/migrations/20261111010000_membership_answers_scoped_more.sql`
+// 本番で、適用の前後でお客様・オーナー・インストラクターが読む件数が同じこと、お客様が他のお客様について聞いたときだけ
+// 答えが false に変わることを、同じトランザクションで比べた（mem/ops/tenant-boundary.md 穴35）。
+// ---------------------------------------------------------------------------
+describe("shares_tenant_with_me・announcement_audience_has・booking_option_allowed も関係の無い人に答えない", () => {
+  const FILE2 = "20261111010000_membership_answers_scoped_more.sql";
+  const SQL2 = norm(readFileSync(`supabase/migrations/${FILE2}`, "utf8"));
+  const def2 = (name: string) => {
+    const start = SQL2.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
+    expect(start, `${name} の定義が無い`).toBeGreaterThan(-1);
+    return SQL2.slice(start, SQL2.indexOf("$function$;", start) + "$function$;".length);
+  };
+
+  it.each(["shares_tenant_with_me", "announcement_audience_has", "booking_option_allowed"])(
+    "%s: この定義が最新（後のマイグレーションで上書きされていない）・SECURITY DEFINER のまま",
+    (name) => {
+      const defining = files.filter((f) =>
+        new RegExp(`FUNCTION public\\.${name}\\(`).test(readFileSync(`supabase/migrations/${f}`, "utf8")),
+      );
+      expect(defining.at(-1)).toBe(FILE2);
+      expect(def2(name)).toContain("STABLE SECURITY DEFINER SET search_path TO 'public'");
+    },
+  );
+
+  it("🔴 shares_tenant_with_me: 元の判定（自分のジムに在籍中）に、_may_see_membership を足す", () => {
+    const def = def2("shares_tenant_with_me");
+    expect(def).toContain("tm.user_id = _target_user_id AND tm.status = 'active' AND tm.tenant_id = public.get_my_tenant_id()");
+    expect(def).toContain("AND public._may_see_membership(public.get_my_tenant_id(), _target_user_id)");
+  });
+
+  it.each([
+    ["announcement_audience_has", "public.announcements a", "a.id = p_announcement_id", "a.tenant_id"],
+    ["booking_option_allowed", "public.booking_options o", "o.id = p_option_id", "o.tenant_id"],
+  ])("🔴 %s: 本人・サーバー・そのジムの在籍中のスタッフにだけ本当の答えを返す", (name, table, idMatch, tenantCol) => {
+    const def = def2(name);
+    expect(def).toContain("p_user_id = auth.uid() OR auth.uid() IS NULL OR EXISTS (");
+    expect(def).toContain(`FROM ${table} WHERE ${idMatch} AND public.has_tenant_role(${tenantCol}, auth.uid(), ARRAY['owner', 'trainer'])`);
+  });
+
+  it("🔴 EXECUTE は剥がさない（ポリシーが authenticated の権限で呼ぶ）", () => {
+    expect(SQL2).not.toMatch(/REVOKE/);
+  });
+
+  it("ポリシーは本人（auth.uid()）を渡す形のまま（正規の呼び方では答えが変わらない）", () => {
+    const all = files.map((f) => readFileSync(`supabase/migrations/${f}`, "utf8")).join("\n");
+    expect(all).toContain("announcement_audience_has(id, auth.uid())");
+    expect(all).toContain("booking_option_allowed(id, auth.uid())");
+  });
+});

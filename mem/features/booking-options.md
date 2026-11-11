@@ -103,6 +103,21 @@ record "new" has no field "option_minutes"
   リスケは「旧行を削除 → 新行を INSERT」なので、渡さなかった列は消える
 - 空き枠の判定にも**元の予約の分数**を使う。0 にすると必ず DB に拒否される
 
+### 🔴 お客様の予約では、占有の時間と控えはサーバーが決め直す（2026-11-11・穴37）
+
+画面が計算して送る option_minutes・booking_options は、お客様ご自身の予約（auth.uid() = user_id）では使わない。
+BEFORE INSERT の `normalize_customer_booking_insert`（トリガー `aa_normalize_customer_booking`）が、控えの id から
+そのジムの `booking_options` の表を引いて、名前・時間・値段と option_minutes を作り直す（受付を止めたオプションも数える・
+そのジムに無い id と同じ id の2回目は捨てる・断らない）。以前は API で option_minutes を 0 や 480 にして、満枠の検査を
+すり抜けたり1日を塞いだりできた。店の代理予約・GB008 の付け足しは今まで通り店が決める。
+- 🔴 このトリガーは option_minutes を読む apply_booking_menu（GB011）・prevent_booking_overlap より先に動く必要がある
+  （トリガーは名前の順）。名前の `aa_` を変えないこと。
+- 店がオプションを**消した**あとに、そのオプションが付いた予約をお客様が日時の変更で動かすと、オプションは外れる
+  （消えたオプションの時間を信じる根拠が無い。断ると「消す → 作る」の作り直しが失敗して元の予約が戻らない）。
+  受付を止める（無効にする）だけなら外れない。
+- 体験予約（trial_bookings）は関係ない（オプションが無い・トリガーは bookings だけ）。
+詳細は `mem/ops/tenant-boundary.md` 穴37。
+
 ### ついでに直した既存の不具合
 
 `TrainerDashboard` の今日の予定が **「60分」の直書き**だった。50分・90分で回している

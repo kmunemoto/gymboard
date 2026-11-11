@@ -32,7 +32,13 @@ const code = (path: string) =>
 const MIGRATION = "20261101050000_booking_customer_update_guard.sql";
 const SQL = norm(read(`supabase/migrations/${MIGRATION}`));
 const migrations = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
-const fn = SQL.slice(SQL.indexOf("CREATE OR REPLACE FUNCTION public.enforce_booking_update_guard()"));
+/**
+ * enforce_booking_update_guard の最新の定義。2026-11-11 に「google_event_id の変更を拒む」1か所を足して定義し直した
+ * （前の定義＋その1か所だけであることは bookingInsertNormalize.test.ts が見張る）。下の守りは最新の定義で確かめる。
+ */
+const LATEST = "20261111030000_booking_insert_normalize_and_event_id_guard.sql";
+const LATEST_SQL = norm(read(`supabase/migrations/${LATEST}`));
+const fn = LATEST_SQL.slice(LATEST_SQL.indexOf("CREATE OR REPLACE FUNCTION public.enforce_booking_update_guard()"));
 
 /** 枠を決める列（お客様は UPDATE で変えられない） */
 const FROZEN = [
@@ -75,7 +81,8 @@ describe("DB: source='salute_sync' は画面から付けられない", () => {
 describe("DB: お客様は予約の枠を決める列を UPDATE で変えられない", () => {
   it("これが enforce_booking_update_guard の最新の定義", () => {
     const last = [...migrations].reverse().find((f) => norm(read(`supabase/migrations/${f}`)).includes("CREATE OR REPLACE FUNCTION public.enforce_booking_update_guard("));
-    expect(last).toBe(MIGRATION);
+    expect(last).toBe(LATEST);
+    expect(fn.length).toBeGreaterThan(500);
   });
 
   it("サービスロールと、その予約のジムのスタッフは今までどおり素通し", () => {

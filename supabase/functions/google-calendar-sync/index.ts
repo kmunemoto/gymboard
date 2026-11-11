@@ -1,9 +1,20 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyCaller } from "../_shared/auth.ts";
+import {
+  CANCELLED_BOOKING_STATUSES,
+  eventClaimStartedAt,
+  eventSlotOf,
+  isGoogleEventId,
+  makeEventClaim,
+} from "../_shared/calendarEventSlot.ts";
+
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。mem/ops/edge-function-deploy.md
+const BUILD = "2026-11-11-one-event-per-booking";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-gymboard-build": BUILD,
 };
 
 const ALLOWED_ACTIONS = new Set(["create", "delete", "sync_all"]);
@@ -58,6 +69,7 @@ interface BookingRow {
   option_minutes: number;
   google_event_id: string | null;
   guest_name: string | null;
+  status: string | null;
 }
 
 async function loadBooking(
@@ -82,7 +94,54 @@ async function loadBooking(
     option_minutes: isTrial ? 0 : Math.max(0, Number(row.option_minutes ?? 0) || 0),
     google_event_id: (row.google_event_id as string | null) ?? null,
     guest_name: isTrial ? ((row.guest_name as string | null) ?? null) : null,
+    status: (row.status as string | null) ?? null,
   };
+}
+
+type BookingTable = "bookings" | "trial_bookings";
+
+/**
+ * この予約の予定を作る権利を取る（条件付きの UPDATE。同時に何度呼ばれても1つしか取れない）。取れたら印を返す。
+ * expected: 読んだときの google_event_id（NULL・このカレンダーに無かった予定の ID・古い印）。その値のままのときだけ書き換える。
+ */
+async function claimEventSlot(
+  supabase: SupabaseClient,
+  table: BookingTable,
+  bookingId: string,
+  expected: string | null,
+): Promise<string | null> {
+  const marker = makeEventClaim(Date.now(), crypto.randomUUID());
+  const update = supabase.from(table).update({ google_event_id: marker }).eq("id", bookingId);
+  const { data, error } = await (expected === null
+    ? update.is("google_event_id", null)
+    : update.eq("google_event_id", expected)
+  ).select("id");
+  if (error) {
+    console.error(`[gcal-sync] claim failed ${table} ${bookingId}:`, error.message);
+    return null;
+  }
+  return (data?.length ?? 0) === 1 ? marker : null;
+}
+
+/** 印を、作った予定の ID（作れなかったときは NULL）に置き換える。印がもう無い（予約が取り消された等）ときは false */
+async function settleEventSlot(
+  supabase: SupabaseClient,
+  table: BookingTable,
+  bookingId: string,
+  marker: string,
+  eventId: string | null,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from(table)
+    .update({ google_event_id: eventId })
+    .eq("id", bookingId)
+    .eq("google_event_id", marker)
+    .select("id");
+  if (error) {
+    console.error(`[gcal-sync] settle failed ${table} ${bookingId}:`, error.message);
+    return false;
+  }
+  return (data?.length ?? 0) === 1;
 }
 
 /** その予約のジムで、有効なスタッフ（オーナー・トレーナー）か。印（hasRole）は使わない */
@@ -250,14 +309,39 @@ Deno.serve(async (req) => {
       if (!booking) {
         return json({ skipped: true, reason: "booking not found" });
       }
-      // 1予約につき予定は1件。今のカレンダーに実在するなら作らない（同じ予約で何度呼ばれても増えない）
-      if (booking.google_event_id) {
-        const checkRes = await fetch(`${baseUrl}/${encodeURIComponent(booking.google_event_id)}`, {
+      const table: BookingTable = is_trial ? "trial_bookings" : "bookings";
+      // 取り消した予約（当日の取り消しで消化したものも）の予定は作らない
+      if (CANCELLED_BOOKING_STATUSES.has(booking.status ?? "")) {
+        return json({ skipped: true, reason: "booking cancelled" });
+      }
+      // 🔴 1予約につき予定は1件（2026-11-11・点検 google-calendar-sync-3。決まりは _shared/calendarEventSlot.ts）。
+      //    今のカレンダーに実在するなら作らない。作るときは、先に条件付きの UPDATE で「作る権利」（印）を取る。
+      //    以前は確かめてから書き戻すまでの間に何度でも呼べたので、同時に呼ぶと呼んだ数だけ予定が増えた。
+      const slot = eventSlotOf(booking.google_event_id, Date.now());
+      if (slot.kind === "in_progress") {
+        return json({ success: true, in_progress: true });
+      }
+      let expected: string | null = null;
+      if (slot.kind === "check") {
+        const checkRes = await fetch(`${baseUrl}/${encodeURIComponent(slot.eventId)}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (checkRes.ok) {
-          return json({ success: true, event_id: booking.google_event_id, already_present: true });
+          return json({ success: true, event_id: slot.eventId, already_present: true });
         }
+        // このカレンダーに無い（404・410）ときだけ作り直す。ほかの失敗で作ると、予定が2件になりうる
+        if (checkRes.status !== 404 && checkRes.status !== 410) {
+          console.error(`[gcal-sync] event check failed status=${checkRes.status}`);
+          return json({ error: "Failed to check event" }, 502);
+        }
+        expected = slot.eventId;
+      } else if (slot.kind === "reclaim") {
+        expected = slot.expected;
+      }
+      const marker = await claimEventSlot(supabase, table, booking.id, expected);
+      if (!marker) {
+        // ほかの呼び出しが先に取った（作っている最中・もう作った）
+        return json({ success: true, in_progress: true });
       }
 
       // 🔴 予定の中身は予約行から作る（google-calendar-sync-2）。以前はリクエストの日時・文面をそのまま使っていたので、
@@ -294,30 +378,52 @@ Deno.serve(async (req) => {
         reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 60 }] },
       };
 
-      const createRes = await fetch(baseUrl, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(event),
-      });
-
-      const created = await createRes.json();
-      if (!createRes.ok) {
+      let createOk = false;
+      let created: { id?: unknown } | null = null;
+      try {
+        const createRes = await fetch(baseUrl, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify(event),
+        });
+        createOk = createRes.ok;
+        created = await createRes.json().catch(() => null);
+      } catch (e) {
+        // 印を残さない（残すと、印が古くなるまでこの予約の予定を作れない）
+        await settleEventSlot(supabase, table, booking.id, marker, null);
+        throw e;
+      }
+      const newEventId = created?.id;
+      if (!createOk || !isGoogleEventId(newEventId)) {
+        await settleEventSlot(supabase, table, booking.id, marker, null);
         console.error("Google Calendar create error:", created);
         return json({ error: "Failed to create event", detail: created }, 500);
       }
 
-      if (created.id) {
-        const table = is_trial ? "trial_bookings" : "bookings";
-        await supabase.from(table).update({ google_event_id: created.id }).eq("id", booking.id);
+      if (!(await settleEventSlot(supabase, table, booking.id, marker, newEventId))) {
+        // 作っている間に予約が取り消された（印が外された）。作った予定は残さない
+        await fetch(`${baseUrl}/${encodeURIComponent(newEventId)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }).catch((e) => console.error("[gcal-sync] discard failed:", e));
+        return json({ success: true, discarded: true });
       }
 
-      return json({ success: true, event_id: created.id });
+      return json({ success: true, event_id: newEventId });
     } else if (action === "delete") {
       // 🔴 消す予定は予約行の google_event_id だけ（リクエストの ID は使わない）。
       //    以前はリクエストの ID をエンコードせずに URL へ連結していたので、他の予定や別のパスを指せた。
       const eventId = booking?.google_event_id ?? null;
       if (!booking || !eventId) {
         return json({ skipped: true, reason: "no event id" });
+      }
+      const table: BookingTable = is_trial ? "trial_bookings" : "bookings";
+
+      // 作っている最中の印・Google の予定 ID の形でない値は、Google に送らない（列を空に戻すだけ）。
+      // 印を外すと、作っている側が書き戻せずに、作った予定を自分で消す（取り消した予約の予定が残らない）
+      if (!isGoogleEventId(eventId)) {
+        await supabase.from(table).update({ google_event_id: null }).eq("id", booking.id).eq("google_event_id", eventId);
+        return json({ skipped: true, reason: eventClaimStartedAt(eventId) !== null ? "creating" : "invalid event id" });
       }
 
       const deleteRes = await fetch(`${baseUrl}/${encodeURIComponent(eventId)}`, {
@@ -331,10 +437,8 @@ Deno.serve(async (req) => {
         return json({ error: "Failed to delete event", detail: errText }, 200);
       }
 
-      {
-        const table = is_trial ? "trial_bookings" : "bookings";
-        await supabase.from(table).update({ google_event_id: null }).eq("id", booking.id);
-      }
+      // 消した予定の ID が入っているときだけ空に戻す（その間に作り直された予定の ID は消さない）
+      await supabase.from(table).update({ google_event_id: null }).eq("id", booking.id).eq("google_event_id", eventId);
 
       return json({ success: true, already_gone: deleteRes.status === 410 || deleteRes.status === 404 });
     } else if (action === "sync_all") {
@@ -342,11 +446,13 @@ Deno.serve(async (req) => {
       // 既に google_event_id を持つ予約も、そのIDのイベントが現カレンダーに実在するか
       // 確認し、無ければ（過去の不具合で別カレンダーに作られた/消えた場合）作り直す。
       const nowIso = new Date().toISOString();
-      const { data: bookings } = await supabase.from("bookings")
-        .select("id, booking_date, booking_type, user_id, google_event_id, option_minutes")
+      const { data: bookingRows } = await supabase.from("bookings")
+        .select("id, booking_date, booking_type, user_id, google_event_id, option_minutes, status")
         .eq("tenant_id", tenantId)
         .neq("status", "キャンセル済み")
         .gte("booking_date", nowIso);
+      // 当日の取り消しで消化した予約（同日キャンセル済み）も作らない（create と同じ）
+      const bookings = (bookingRows || []).filter((b) => !CANCELLED_BOOKING_STATUSES.has(b.status ?? ""));
 
       const { data: trialBookings } = await supabase.from("trial_bookings")
         .select("id, booking_date, booking_type, guest_name, google_event_id")
@@ -355,11 +461,11 @@ Deno.serve(async (req) => {
         .gte("booking_date", nowIso);
 
       const allItems = [
-        ...(bookings || []).map((b) => ({ ...b, source: "bookings" as const })),
+        ...bookings.map((b) => ({ ...b, source: "bookings" as const })),
         ...(trialBookings || []).map((t) => ({ ...t, user_id: null, source: "trial_bookings" as const, guest_name: t.guest_name })),
       ];
 
-      console.log(`[gcal-sync] sync_all tenant=${tenantId} bookings=${bookings?.length ?? 0} trial=${trialBookings?.length ?? 0} total=${allItems.length}`);
+      console.log(`[gcal-sync] sync_all tenant=${tenantId} bookings=${bookings.length} trial=${trialBookings?.length ?? 0} total=${allItems.length}`);
 
       if (allItems.length === 0) {
         return json({ success: true, synced: 0, total: 0, reason: "no upcoming bookings for tenant" });
@@ -375,15 +481,27 @@ Deno.serve(async (req) => {
 
       let synced = 0;
       let alreadyPresent = 0;
+      let inProgress = 0;
+      let failed = 0;
       for (const item of allItems) {
-        // 既存IDがあり、そのイベントが現カレンダーに実在するならスキップ（重複防止）
-        if (item.google_event_id) {
-          const checkRes = await fetch(`${baseUrl}/${encodeURIComponent(item.google_event_id)}`, {
+        // 1予約につき予定は1件（create と同じ決まり。_shared/calendarEventSlot.ts）
+        const slot = eventSlotOf(item.google_event_id, Date.now());
+        if (slot.kind === "in_progress") { inProgress++; continue; }
+        let expected: string | null = null;
+        if (slot.kind === "check") {
+          // 既存IDがあり、そのイベントが現カレンダーに実在するならスキップ（重複防止）
+          const checkRes = await fetch(`${baseUrl}/${encodeURIComponent(slot.eventId)}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
           if (checkRes.ok) { alreadyPresent++; continue; }
-          // 404/410 等 → このカレンダーには無い → 以下で作り直す
+          // 404/410 → このカレンダーには無い → 以下で作り直す。ほかの失敗では作らない（2件にしない）
+          if (checkRes.status !== 404 && checkRes.status !== 410) { failed++; continue; }
+          expected = slot.eventId;
+        } else if (slot.kind === "reclaim") {
+          expected = slot.expected;
         }
+        const marker = await claimEventSlot(supabase, item.source, item.id, expected);
+        if (!marker) { inProgress++; continue; }
 
         const startDt = new Date(item.booking_date);
         const itemSessionMinutes = item.source === "bookings"
@@ -404,24 +522,38 @@ Deno.serve(async (req) => {
           reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 60 }] },
         };
 
-        const createRes = await fetch(baseUrl, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify(event),
-        });
-
-        if (createRes.ok) {
-          const created = await createRes.json();
-          await supabase.from(item.source).update({ google_event_id: created.id }).eq("id", item.id);
+        let createOk = false;
+        let created: { id?: unknown } | null = null;
+        try {
+          const createRes = await fetch(baseUrl, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify(event),
+          });
+          createOk = createRes.ok;
+          created = await createRes.json().catch(() => null);
+        } catch (e) {
+          console.error(`Failed to sync ${item.source} ${item.id}:`, e);
+        }
+        const newEventId = created?.id;
+        if (!createOk || !isGoogleEventId(newEventId)) {
+          // 印を残さない（残すと、印が古くなるまでこの予約の予定を作れない）
+          await settleEventSlot(supabase, item.source, item.id, marker, null);
+          failed++;
+          if (!createOk) console.error(`Failed to sync ${item.source} ${item.id}:`, created);
+        } else if (await settleEventSlot(supabase, item.source, item.id, marker, newEventId)) {
           synced++;
         } else {
-          const errText = await createRes.text();
-          console.error(`Failed to sync ${item.source} ${item.id}:`, errText);
+          // 作っている間に予約が取り消された（印が外された）。作った予定は残さない
+          await fetch(`${baseUrl}/${encodeURIComponent(newEventId)}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }).catch((e) => console.error("[gcal-sync] discard failed:", e));
         }
       }
 
-      console.log(`[gcal-sync] sync_all done tenant=${tenantId} synced=${synced} alreadyPresent=${alreadyPresent} total=${allItems.length}`);
-      return json({ success: true, synced, alreadyPresent, total: allItems.length });
+      console.log(`[gcal-sync] sync_all done tenant=${tenantId} synced=${synced} alreadyPresent=${alreadyPresent} inProgress=${inProgress} failed=${failed} total=${allItems.length}`);
+      return json({ success: true, synced, alreadyPresent, inProgress, failed, total: allItems.length });
     }
 
     return json({ error: "Invalid action" }, 400);

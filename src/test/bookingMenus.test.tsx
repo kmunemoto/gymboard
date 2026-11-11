@@ -413,7 +413,10 @@ describe("DB（20261028030000_booking_menus.sql）", () => {
     const all = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).map((f) => read(`supabase/migrations/${f}`)).join("\n");
     const names = [...all.matchAll(/CREATE TRIGGER (\w+)\s+BEFORE [A-Z ,]+(?:OF \w+ )?ON public\.bookings/g)].map((m) => m[1]);
     expect(names).toContain("apply_booking_menu");
-    for (const n of names) expect(n >= "apply_booking_menu", n).toBe(true);
+    // 例外は aa_normalize_customer_booking だけ（2026-11-11・bookingInsertNormalize.test.ts）。お客様の予約のオプションの時間
+    // （option_minutes・booking_options）と google_event_id を決め直すだけで、担当・メニューは読まない。apply_booking_menu の
+    // GB011 が option_minutes を読むので、これより先に動く必要がある
+    for (const n of names.filter((x) => x !== "aa_normalize_customer_booking")) expect(n >= "apply_booking_menu", n).toBe(true);
     expect(SQL).toMatch(/CREATE TRIGGER apply_booking_menu\s+BEFORE INSERT OR UPDATE OF menu_id ON public\.bookings/);
   });
 

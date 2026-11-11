@@ -494,7 +494,7 @@ describe("お客様からの通知の振り分け（Edge Function のつなぎ�
 
   it("プッシュ: 届ける直前に、担当でない先生を外す（キャンセルは booking_notify_log、ほかは bookings から担当を引く）", () => {
     expect(PUSH).toContain('import { keepAssignedInstructors, parseBookingPushTag } from "../_shared/staffRouting.ts";');
-    const drop = PUSH.indexOf("user_ids = await dropUnassignedInstructors(adminClient, tag, user_ids as string[]);");
+    const drop = PUSH.indexOf("user_ids = await dropUnassignedInstructors(adminClient, tag, user_ids as string[], routingScope);");
     const deliver = PUSH.indexOf("// ---- Load both delivery targets in parallel ----");
     expect(drop).toBeGreaterThan(-1);
     expect(deliver).toBeGreaterThan(drop);

@@ -2,10 +2,14 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 // ログにメールアドレスを平文で出さない（2026-11-10 定期点検 send-trial-reminders-log-1 の走査で見つかった）
 import { maskEmail } from '../_shared/logSafety.ts'
 
+// どの版が動いているかを外から確かめるための印（全部の応答に付く。中身は日付だけ）。mem/ops/edge-function-deploy.md
+const BUILD = '2026-11-11-masked-logs'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
+  'x-gymboard-build': BUILD,
 }
 
 function jsonResponse(data: Record<string, unknown>, status = 200): Response {

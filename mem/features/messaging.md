@@ -143,6 +143,14 @@ OR EXISTS (SELECT 1 FROM public.messages m
 `shares_tenant_with_me` で「同じジムなら読める」にすると、**同じジムの別のお客様**が
 他人の会話の添付を読める。パスが推測困難なだけ、という状態になる。
 
+🔴 **2026-11-11（穴38）: 受信者の枝に「そのメッセージの送り主＝添付のフォルダの持ち主」を足した**
+（`20261111040000_message_attachment_sender_and_gym_assets_owner.sql`）。上の形のままだと、読む本人が
+「自分宛てのメッセージ」を1行作り、attachment_path に他人の添付のパスを入れるだけで条件を満たせた
+（スタッフは共有受信箱でジムの全会話のパスを読めるので、お客様がオーナーに送った写真・動画を開けた。本番で再現した）。
+あわせて messages に CHECK `messages_attachment_path_shape`（パスは「送り主のフォルダ/<uuid>.<jpg|png|webp|mp4|mov>」だけ）。
+アップロードのパスの作り方（`src/lib/messageAttachment.ts` の `${senderId}/${crypto.randomUUID()}.${ext}`）や拡張子を変えるときは、
+この CHECK も一緒に変えること（`messageAttachmentSenderAndGymAssets.test.ts` が突き合わせている）。
+
 ### 上限と形式は「両側」に置く。片方だけ変えない
 
 クライアントの検査は**親切**であって防御ではない（直接 API を叩かれれば素通り）。

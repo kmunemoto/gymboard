@@ -1928,6 +1928,9 @@ push-booking-reminder など）は動いているので今回は触っていな�
 - Lovable がデプロイのときに types.ts を本番から作り直して push した（並べ替えだけ＝本番の形と一致）
 - Web を Publish（再送の文言）
 - 体験の前日リマインドが本当に届くかは、次の対象（11/14 の体験予約。前の晩 11/13 21:10 に送る）で送信履歴を見て確かめる
+  → **2026-11-13 に確かめた: 届いている。** 21:10 の cron で、11/14 の体験予約（予約済み1件）への trial-booking-reminder が
+  送信履歴に 21:10:15 pending → 21:10:17 sent（1通）。cron から send-trial-reminders への呼び出しは pg_net の5秒で時間切れの記録に
+  なるが（いつものこと）、関数は最後まで動いて送っている（同じ時刻にメールの送り出しが processed:1）。直してから初めての実送信
 
 見張り: `src/test/emailSendQuota.test.ts`・`src/test/guestBookingGuard.test.ts`・`src/test/logSafety.test.ts`（全部の関数）
 

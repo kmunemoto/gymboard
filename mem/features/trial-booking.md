@@ -54,7 +54,8 @@
   - status は DB デフォルト `'予約済み'` → `send-trial-reminders` の前日リマインド対象になる
     （🔴 2026-11-10 まで前日リマインドは**一度も送れていなかった**。送信を supabase.functions.invoke で頼んでいて、
     本番の鍵の形式（sb_secret_…）だと Authorization が付かず 401 になっていた。`_shared/invokeAsService.ts` に直した。
-    いまはリマインドも配信停止を見る・1日に1つのジム60通・同じ宛先3通まで。`mem/ops/tenant-boundary.md` の穴34）
+    いまはリマインドも配信停止を見る・1日に1つのジム60通・同じ宛先3通まで。`mem/ops/tenant-boundary.md` の穴34。
+    直してから初めての実送信は 2026-11-13 21:10（11/14 の体験予約1件へ。送信履歴で pending → sent を確かめた））
   - 回数の上限（確認メールの中継の上限）は trial_bookings の行ではなく、店が消せない記録 `email_send_quota` で数える
     （2026-11-10・穴34）。宛先は小文字にそろえて保存する
   - 通知はサーバー側で完結: お客様確認メール (`trial-booking-confirmation`) /

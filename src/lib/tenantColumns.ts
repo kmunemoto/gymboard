@@ -94,6 +94,8 @@ export const TENANT_OPTIONAL_COL_GROUPS: readonly string[] = [
   "cancel_policy_same_day_only",
   // 体験予約だけの「何日先まで」（2026-11-08）。NULL = booking_window_days と同じ（今まで通り）。src/lib/bookingWindow.ts
   "trial_booking_window_days",
+  // 予約画面のいちばん上に出す「予約画面のご案内」（2026-11-14）。NULL = 出さない（今まで通り）。src/lib/bookingPageNote.ts
+  "booking_page_note",
 ];
 
 /**
@@ -207,6 +209,8 @@ export const TENANT_VALUE_DEFAULTS: Readonly<Record<string, unknown>> = {
   daily_booking_limit_weekdays: null,
   // 🔴 列が読めない環境では「出さない」。上流が文言を代弁しない（cancel_policy_body と同じ方針）。
   pre_visit_note: null,
+  // 🔴 同じく「出さない」（pre_visit_note と同じ方針）。
+  booking_page_note: null,
 };
 
 /**

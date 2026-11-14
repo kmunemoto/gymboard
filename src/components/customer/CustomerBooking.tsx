@@ -42,6 +42,7 @@ import { isLaterTodayError, laterTodayFloor, sameDayRescheduleRule } from "@/lib
 import { showCancelPolicyAt, type CancelPolicyPlace } from "@/lib/cancelPolicyDisplay";
 import { moveBookingLaterToday } from "@/hooks/bookingLaterToday";
 import SameDayNotice from "@/components/booking/SameDayNotice";
+import BookingPageNote from "@/components/booking/BookingPageNote";
 import { bookingErrorKey, bookingErrorKeyForAll, isAppOutdatedError } from "@/lib/bookingErrors";
 import { exceededFrequencyLimit, isBookingLimitError, isExemptFromFrequencyLimits } from "@/lib/bookingLimits";
 import { isBlockedStart, isBlockedWindowError } from "@/lib/bookingBlockedWindows";
@@ -905,6 +906,8 @@ const CustomerBooking = ({ onOpenChat }: { onOpenChat?: () => void }) => {
             {t("booking.selectDateTimePrompt")}
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">{t("booking.advanceNotice")}</p>
+          {/* ジムが書いた「予約画面のご案内」（2026-11-14）。設定していないジムには何も出さない（src/lib/bookingPageNote.ts） */}
+          <BookingPageNote note={tenant?.booking_page_note} />
           {/* ジムが書いたキャンセルについての案内。設定していないジムには何も出さない。
               予約する前に読めるよう、キャンセル確認だけでなくここにも出す（「当日のときだけ」のジムでは出さない）。 */}
           {cancelPolicy && policyShownAt("bookingTop") && (

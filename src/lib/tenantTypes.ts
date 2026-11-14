@@ -79,6 +79,11 @@ export interface Tenant {
    */
   pre_visit_note?: string | null;
   /**
+   * お客様の予約画面のいちばん上に出す「予約画面のご案内」（2026-11-14・src/lib/bookingPageNote.ts）。
+   * 会員の予約画面だけに出す（体験・ドロップインには出さない）。null=出さない
+   */
+  booking_page_note?: string | null;
+  /**
    * ホーム画面の「アクティブ顧客」の数え方。既定 "enrolled"（在籍の全員＝今まで通り）。
    * "next_booking" は今日以降に予約がある人だけ。判定は `src/lib/activeClients.ts`。
    */

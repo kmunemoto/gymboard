@@ -2216,6 +2216,7 @@ export type Database = {
           booking_cutoff_hours: number | null
           booking_cutoff_type: string | null
           booking_email_note: string | null
+          booking_page_note: string | null
           booking_window_days: number | null
           business_type: string
           cancel_policy_body: string | null
@@ -2298,6 +2299,7 @@ export type Database = {
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           booking_email_note?: string | null
+          booking_page_note?: string | null
           booking_window_days?: number | null
           business_type?: string
           cancel_policy_body?: string | null
@@ -2380,6 +2382,7 @@ export type Database = {
           booking_cutoff_hours?: number | null
           booking_cutoff_type?: string | null
           booking_email_note?: string | null
+          booking_page_note?: string | null
           booking_window_days?: number | null
           business_type?: string
           cancel_policy_body?: string | null

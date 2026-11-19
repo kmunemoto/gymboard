@@ -1256,6 +1256,7 @@
     "release": "解除",
     "noBookings": "無預約",
     "legendBooked": "有預約",
+    "menuColorLegend": "選單顏色",
     "legendBlocked": "封鎖",
     "proxyDialogTitle": "代理預約",
     "labelClient": "客戶",

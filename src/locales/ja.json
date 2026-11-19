@@ -1256,6 +1256,7 @@
     "release": "解除",
     "noBookings": "予約なし",
     "legendBooked": "予約あり",
+    "menuColorLegend": "メニューの色",
     "legendBlocked": "ブロック",
     "proxyDialogTitle": "代理予約",
     "labelClient": "お客様",

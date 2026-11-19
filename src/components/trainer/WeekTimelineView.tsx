@@ -10,6 +10,8 @@ import { BookingWithTime, SAME_DAY_FORFEIT_STATUS } from "@/hooks/useBookings";
 import { getBookingProgressIndex, resolveCycleMonths, resolveCycleUnit, resolveGraceDays, type BookingForProgress } from "@/lib/courseProgress";
 import { timelineHourRange } from "@/lib/businessHours";
 import { summarizeOptions } from "@/lib/bookingOptions";
+import { menuNameOf, type BookingMenu } from "@/lib/bookingMenus";
+import { menuColorOf, menuFillStyle, type MenuColor } from "@/lib/menuColors";
 
 export interface ProfileLite {
   user_id: string;
@@ -39,7 +41,16 @@ interface WeekTimelineViewProps {
    *    ここは受け取った関数を呼ぶだけにする。
    */
   renderDayReception?: (dateKey: string) => ReactNode;
+  /** そのジムのメニュー。カードの説明（title）にメニュー名を添える（2つ以上ある店だけ） */
+  menus?: ReadonlyArray<BookingMenu>;
+  /**
+   * メニューごとの色（menuColorMap・2026-11-19）。null・載っていないメニューは今の色（bg-accent）。
+   * 省略＝色分けしない（今まで通り）
+   */
+  menuColors?: ReadonlyMap<string, MenuColor | null>;
 }
+
+const NO_MENU_COLORS: ReadonlyMap<string, MenuColor | null> = new Map();
 
 // 🔴 以前は START_HOUR = 9 / END_HOUR = 22 が直書きされていて、
 // 営業時間を何時にしても 9:00〜22:00 の外はスクロールできなかった
@@ -53,7 +64,7 @@ const timeToMin = (t: string) => {
   return h * 60 + m;
 };
 
-const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [], operatingHours, renderDayReception }: WeekTimelineViewProps) => {
+const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [], tenantPlans = [], operatingHours, renderDayReception, menus = [], menuColors = NO_MENU_COLORS }: WeekTimelineViewProps) => {
   const { t } = useTranslation();
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -207,6 +218,9 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                     b.bookingOptions, (m) => t("bookingOptions.pickerPlusMinutes", { count: m }),
                   );
                   const hasOptions = !b.isBlocked && optionText.length > 0;
+                  // メニューの色（トレーニング以外。src/lib/menuColors.ts）。null は今の色
+                  const menuColor = b.isBlocked ? null : menuColorOf(menuColors, b.menuId);
+                  const menuName = b.isBlocked ? null : menuNameOf(menus, b.menuId);
 
                   const profile = profiles.find((p) => p.user_id === b.user_id);
                   const progress =
@@ -245,15 +259,19 @@ const WeekTimelineView = ({ weekStart, bookings, onSelectBooking, profiles = [],
                       } ${
                         b.isBlocked
                           ? "bg-muted border border-dashed border-destructive/40 text-muted-foreground"
-                          : hasOptions
-                            // 🔴 オプション付きは色で区別する（2026-09-03 宗本さん。ここは幅が
-                            //    数文字ぶんしかなく、名前を出す場所が無い）。左の帯＋印の2つで
-                            //    示すのは、色だけだと色覚や画面の明るさで区別できない人がいるため。
-                            ? "bg-primary text-primary-foreground border-l-4 border-l-warning"
-                            : "bg-accent text-accent-foreground"
+                          : menuColor
+                            // 🔴 トレーニング以外のメニューは、塗りをメニューの色にする（style で塗る）。
+                            //    オプション付きは左の帯と「＋」で示す（塗りはメニューの色を優先）
+                            ? (hasOptions ? "border-l-4 border-l-warning" : "")
+                            : hasOptions
+                              // 🔴 オプション付きは色で区別する（2026-09-03 宗本さん。ここは幅が
+                              //    数文字ぶんしかなく、名前を出す場所が無い）。左の帯＋印の2つで
+                              //    示すのは、色だけだと色覚や画面の明るさで区別できない人がいるため。
+                              ? "bg-primary text-primary-foreground border-l-4 border-l-warning"
+                              : "bg-accent text-accent-foreground"
                       }`}
-                      style={{ top, height }}
-                      title={`${b.isBlocked ? blockName : b.clientName} ${b.startTime}〜${b.endTime}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}${onBlock ? ` / ${t("schedule.overlapsBlock")}` : ""}${b.outsideHours ? ` / ${t("schedule.outsideHoursBadge")}` : ""}`}
+                      style={{ top, height, ...(menuColor ? menuFillStyle(menuColor) : {}) }}
+                      title={`${b.isBlocked ? blockName : b.clientName} ${b.startTime}〜${b.endTime}${menuName ? ` ${menuName}` : ""}${progressLabel ? ` (${progressLabel})` : ""}${optionText ? ` ＋${optionText}` : ""}${onBlock ? ` / ${t("schedule.overlapsBlock")}` : ""}${b.outsideHours ? ` / ${t("schedule.outsideHoursBadge")}` : ""}`}
                     >
                       <div className="font-bold truncate">
                         {shortName}

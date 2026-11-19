@@ -1256,6 +1256,7 @@
     "release": "Release",
     "noBookings": "No bookings",
     "legendBooked": "Booked",
+    "menuColorLegend": "Menu colors",
     "legendBlocked": "Blocked",
     "proxyDialogTitle": "Booking on behalf",
     "labelClient": "Customer",

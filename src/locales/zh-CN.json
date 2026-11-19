@@ -1256,6 +1256,7 @@
     "release": "解除",
     "noBookings": "无预约",
     "legendBooked": "有预约",
+    "menuColorLegend": "菜单颜色",
     "legendBlocked": "封锁",
     "proxyDialogTitle": "代理预约",
     "labelClient": "客户",

@@ -49,6 +49,8 @@ import { useTenantStaff } from "@/hooks/useTenantStaff";
 import { canSelectStaff, isStaffConflictError, staffNameMap } from "@/lib/tenantStaff";
 import { useBookingMenus } from "@/hooks/useBookingMenus";
 import { defaultMenu, menuNameOf, selectableMenus } from "@/lib/bookingMenus";
+import { useMenuColors } from "@/hooks/useMenuColors";
+import MenuColorLegend from "./MenuColorLegend";
 import ProxyStaffMenuSelect from "./ProxyStaffMenuSelect";
 import { notifyStaffReassigned, notifyTrialCancelled } from "@/lib/staffNotify";
 import DayReceptionToggle from "./DayReceptionToggle";
@@ -115,6 +117,8 @@ const TrainerSchedule = () => {
   const proxyMenu = proxyMenus.find((m) => m.id === proxyMenuId) ?? defaultMenu(proxyMenus);
   // 予定のカードに添える「メニュー・プラン」（メニューが2つ以上ある店だけメニュー名が付く）
   const typeLabel = (b: BookingWithTime) => [menuNameOf(allMenus, b.menuId), b.booking_type].filter(Boolean).join("・");
+  // 予約の色をメニューで分ける（トレーニングは今の色・ほかは自動。2026-11-19 src/lib/menuColors.ts）
+  const { menuColors, menuCardStyle } = useMenuColors(allMenus);
   const bookingBufferMinutes = tenant?.booking_buffer_minutes ?? 15;
   const sessionMinutes = tenant?.slot_duration_minutes ?? 60;
   // 代理予約する候補（proxyBookingType）の占有時間。プランごとの設定があればそちらを使う。
@@ -610,11 +614,18 @@ const TrainerSchedule = () => {
         ))}
       </div>
 
+      {/* どの色がどのメニューか（トレーニング以外の予約がこの週にあるときだけ） */}
+      {viewMode !== "month" && (
+        <MenuColorLegend menus={allMenus} colors={menuColors} className="mb-3"
+          menuIds={weekDays.flatMap((d) => getDayBookings(d)).filter((b) => !b.isBlocked).map((b) => b.menuId)} />
+      )}
+
       {/* 週間タイムライン表示 */}
       {viewMode === "week" && (
         <WeekTimelineView
           weekStart={weekStart}
           bookings={bookings}
+          menus={allMenus} menuColors={menuColors}
           tenantPlans={plans}
           operatingHours={tenant?.operating_hours}
           renderDayReception={(dateKey) => renderDayChip(dateKey)}
@@ -685,8 +696,8 @@ const TrainerSchedule = () => {
                                 <div className={`rounded-lg p-2 pr-12 text-xs relative ${
                                   session.isBlocked
                                     ? "bg-muted border border-dashed border-destructive/30 text-muted-foreground"
-                                    : "accent-gradient text-accent-foreground"
-                                }`}>
+                                    : menuCardStyle(session) ? "" : "accent-gradient text-accent-foreground" // メニューの色は style
+                                }`} style={menuCardStyle(session)}>
                                   <Button
                                     type="button"
                                     variant="destructive"
@@ -746,8 +757,8 @@ const TrainerSchedule = () => {
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
                               booking.isBlocked
                                 ? "bg-muted text-muted-foreground"
-                                : "accent-gradient text-accent-foreground"
-                            }`}>
+                                : menuCardStyle(booking) ? "" : "accent-gradient text-accent-foreground" // メニューの色は style
+                            }`} style={menuCardStyle(booking)}>
                               {booking.isBlocked ? <Ban className="w-4 h-4" aria-hidden="true" /> : booking.clientName[0]}
                             </div>
                             <div className="flex-1 min-w-0">

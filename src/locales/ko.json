@@ -1256,6 +1256,7 @@
     "release": "해제",
     "noBookings": "예약 없음",
     "legendBooked": "예약 있음",
+    "menuColorLegend": "메뉴 색상",
     "legendBlocked": "차단",
     "proxyDialogTitle": "대리 예약",
     "labelClient": "고객",

@@ -157,15 +157,14 @@ describe("インストラクターかどうかの判定", () => {
     expect(isLimitedStaffRole(null, null)).toBe(false);
   });
 
-  it("開けないのはお知らせ・動画・種目管理。ホーム・顧客・予約・メッセージ・設定（アカウント）は開ける", () => {
-    // 種目管理（ジム共通の種目・部位）は 2026-10-29 に足した（宗本さん「先生は設定欄を表示させない、触れない様に」）
-    expect([...LIMITED_HIDDEN_TABS].sort()).toEqual(["announcements", "exercises", "videos"]);
-    for (const tab of ["dashboard", "clients", "schedule", "messages", "gym-settings"] as const) {
+  it("開けないのはお知らせ・動画。ホーム・顧客・予約・メッセージ・種目・設定（アカウント）は開ける", () => {
+    // 種目管理は 2026-10-29 にいったん隠し、2026-11-24 に戻した（宗本さん「その立場の人でも種目は触れるように」）
+    expect([...LIMITED_HIDDEN_TABS].sort()).toEqual(["announcements", "videos"]);
+    for (const tab of ["dashboard", "clients", "schedule", "messages", "exercises", "gym-settings"] as const) {
       expect(canOpenTab(tab, true), tab).toBe(true);
     }
     expect(canOpenTab("announcements", true)).toBe(false);
     expect(canOpenTab("videos", true)).toBe(false);
-    expect(canOpenTab("exercises", true)).toBe(false);
     // オーナー・今まで通りのスタッフは全部開ける
     expect(canOpenTab("announcements", false)).toBe(true);
     expect(canOpenTab("videos", false)).toBe(true);
@@ -243,14 +242,15 @@ describe("スタッフ一覧（fetchTenantStaff）", () => {
 const visibleTabLabels = () => new Set(screen.getAllByRole("button").map((b) => b.textContent?.trim() ?? ""));
 
 describe("メニュー（TrainerSidebar）", () => {
-  it("インストラクターにはお知らせ・動画を出さない（今開いていても出さない）。設定は「アカウント」", () => {
+  it("インストラクターにはお知らせ・動画を出さない（今開いていても出さない）。設定は「アカウント」。種目は出す", () => {
     view.isLimitedStaff = true;
     render(<TrainerSidebar activeTab="announcements" onTabChange={vi.fn()} />);
     const labels = visibleTabLabels();
-    for (const key of ["announcements", "mAnnouncements", "videos", "mVideos", "gymSettings", "mGymSettings", "exercises", "mExercises"]) {
+    for (const key of ["announcements", "mAnnouncements", "videos", "mVideos", "gymSettings", "mGymSettings"]) {
       expect(labels, key).not.toContain(i18n.t(`trainerNav.${key}`));
     }
-    for (const key of ["dashboard", "clients", "schedule", "account", "mAccount"]) {
+    // 種目管理は 2026-11-24 から先生にも出す（宗本さん「その立場の人でも種目は触れるように」）
+    for (const key of ["dashboard", "clients", "schedule", "account", "mAccount", "exercises", "mExercises"]) {
       expect(labels, key).toContain(i18n.t(`trainerNav.${key}`));
     }
   });

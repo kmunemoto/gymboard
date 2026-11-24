@@ -43,10 +43,13 @@ export const isLimitedStaffRole = (
 
 /**
  * インストラクターに出さないタブ。設定タブは出すが、中身を「アカウント」だけにする。
- * 種目管理（ジム共通の種目・部位）も出さない（2026-10-29 宗本さん「先生は設定欄を表示させない、触れない様に」）。
- * 記録の入力中の「新しい種目を追加」は先生の仕事なので残す（DB も追加だけは通す）
+ *
+ * 種目管理は 2026-10-29 にいったん隠したが、2026-11-24 に戻した（宗本さん「その立場の人でも種目は
+ * 触れるように追加して」）。種目の追加・書き換え・削除はオーナーと同じにできる。
+ * 部位（胸・背中など）の編集はオーナーだけのまま（種目管理の「部位を編集」を出さない・DB も止めている）。
+ * `supabase/migrations/20261124010000_instructor_exercises_and_keep_workouts.sql`
  */
-export const LIMITED_HIDDEN_TABS: readonly TrainerTab[] = ["announcements", "videos", "exercises"];
+export const LIMITED_HIDDEN_TABS: readonly TrainerTab[] = ["announcements", "videos"];
 
 /** そのタブを開けるか */
 export const canOpenTab = (tab: TrainerTab, limited: boolean): boolean => !limited || !LIMITED_HIDDEN_TABS.includes(tab);

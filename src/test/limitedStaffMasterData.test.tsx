@@ -2,6 +2,10 @@
  * インストラクター（制限付き）はジム共通のマスタ（種目・部位・チャットの定型文）を変えられない（2026-10-29）。
  * `supabase/migrations/20261029030000_limited_staff_master_data.sql`
  *
+ * ⚠️ 種目（exercises）は 2026-11-24 に先生も書き換え・削除できるように戻した
+ * （宗本さん「その立場の人でも種目は触れるように」・`20261124010000_instructor_exercises_and_keep_workouts.sql`。
+ *  見張りは src/test/instructorExercises.test.tsx）。部位と定型文は今もオーナーだけ。
+ *
  * 宗本さん「先生は設定欄を表示させない、触れない様に」。
  *
  * 🔴 壊しやすいもの:
@@ -53,12 +57,16 @@ describe("DB: インストラクターはジム共通のマスタを変えられ
     expect(SQL).not.toMatch(/FOR (SELECT|ALL)/);
   });
 
-  it("🔴 後のマイグレーションがこのポリシーを消していない", () => {
+  it("🔴 後のマイグレーションがこのポリシーを消していない（種目は 2026-11-24 の1本だけが意図して外した）", () => {
     const files = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
     const later = files.filter((f) => f > MIGRATION);
+    const droppedExercises = later.filter((f) =>
+      /DROP POLICY IF EXISTS limited_staff_no_\w+ ON public\.exercises;/.test(stripSql(read(`supabase/migrations/${f}`))),
+    );
+    expect(droppedExercises).toEqual(["20261124010000_instructor_exercises_and_keep_workouts.sql"]);
     for (const f of later) {
       const sql = stripSql(read(`supabase/migrations/${f}`));
-      for (const table of ["exercises", "tenant_muscle_groups", "message_templates"]) {
+      for (const table of ["tenant_muscle_groups", "message_templates"]) {
         expect(sql, `${f} が ${table} のポリシーを消している`).not.toMatch(
           new RegExp(`DROP POLICY IF EXISTS limited_staff_no_\\w+ ON public\\.${table};(?![\\s\\S]*CREATE POLICY limited_staff_no_\\w+ ON public\\.${table})`),
         );

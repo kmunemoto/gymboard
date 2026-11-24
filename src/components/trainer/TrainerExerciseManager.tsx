@@ -15,6 +15,7 @@ import {
   subscribeTenantMuscleGroups,
 } from "@/lib/tenantMuscleGroups";
 import { DumbbellLoader } from "@/components/ui/dumbbell-loader";
+import { useTenant } from "@/hooks/useTenant";
 import TrainerMuscleGroupManager from "./TrainerMuscleGroupManager";
 
 interface Exercise {
@@ -45,6 +46,8 @@ interface FormState {
 
 const TrainerExerciseManager = () => {
   const { t } = useTranslation();
+  // インストラクターも種目は触れる（2026-11-24）。部位の編集だけはオーナーだけ（DB も止めている）
+  const { isLimitedStaff } = useTenant();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -180,7 +183,13 @@ const TrainerExerciseManager = () => {
       .delete()
       .eq("id", deleteTarget.id);
     if (error) {
-      toast.error(t("exercise.deleteFailed"));
+      // 🔴 記録に使われている種目は DB が消させない（23503。消すと記録ごと消えていた・2026-11-24）
+      toast.error(
+        (error as { code?: string }).code === "23503"
+          ? t("exercise.deleteInUse", { name: deleteTarget.name })
+          : t("exercise.deleteFailed"),
+      );
+      setDeleteTarget(null);
       return;
     }
     setExercises((prev) => prev.filter((e) => e.id !== deleteTarget.id));
@@ -266,13 +275,15 @@ const TrainerExerciseManager = () => {
             );
           })}
         </div>
-        <button
-          onClick={() => setGroupManagerOpen(true)}
-          className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold bg-muted text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          {t("muscleGroupManage.editBtn")}
-        </button>
+        {!isLimitedStaff && (
+          <button
+            onClick={() => setGroupManagerOpen(true)}
+            className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            {t("muscleGroupManage.editBtn")}
+          </button>
+        )}
       </div>
 
       {/* Grouped list */}
@@ -494,12 +505,14 @@ const TrainerExerciseManager = () => {
         </div>
       )}
 
-      {/* 部位（胸・背中など）の追加・改名・削除 */}
-      <TrainerMuscleGroupManager
-        open={groupManagerOpen}
-        onClose={() => setGroupManagerOpen(false)}
-        onChanged={fetchExercises}
-      />
+      {/* 部位（胸・背中など）の追加・改名・削除。オーナーだけ */}
+      {!isLimitedStaff && (
+        <TrainerMuscleGroupManager
+          open={groupManagerOpen}
+          onClose={() => setGroupManagerOpen(false)}
+          onChanged={fetchExercises}
+        />
+      )}
     </div>
   );
 };

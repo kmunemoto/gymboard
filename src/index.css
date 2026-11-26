@@ -13,10 +13,16 @@
   --sar: env(safe-area-inset-right, 0px);
 }
 
-/* Prevent horizontal overflow globally */
+/* Prevent horizontal overflow globally
+   🔴 幅を 100vw（画面の幅の単位）で抑えない（2026-11-26・iPad で中身が左に細く寄った）。
+   iPad のアプリ（WKWebView）は、アプリに戻ったときに vw だけが古い幅（約480pt）のまま
+   残ることがあり、html・body・#root がその幅に押し込まれていた（画面に固定のヘッダーと
+   サイドバーは実際の画面に合わせて出るので、中身だけが細くなる）。
+   ブロック要素は何もしなくても画面の幅いっぱいになるので、上限は親の 100% で足りる。
+   見張り: src/test/viewportWidthUnits.test.ts／メモ: mem/features/ipad-layout.md */
 html, body {
   overflow-x: hidden;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
 /* Pixel-art avatars: keep dot art crisp at any size */
@@ -96,12 +102,12 @@ html, body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     overflow-x: hidden;
-    max-width: 100vw;
+    max-width: 100%; /* 100vw にしない（上の html, body の説明） */
     -webkit-tap-highlight-color: transparent;
   }
 
   #root {
-    max-width: 100vw;
+    max-width: 100%; /* 100vw にしない（上の html, body の説明） */
     overflow-x: hidden;
   }
 }
